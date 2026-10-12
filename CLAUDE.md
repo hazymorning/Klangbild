@@ -10,9 +10,11 @@ sentence. Its pictures are mockups in `docs/screenshots/`: the app's own screens
 (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set in a room by
 `tools/make_readme_pictures.py`, made again when the look changes, and the download button under
 the first paragraph. The mockups stay calm and real, as a photograph of a room would be: the
-lights' colors soft on a matte wall, no colorful backgrounds; the landscape on a deep winter
-night (stars, a thin moon, the campfire) in a cozy room worked out in 3D, a lamp's light falling
-through its shade, candles, books and a record sleeve on a walnut sideboard.
+lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after another
+on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover on its
+cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's light
+falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song by
+day and at night, the only picture of the light wall.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
 a ring and a light dot, blue on night blue), drawn from it by `tools/make_launcher_assets.py` for
 the banner, the icons, the mockups and the button, never scaled from a bitmap. Release notes are

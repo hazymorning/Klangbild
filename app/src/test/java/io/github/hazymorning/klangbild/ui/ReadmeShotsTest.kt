@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -20,6 +21,9 @@ import io.github.hazymorning.klangbild.lights.LightColors
 import io.github.hazymorning.klangbild.lights.LightSlot
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.TestTexts
+import io.github.hazymorning.klangbild.ui.flow.FlowStage
+import io.github.hazymorning.klangbild.ui.stage.FieldTime
+import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.vista.VistaScreen
 import io.github.hazymorning.klangbild.vista.VistaClock
@@ -53,6 +57,8 @@ class ReadmeShotsTest {
     private val polarNight = TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Lights", 2025, 258_000, artworkUrl = cover(SyntheticCover.AURORA))
     private val saltWater = TrackInfo("Salt Water", listOf("Northern Light Collective"), "Tides", 2023, 214_000, artworkUrl = cover(SyntheticCover.SALT_WATER))
     private val desertSong = TrackInfo("Desert Song", listOf("Amal Haddad"), "Cairo Nights", 2016, 289_000, artworkUrl = cover(SyntheticCover.TERRACOTTA))
+    private val neonHighway = TrackInfo("Neon Highway", listOf("Lumen Drive"), "Night Drive", 2024, 251_000, artworkUrl = cover(SyntheticCover.NIGHT_DRIVE))
+    private val morningFog = TrackInfo("Morning Fog", listOf("Theo Lind"), "Low Hills", 2022, 236_000, artworkUrl = cover(SyntheticCover.MOSS))
 
     private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) =
         captureRoboImage("build/screenshots/readme/$name.png") { Fixtures.Still(en, content) }
@@ -78,6 +84,33 @@ class ReadmeShotsTest {
             Stage(Fixtures.model(polarNight, next = saltWater, positionMs = 94_000L, clock = en.clock(Fixtures.at(21, 47), Fixtures.zone), group = "Living room", scene = scene, t = en))
         }
         coverLights("now-playing", scene, warmth = 1f)
+    }
+
+    /**
+     * The views, one after another on the same evening: Salt Water follows the first picture's
+     * song, on its own colors (the background "Cover colors").
+     */
+    @Test
+    fun singleCover() {
+        val scene = Fixtures.scene(saltWater, coverField = true)
+        shot("single-cover") {
+            CompositionLocalProvider(LocalFieldTime provides FieldTime({ 0.0 }, false)) {
+                Stage(Fixtures.model(saltWater, next = neonHighway, positionMs = 71_000L, clock = en.clock(Fixtures.at(21, 51), Fixtures.zone), group = "Living room", scene = scene, t = en))
+            }
+        }
+    }
+
+    /** Then Neon Highway in the cover flow: what played before on the left, what comes on the right. */
+    @Test
+    fun coverFlow() {
+        val strip = listOf(polarNight, saltWater, neonHighway, morningFog, desertSong)
+        shot("cover-flow") {
+            val scenes = Fixtures.flowScenes(strip)
+            FlowStage(
+                Fixtures.model(neonHighway, next = morningFog, positionMs = 84_000L, clock = en.clock(Fixtures.at(21, 55), Fixtures.zone), group = "Living room", scene = scenes[2], t = en),
+                Fixtures.restingCards(scenes, 2),
+            )
+        }
     }
 
     /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */

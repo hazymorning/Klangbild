@@ -793,17 +793,19 @@ class Room:
         return to_srgb(grey + (img - grey) * 0.88), (light * paint).astype(np.float64) * exposure / wb
 
 
-def landscape():
-    """The landscape on a winter night in a room made for it: the TV over a walnut sideboard,
-    lit by a table lamp and three candles. The record sleeve wears the cover of the day and night
-    picture's song."""
+def views():
+    """The three views, each on the TV in the same room on a winter night: over a walnut
+    sideboard, lit by a table lamp and three candles. The record sleeve wears the cover of the day
+    and night picture's song."""
     room = Room()
     tv = Tv(Room.W / 2, Room.VY, 1260, 9)
     # The day and night song's cover, cut from its render inside its rounded corners (the artwork: 368 dp at 88 dp, 2 px per dp).
     cover = Image.open(os.path.join(RENDERS, "night.png")).convert("RGB").crop((192, 188, 896, 892))
-    img, light = room.photograph(tv, cover)
-    tv_frame(img, tv, os.path.join(RENDERS, "landscape.png"), light * 0.6)
-    save(img, "mockup-landscape.jpg")
+    photo, light = room.photograph(tv, cover)
+    for screen, name in (("single-cover", "mockup-single-cover"), ("cover-flow", "mockup-cover-flow"), ("landscape", "mockup-landscape")):
+        img = photo.copy()
+        tv_frame(img, tv, os.path.join(RENDERS, screen + ".png"), light * 0.6)
+        save(img, name + ".jpg")
 
 
 def daylight_room(W, H, tv, seed=21):
@@ -888,6 +890,6 @@ def download_button(scale=4):
 
 if __name__ == "__main__":
     now_playing()
-    landscape()
+    views()
     day_and_night()
     download_button()
