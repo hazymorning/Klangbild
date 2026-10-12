@@ -41,7 +41,7 @@ The background is light during the day and dark at night, and the picture slowly
   </tr>
 </table>
 
-Single cover shows one large album cover next to the song details, and Cover Flow shows the covers in your queue side by side. Landscape is a paper-cut style scene of mountains, a forest and a campfire, with a small player in the corner. You can switch views in the quick settings, or press up on the remote to go straight to the landscape.
+Single cover shows one large album cover next to the song details, and Cover Flow shows the covers in your queue side by side. Landscape is a cozy natural scene with a small player in the corner. You can switch views in the quick settings, or press up on the remote to go straight to the landscape.
 
 <details>
 <summary><b>More about the landscape</b></summary>
@@ -104,7 +104,7 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 | --- | --- |
 | OK | Play or pause (hold to open the settings) |
 | Left / Right | Previous or next song |
-| Up | Switch to the landscape and back |
+| Up | Switch to the landscape |
 | Down | Open the quick settings |
 
 In the quick settings you can switch views and add your own Home Assistant buttons, for example one that groups all your speakers.
