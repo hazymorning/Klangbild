@@ -62,6 +62,18 @@ class SettingsMenuTest {
     }
 
     @Test
+    fun `lights that are off are set up first, then turned on or left off`() {
+        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, configured, MenuContext(), de)).isEqualTo("Einrichten")
+        assertThat(SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, configured, +1)).isNull()
+        val lights = configured.copy(roomLights = RoomLights(left = "light.links"))
+        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, lights, MenuContext(), de)).isEqualTo("Einschalten")
+        val leaveOff = SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, lights, +1)!!
+        assertThat(leaveOff.lightsOnlyOn).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, leaveOff, MenuContext(), de)).isEqualTo("Auslassen")
+        assertThat(SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, leaveOff, -1)!!.lightsOnlyOn).isFalse()
+    }
+
+    @Test
     fun `every line has a value and an explanation, actions have no step`() {
         val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
         val withLights = configured.copy(roomLights = RoomLights(left = "light.links", right = "light.rechts"))
@@ -79,6 +91,7 @@ class SettingsMenuTest {
             val actions = setOfNotNull(
                 MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE,
                 MenuEntry.LIGHTS.takeIf { !s.roomLights.isSet },
+                MenuEntry.LIGHTS_ONLY_ON.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
             )
             for (ctx in contexts) {

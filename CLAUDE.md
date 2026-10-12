@@ -441,7 +441,8 @@ UI words are given in English with the German in parentheses where it matters.
   the common words people know from TVs and phones, values plain words: sections Picture
   (View: Single cover / Cover Flow, Appearance), Information (Clock, Progress bar, Next track,
   Album and year, Speaker group, Volume, Values), Effects (Background: Plain / Cover colors,
-  Intensity, Motion: Off / Slow / Medium / Fast, Lights: Off / 10 to 100% with a slider),
+  Intensity, Motion: Off / Slow / Medium / Fast, Lights: Off / 10 to 100% with a slider,
+  Lights that are off: Turn on / Leave off),
   Window view (When paused, While playing, Mini player: Bottom left / Bottom right / Off),
   Remote (Control music, Up and down: Window view, menu / Volume, Audiobooks, podcasts: Jump /
   Change track), Timer (Sleep timer, Turn off after, When turning off: Close app / Screen
@@ -506,7 +507,11 @@ UI words are given in English with the German in parentheses where it matters.
   fades. A light someone else switches off, sets to white or changes a lot is theirs until the
   next session. The lights' states arrive a moment after they are followed: taking over waits
   for them (≤ 10 s) and a light that appears later joins in; a failed call is retried once,
-  for that light only.
+  for that light only. "Lights that are off" (Lichter, die aus sind): Turn on (the default, as
+  above) or Leave off: then a light that is off is never switched on and not saved; one switched
+  on during the music is saved and joins in, one switched off is let go and joins in again when
+  switched on, and after the music each is as it was before it first joined. Leave off chosen
+  while they glow: the lights that were off go back off, the others keep their colors.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
 - **A song arrives whole** (`HaSource.awaitsDetails`): Home Assistant reports a Music Assistant

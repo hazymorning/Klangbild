@@ -60,7 +60,10 @@ interface LightBridge {
  *  - by day the lights glow at the chosen level, at night at [NIGHT] of it (by the sun); a pause
  *    dims them to half;
  *  - a light someone else changes (switched off, set to white, much brighter or darker, another
- *    color from Home Assistant) is left alone until the next time music starts.
+ *    color from Home Assistant) is left alone until the next time music starts;
+ *  - with [Target.onlyOn] ("Lights that are off: Leave off") a light that is off is never
+ *    switched on: one switched on during the music joins in, one switched off is let go until
+ *    it is switched on again, and each goes back to how it was before it first joined.
  *
  * All its state lives on one thread; [update] and [release] only hand over.
  */
@@ -92,6 +95,8 @@ class LightSync(
          * and seldom calls; a pause does not dim them (the picture is the show).
          */
         val vista: Boolean = false,
+        /** Lights that are off are left alone; one switched on joins in, one switched off is let go. */
+        val onlyOn: Boolean = false,
     )
 
     /** What a light can show, from its attributes (https://developers.home-assistant.io/docs/core/entity/light). */
@@ -154,6 +159,9 @@ class LightSync(
 
     /** The lights asked for when they were taken over (some may have been unavailable). */
     private var activeFor: Set<String>? = null
+
+    /** The lights were taken over with [Target.onlyOn]. */
+    private var takenOnlyOn = false
     private var saved: Map<String, Saved> = emptyMap()
 
     /** The lights whose state Home Assistant holds in a snapshot scene of ours. */
@@ -191,7 +199,7 @@ class LightSync(
         if (old?.lights != target?.lights || (old?.level == RoomLightLevel.OFF) != (target?.level == RoomLightLevel.OFF)) follow(bridge, target)
         // Nothing to do without lights, unless lights taken over are still to be given back.
         if (target != null || activeLights) ensureLoop()
-        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old == null || target == null) wake.trySend(Unit)
+        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old == null || target == null) wake.trySend(Unit)
     }
 
     /** Whether lights are taken over (read off the loop's thread; a stale answer only delays the loop by a tick). */
@@ -254,10 +262,18 @@ class LightSync(
         if (wanted.keys != activeFor) {
             if (wanted.keys.any { it !in states } && t - followedAt < STATES_WAIT_MS) return
             if (activeFor != null) restore(b)
-            activate(b, wanted, states, t)
+            activate(b, wanted, states, t, tg.onlyOn)
         }
-        adopt(b, wanted, states, t)
+        // "Leave off" chosen while they glow: the lights switched on for the music go back off
+        // (the states read above are old by then: the next tick goes on).
+        if (tg.onlyOn && !takenOnlyOn) {
+            takenOnlyOn = true
+            return giveBackSwitchedOn(b)
+        }
+        takenOnlyOn = tg.onlyOn
+        adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
+        if (tg.onlyOn) letGoSwitchedOff(states)
         val paused = !tg.playing && !tg.vista
         pausedSince = if (paused) (pausedSince ?: t) else null
         when {
@@ -291,13 +307,14 @@ class LightSync(
 
     /**
      * A wanted light whose state arrived only after the others were taken over (or that was
-     * unavailable then): its state is saved, then it joins in at once.
+     * unavailable then), or with [Target.onlyOn] one that has been switched on: its state is
+     * saved (unless it was saved before in this session), then it joins in at once.
      */
-    private suspend fun adopt(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long) {
+    private suspend fun adopt(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
         for ((id, slot) in wanted) {
             if (id in lights) continue
             val s = states[id] ?: continue
-            if (s.state == UNAVAILABLE) continue
+            if (s.state == UNAVAILABLE || (onlyOn && s.state == "off")) continue
             if (id !in saved) save(b, mapOf(id to s))
             lights[id] = Light(id, slot).also {
                 it.checkedUpdate = s.lastUpdated
@@ -310,22 +327,20 @@ class LightSync(
      * Saves how the lights are, then takes them over. Lights that were off are switched on dark
      * first, in the new color: never a flash of their old one.
      */
-    private suspend fun activate(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long) {
+    private suspend fun activate(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
+        val taken = wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != UNAVAILABLE && !(onlyOn && it.state == "off") }?.let { id to it } }.toMap()
         // Taken back within a minute (the screen came back): the earlier snapshot still holds.
-        if (t - savedAt > REUSE_SNAPSHOT_MS || !wanted.keys.all { it in saved }) {
+        if (t - savedAt > REUSE_SNAPSHOT_MS || !taken.keys.all { it in saved }) {
             saved = emptyMap()
             snapshots = emptySet()
-            save(b, wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != UNAVAILABLE }?.let { id to it } }.toMap())
+            save(b, taken)
             savedAt = t
         }
         lights.clear()
         activeFor = wanted.keys.toSet()
+        takenOnlyOn = onlyOn
         activeLights = true
-        for ((id, slot) in wanted) {
-            val s = states[id] ?: continue
-            if (s.state == UNAVAILABLE) continue
-            lights[id] = Light(id, slot).also { it.checkedUpdate = s.lastUpdated }
-        }
+        for ((id, s) in taken) lights[id] = Light(id, wanted.getValue(id)).also { it.checkedUpdate = s.lastUpdated }
         shownSong = null
         waitingSong = null
         shownPaused = false
@@ -366,6 +381,8 @@ class LightSync(
                 else -> Shown.On
             }
             val wasOff = state.state == "off"
+            // "Leave off": a light that is off stays off.
+            if (wasOff && target.onlyOn) continue
             if (shown == Shown.On && !wasOff) continue
             if (small(light.shown, shown) && !force && light.retryAt == 0L) continue
             if (light.inFlight || t - light.sentAt < MIN_GAP_MS) {
@@ -465,11 +482,7 @@ class LightSync(
         }
     }
 
-    /**
-     * Gives every light not taken over back as it was, from its snapshot scene: on in its old
-     * state, or off. A light that was off is dimmed first, then switched off without a fade
-     * (a faded off leaves some lights at their lowest level).
-     */
+    /** Gives every light not taken over back as it was ([putBack]), and deletes the snapshot scenes. */
     private suspend fun restore(b: LightBridge?) {
         // What was saved, as it is now: a new takeover must not change it under the calls.
         val notes = saved
@@ -484,6 +497,42 @@ class LightSync(
             activeLights = false
             return
         }
+        putBack(b, toRestore, notes, scenes)
+        for (id in scenes) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+        snapshots = emptySet()
+        activeLights = lights.isNotEmpty()
+    }
+
+    /**
+     * "Leave off" chosen while the lights glow: the ones that were off before the music go back
+     * off; the others keep their colors.
+     */
+    private suspend fun giveBackSwitchedOn(b: LightBridge) {
+        val wereOff = lights.values.filter { !it.takenOver && saved[it.id]?.on == false }
+        if (wereOff.isEmpty()) return
+        val ids = wereOff.map { it.id }.toSet()
+        val scenes = snapshots
+        putBack(b, wereOff, saved, scenes)
+        for (id in ids.filter { it in scenes }) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+        snapshots = snapshots - ids
+        saved = saved - ids
+    }
+
+    /**
+     * With [Target.onlyOn], a light switched off during the music is let go. Switched on again it
+     * joins in anew, and what was saved before it first joined still holds: after the music it
+     * goes back to that.
+     */
+    private fun letGoSwitchedOff(states: Map<String, EntityState>) {
+        lights.values.removeAll { !it.inFlight && states[it.id]?.state == "off" }
+    }
+
+    /**
+     * Gives [toRestore] back as they were, from their snapshot scenes ([scenes]) or else from
+     * [notes]: on in their old state, or off. A light that was off is dimmed first, then switched
+     * off without a fade (a faded off leaves some lights at their lowest level).
+     */
+    private suspend fun putBack(b: LightBridge, toRestore: List<Light>, notes: Map<String, Saved>, scenes: Set<String>) {
         // A light leaves the list once it is back as it was: cut short, the rest is given back by
         // whoever comes next.
         val offs = ArrayList<Light>()
@@ -516,9 +565,6 @@ class LightSync(
                 lights.remove(light.id)
             }
         }
-        for (id in scenes) b.call("scene", "delete", "scene.${sceneId(id)}", null)
-        snapshots = emptySet()
-        activeLights = lights.isNotEmpty()
     }
 
     /** Restores [id] from its snapshot scene; whether Home Assistant took the call. */

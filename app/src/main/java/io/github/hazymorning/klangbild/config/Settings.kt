@@ -160,6 +160,8 @@ data class Settings(
     /** The color lights behind the TV and how brightly they join in (by day; at night they dim on their own). */
     val roomLights: RoomLights = RoomLights(),
     val roomLightLevel: RoomLightLevel = RoomLightLevel.DEFAULT,
+    /** Lights that are off when the music starts stay off. */
+    val lightsOnlyOn: Boolean = false,
     /** With an audiobook or a podcast, left and right jump back 15 and ahead 30 seconds. */
     val spokenSkip: Boolean = true,
     /** The window view takes the screen after the music has been paused this long (s); 0 never. */
@@ -279,6 +281,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val barsCenter = stringPreferencesKey("bars_center")
         val barsRight = stringPreferencesKey("bars_right")
         val roomLightLevel = stringPreferencesKey("bar_level")
+        val lightsOnlyOn = booleanPreferencesKey("lights_only_on")
         val spokenSkip = booleanPreferencesKey("spoken_skip")
         val vistaPause = intPreferencesKey("vista_pause_s")
         val vistaPlaying = intPreferencesKey("vista_playing_s")
@@ -317,6 +320,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             motion = p[Keys.motion]?.let { runCatching { MotionLevel.valueOf(it) }.getOrNull() } ?: MotionLevel.OFF,
             roomLights = RoomLights(p[Keys.barsLeft], p[Keys.barsCenter], p[Keys.barsRight]),
             roomLightLevel = p[Keys.roomLightLevel]?.let { RoomLightLevel.named(it) } ?: RoomLightLevel.DEFAULT,
+            lightsOnlyOn = p[Keys.lightsOnlyOn] ?: false,
             spokenSkip = p[Keys.spokenSkip] ?: true,
             vistaPauseSeconds = p[Keys.vistaPause] ?: 180,
             vistaPlayingSeconds = p[Keys.vistaPlaying] ?: 0,
@@ -363,6 +367,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             putOrRemove(Keys.barsCenter, s.roomLights.center)
             putOrRemove(Keys.barsRight, s.roomLights.right)
             p[Keys.roomLightLevel] = s.roomLightLevel.name
+            p[Keys.lightsOnlyOn] = s.lightsOnlyOn
             p[Keys.spokenSkip] = s.spokenSkip
             p[Keys.vistaPause] = s.vistaPauseSeconds
             p[Keys.vistaPlaying] = s.vistaPlayingSeconds

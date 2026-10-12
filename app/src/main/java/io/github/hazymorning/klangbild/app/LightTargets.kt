@@ -53,6 +53,7 @@ internal class LightTargets(
                 motion = 0f,
                 fieldTime = fieldClock::now,
                 vista = true,
+                onlyOn = s.lightsOnlyOn,
             )
         }
         if (stage == null) return null
@@ -68,6 +69,7 @@ internal class LightTargets(
             warmth = night,
             motion = s.motion.speed,
             fieldTime = fieldClock::now,
+            onlyOn = s.lightsOnlyOn,
         )
     }
 
