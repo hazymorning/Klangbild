@@ -86,6 +86,15 @@ class ReadmeShotsTest {
         coverLights("now-playing", scene, warmth = 1f)
     }
 
+    /** The first picture for a light page: the same song by day on the light wall (the lights are off by day). */
+    @Test
+    fun nowPlayingLight() {
+        val scene = Fixtures.scene(polarNight, appearance = Appearance.LIGHT)
+        shot("now-playing-light") {
+            Stage(Fixtures.model(polarNight, next = saltWater, positionMs = 94_000L, clock = en.clock(Fixtures.at(14, 47), Fixtures.zone), group = "Living room", scene = scene, t = en, appearance = Appearance.LIGHT))
+        }
+    }
+
     /**
      * The views, one after another on the same evening: Salt Water follows the first picture's
      * song, on its own colors (the background "Cover colors").

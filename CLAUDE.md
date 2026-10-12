@@ -3,21 +3,26 @@
 Android TV "now playing" screen for Home Assistant and Music Assistant. Built for a 4K Android
 TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
-notes, CI and every other document are English. The README stays at about 500 words, in plain,
-complete sentences that a reader understands at once: what Klangbild is and what it works with, its
-views, leaving it on, setup, the remote and privacy. Leave a feature out rather than squeeze a
-sentence. Its pictures are mockups in `docs/screenshots/`: the app's own screens
-(`ReadmeShotsTest`, with the colors the lights behind the TV would show) set in a room by
-`tools/make_readme_pictures.py`, made again when the look changes, and the download button under
-the first paragraph. The mockups stay calm and real, as a photograph of a room would be: the
-lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after another
-on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover on its
-cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's light
-falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song by
-day and at night, the only picture of the light wall.
+notes, CI and every other document are English. The README stays short (about 700 words, the longer
+parts folded away in `<details>`) and is written like everything else (see the writing rules): what
+Klangbild is and what it does, its views, setup with a tip for letting Home Assistant open it, the
+remote, an open invitation to contribute, privacy and the license. Leave a feature out rather than
+squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
+the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
+in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
+button under the first paragraph. The first picture and the button come in a light and a dark
+version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
+wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
+the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
+be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
+another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
+on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
+light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
+by day and at night.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
 a ring and a light dot, blue on night blue), drawn from it by `tools/make_launcher_assets.py` for
-the banner, the icons, the mockups and the button, never scaled from a bitmap. Release notes are
+the banner, the icons and the button, never scaled from a bitmap. Release notes are
 easy to scan and in everyday words: a small heading for each kind of change there is (`### New`,
 `### Better`, `### Bug fixes`), under it a few short points a user understands at once, nothing
 technical. As short as the release allows; up to 300 words only when a release needs them and every
@@ -26,12 +31,20 @@ pictures: effort goes into the app, not into documents.
 
 ## Writing rules (texts in both languages, the setup page, comments, docs, commits, PRs)
 
-- Plain everyday English, US spelling, short sentences. No emoji, no em dashes, no dashes as
-  punctuation, no exclamation marks, no bold for emphasis, no marketing words (seamless,
-  effortless, elevate, delightful, immersive, robust, powerful, crafted), no filler, no poetic
-  fragments. Commit subjects under 60 characters, PR descriptions under 300.
-- No attribution lines in commits, PRs or comments: no Co-Authored-By, no session links, no
-  "Generated with".
+- Write the way a developer explains their project to a friend who isn't very technical:
+  natural, flowing prose in everyday English (US spelling), with sentences of different lengths.
+  Connect ideas that belong together instead of giving each one its own short sentence, and say
+  why something is the way it is when that helps. These notes are terse because they are a
+  reference; nothing written for people should sound like them. On the TV, where room is tight,
+  lines stay short, but they are still whole, natural sentences.
+- No emoji, no em dashes, no dashes as punctuation, no exclamation marks, no bold for emphasis,
+  no marketing words (seamless, effortless, elevate, delightful, immersive, robust, powerful,
+  crafted), no filler, no poetic fragments. Commit subjects under 60 characters, PR descriptions
+  under 300.
+- No Claude branding anywhere: no footers, no Co-Authored-By, no session links, no "Generated
+  with" or "Generated by" lines in commits, PRs, comments, issues or releases. A footer a tool
+  adds by itself is edited out right away. Branches get plain names wherever the name is ours to
+  choose.
 - An English UI sentence is never longer than its German one (`LanguageTest` checks it).
 - Never name a brand of light, speaker, media player or TV device in texts, names or comments.
 - Music metadata keeps its typesetting (`TrackText`); dashes inside strings and test data are
@@ -87,8 +100,13 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   they were made once, after 6.0.0, and cannot be made again: a new key would be refused by
   installed copies. `ci/rotation-check.sh` installs over an old-signed copy on API 31 to 36 in
   CI, with throwaway keys.
-- Only a version publishes a release: a pushed tag (`v6.0.0`), or a manual CI run on main with
+- Only a version publishes a release: a pushed tag (`v2026.11.0`), or a manual CI run on main with
   the version as `release` (the release creates the tag). Its text is `docs/releases/<tag>.md`.
+- Versions follow the calendar, the way Home Assistant's do, from the first release after 6.4.0
+  on: the first release in a month is named after it (`v2026.11.0` for November 2026), and later
+  releases that month count up the last number (`v2026.11.1`). A pre-release carries a hyphen
+  (`v2026.11.0-beta.1`). The old numbers ended with 6.4.0. Android decides about updates by
+  `versionCode`, which only ever grows, so the new names cost installed copies nothing.
 - The "Tidy up" workflow (started by hand) keeps only the newest releases, two by default, and
   deletes branches merged into main. `docs/releases/` holds the notes of the releases kept.
 - The app declares no signature permission of its own: the original key has no permission

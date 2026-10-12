@@ -3,13 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
-    # A tag like v6.0.0 publishes a release; one with a hyphen (v6.1.0-beta.1) a pre-release.
+    # A tag like v2026.11.0 publishes a release; one with a hyphen (v2026.11.0-beta.1) a pre-release.
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
     inputs:
       release:
-        description: "Run on main: publish this commit as a release under this version tag (like v6.0.1); empty only builds"
+        description: "Run on main: publish this commit as a release under this version tag (like v2026.11.0); empty only builds"
         required: false
         default: ""
       measure:
@@ -55,7 +55,7 @@ jobs:
           TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release }}
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
-            echo "::error::$TAG is not a version tag like v6.0.1."
+            echo "::error::$TAG is not a version tag like v2026.11.0."
             exit 1
           fi
           if [ ! -s "docs/releases/$TAG.md" ]; then
@@ -65,7 +65,7 @@ jobs:
 
       - name: Release APK (R8)
         env:
-          # A release carries its tag as version name (v6.0.0 becomes 6.0.0).
+          # A release carries its tag as version name (v2026.11.0 becomes 2026.11.0).
           TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release || '' }}
         run: |
           if [ -n "$TAG" ]; then
