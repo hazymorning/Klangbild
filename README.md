@@ -2,8 +2,8 @@
 
 Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
-[![Android TV 12+](https://img.shields.io/badge/Android%20TV%2012%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#setup)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-18BCF2?style=flat-square&logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
+[![Android TV 12+](https://img.shields.io/badge/Android%20TV%2012%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
 
 ![Klangbild on a TV at night, the wall behind it lit in the colors of the cover](docs/screenshots/mockup-now-playing.jpg)
 
@@ -72,6 +72,29 @@ You can set up Music Assistant, your lights and custom buttons on the same page,
 
 </details>
 
+<details>
+<summary><b>Tip: let Home Assistant open Klangbild when the music starts</b></summary>
+<br>
+
+If your TV is connected to Home Assistant through the Android Debug Bridge integration, Home Assistant can open apps on it, and that includes Klangbild. The integration starts an app with the `media_player.select_source` action and the app's ID as the source, so a small automation like this one brings Klangbild up whenever your speaker starts playing:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: media_player.living_room
+    to: playing
+actions:
+  - action: media_player.select_source
+    target:
+      entity_id: media_player.tv
+    data:
+      source: io.github.hazymorning.klangbild
+```
+
+Replace the two entity IDs with your speaker and your TV. If you also add Klangbild to the integration's application list, it shows up by name among the TV's sources, so you can pick it there like any other app.
+
+</details>
+
 ## Remote
 
 | Button | Action |
@@ -82,6 +105,10 @@ You can set up Music Assistant, your lights and custom buttons on the same page,
 | Down | Open the quick settings |
 
 In the quick settings you can switch views and add your own Home Assistant buttons, for example one that groups all your speakers.
+
+## Contributing
+
+Klangbild is a small project made for the joy of it, and help is very welcome. Whether you'd like to fix a bug, add a language or bring Klangbild to another TV platform, feel free to open a discussion or a pull request. Everyone with a TV in the living room should get to enjoy a calm picture while the music plays.
 
 ## Privacy
 
