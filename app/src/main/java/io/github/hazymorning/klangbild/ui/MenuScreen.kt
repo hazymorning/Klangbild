@@ -240,10 +240,9 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
         val screen = ScreenSpec((maxWidth.value * density).roundToInt(), (maxHeight.value * density).roundToInt(), density)
         val layout = HaloLayout(screen)
         val focusY = maxHeight.value / 2f
-        // The list moves so that the chosen line comes to rest in the light.
+        // The list moves so that the chosen line comes to rest in the light; a held key runs it on evenly.
         val target = focusY - (itemTops.getValue(cursor) + MenuGrid.ROW / 2f)
-        val offset = remember { Animatable(target) }
-        LaunchedEffect(target) { offset.animateTo(target, tween(340, easing = Motion.Dimmer)) }
+        val offset = animateGlide(target, GLIDE_MS)
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
         val field = rememberOffMain(screen, colors) {
@@ -266,12 +265,14 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
         BaselineAt(x = layout.margin, baseline = layout.artTop + 36f * Fonts.CAP_HEIGHT, width = layout.art) {
             BasicText(t[R.string.menu_heading], style = headingStyle)
         }
+        // While a key is held the list runs on under the light: the explanation goes, and comes
+        // back with the line the key is let go on.
         Crossfade(
-            targetState = row.description,
+            targetState = row.description.takeUnless { menu.held },
             animationSpec = tween(320, easing = Motion.Dimmer),
             label = "menu-description",
         ) { text ->
-            BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTRE, width = layout.art - 24f) {
+            if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTRE, width = layout.art - 24f) {
                 BasicText(
                     text,
                     style = textType(18f, 420, colors.description, lineHeight = 26f).merge(
@@ -343,7 +344,7 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
             animationSpec = tween(260, easing = Motion.Dimmer),
             label = "menu-value",
         ) { value ->
-            BasicText(value, style = valueStyle.copy(color = valueColor), maxLines = 1)
+            BasicText(value, style = valueStyle, color = { valueColor }, maxLines = 1)
         }
     }
 }
@@ -367,6 +368,9 @@ private fun BaselineAt(x: Float, baseline: Float, width: Float, content: @Compos
 private const val SLIDER_HEIGHT = 4f
 private const val SLIDER_TRACK = 0.28f
 private const val SLIDER_LIFT = 4f
+
+/** The list's glide by a line from rest (ms). */
+private const val GLIDE_MS = 340
 
 /** From a line's center to its label's baseline (21 sp in a 40 dp line). */
 private const val LABEL_BASELINE_FROM_CENTRE = 7f

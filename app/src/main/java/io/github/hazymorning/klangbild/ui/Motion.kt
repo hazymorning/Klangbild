@@ -1,16 +1,22 @@
 package io.github.hazymorning.klangbild.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -55,6 +61,24 @@ const val TICK_MS = 24L
 private const val SLOW_TICK_MS = 500L
 
 /**
+ * A value that glides to [target]: from rest in [durationMs] ([Motion.Dimmer]). A new target
+ * that comes while it still glides (a key held, or pressed again quickly) carries on from its
+ * pace, without a bounce, instead of starting over from a standstill.
+ */
+@Composable
+fun animateGlide(target: Float, durationMs: Int): State<Float> {
+    val glide = remember { Animatable(target) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(target) {
+        if (glide.targetValue == target) return@LaunchedEffect
+        val spec = if (glide.isRunning) spring(Spring.DampingRatioNoBouncy, Motion.GLIDE_STIFFNESS) else tween<Float>(durationMs, easing = Motion.Dimmer)
+        // Launched where it outlives this effect: a glide ended by the next target would lose its pace first.
+        scope.launch { glide.animateTo(target, spec) }
+    }
+    return glide.asState()
+}
+
+/**
  * Motion vocabulary. Everything is driven by the display's frames and eased; nothing
  * bounces, nothing slides, nothing jumps. A track change takes about a second: long enough
  * to be seen, short enough that nobody waits for it.
@@ -65,6 +89,13 @@ object Motion {
 
     /** A sine in-out: the gentlest way for a picture to come up. */
     val Sine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
+
+    /**
+     * A glide that comes while one runs ([animateGlide]) follows a spring this stiff: at the
+     * remote's own repeat a held key moves a list on evenly, two or three lines behind the key,
+     * and it comes to rest about 0.4 s after the key is let go.
+     */
+    const val GLIDE_STIFFNESS = Spring.StiffnessMediumLow
 
     /** Quick start, long settle: for things arriving at their place. */
     val Decelerate = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)

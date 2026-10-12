@@ -95,7 +95,12 @@ data class FlowData(val cards: List<FlowEntry>, val current: Int, val lyrics: Ly
 }
 
 /** The settings menu while it is open: its lines and the one the cursor is on. */
-data class MenuState(val rows: List<MenuRow>, val cursor: Int)
+data class MenuState(
+    val rows: List<MenuRow>,
+    val cursor: Int,
+    /** Up or down is held: the list runs on, and the explanation waits until the key is let go. */
+    val held: Boolean = false,
+)
 
 /** The quick menu while it is open: its lines and the one the cursor is on. */
 data class QuickState(val rows: List<QuickRow>, val cursor: Int)
@@ -210,6 +215,7 @@ class NowPlayingController(
                 localizer.setLanguage(value)
             }
         override fun recompute() = this@NowPlayingController.recompute()
+        override fun showMenu() = this@NowPlayingController.showMenu()
         override fun applySettings(updated: Settings) = this@NowPlayingController.applySettings(updated)
         override fun send(command: RemoteCommand) = this@NowPlayingController.send(command)
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
@@ -477,8 +483,11 @@ class NowPlayingController(
 
     fun closeMenu() = menu.close()
 
-    /** Up (-1) or down (+1) through the menu; it stops at its ends. */
-    fun menuMove(delta: Int) = menu.move(delta)
+    /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
+    fun menuMove(delta: Int, held: Boolean = false) = menu.move(delta, held)
+
+    /** The key held to run through the menu is let go. */
+    fun menuRelease() = menu.release()
 
     /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]). */
     fun menuChange(direction: Int, wrap: Boolean) = menu.change(direction, wrap)
@@ -715,6 +724,16 @@ class NowPlayingController(
         }
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()
+    }
+
+    /**
+     * Only the menu's cursor moved (or the key that runs it was let go): the rest of the screen
+     * stays as it is. A held key moves it twenty times a second.
+     */
+    @Synchronized
+    private fun showMenu() {
+        val shown = _ui.value.menu ?: return recompute()
+        _ui.value = _ui.value.copy(menu = menu.moved(shown))
     }
 
     /**
