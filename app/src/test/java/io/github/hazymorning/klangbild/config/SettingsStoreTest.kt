@@ -58,6 +58,14 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun `whether lights that are off are left off is remembered`(): Unit = runBlocking {
+        val store = SettingsStore(context, FakeBox())
+        assertThat(store.settings.first().lightsOnlyOn).isFalse()
+        store.update({ it.copy(lightsOnlyOn = true) }, Settings())
+        assertThat(store.settings.first().lightsOnlyOn).isTrue()
+    }
+
+    @Test
     fun `tokens stored by an earlier version are sealed on the next start`(): Unit = runBlocking {
         // An earlier version wrote the token as it is.
         SettingsStore(context, FakeBox(sealing = false))

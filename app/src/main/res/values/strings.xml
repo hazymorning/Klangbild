@@ -40,7 +40,7 @@
     <string name="entry_intensity">Intensity</string>
     <string name="entry_motion">Motion</string>
     <string name="entry_lights">Lights</string>
-    <string name="entry_lights_only_on">Only lights that are on</string>
+    <string name="entry_off_lights">Lights that are off</string>
     <string name="entry_vista_pause">When paused</string>
     <string name="entry_vista_playing">While playing</string>
     <string name="entry_mini_player">Mini player</string>
@@ -71,6 +71,8 @@
     <string name="motion_fast">Fast</string>
     <string name="mini_player_left">Bottom left</string>
     <string name="mini_player_right">Bottom right</string>
+    <string name="off_lights_turn_on">Turn on</string>
+    <string name="off_lights_leave">Leave off</string>
     <string name="up_down_vista">Window view, menu</string>
     <string name="up_down_volume">Volume</string>
     <string name="spoken_jump">Jump</string>
@@ -146,8 +148,8 @@
     <string name="about_motion_playing">Only while music plays.</string>
     <string name="about_lights_set_up">Your lights glow in the cover’s colors. OK shows the QR code; on your phone you choose them from Home Assistant.</string>
     <string name="about_lights_off">The lights keep their own light. Right switches them on.</string>
-    <string name="about_lights_only_on">Lights that are off stay off. One you switch on joins in.</string>
-    <string name="about_lights_switch_on">Lights that are off go on with the music and off again after it.</string>
+    <string name="about_lights_only_on">Lights that are off stay off. One you switch on joins in.</string>
+    <string name="about_lights_switch_on">Lights that are off go on with the music and off again after it.</string>
     <string name="about_lights_on">Each light glows in one of the picture’s colors, this bright by day. In the evening and at night they dim by themselves. After the music they are as before.</string>
     <string name="about_vista_pause_off">When the music is paused, the cover stays; after three minutes the clock appears.</string>
     <string name="about_vista_pause">When the music is paused this long, a paper landscape appears whose light follows the real time of day. Any key brings the cover back.</string>

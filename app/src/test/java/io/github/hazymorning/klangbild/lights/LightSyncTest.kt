@@ -255,6 +255,79 @@ class LightSyncTest {
     }
 
     @Test
+    fun `with only lights that are on, a light switched off and on again follows the music again and ends as before the music`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 200, kelvin = 2700), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a").copy(onlyOn = true))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.to(left)).hasSize(1)
+        // Switched off: let go, never switched on by Klangbild.
+        ha.byHand(left, "off")
+        testScheduler.advanceTimeBy(3_000)
+        s.update(target("b", f = fourColors()).copy(onlyOn = true))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.to(left)).hasSize(1)
+        assertThat(ha.states.value.getValue(left).state).isEqualTo("off")
+        // Switched on again (in the colors it last had from Klangbild): it follows the music again.
+        ha.byHand(left, "on")
+        testScheduler.advanceTimeBy(3_000)
+        assertThat(ha.to(left)).hasSize(2)
+        // After the music it is as it was before the music, not as it came back on.
+        s.update(null)
+        testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
+        val back = ha.states.value.getValue(left)
+        assertThat(back.state).isEqualTo("on")
+        assertThat(back.number("brightness")).isEqualTo(200.0)
+        assertThat(back.number("color_temp_kelvin")).isEqualTo(2700.0)
+        assertThat(ha.scenes).isEmpty()
+    }
+
+    @Test
+    fun `chosen while they glow, only lights that are on sends the lights switched on for the music back off`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("on")
+        val before = ha.calls.size
+        s.update(target("a").copy(onlyOn = true))
+        testScheduler.advanceTimeBy(5_000)
+        val back = ha.calls.drop(before)
+        // The light that was off: dimmed, then its scene (off). The other keeps its colors: no call.
+        assertThat(back.filter { it.id == left || it.id == "scene.klangbild_tv_left" }).isEmpty()
+        assertThat(back.single { it.id == right }.brightness).isEqualTo(LightSync.DARKEST)
+        assertThat(back.filter { it.id == "scene.klangbild_tv_right" }.map { it.name }).containsExactly("scene.turn_on", "scene.delete").inOrder()
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+        // It stays off with the next song; the other goes back as it was after the music.
+        s.update(target("b", f = fourColors()).copy(onlyOn = true))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.calls.drop(before).filter { it.id == right }).hasSize(1)
+        s.update(null)
+        testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+    }
+
+    @Test
+    fun `turned back to turn on, a light that is off joins in`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a").copy(onlyOn = true))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.to(right)).isEmpty()
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // Saved, then on dark in its color and up, as when the music starts.
+        assertThat(ha.scenes.keys).contains("scene.klangbild_tv_right")
+        val (pre, up) = ha.to(right)
+        assertThat(pre.brightness).isEqualTo(LightSync.DARKEST)
+        assertThat(up.brightness).isGreaterThan(LightSync.DARKEST)
+    }
+
+    @Test
     fun `a failing call is tried once more, for its light only`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
         val s = sync()

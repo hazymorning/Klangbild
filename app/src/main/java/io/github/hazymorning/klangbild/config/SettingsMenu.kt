@@ -38,7 +38,7 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     LIGHT(MenuSection.EFFECTS, R.string.entry_intensity),
     MOTION(MenuSection.EFFECTS, R.string.entry_motion),
     LIGHTS(MenuSection.EFFECTS, R.string.entry_lights),
-    LIGHTS_ONLY_ON(MenuSection.EFFECTS, R.string.entry_lights_only_on),
+    LIGHTS_ONLY_ON(MenuSection.EFFECTS, R.string.entry_off_lights),
     VISTA_PAUSE(MenuSection.VISTA, R.string.entry_vista_pause),
     VISTA_PLAYING(MenuSection.VISTA, R.string.entry_vista_playing),
     MINI_PLAYER(MenuSection.VISTA, R.string.entry_mini_player),
@@ -130,7 +130,13 @@ object SettingsMenu {
             s.roomLightLevel == RoomLightLevel.OFF -> t[R.string.off]
             else -> t.percent(s.roomLightLevel.percent)
         }
-        MenuEntry.LIGHTS_ONLY_ON -> onOff(s.lightsOnlyOn, t)
+        MenuEntry.LIGHTS_ONLY_ON -> t[
+            when {
+                !s.roomLights.isSet -> R.string.set_up
+                s.lightsOnlyOn -> R.string.off_lights_leave
+                else -> R.string.off_lights_turn_on
+            },
+        ]
         MenuEntry.APPEARANCE -> t[
             when (s.appearance) {
                 AppearanceMode.AUTO -> R.string.appearance_auto
@@ -232,7 +238,13 @@ object SettingsMenu {
                 else -> R.string.about_lights_on
             },
         ]
-        MenuEntry.LIGHTS_ONLY_ON -> t[if (s.lightsOnlyOn) R.string.about_lights_only_on else R.string.about_lights_switch_on]
+        MenuEntry.LIGHTS_ONLY_ON -> t[
+            when {
+                !s.roomLights.isSet -> R.string.about_lights_set_up
+                s.lightsOnlyOn -> R.string.about_lights_only_on
+                else -> R.string.about_lights_switch_on
+            },
+        ]
         MenuEntry.VISTA_PAUSE -> t[if (s.vistaPauseSeconds == 0) R.string.about_vista_pause_off else R.string.about_vista_pause]
         MenuEntry.VISTA_PLAYING -> t[
             when {
@@ -292,7 +304,7 @@ object SettingsMenu {
      * The settings after one step of [e]: [direction] -1 (left) or +1 (right, OK). Left and
      * right stop at the ends of a scale, OK ([wrap]) goes round. Switches simply flip. Null for
      * the lines that are no setting (the connections, the sleep timer, the language) and for the
-     * lights and the values while none are set up (OK sets them up).
+     * lights' lines and the values while none are set up (OK sets them up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.VIEW -> s.copy(view = if (s.view == StageView.FLOW) StageView.SINGLE else StageView.FLOW)
@@ -306,7 +318,7 @@ object SettingsMenu {
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
         MenuEntry.LIGHTS -> if (s.roomLights.isSet) s.copy(roomLightLevel = move(LIGHTS_ORDER, s.roomLightLevel, direction, wrap)) else null
-        MenuEntry.LIGHTS_ONLY_ON -> s.copy(lightsOnlyOn = !s.lightsOnlyOn)
+        MenuEntry.LIGHTS_ONLY_ON -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
         MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
         MenuEntry.LIGHT -> s.copy(light = move(LIGHT_ORDER, s.light, direction, wrap))
         MenuEntry.VISTA_PAUSE -> s.copy(vistaPauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.vistaPauseSeconds), direction, wrap))

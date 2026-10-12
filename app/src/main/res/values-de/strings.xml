@@ -30,7 +30,7 @@
     <string name="entry_intensity">Intensität</string>
     <string name="entry_motion">Bewegung</string>
     <string name="entry_lights">Licht</string>
-    <string name="entry_lights_only_on">Nur eingeschaltete Lichter</string>
+    <string name="entry_off_lights">Lichter, die aus sind</string>
     <string name="entry_vista_pause">Bei Pause</string>
     <string name="entry_vista_playing">Während der Musik</string>
     <string name="entry_mini_player">Mini-Player</string>
@@ -60,6 +60,8 @@
     <string name="motion_fast">Schnell</string>
     <string name="mini_player_left">Unten links</string>
     <string name="mini_player_right">Unten rechts</string>
+    <string name="off_lights_turn_on">Einschalten</string>
+    <string name="off_lights_leave">Auslassen</string>
     <string name="up_down_vista">Fensterblick, Menü</string>
     <string name="up_down_volume">Lautstärke</string>
     <string name="spoken_jump">Spulen</string>
@@ -133,7 +135,7 @@
     <string name="about_lights_set_up">Deine Lichter leuchten in den Farben des Covers. OK zeigt den QR-Code; am Handy wählst du sie aus Home Assistant aus.</string>
     <string name="about_lights_off">Die Lichter behalten ihr eigenes Licht. Rechts schaltet sie zu.</string>
     <string name="about_lights_only_on">Ausgeschaltete Lichter bleiben aus. Eines, das du einschaltest, macht mit.</string>
-    <string name="about_lights_switch_on">Ausgeschaltete Lichter gehen mit der Musik an und danach wieder aus.</string>
+    <string name="about_lights_switch_on">Ausgeschaltete Lichter gehen mit der Musik an und danach wieder aus.</string>
     <string name="about_lights_on">Jedes Licht leuchtet in einer Farbe des Bildes. So hell bei Tag; abends und nachts werden sie von selbst dunkler. Nach der Musik sind sie wieder wie vorher.</string>
     <string name="about_vista_pause_off">Ist die Musik angehalten, bleibt das Cover stehen; nach drei Minuten erscheint die Uhr.</string>
     <string name="about_vista_pause">Ist die Musik so lange angehalten, erscheint eine Landschaft aus Papier, deren Licht der echten Tageszeit folgt. Jede Taste holt das Cover zurück.</string>
