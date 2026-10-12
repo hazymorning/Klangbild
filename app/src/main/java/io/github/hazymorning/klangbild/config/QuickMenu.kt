@@ -5,7 +5,7 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.Texts
 
-/** What the screen shows: one of the two views of the music, or the window view. */
+/** What the screen shows: one of the two views of the music, or the landscape. */
 enum class Picture { SINGLE, FLOW, VISTA }
 
 /** The song's words in the text column: on, off, or on while this song has no synced words. */
@@ -28,7 +28,8 @@ enum class FavoriteState {
 
 /**
  * One entry of the quick settings, in their order along the bottom edge: the built-in ones,
- * then the buttons set up on the phone ([ACTION], whose names are their own).
+ * then the buttons set up on the phone ([ACTION], whose names are their own), then the way into
+ * all settings ([SETTINGS]).
  */
 enum class QuickItem(@StringRes val label: Int?) {
     PICTURE(R.string.quick_view),
@@ -38,6 +39,7 @@ enum class QuickItem(@StringRes val label: Int?) {
     LIGHTS(R.string.quick_lights),
     SHUFFLE(R.string.quick_shuffle),
     ACTION(null),
+    SETTINGS(R.string.quick_settings),
 }
 
 /** Which entry: a built-in one, or the button at [action] (its place among the buttons set up). */
@@ -69,7 +71,7 @@ enum class ActionState {
 
 /** What the quick settings need to know besides the settings. */
 data class QuickContext(
-    /** The screen shows the window view. */
+    /** The screen shows the landscape. */
     val vista: Boolean = false,
     /** A view chosen with OK that is taken once the presses stop. */
     val pending: Picture? = null,
@@ -118,6 +120,7 @@ object QuickMenu {
             val state = ctx.actions[i] ?: return@forEachIndexed
             add(QuickRow(QuickKey(QuickItem.ACTION, i), a.name, actionValue(kind, state, t), actionValues(kind, t)))
         }
+        row(QuickItem.SETTINGS, t[R.string.quick_open])
     }
 
     /** What the screen shows now. */
@@ -183,6 +186,7 @@ object QuickMenu {
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
         QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
+        QuickItem.SETTINGS -> listOf(t[R.string.quick_open])
     }
 
     /** From the music's own picture outward: the cover, the strip of covers, the landscape. */

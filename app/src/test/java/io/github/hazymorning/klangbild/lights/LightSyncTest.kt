@@ -577,7 +577,7 @@ class LightSyncTest {
         // Never the amber of a 2700 K bulb by day; at night a warmer white.
         assertThat(gray.distance(LightColor.whiteXy(2700f))).isGreaterThan(0.05f)
         assertThat(LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), warmth = 1f).x).isGreaterThan(day.x)
-        // A pale sky blue (as the window view's sky) is a clear blue light, far from white.
+        // A pale sky blue (as the landscape's sky) is a clear blue light, far from white.
         val sky = LightColor.of(io.github.hazymorning.klangbild.color.Oklab.toLinear(io.github.hazymorning.klangbild.color.Lch(0.82f, 0.05f, 245f).toLab()), warmth = 0f)
         assertThat(sky.distance(day)).isGreaterThan(0.12f)
         assertThat(sky.y).isLessThan(day.y - 0.05f)

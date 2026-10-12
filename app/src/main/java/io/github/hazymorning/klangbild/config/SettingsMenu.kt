@@ -11,22 +11,24 @@ import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
 
-/** Sections of the settings menu, in order. */
-enum class MenuSection(@StringRes val title: Int) {
-    PICTURE(R.string.section_picture),
-    INFO(R.string.section_info),
-    EFFECTS(R.string.section_effects),
-    VISTA(R.string.section_vista),
-    REMOTE(R.string.section_remote),
-    TIMER(R.string.section_timer),
-    CONNECTION(R.string.section_connection),
-    SYSTEM(R.string.section_system),
+/** The groups of the settings, in order: the menu's first level. [about] says what is in one. */
+enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
+    PICTURE(R.string.section_picture, R.string.about_section_picture),
+    INFO(R.string.section_info, R.string.about_section_info),
+    LIGHTS(R.string.section_lights, R.string.about_section_lights),
+    VISTA(R.string.section_vista, R.string.about_section_vista),
+    REMOTE(R.string.section_remote, R.string.about_section_remote),
+    TIMER(R.string.section_timer, R.string.about_section_timer),
+    SYSTEM(R.string.section_system, R.string.about_section_system),
 }
 
-/** One line of the settings menu, in the menu's order; [label] is 0 for a line named after what it connects to. */
+/** One setting, in its group's order; [label] is 0 for a line named after what it connects to. */
 enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     VIEW(MenuSection.PICTURE, R.string.entry_view),
     APPEARANCE(MenuSection.PICTURE, R.string.entry_appearance),
+    BACKGROUND(MenuSection.PICTURE, R.string.entry_background),
+    LIGHT(MenuSection.PICTURE, R.string.entry_intensity),
+    MOTION(MenuSection.PICTURE, R.string.entry_motion),
     CLOCK(MenuSection.INFO, R.string.entry_clock),
     TIME_LINE(MenuSection.INFO, R.string.entry_progress),
     NEXT(MenuSection.INFO, R.string.entry_next),
@@ -34,11 +36,9 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     GROUP(MenuSection.INFO, R.string.entry_group),
     VOLUME(MenuSection.INFO, R.string.entry_volume),
     VALUES(MenuSection.INFO, R.string.entry_values),
-    BACKGROUND(MenuSection.EFFECTS, R.string.entry_background),
-    LIGHT(MenuSection.EFFECTS, R.string.entry_intensity),
-    MOTION(MenuSection.EFFECTS, R.string.entry_motion),
-    LIGHTS(MenuSection.EFFECTS, R.string.entry_lights),
-    LIGHTS_ONLY_ON(MenuSection.EFFECTS, R.string.entry_off_lights),
+    LYRICS(MenuSection.INFO, R.string.entry_lyrics),
+    LIGHTS(MenuSection.LIGHTS, R.string.entry_brightness),
+    LIGHTS_ONLY_ON(MenuSection.LIGHTS, R.string.entry_off_lights),
     VISTA_PAUSE(MenuSection.VISTA, R.string.entry_vista_pause),
     VISTA_PLAYING(MenuSection.VISTA, R.string.entry_vista_playing),
     MINI_PLAYER(MenuSection.VISTA, R.string.entry_mini_player),
@@ -48,8 +48,8 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     SLEEP_TIMER(MenuSection.TIMER, R.string.entry_sleep_timer),
     SLEEP_AFTER(MenuSection.TIMER, R.string.entry_sleep_after),
     SLEEP_ACTION(MenuSection.TIMER, R.string.entry_sleep_action),
-    CONNECTION(MenuSection.CONNECTION, 0),
-    MUSIC_ASSISTANT(MenuSection.CONNECTION, 0),
+    CONNECTION(MenuSection.SYSTEM, 0),
+    MUSIC_ASSISTANT(MenuSection.SYSTEM, 0),
     LANGUAGE(MenuSection.SYSTEM, R.string.entry_language),
 }
 
@@ -69,24 +69,60 @@ data class MenuContext(
 )
 
 /**
- * A line as the menu shows it: its label, the value in words and what the option does; [level]
- * (0 to 1) for a value shown on a slider.
+ * A line as the menu shows it: a setting ([entry]) with its label, the value in words and what
+ * the option does, or a group of settings ([section]) with what is in it. [level] (0 to 1) for a
+ * value shown on a slider. A [dimmed] setting cannot work yet: its value says what it needs, and
+ * OK sets that up.
  */
-data class MenuRow(val entry: MenuEntry, val label: String, val value: String, val description: String, val level: Float? = null)
+data class MenuRow(
+    val entry: MenuEntry?,
+    val label: String,
+    val value: String,
+    val description: String,
+    val level: Float? = null,
+    val section: MenuSection? = null,
+    val dimmed: Boolean = false,
+)
 
 /**
- * The settings menu, operated with the remote: up and down choose a line, left and right (or
- * OK) change its value at once; there is nothing to confirm. Every text comes from the
- * resources, in the language shown.
+ * The settings menu, operated with the remote, in two levels: first the groups, then the
+ * settings of the one opened. Up and down choose a line, OK (or right) opens a group, left and
+ * right (or OK) change a setting at once; there is nothing to confirm. Back goes up a level.
+ * Every text comes from the resources, in the language shown.
  */
 object SettingsMenu {
     val entries: List<MenuEntry> = MenuEntry.entries
 
+    val sections: List<MenuSection> = MenuSection.entries
+
+    /** The settings of [section], in order. */
+    fun entriesOf(section: MenuSection): List<MenuEntry> = entries.filter { it.section == section }
+
     /** Minutes offered for the sleep timeout. */
     val sleepChoices = listOf(5, 10, 15, 20, 30, 45, 60, 90, 120)
 
-    fun rows(s: Settings, ctx: MenuContext, t: Texts): List<MenuRow> =
-        entries.map { MenuRow(it, label(it, t), value(it, s, ctx, t), description(it, s, ctx, t), level(it, s)) }
+    /** Every setting's line, all groups one after the other. */
+    fun rows(s: Settings, ctx: MenuContext, t: Texts): List<MenuRow> = entries.map { row(it, s, ctx, t) }
+
+    /** The lines of [section]'s settings. */
+    fun rows(s: Settings, ctx: MenuContext, t: Texts, section: MenuSection): List<MenuRow> = entriesOf(section).map { row(it, s, ctx, t) }
+
+    /** The menu's first level: a line for each group, saying what is in it. */
+    fun groups(t: Texts): List<MenuRow> = sections.map { MenuRow(null, t[it.title], "", t[it.about], section = it) }
+
+    private fun row(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts) =
+        MenuRow(e, label(e, t), value(e, s, ctx, t), description(e, s, ctx, t), level(e, s), dimmed = needsSetup(e, s))
+
+    /**
+     * Whether [e] cannot work until something is set up on the phone: lyrics without Music
+     * Assistant, the lights and the values while none are chosen. OK opens the setup.
+     */
+    fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
+        MenuEntry.LYRICS -> !s.hasMusicAssistant
+        MenuEntry.LIGHTS, MenuEntry.LIGHTS_ONLY_ON -> !s.roomLights.isSet
+        MenuEntry.VALUES -> s.ownValues.isEmpty()
+        else -> false
+    }
 
     /** A line's label; the two connection lines are named after what they connect to. */
     fun label(e: MenuEntry, t: Texts): String = when (e) {
@@ -116,6 +152,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[R.string.set_up] else onOff(s.showValues, t)
+        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[R.string.needs_music_assistant] else onOff(s.lyrics, t)
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) R.string.background_cover else R.string.background_plain]
         MenuEntry.MOTION -> t[
             when (s.motion) {
@@ -215,6 +252,13 @@ object SettingsMenu {
                 else -> R.string.about_values_off
             },
         ]
+        MenuEntry.LYRICS -> t[
+            when {
+                !s.hasMusicAssistant -> R.string.about_lyrics_set_up
+                s.lyrics -> R.string.about_lyrics_on
+                else -> R.string.about_lyrics_off
+            },
+        ]
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) R.string.about_background_cover else R.string.about_background_plain]
         MenuEntry.LIGHT -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
@@ -304,7 +348,7 @@ object SettingsMenu {
      * The settings after one step of [e]: [direction] -1 (left) or +1 (right, OK). Left and
      * right stop at the ends of a scale, OK ([wrap]) goes round. Switches simply flip. Null for
      * the lines that are no setting (the connections, the sleep timer, the language) and for the
-     * lights' lines and the values while none are set up (OK sets them up).
+     * lines that need something set up first ([needsSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.VIEW -> s.copy(view = if (s.view == StageView.FLOW) StageView.SINGLE else StageView.FLOW)
@@ -315,6 +359,7 @@ object SettingsMenu {
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
+        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
         MenuEntry.LIGHTS -> if (s.roomLights.isSet) s.copy(roomLightLevel = move(LIGHTS_ORDER, s.roomLightLevel, direction, wrap)) else null
@@ -337,7 +382,7 @@ object SettingsMenu {
     /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */
     fun stepLanguage(language: AppLanguage, direction: Int, wrap: Boolean): AppLanguage = move(LANGUAGE_ORDER, language, direction, wrap)
 
-    /** The delays offered for the window view (s): when paused, and while music plays; 0 is off. */
+    /** The delays offered for the landscape (s): when paused, and while music plays; 0 is off. */
     val PAUSE_DELAYS = listOf(0, 5, 15, 30, 60, 180, 300, 600)
     val PLAYING_DELAYS = listOf(0, 60, 120, 300, 600, 900, 1800)
 

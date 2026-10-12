@@ -29,7 +29,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The sign that the window view is on its way: the far range's skyline, a thin line in the very
+ * The sign that the landscape is on its way: the far range's skyline, a thin line in the very
  * middle of the screen in the quiet ink, measured on rendered pixels. It comes only when the
  * first picture keeps one waiting, is traced from the left as the paper is cut and never goes
  * back, and is gone before the picture is up.

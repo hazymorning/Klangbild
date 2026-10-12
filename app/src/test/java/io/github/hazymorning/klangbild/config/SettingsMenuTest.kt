@@ -88,17 +88,21 @@ class SettingsMenuTest {
         for (s in listOf(Settings(), configured, configured.copy(light = LightLevel.OFF, volumeKeys = true), withMa, withLights, withValues)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
             // (the system keeps it), and the lights and the values until they are set up.
-            val actions = setOfNotNull(
-                MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE,
+            val needs = setOfNotNull(
                 MenuEntry.LIGHTS.takeIf { !s.roomLights.isSet },
                 MenuEntry.LIGHTS_ONLY_ON.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
+                MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
             )
+            val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE) + needs
             for (ctx in contexts) {
                 for (row in SettingsMenu.rows(s, ctx, de)) {
+                    val entry = row.entry!!
                     assertThat(row.value).isNotEmpty()
                     assertThat(row.description).endsWith(".")
-                    assertThat(SettingsMenu.step(row.entry, s, +1) == null).isEqualTo(row.entry in actions)
+                    assertThat(SettingsMenu.step(entry, s, +1) == null).isEqualTo(entry in actions)
+                    // What needs something set up first is dimmed, and says so.
+                    assertThat(row.dimmed).isEqualTo(entry in needs)
                 }
             }
         }
@@ -116,7 +120,7 @@ class SettingsMenuTest {
     }
 
     @Test
-    fun `the window view's delays step through the offered values, also from odd ones`() {
+    fun `the landscape's delays step through the offered values, also from odd ones`() {
         val s = Settings()
         assertThat(SettingsMenu.value(MenuEntry.VISTA_PAUSE, s, MenuContext(), de)).isEqualTo("Drei Minuten")
         assertThat(SettingsMenu.value(MenuEntry.VISTA_PLAYING, s, MenuContext(), de)).isEqualTo("Aus")
@@ -138,5 +142,36 @@ class SettingsMenuTest {
     fun `sections stay together in menu order`() {
         val sections = SettingsMenu.entries.map { it.section }
         assertThat(sections).isInOrder(compareBy<MenuSection> { it.ordinal })
+    }
+
+    @Test
+    fun `the first level shows the groups, each saying what is in it, and every setting is in one`() {
+        val groups = SettingsMenu.groups(de)
+        assertThat(groups.map { it.label }).containsExactly("Bild", "Informationen", "Licht", "Landschaft", "Fernbedienung", "Timer", "System").inOrder()
+        for (g in groups) {
+            assertThat(g.entry).isNull()
+            assertThat(g.description).endsWith(".")
+            assertThat(SettingsMenu.rows(configured, MenuContext(), de, g.section!!)).isNotEmpty()
+        }
+        assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactlyElementsIn(SettingsMenu.entries).inOrder()
+        assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
+            MenuEntry.VIEW, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.LIGHT, MenuEntry.MOTION,
+        ).inOrder()
+        assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.LANGUAGE).inOrder()
+    }
+
+    @Test
+    fun `the song's words are a setting too, and without Music Assistant they say what they need`() {
+        val lyrics = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).last()
+        assertThat(lyrics.label).isEqualTo("Songtext")
+        assertThat(lyrics.value).isEqualTo("Nur mit Music\u00A0Assistant")
+        assertThat(lyrics.dimmed).isTrue()
+        assertThat(SettingsMenu.step(MenuEntry.LYRICS, configured, +1)).isNull()
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        val on = SettingsMenu.step(MenuEntry.LYRICS, withMa, +1)!!
+        assertThat(on.lyrics).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.LYRICS, on, MenuContext(), de)).isEqualTo("An")
+        assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).last().dimmed).isFalse()
+        assertThat(SettingsMenu.value(MenuEntry.LYRICS, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
     }
 }

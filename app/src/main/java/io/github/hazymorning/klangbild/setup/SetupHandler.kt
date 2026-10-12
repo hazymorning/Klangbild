@@ -35,7 +35,7 @@ data class SpeakerOption(val entityId: String, val name: String, val state: Stri
 /** One light offered to join in. */
 data class LightOption(val entityId: String, val name: String, val state: String)
 
-/** One weather entity offered for the window view's sky. */
+/** One weather entity offered for the landscape's sky. */
 data class WeatherOption(val entityId: String, val name: String, val state: String)
 
 /**
@@ -408,7 +408,7 @@ class SetupHandler(
             if (ids.any { it.isNotEmpty() && !LaunchExtras.isLightId(it) }) return MiniHttp.Response.json(400, error(t[R.string.setup_error_lights]))
             RoomLights(ids[0].ifEmpty { null }, ids[1].ifEmpty { null }, ids[2].ifEmpty { null })
         }
-        // The window view's weather: "" finds Home Assistant's own, "none" keeps the sky fair; absent stays as it was.
+        // The landscape's weather: "" finds Home Assistant's own, "none" keeps the sky fair; absent stays as it was.
         val weather = when (val w = body.str("weather")?.trim()) {
             null -> current.weatherEntity
             "" -> null

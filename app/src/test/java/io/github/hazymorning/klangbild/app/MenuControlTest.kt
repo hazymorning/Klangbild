@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.app
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.data.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
@@ -21,14 +22,16 @@ import org.robolectric.annotation.Config
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * The settings menu's cursor on the TV: a step moves only the cursor (a held key makes twenty a
- * second), and while up or down is held the explanation waits until the key is let go.
+ * The settings menu on the TV: it opens on its groups, OK or right opens one, back goes up a
+ * level. A step moves only the cursor (a held key makes twenty a second), and while up or down
+ * is held the explanation waits until the key is let go.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
 class MenuControlTest {
     private var recomputed = 0
     private var shown = 0
+    private var setup = 0
 
     private val host = object : ControllerHost {
         override val lock: Any = this
@@ -48,9 +51,12 @@ class MenuControlTest {
         override fun showMenu() {
             shown++
         }
+        override fun openMenu() = Unit
         override fun applySettings(updated: Settings) = Unit
         override fun send(command: RemoteCommand) = Unit
-        override fun requestSetup(show: Boolean) = Unit
+        override fun requestSetup(show: Boolean) {
+            setup++
+        }
         override fun showVista() = Unit
         override fun hideVista() = false
     }
@@ -87,5 +93,45 @@ class MenuControlTest {
         menu.close()
         menu.open()
         assertThat(state().held).isFalse()
+    }
+
+    @Test
+    fun `the menu opens on its groups, OK opens one, back goes up a level and then out`() {
+        menu.open()
+        assertThat(state().section).isNull()
+        assertThat(state().rows.map { it.label }).containsExactly("Picture", "Information", "Lights", "Landscape", "Remote", "Timer", "System").inOrder()
+        // Left on a group does nothing; right or OK opens it on its first line.
+        menu.move(+1)
+        menu.change(-1, wrap = false)
+        assertThat(state().section).isNull()
+        menu.change(+1, wrap = true)
+        assertThat(state().section).isEqualTo(MenuSection.INFO)
+        assertThat(state().cursor).isEqualTo(0)
+        assertThat(state().rows.first().label).isEqualTo("Clock")
+        // The list stops at the group's last line.
+        repeat(20) { menu.move(+1) }
+        assertThat(state().rows[state().cursor].label).isEqualTo("Lyrics")
+        // Back: the groups again, on the group just left; back again closes the menu.
+        assertThat(menu.back()).isTrue()
+        assertThat(state().section).isNull()
+        assertThat(state().cursor).isEqualTo(1)
+        assertThat(menu.back()).isFalse()
+        assertThat(menu.isOpen).isFalse()
+        // Opened again, it starts on the groups.
+        menu.open()
+        assertThat(state().section).isNull()
+        assertThat(state().cursor).isEqualTo(0)
+    }
+
+    @Test
+    fun `a setting that needs something set up first opens the setup`() {
+        menu.open()
+        menu.move(+1)
+        menu.change(+1, wrap = true)
+        repeat(20) { menu.move(+1) }
+        // Lyrics without Music Assistant.
+        menu.change(+1, wrap = true)
+        assertThat(setup).isEqualTo(1)
+        assertThat(menu.isOpen).isFalse()
     }
 }

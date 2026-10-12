@@ -80,7 +80,7 @@ class ReadmeShotsTest {
         coverLights("now-playing", scene, warmth = 1f)
     }
 
-    /** The window view on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
+    /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
     @Test
     fun windowView() {
         val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
@@ -91,7 +91,7 @@ class ReadmeShotsTest {
             vista = VistaUi(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT),
         )
         val vistaClock = VistaClock(now = { at })
-        shot("window-view") {
+        shot("landscape") {
             VistaScreen(ui, ui.vista!!, vistaClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
         }
     }

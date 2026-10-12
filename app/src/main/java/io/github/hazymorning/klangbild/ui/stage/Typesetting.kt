@@ -138,6 +138,8 @@ class TextPlan(
     val album: String?,
     /** What comes next: title and artist, or only the title when both don't fit. */
     val next: String?,
+    /** The words before it ("Up next"). */
+    val nextLead: String,
 )
 
 /** Measures the block once per model. */
@@ -145,7 +147,7 @@ class TextPlan(
 fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val nextLead = texts()[R.string.stage_next]
+    val nextLead = model.nextLead ?: texts()[R.string.stage_next]
     return remember(
         model.text, model.year, model.next, model.scene.layout, model.scene.palette, model.progress, model.line, model.durationMs == null,
         model.chapter != null, localDensity, nextLead,
@@ -233,6 +235,7 @@ private fun planText(
         artistStyle = artistStyle,
         album = album,
         next = next,
+        nextLead = nextLead,
     )
 }
 

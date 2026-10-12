@@ -38,6 +38,9 @@ internal interface ControllerHost {
     /** Shows the menu's cursor where it is now, nothing else changed (takes [lock]). */
     fun showMenu()
 
+    /** Opens the settings menu on its groups. */
+    fun openMenu()
+
     /** A change from one of the menus: shown at once, written behind it. */
     fun applySettings(updated: Settings)
 
@@ -47,6 +50,6 @@ internal interface ControllerHost {
 
     fun showVista()
 
-    /** Leaves the window view; whether it was showing. */
+    /** Leaves the landscape; whether it was showing. */
     fun hideVista(): Boolean
 }

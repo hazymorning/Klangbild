@@ -90,7 +90,7 @@ class LaunchExtrasTest {
     }
 
     @Test
-    fun `the window view from extras and links`() {
+    fun `the landscape from extras and links`() {
         val s = LaunchExtras.applyTo(
             Settings(),
             mapOf("fensterblick_pause" to "30", "fensterblick_musik" to 600, "mini_player" to "rechts", "weather" to "weather.home"),
@@ -114,11 +114,11 @@ class LaunchExtrasTest {
     }
 
     @Test
-    fun `English names and values, with the German ones still taken`() {
+    fun `English names and values, with those of earlier versions still taken`() {
         val s = LaunchExtras.applyTo(
             Settings(),
             mapOf(
-                "window_view_pause" to "15", "window_view_playing" to "off", "mini_player" to "bottom_right",
+                "landscape_pause" to "15", "landscape_playing" to "off", "mini_player" to "bottom_right",
                 "lights_left" to "light.tv_left", "lights_right" to "light.tv_right", "lights_level" to "70",
                 "motion" to "slow", "background" to "plain", "light" to "subtle",
             ),
@@ -141,16 +141,19 @@ class LaunchExtrasTest {
             ),
         )
         assertThat(german).isEqualTo(s)
-        // Both given: the English name counts.
-        assertThat(LaunchExtras.applyTo(Settings(), mapOf("window_view_pause" to "30", "fensterblick_pause" to "60")).vistaPauseSeconds).isEqualTo(30)
+        // The landscape was the window view until 6.3: its names then still count.
+        assertThat(LaunchExtras.applyTo(Settings(), mapOf("window_view_pause" to "15", "window_view_playing" to "off")).vistaPauseSeconds).isEqualTo(15)
         assertThat(LaunchExtras.session(mapOf("window_view" to "on")).vista).isEqualTo(VistaRequest.SHOW)
-        assertThat(LaunchExtras.session(mapOf("window_view" to "timelapse")).vista).isEqualTo(VistaRequest.TIMELAPSE)
-        assertThat(LaunchExtras.session(mapOf("window_view" to "off")).vista).isEqualTo(VistaRequest.HIDE)
+        // Both given: the current name counts.
+        assertThat(LaunchExtras.applyTo(Settings(), mapOf("landscape_pause" to "30", "window_view_pause" to "60", "fensterblick_pause" to "90")).vistaPauseSeconds).isEqualTo(30)
+        assertThat(LaunchExtras.session(mapOf("landscape" to "on")).vista).isEqualTo(VistaRequest.SHOW)
+        assertThat(LaunchExtras.session(mapOf("landscape" to "timelapse")).vista).isEqualTo(VistaRequest.TIMELAPSE)
+        assertThat(LaunchExtras.session(mapOf("landscape" to "off")).vista).isEqualTo(VistaRequest.HIDE)
         assertThat(LaunchExtras.hasStoredExtras(mapOf("lights_level" to "50"))).isTrue()
         assertThat(LaunchExtras.hasStoredExtras(mapOf("bar_level" to "50"))).isTrue()
         // A link may set the lights' level, never which lights.
-        assertThat(LaunchExtras.fromLink(mapOf("lights_level" to "50", "lights_left" to "light.x", "window_view" to "on")).keys)
-            .containsExactly("lights_level", "window_view")
+        assertThat(LaunchExtras.fromLink(mapOf("lights_level" to "50", "lights_left" to "light.x", "landscape" to "on")).keys)
+            .containsExactly("lights_level", "landscape")
     }
 
     @Test

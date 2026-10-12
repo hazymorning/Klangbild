@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.domain
 
 /**
- * When the window view takes the screen, and when the quiet clock keeps it:
+ * When the landscape takes the screen, and when the quiet clock keeps it:
  *
  * - Something is wrong (connecting, Home Assistant away, the speaker unavailable or
  *   unknown) or setup is open: never. Those screens have something to say.
@@ -12,9 +12,9 @@ package io.github.hazymorning.klangbild.domain
  *   (0: never; then the paused cover gives way to the clock after three minutes, as before).
  * - Playing: after [playingMs] of music without a key pressed (0: never).
  *
- * Every key press starts the delays again. So a window view that came by itself goes with any
+ * Every key press starts the delays again. So a landscape that came by itself goes with any
  * key (which still does its work), and a chosen one stays. The rest clock is left for the moments
- * with nothing to show but the time: nothing plays and the window view is off, or the delay has
+ * with nothing to show but the time: nothing plays and the landscape is off, or the delay has
  * not passed yet.
  */
 class VistaPolicy {
@@ -27,13 +27,13 @@ class VistaPolicy {
         private set
 
     /**
-     * As of the last [shows]: the window view shows, or comes if nothing changes (its delay
+     * As of the last [shows]: the landscape shows, or comes if nothing changes (its delay
      * runs). Its picture is baked ahead only then.
      */
     var onItsWay = false
         private set
 
-    /** A key was pressed: the delays start again (a chosen window view stays). */
+    /** A key was pressed: the delays start again (a chosen landscape stays). */
     fun interaction(now: Long) {
         lastKey = now
     }
@@ -49,7 +49,7 @@ class VistaPolicy {
         lastKey = now
     }
 
-    /** Whether the window view shows instead of [screen] now. */
+    /** Whether the landscape shows instead of [screen] now. */
     fun shows(screen: Screen, now: Long, pauseMs: Long, playingMs: Long): Boolean {
         val playing = screen is Screen.Stage && !screen.linkDown &&
             (screen.status == PlayerStatus.PLAYING || screen.status == PlayerStatus.BUFFERING)

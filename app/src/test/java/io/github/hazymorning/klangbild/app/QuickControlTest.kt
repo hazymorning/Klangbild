@@ -99,22 +99,30 @@ class QuickControlTest {
     /** The song's words in the text column, as the quick settings set them. */
     private var lyrics = false
 
-    /** How often the window view was left. */
+    /** The quick settings have been opened once (the stage's hint ends). */
+    private var quickSeen = false
+
+    /** How often the landscape was left, and the settings menu opened. */
     private var vistaLeft = 0
+    private var menuOpened = 0
 
     private val host = object : ControllerHost {
         override val lock: Any = this
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
-        override val settings get() = Settings(quickActions = actions, lyrics = lyrics)
+        override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen)
         override val ui: UiState get() = this@QuickControlTest.ui
         override val source: NowPlayingSource = this@QuickControlTest.source
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override fun recompute() = Unit
         override fun showMenu() = Unit
+        override fun openMenu() {
+            menuOpened++
+        }
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
+            quickSeen = updated.quickSeen
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
@@ -294,7 +302,7 @@ class QuickControlTest {
         assertThat(partyValue()).isEqualTo("On")
         assertThat(quick.partyWanted(true)).isTrue()
         assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
-        // It shows at once: the window view makes way.
+        // It shows at once: the landscape makes way.
         assertThat(vistaLeft).isEqualTo(1)
         // The code expired: Music Assistant's new link comes with the next question.
         source.partyLink = "http://192.168.1.5:8095/?join=M2KD7RXA"
@@ -341,5 +349,24 @@ class QuickControlTest {
         test.advanceTimeBy(5 * QuickControl.PARTY_URL_MS)
         test.runCurrent()
         assertThat(source.partyAsked).isEqualTo(asked)
+    }
+
+    @Test
+    fun `the last entry opens all settings, and the quick settings make way`() {
+        if (!quick.isOpen) quick.open(menuOpen = false)
+        assertThat(rows().last().item).isEqualTo(QuickItem.SETTINGS)
+        assertThat(rows().last().label).isEqualTo("Settings")
+        assertThat(rows().last().value).isEqualTo("Open")
+        chooseEntry(QuickItem.SETTINGS)
+        quick.change()
+        assertThat(quick.isOpen).isFalse()
+        assertThat(menuOpened).isEqualTo(1)
+    }
+
+    @Test
+    fun `once opened, the quick settings are known and the stage no longer tells how`() {
+        assertThat(quickSeen).isFalse()
+        quick.open(menuOpen = false)
+        assertThat(quickSeen).isTrue()
     }
 }

@@ -116,8 +116,7 @@ class CentringTest {
     @Test
     fun theMenuHasAsMuchRoomOnEachSide() {
         val settings = Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.wohnzimmer")
-        val rows = SettingsMenu.rows(settings, MenuContext(LinkState.CONNECTED), Fixtures.texts)
-        val ink = render { Fixtures.Still { MenuScreen(MenuState(rows, 1)) } }
+        val ink = render { Fixtures.Still { MenuScreen(Fixtures.menu(io.github.hazymorning.klangbild.config.MenuEntry.APPEARANCE, settings)) } }
         val all = ink.box(0, 0, 1920, 1080)
         assertWithMessage("left of the heading, right of the values").that(abs(all.left - (1919 - all.right))).isAtMost(4)
     }

@@ -139,7 +139,7 @@ class LanguageTest {
             for (language in AppLanguage.entries) add(MenuContext(LinkState.CONNECTED, language = language))
             for (appearance in io.github.hazymorning.klangbild.color.Appearance.entries) add(MenuContext(LinkState.CONNECTED, appearance))
         }
-        val out = LinkedHashSet<MenuRow>()
+        val out = LinkedHashSet<MenuRow>(SettingsMenu.groups(t))
         for (base in bases) {
             for (ctx in contexts) out += SettingsMenu.rows(base, ctx, t)
             for (entry in MenuEntry.entries) {
@@ -178,7 +178,11 @@ class LanguageTest {
     fun theMenuSaysNothingInGerman() {
         assertEnglish("menu heading", en[R.string.menu_heading])
         assertEnglish("menu hint", en[R.string.menu_hint])
-        for (section in MenuSection.entries) assertEnglish("section ${section.name}", en[section.title])
+        assertEnglish("menu hint on the groups", en[R.string.menu_hint_groups])
+        for (section in MenuSection.entries) {
+            assertEnglish("section ${section.name}", en[section.title])
+            assertEnglish("section ${section.name} explanation", en[section.about])
+        }
         for (row in allRows(en)) {
             assertEnglish("${row.entry} label", row.label)
             assertEnglish("${row.entry} value", row.value)
@@ -326,23 +330,24 @@ class LanguageTest {
     }
 
     /**
-     * The built-in entries fit; with buttons of one's own, or with the party code during a party,
-     * the row may be longer, and then it glides.
+     * A row longer than the room glides to show the chosen entry whole (in German the built-in
+     * entries alone need it), so every entry fits the room on its own.
      */
     @Test
-    fun theQuickSettingsFitTheScreenInBothLanguages() {
+    fun everyQuickSettingFitsTheScreenInBothLanguages() {
         measuring()
         val layout = HaloLayout(ScreenSpec.TV_1080)
         val right = ScreenSpec.TV_1080.widthDp - layout.margin
         val label = textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT)
         val value = textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
         for (t in listOf(en, de)) {
-            val states = allQuick(t).distinctBy { q -> q.rows.map { it.item to it.value } }
+            val states = allQuick(t, buttons = true).distinctBy { q -> q.rows.map { it.item to it.value } }
             compose.runOnIdle {
                 for (quick in states) {
-                    val widths = quickWidths(quick, measurer, label, value, density)
-                    val end = QuickGrid.LEFT + widths.sum() + QuickGrid.GAP * (widths.size - 1)
-                    assertWithMessage("${quick.rows.map { it.label + ": " + it.value }} (${t.locale})").that(end).isAtMost(right)
+                    val widths = quickWidths(quick, measurer, label, value, density, widest = true)
+                    quick.rows.forEachIndexed { k, row ->
+                        assertWithMessage("${row.label}: ${row.values} (${t.locale})").that(QuickGrid.LEFT + widths[k]).isAtMost(right)
+                    }
                 }
             }
         }

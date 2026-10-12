@@ -110,12 +110,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        // The quick settings take their keys first; they leave the window view as it is.
+        // The quick settings take their keys first; they leave the landscape as it is.
         if (controller.quickOpen && quickKey(keyCode)) return true
         val setup = controller.ui.value.screen is Screen.Setup
         val quickKeys = !setup && !controller.volumeKeys && !controller.menuOpen
-        // Down opens the quick settings over whatever shows (the window view too); up brings the
-        // window view or leaves it. Every other key starts the window view's delays again: one
+        // Down opens the quick settings over whatever shows (the landscape too); up brings the
+        // landscape or leaves it. Every other key starts the landscape's delays again: one
         // that came by itself goes, a chosen one stays, and the key does its work either way.
         val upDown = keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP
         if (event.repeatCount == 0 && keyCode in REMOTE_KEYS && !(quickKeys && upDown)) controller.interaction()
@@ -173,8 +173,8 @@ class MainActivity : ComponentActivity() {
                 if (!setup && controller.volumeKeys) {
                     controller.send(if (keyCode == KeyEvent.KEYCODE_DPAD_UP) RemoteCommand.VOLUME_UP else RemoteCommand.VOLUME_DOWN)
                 } else if (event.repeatCount == 0 && quickKeys) {
-                    // Down: the quick settings rise from the bottom edge. Up: the view out of the
-                    // window. The window view comes, and up again (or back) leaves it.
+                    // Down: the quick settings rise from the bottom edge. Up: the landscape comes,
+                    // and up again (or back) leaves it.
                     if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) controller.openQuick() else controller.toggleVista()
                     peek()
                 }
@@ -284,15 +284,15 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Back closes the app, or just what lies on top of the music: the settings, the quick menu,
-     * the window view, the setup code.
+     * Back closes the app, or just what lies on top of the music: the settings (a group goes back
+     * to the groups first), the quick menu, the landscape, the setup code.
      */
     private fun onBack() {
         val s = controller.ui.value.screen
         when {
-            controller.menuOpen -> controller.closeMenu()
+            controller.menuOpen -> controller.menuBack()
             controller.quickOpen -> controller.closeQuick()
-            // The window view goes; the app stays.
+            // The landscape goes; the app stays.
             controller.hideVista() -> Unit
             s is Screen.Setup && s.reason == SetupReason.REQUESTED -> controller.requestSetup(false)
             else -> finish()
@@ -304,7 +304,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val PEEK_MS = 6_000L
 
-        /** The remote's keys: each starts the window view's delays again. */
+        /** The remote's keys: each starts the landscape's delays again. */
         private val REMOTE_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_MENU,

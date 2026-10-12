@@ -13,7 +13,7 @@ import io.github.hazymorning.klangbild.vista.SkyState
 import org.junit.Test
 import kotlin.math.sqrt
 
-/** Three lights with a color each: from the cover, and in the window view from its own light. */
+/** Three lights with a color each: from the cover, and in the landscape from its own light. */
 class LightColorsTest {
     private fun field(vararg colors: Int): FieldScene {
         val n = 48
@@ -62,7 +62,7 @@ class LightColorsTest {
     }
 
     @Test
-    fun `the window view's light is the sun's glow on its side at dusk and the fire's warmth on its side at night`() {
+    fun `the landscape's light is the sun's glow on its side at dusk and the fire's warmth on its side at night`() {
         // Sunset in the west: to the right of a window looking south.
         val dusk = lights(VistaLightColors(PaperLight.look(SkyState(sunElevation = 1f, sunAzimuth = 260f)), fireOnRight = true)).map(::lab)
         assertWithMessage("the sun's side warmer").that(dusk[2].b).isGreaterThan(dusk[0].b + 0.02f)
@@ -73,7 +73,7 @@ class LightColorsTest {
     }
 
     @Test
-    fun `at noon the window view gives three colors of its own, sky, clearing and mountains, none of them amber`() {
+    fun `at noon the landscape gives three colors of its own, sky, clearing and mountains, none of them amber`() {
         val noon = lights(VistaLightColors(PaperLight.look(SkyState(sunElevation = 40f, sunAzimuth = 180f)), fireOnRight = true))
         val labs = noon.map(::lab)
         for ((a, b) in listOf(labs[0] to labs[1], labs[1] to labs[2], labs[0] to labs[2])) assertThat(distance(a, b)).isGreaterThan(0.05f)

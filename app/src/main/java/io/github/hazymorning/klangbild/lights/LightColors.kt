@@ -112,7 +112,7 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
 }
 
 /**
- * The window view's light, three colors from its own palette: in the middle its sky; on the
+ * The landscape's light, three colors from its own palette: in the middle its sky; on the
  * side away from the campfire the clearing's green (by night the moonlit wood); on the fire's
  * side the mountains' paper, and at night the fire's warm light. Where the sun stands low, its
  * side takes the glow of dawn or dusk. The lights stand round the window as the picture's

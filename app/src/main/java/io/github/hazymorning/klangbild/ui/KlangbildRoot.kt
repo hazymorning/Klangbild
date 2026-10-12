@@ -75,7 +75,7 @@ class RootHooks(
     val now: () -> Long = System::currentTimeMillis,
     /** The color field's time (seconds): it runs while music plays, at the motion setting's speed. */
     val fieldTime: () -> Double = { 0.0 },
-    /** The moment the window view's sky shows. */
+    /** The moment the landscape's sky shows. */
     val vistaClock: VistaClock = VistaClock(now),
 )
 
@@ -117,7 +117,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                 translationY = dy.toFloat()
             },
     ) {
-        // The window view's picture is baked while it is only on its way, so it comes at once.
+        // The landscape's picture is baked while it is only on its way, so it comes at once.
         ui.vistaAhead?.let { VistaAhead(rememberVistaFeed(ui, hooks.vistaClock, hooks.now), labelSide(it)) }
         // No longer coming: its picture is let go after a while, and baked anew the next time.
         if (ui.vistaAhead == null && ui.vista == null && !LocalStill.current) {
@@ -198,7 +198,7 @@ private sealed interface Content {
     }
 
     data class VistaContent(val vista: VistaUi) : Content {
-        // The window view changes its label and its light inside; it comes and goes through the dark.
+        // The landscape changes its label and its light inside; it comes and goes through the dark.
         override val key = "vista"
     }
 
@@ -209,7 +209,11 @@ private sealed interface Content {
 
 private const val QUIET_START_MS = 4_000L
 
-/** The window view's picture is kept this long after it stopped coming (a pause cut short, say). */
+/** The hint for the quick settings comes this long after the stage, and stays this long. */
+private const val HINT_AFTER_MS = 3_000L
+private const val HINT_MS = 12_000L
+
+/** The landscape's picture is kept this long after it stopped coming (a pause cut short, say). */
 private const val VISTA_RELEASE_MS = 10_000L
 
 /**
@@ -264,6 +268,19 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
         }
         peek = false
     }
+    // Until the quick settings have been opened once, the bottom line tells how for a while each
+    // time the stage comes (in a still at once).
+    val still = LocalStill.current
+    var hinting by remember { mutableStateOf(false) }
+    LaunchedEffect(ui.downHint) {
+        hinting = false
+        if (!ui.downHint || still) return@LaunchedEffect
+        delay(HINT_AFTER_MS)
+        hinting = true
+        delay(HINT_MS)
+        hinting = false
+    }
+    val hint = if (still) ui.downHint else hinting
     val t = texts()
     val clock = if (display.clock || peek) t.clock(wall.value) else null
     val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
@@ -277,7 +294,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
     val chapter = ui.chapter
-    val modelFor: (StageData) -> StageModel = remember(stage, status, nextTrack, statusLine, linkDown, display, peek, chapter, t) {
+    val modelFor: (StageData) -> StageModel = remember(stage, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
         { s: StageData ->
             val text = TrackText.from(s.track, t[R.string.artists_others])
             // A book or an episode with chapters: the chapter in the album's place, the bar over
@@ -286,6 +303,8 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
             val nextChapter = ch?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
+            // The hint takes the place of what comes next (beside the song's words the song stays).
+            val tip = hint && lyrics == null
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -295,12 +314,18 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 year = s.track.year.takeIf { display.album },
                 progress = if (lyrics != null) peek else display.timeLine || peek,
                 line = StageTexts.line(linkDown, s.track, t),
-                next = if (lyrics != null) StageTexts.next(s.track, t) else nextChapter ?: StageTexts.next(nextTrack, t),
+                next = when {
+                    tip -> t[R.string.hint_down]
+                    lyrics != null -> StageTexts.next(s.track, t)
+                    else -> nextChapter ?: StageTexts.next(nextTrack, t)
+                },
                 nextTitle = when {
+                    tip -> null
                     lyrics != null -> StageTexts.nextTitle(s.track, t)
                     nextChapter != null -> null
                     else -> StageTexts.nextTitle(nextTrack, t)
                 },
+                nextLead = if (tip) t[R.string.hint_down_key] else null,
                 statusLine = statusLine,
                 chapter = ch?.label,
                 rangeStartMs = ch?.startMs ?: 0L,

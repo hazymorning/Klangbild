@@ -12,13 +12,13 @@ If you have lights behind the TV, Klangbild can color them to match the cover. W
 
 ## Three views
 
-![The window view on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-window-view.jpg)
+![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
 
-Single cover shows one large cover next to the song. Cover Flow shows the covers of the queue in a row. The window view shows a landscape made of paper, with a small player in the corner.
+Single cover shows one large cover next to the song. Cover Flow shows the covers of the queue in a row. Landscape shows mountains, a forest and a campfire made of paper, with a small player in the corner.
 
 The landscape follows the time of day and the seasons where you live, so you see morning light, a sunset or stars at night. If Home Assistant has a weather entity, the weather matches too: when it rains outside, it rains on the screen.
 
-You switch views in the quick settings, and the up button goes straight to the window view. By default the window view also comes up by itself after three minutes without music. In the settings you can change that time, turn it off, or let it come up while music plays too.
+You switch views in the quick settings, and the up button goes straight to the landscape. By default the landscape also comes up by itself after three minutes without music. In the settings you can change that time, turn it off, or let it come up while music plays too.
 
 ## Leaving it on
 
@@ -40,7 +40,7 @@ You never type on the TV. Music Assistant, lights and your own buttons are set u
 
 ## The remote
 
-OK plays and pauses, and holding it opens the settings. Left and right skip songs. Up switches to the window view and back. Down opens the quick settings, where you can also put your own Home Assistant buttons, for example one that groups all speakers.
+OK plays and pauses, and holding it opens the settings. Left and right skip songs. Up switches to the landscape and back. Down opens the quick settings, where you can also put your own Home Assistant buttons, for example one that groups all speakers.
 
 ## Privacy
 

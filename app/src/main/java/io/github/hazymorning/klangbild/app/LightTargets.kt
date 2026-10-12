@@ -21,9 +21,9 @@ import java.time.ZoneId
 import java.util.Calendar
 
 /**
- * What the lights are to show: the window view's light while it shows, else the colors of the
+ * What the lights are to show: the landscape's light while it shows, else the colors of the
  * scene on stage, one color for each light. The colors are worked out once per scene, and for
- * the window view once per step of its sky's time.
+ * the landscape once per step of its sky's time.
  */
 internal class LightTargets(
     private val fieldClock: FieldClock,
@@ -33,7 +33,7 @@ internal class LightTargets(
     /** The colors for a cover's field, made once per field (a new object fades the lights to it). */
     private var coverColors: Pair<Any, CoverLightColors>? = null
 
-    /** The colors for the window view as it looked when they were worked out. */
+    /** The colors for the landscape as it looked when they were worked out. */
     private var vistaColors: Pair<List<Any?>, VistaLightColors>? = null
 
     /** The target for the lights now, or null when they have nothing to show. */
@@ -80,7 +80,7 @@ internal class LightTargets(
     }
 
     /**
-     * The colors for the window view as it looks now (its sky's moment, the place, the
+     * The colors for the landscape as it looks now (its sky's moment, the place, the
      * weather), worked out again only when the sky has moved on a little: the lights follow in
      * long fades anyway.
      */
@@ -106,14 +106,14 @@ internal class LightTargets(
     }
 
     companion object {
-        /** The lights' "song" while the window view shows. */
+        /** The lights' "song" while the landscape shows. */
         const val VISTA_SONG = "\u0000vista"
 
         /** The lights are at full brightness with the sun this high (degrees), at their night level from this low. */
         const val DAY_ELEVATION = 6f
         const val NIGHT_ELEVATION = -8f
 
-        /** The window view's light for the lights is worked out again after this much of its sky's time. */
+        /** The landscape's light for the lights is worked out again after this much of its sky's time. */
         const val VISTA_STEP_MS = 30_000L
     }
 }

@@ -236,7 +236,7 @@ class SetupHandlerTest {
     }
 
     @Test
-    fun `the window view's weather is offered and stored, automatic by default`() {
+    fun `the landscape's weather is offered and stored, automatic by default`() {
         val found = json(post("/api/discover", """{"code":"${handler.code}","url":"192.168.1.5:8123","token":""}"""))
         assertThat(found["weather"].toString()).contains("weather.forecast_home")
         val base = """"code":"${handler.code}","url":"192.168.1.5:8123","entity":"media_player.wz""""

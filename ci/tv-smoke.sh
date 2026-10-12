@@ -2,7 +2,7 @@
 # Starts a stand-in Home Assistant on the host (ci/fake_ha.py), installs the release APK on
 # the running Android TV emulator, points it at that server with launch extras and walks
 # through the main states: playing, a key press that shows hidden parts, the settings menu,
-# a track change, new extras while running, the quick settings and the window view. Checks
+# a track change, new extras while running, the quick settings and the landscape. Checks
 # that the app is still alive and never crashed. Leaves screenshots, logcat and gfxinfo in
 # smoke/.
 set -u
@@ -60,11 +60,11 @@ adb exec-out screencap -p > smoke/6-quick-settings.png
 adb shell input keyevent KEYCODE_DPAD_UP
 sleep 1
 
-# The window view on request (its picture is baked first). Asked for, it stays until it is
+# The landscape on request (its picture is baked first). Asked for, it stays until it is
 # left: Back brings the stage back.
-adb shell am start -n "$PKG/.MainActivity" --es window_view on
+adb shell am start -n "$PKG/.MainActivity" --es landscape on
 sleep 20
-adb exec-out screencap -p > smoke/7-window-view.png
+adb exec-out screencap -p > smoke/7-landscape.png
 adb shell input keyevent KEYCODE_BACK
 sleep 5
 adb exec-out screencap -p > smoke/8-back-to-stage.png

@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The window view in motion, as sequences of stills: a few seconds frame by frame (the grass
+ * The landscape in motion, as sequences of stills: a few seconds frame by frame (the grass
  * and the crown sway, the clouds drift, nothing jumps), a minute in steps of ten seconds, the
  * time-lapse (a day in two minutes) in steps of five seconds, and the first picture arriving.
  */

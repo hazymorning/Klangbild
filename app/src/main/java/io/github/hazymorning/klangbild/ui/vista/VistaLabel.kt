@@ -64,7 +64,7 @@ sealed interface LabelText {
 }
 
 /**
- * The music's label in the window view, lying on the near bank like a small print with its
+ * The music's label in the landscape, lying on the near bank like a small print with its
  * caption: the cover (56 dp, its corners rounded a little), beside it the title in Jost, the
  * artist in DM Sans and a slim bar for how far the track has played (dimmed while paused). What
  * stands beside the cover is one block, exactly centered on it, measured on what is seen. It runs
@@ -132,7 +132,7 @@ private fun MusicLabel(m: LabelText.Music, side: LabelSide, inks: () -> IntArray
     val fill by animateFloatAsState(if (m.playing) 1f else 0.55f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer), label = "label-bar")
     val duration = m.track.durationMs
     val bar = duration != null && duration > 0L
-    // The window view's tick redraws the bar; alone (in a test), a loop of its own, and none without a bar.
+    // The landscape's tick redraws the bar; alone (in a test), a loop of its own, and none without a bar.
     val shared = LocalStageTick.current
     val own = remember { mutableLongStateOf(0L) }
     if (bar && shared == null && !LocalStill.current) {

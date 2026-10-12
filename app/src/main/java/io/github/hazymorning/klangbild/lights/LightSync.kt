@@ -79,7 +79,7 @@ class LightSync(
         val level: RoomLightLevel,
         /** The colors for each light; a new one is faded to. */
         val colors: LightColors,
-        /** The song (or the window view): a new one changes the lights once it has played a moment. */
+        /** The song (or the landscape): a new one changes the lights once it has played a moment. */
         val song: String,
         val playing: Boolean,
         /** 0 by day to 1 at night (by the sun): the lights dim with the evening. */
@@ -91,7 +91,7 @@ class LightSync(
         /** The field's time (seconds), shared with the screen. */
         val fieldTime: () -> Double,
         /**
-         * The window view shows: its light changes slowly, so the lights follow it in long fades
+         * The landscape shows: its light changes slowly, so the lights follow it in long fades
          * and seldom calls; a pause does not dim them (the picture is the show).
          */
         val vista: Boolean = false,
@@ -291,7 +291,7 @@ class LightSync(
             }
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
-            // The window view's light moves on in long fades, a call per light every while at most.
+            // The landscape's light moves on in long fades, a call per light every while at most.
             tg.colors !== shownColors && (!tg.vista || t - lastStepAt >= VISTA_GAP_MS) -> {
                 shownColors = tg.colors
                 send(b, tg, t, if (tg.vista) VISTA_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
@@ -674,7 +674,7 @@ class LightSync(
         const val DRIFT_MS = 10_000L
         const val DRIFT_TRANSITION_MS = 8_000L
 
-        /** The window view: its light at most this often (per light a call), in fades this long. */
+        /** The landscape: its light at most this often (per light a call), in fades this long. */
         const val VISTA_GAP_MS = 20_000L
         const val VISTA_TRANSITION_MS = 15_000L
         const val SOFT_TRANSITION_MS = 1_500L
