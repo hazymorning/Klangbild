@@ -127,6 +127,31 @@ class OptionsTest {
         repeat(6) { compose.mainClock.advanceTimeBy(70); grab() }
     }
 
+    /**
+     * Down held from "Album and year": the list runs on through the light and the explanation
+     * goes; let go, the list comes to rest and the explanation of its line comes back.
+     */
+    @Test fun menuHeld() {
+        var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MenuScreen(state) }
+        compose.mainClock.advanceTimeBy(100)
+        var frame = 0
+        fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_held_%02d.png".format(frame++))
+        grab()
+        // The press, then the remote's repeats every 50 ms.
+        state = state.copy(cursor = state.cursor + 1)
+        compose.mainClock.advanceTimeBy(400)
+        grab()
+        repeat(8) { i ->
+            state = state.copy(cursor = state.cursor + 1, held = true)
+            compose.mainClock.advanceTimeBy(50)
+            if (i % 2 == 1) grab()
+        }
+        state = state.copy(held = false)
+        repeat(6) { compose.mainClock.advanceTimeBy(70); grab() }
+    }
+
     @Test fun menuConnection() = shot("menu_connection") {
         MenuScreen(menu(MenuEntry.CONNECTION, Settings(), MenuContext(LinkState.UNCONFIGURED)))
     }

@@ -35,6 +35,9 @@ internal interface ControllerHost {
     /** Works out the screen again (takes [lock]). */
     fun recompute()
 
+    /** Shows the menu's cursor where it is now, nothing else changed (takes [lock]). */
+    fun showMenu()
+
     /** A change from one of the menus: shown at once, written behind it. */
     fun applySettings(updated: Settings)
 

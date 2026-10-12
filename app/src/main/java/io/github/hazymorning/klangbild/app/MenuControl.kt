@@ -15,11 +15,15 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
     @Volatile private var cursor: Int? = null
     @Volatile private var touchedAt = 0L
 
+    /** Up or down is held: the cursor runs on with the key's repeats. */
+    @Volatile private var held = false
+
     val isOpen: Boolean get() = cursor != null
 
     fun open() {
         synchronized(host.lock) {
             cursor = cursor ?: 0
+            held = false
             touchedAt = host.now()
             host.recompute()
         }
@@ -28,19 +32,33 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
     fun close() {
         synchronized(host.lock) {
             cursor = null
+            held = false
             host.recompute()
         }
     }
 
-    /** Up (-1) or down (+1) through the menu; it stops at its ends. */
-    fun move(delta: Int) {
+    /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
+    fun move(delta: Int, held: Boolean = false) {
         synchronized(host.lock) {
             val c = cursor ?: return
             cursor = (c + delta).coerceIn(0, SettingsMenu.entries.size - 1)
+            this.held = held
             touchedAt = host.now()
-            host.recompute()
+            host.showMenu()
         }
     }
+
+    /** The key held to run through the menu is let go. */
+    fun release() {
+        synchronized(host.lock) {
+            if (!held) return
+            held = false
+            host.showMenu()
+        }
+    }
+
+    /** [shown] with the cursor where it is now (called under the lock). */
+    fun moved(shown: MenuState): MenuState = shown.copy(cursor = cursor ?: shown.cursor, held = held)
 
     /**
      * Changes the line under the cursor: left (-1) or right (+1) along its scale; OK goes round
@@ -83,7 +101,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             kind = track?.kind,
             language = host.language,
         )
-        return MenuState(SettingsMenu.rows(s, ctx, host.texts), c)
+        return MenuState(SettingsMenu.rows(s, ctx, host.texts), c, held)
     }
 
     companion object {

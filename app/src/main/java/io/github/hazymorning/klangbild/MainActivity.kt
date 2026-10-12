@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
         // that came by itself goes, a chosen one stays, and the key does its work either way.
         val upDown = keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP
         if (event.repeatCount == 0 && keyCode in REMOTE_KEYS && !(quickKeys && upDown)) controller.interaction()
-        if (controller.menuOpen && menuKey(keyCode)) return true
+        if (controller.menuOpen && menuKey(keyCode, event)) return true
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                 if (event.repeatCount == 0) {
@@ -211,10 +211,10 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Keys while the settings menu is open; false lets the key through (media keys). */
-    private fun menuKey(keyCode: Int): Boolean {
+    private fun menuKey(keyCode: Int, event: KeyEvent): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> controller.menuMove(-1)
-            KeyEvent.KEYCODE_DPAD_DOWN -> controller.menuMove(+1)
+            KeyEvent.KEYCODE_DPAD_UP -> controller.menuMove(-1, held = event.repeatCount > 0)
+            KeyEvent.KEYCODE_DPAD_DOWN -> controller.menuMove(+1, held = event.repeatCount > 0)
             KeyEvent.KEYCODE_DPAD_LEFT -> controller.menuChange(-1, wrap = false)
             KeyEvent.KEYCODE_DPAD_RIGHT -> controller.menuChange(+1, wrap = false)
             // OK acts on release, like everywhere else (a long press must not also change a line).
@@ -255,6 +255,8 @@ class MainActivity : ComponentActivity() {
             sideLongPressed = false
             return true
         }
+        // Up or down held to run through the settings is let go: the explanation comes back.
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) controller.menuRelease()
         return super.onKeyUp(keyCode, event)
     }
 

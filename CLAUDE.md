@@ -218,7 +218,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek; pr
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
                 main thread, one canvas, LyricsViews keeping their places through a change),
-                Motion (+ StageTick: one frame tick for bar, field and words),
+                Motion (+ StageTick: one frame tick for bar, field and words; animateGlide:
+                a list's glide that carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
                 flow/ (FlowStrip: cards as quads; FlowTheatre: keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
@@ -430,7 +431,11 @@ UI words are given in English with the German in parentheses where it matters.
 - **Settings menu** (OK long-press or Menu): the stage's grid, heading and the chosen line's
   explanation on the left, lines on the right; the chosen line sits at the screen's middle in
   a soft, low band of light (σ 120 × 12 dp, ≈ L* 10) that lights it alone; the list glides
-  through it and fades with distance. Values are words, changes apply at once (left and right
+  through it and fades with distance. A held key runs the list on evenly (`animateGlide`: a
+  glide that comes while one runs carries on from its pace; until 6.3 it started over from a
+  standstill at every repeat and stuttered), a step moves only the cursor, and the explanation
+  goes while the key is held and comes back with the line it is let go on; the quick settings'
+  row glides the same way. Values are words, changes apply at once (left and right
   clamp, OK wraps), closes itself after 60 s. Options show or hide parts, choose the view, the
   wall and the language, and dim the light; no fonts, colors or layout variants. Labels are
   the common words people know from TVs and phones, values plain words: sections Picture

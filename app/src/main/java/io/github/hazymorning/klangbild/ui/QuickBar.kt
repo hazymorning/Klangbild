@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
@@ -179,10 +178,10 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     // A row longer than the room glides to show the chosen entry whole (by its widest value, so a
     // value that changes never moves the row).
     val glide = remember { Glide() }
-    val shift by animateFloatAsState(glide.toShow(lefts[cursor], reaches[cursor]), tween(280, easing = Motion.Dimmer), label = "quick-glide")
+    val shift by animateGlide(glide.toShow(lefts[cursor], reaches[cursor]), ROW_GLIDE_MS)
     // The light glides to the chosen entry.
-    val glowX by animateFloatAsState(lefts[cursor] + widths[cursor] / 2f, tween(280, easing = Motion.Dimmer), label = "quick-glow-x")
-    val glowSigma by animateFloatAsState(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, tween(280, easing = Motion.Dimmer), label = "quick-glow-w")
+    val glowX by animateGlide(lefts[cursor] + widths[cursor] / 2f, ROW_GLIDE_MS)
+    val glowSigma by animateGlide(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, ROW_GLIDE_MS)
     val glow = rememberOffMain(colors.band) { glowBlob(SceneBuilder.ditherFor(colors.band.toArgb())) }
 
     Box(modifier.fillMaxSize()) {
@@ -298,6 +297,9 @@ private fun Entry(x: () -> Float, labelBaseline: Float, valueBaseline: Float, wi
 
 /** The band's brightest point (≈ L* 10 on black), like the menu's. */
 private const val GLOW_PEAK = 0.011f
+
+/** The row's glide to the chosen entry from rest (ms). */
+private const val ROW_GLIDE_MS = 280
 
 private const val BLOB_W = 96
 private const val BLOB_H = 48

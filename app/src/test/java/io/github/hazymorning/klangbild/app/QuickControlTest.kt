@@ -101,6 +101,7 @@ class QuickControlTest {
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override fun recompute() = Unit
+        override fun showMenu() = Unit
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
         }
