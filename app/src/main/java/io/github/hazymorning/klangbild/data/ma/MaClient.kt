@@ -59,6 +59,14 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
     }
 
     /**
+     * Queue [queueId] as Music Assistant has it now (`player_queues/get`): where it stands, its
+     * current and next item. It keeps them up to date while a song plays, even when Home
+     * Assistant has heard of no change. Null when it does not know the queue.
+     */
+    suspend fun queue(queueId: String): JsonObject? =
+        command("player_queues/get", buildJsonObject { put("queue_id", queueId) }) as? JsonObject
+
+    /**
      * Adds what [playerId] plays to the favorites (a station's song looked up as a song);
      * throws when Music Assistant cannot.
      */

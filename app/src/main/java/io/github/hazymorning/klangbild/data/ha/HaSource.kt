@@ -11,6 +11,7 @@ import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaLink
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
 import io.github.hazymorning.klangbild.data.ma.MaQueue
+import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.data.ma.QueueWindow
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
@@ -64,6 +65,8 @@ class HaSource(
     private val detailsWaitMs: Long = DETAILS_WAIT_MS,
     /** How long after a new song's first queue read the queue is read once more (shorter in tests). */
     private val queueSettleMs: Long = QUEUE_SETTLE_MS,
+    /** How often Music Assistant itself is asked what comes next while a song plays (shorter in tests). */
+    private val maQueueMs: Long = MA_QUEUE_MS,
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
@@ -72,6 +75,7 @@ class HaSource(
 
     private var collector: Job? = null
     private var queuePoller: Job? = null
+    private var maPoller: Job? = null
 
     /** The one queue read under way: a newer track cancels it (quick skips leave nothing running). */
     private var queueJob: Job? = null
@@ -100,6 +104,15 @@ class HaSource(
 
     /** What was last known of the words of the song that plays (only touched in [publish]). */
     private var lastWords: SongWords? = null
+
+    /**
+     * What comes next as Music Assistant itself has it, for the song [key]: [next] (null: nothing
+     * follows) and what it was told from ([basis]: the current item's place, the next item's id,
+     * how many items).
+     */
+    private class MaNext(val key: String, val next: TrackInfo?, val basis: Triple<Int?, String?, Int?>)
+
+    @Volatile private var maNext: MaNext? = null
 
     /** Music Assistant's queue was last read at this time, for what it was then (id, place, next). */
     private var windowReadAt = 0L
@@ -189,11 +202,23 @@ class HaSource(
                 if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startQueueRead(force = true)
             }
         }
+        // Home Assistant hears nothing of a queue changed while the same song plays (a song added
+        // to play next, the order changed): Music Assistant itself is asked, if it is set up.
+        maPoller = ma?.let { client ->
+            scope.launch {
+                while (isActive) {
+                    delay(maQueueMs)
+                    val p = _state.value.player
+                    if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startMaCheck(client)
+                }
+            }
+        }
     }
 
     override fun stop() {
         collector?.cancel()
         queuePoller?.cancel()
+        maPoller?.cancel()
         queueJob?.cancel()
         awaitEnd?.cancel()
         lyrics?.stop()
@@ -306,7 +331,7 @@ class HaSource(
             link = link,
             player = enriched,
             entityMissing = status == HaStatus.Connected && entity == null && playerEntity in connection.missing.value,
-            next = currentQueue?.next,
+            next = nextOf(currentQueue, key),
             sunElevation = sun ?: _state.value.sunElevation,
             receivedAtMs = receivedAt,
             skewMs = connection.clockSkew.offsetMs,
@@ -382,6 +407,18 @@ class HaSource(
         val words = if (uri == null) lastWords?.takeIf { it.key == track.key } else loader.known(uri)?.let { SongWords(track.key, it.lyrics) }
         if (words != null) lastWords = words
         return words
+    }
+
+    /**
+     * What comes next: Home Assistant's word ([q]), unless Music Assistant itself has since said
+     * otherwise for the song [key] (the queue changed while it plays). The same song keeps Home
+     * Assistant's description, the one it brings when it starts.
+     */
+    private fun nextOf(q: QueueInfo?, key: String?): TrackInfo? {
+        val ha = q?.next
+        val mine = maNext?.takeIf { q != null && it.key == key } ?: return ha
+        val next = mine.next ?: return null
+        return if (ha != null && ha.kind == next.kind && sameTitle(ha.title, next.title)) ha else next
     }
 
     /**
@@ -471,6 +508,50 @@ class HaSource(
         return p.copy(track = track.copy(album = album, artworkUrl = picture?.url, artworkFallbackUrl = picture?.fallback, source = station))
     }
 
+    /** Asks Music Assistant what comes next, unless a queue read is under way (a new song cancels the question). */
+    private fun startMaCheck(client: MaClient) {
+        synchronized(this) {
+            if (queueJob?.isActive == true) return
+            queueJob = scope.launch { checkMaQueue(client) }
+        }
+    }
+
+    /**
+     * What Music Assistant itself says comes next, while the song Home Assistant described plays:
+     * when that has changed, the cards to come are read anew too.
+     */
+    private suspend fun checkMaQueue(client: MaClient) {
+        val key = lastPlayerKey ?: return
+        val q = queue?.takeIf { queueForKey == key } ?: return
+        val id = q.queueId ?: lastSnapshot?.activeQueue ?: return
+        val answer = try {
+            client.queue(id)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: MaUnknownCommandException) {
+            // A version that cannot say: it is not asked again.
+            maPoller?.cancel()
+            null
+        } catch (_: Exception) {
+            null
+        } ?: return
+        val now = MaQueue.now(answer, client.baseUrl)
+        val current = now.current ?: return
+        val shown = lastSnapshot?.track ?: return
+        // Music Assistant has moved on to another item: that song's own read follows.
+        if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
+        val basis = Triple(now.index, now.nextId, now.items)
+        if (maNext?.let { it.key == key && it.basis == basis } == true) return
+        val read = now.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
+        if (lastPlayerKey != key) return
+        maNext = MaNext(key, now.next, basis)
+        if (read != null) {
+            window = read
+            lyrics?.want(listOfNotNull(read.currentSong, read.nextSong))
+        }
+        publish(connection.status.value, connection.entities.value)
+    }
+
     /** Starts reading the queue anew; a read under way for an older track is canceled, a periodic one waits its turn. */
     private fun startQueueRead(force: Boolean) {
         synchronized(this) {
@@ -537,13 +618,25 @@ class HaSource(
         val client = ma ?: return null
         val id = q.queueId ?: lastSnapshot?.activeQueue ?: return null
         val index = q.currentIndex ?: return null
+        val w = windowAt(client, id, index) ?: return null
+        windowFor = Triple(q.queueId, q.currentIndex, q.next?.key)
+        return w.takeIf { matches(it, q.current) }
+    }
+
+    /** Whether [w] is the queue around [current] (the queue may have moved on in between). */
+    private fun matches(w: QueueWindow, current: TrackInfo?): Boolean {
+        val a = w.current
+        return a != null && current != null && (sameTitle(a.title, current.title) || sameStation(a, current))
+    }
+
+    /** Queue [id] around [index] as Music Assistant has it; null when it cannot be read. */
+    private suspend fun windowAt(client: MaClient, id: String, index: Int): QueueWindow? {
         val (offset, limit) = MaQueue.range(index)
         return try {
-            val w = MaQueue.window(client.items(id, offset, limit), offset, index, client.baseUrl)
-            maLink = MaLink.CONNECTED
-            windowReadAt = now()
-            windowFor = Triple(q.queueId, q.currentIndex, q.next?.key)
-            w.takeIf { a -> val b = q.current; a.current != null && b != null && (sameTitle(a.current.title, b.title) || sameStation(a.current, b)) }
+            MaQueue.window(client.items(id, offset, limit), offset, index, client.baseUrl).also {
+                maLink = MaLink.CONNECTED
+                windowReadAt = now()
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: MaAuthException) {
@@ -581,6 +674,9 @@ class HaSource(
 
         /** Music Assistant's players report about once a second while they play; this leaves a margin. */
         const val QUEUE_SETTLE_MS = 2_500L
+
+        /** Music Assistant itself is asked this often what comes next while a song plays. */
+        const val MA_QUEUE_MS = 15_000L
 
         /** Music Assistant's queue is read again after this long even when nothing seems to have moved. */
         const val WINDOW_MAX_AGE_MS = 5 * 60_000L
