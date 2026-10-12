@@ -152,6 +152,7 @@ class HaSourceTest {
         refreshMs: Long = 60_000L,
         detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS,
         queueSettleMs: Long = HaSource.QUEUE_SETTLE_MS,
+        maQueueMs: Long = HaSource.MA_QUEUE_MS,
     ) = HaSource(
         http,
         scope,
@@ -162,6 +163,7 @@ class HaSourceTest {
         actionAnswerMs = 500L,
         detailsWaitMs = detailsWaitMs,
         queueSettleMs = queueSettleMs,
+        maQueueMs = maQueueMs,
     )
 
     @Test
@@ -515,6 +517,69 @@ class HaSourceTest {
         withTimeout(5_000) { s.state.first { it.player?.track?.title == "Anderes Lied" && it.queueKnown } }
         queueAnswer = { queueOf(item("Anderes Lied", "anderes"), item("Noch ein Lied", "noch")) }
         withTimeout(5_000) { s.state.first { it.next?.title == "Noch ein Lied" } }
+        s.stop()
+    }
+
+    /** A song of Music Assistant's own queue (`player_queues/items`, `player_queues/get`), its id after its title. */
+    private fun maItem(title: String) =
+        """{"queue_id":"q1","queue_item_id":"${title.lowercase().replace(' ', '-')}","name":"$title","duration":200,
+            "media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}]}}"""
+
+    /** Music Assistant's own queue as it stands now (`player_queues/get`): the first of [titles] plays. */
+    private fun maQueue(titles: List<String>) =
+        """{"queue_id":"q1","current_index":0,"items":${titles.size},"current_item":${maItem(titles[0])},
+            "next_item":${titles.getOrNull(1)?.let(::maItem) ?: "null"}}"""
+
+    @Test
+    fun `a queue changed while the song plays names its new next song from Music Assistant itself`() = runBlocking {
+        player = maPlayer("Erstes Lied", "c1")
+        // Home Assistant tells what came next when the song started, and hears of no change after.
+        queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
+        var titles = listOf("Erstes Lied", "Zweites Lied")
+        val ma = MockWebServer()
+        ma.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                maCommands += command
+                return when (command) {
+                    "player_queues/items" -> MockResponse.Builder().body(titles.joinToString(",", "[", "]") { maItem(it) }).build()
+                    "player_queues/get" -> MockResponse.Builder().body(maQueue(titles)).build()
+                    else -> MockResponse.Builder().body("[]").build()
+                }
+            }
+        }
+        ma.start()
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
+            withTimeout(5_000) { while ("player_queues/get" !in maCommands) delay(20) }
+            delay(400)
+            // The same song next: Home Assistant's description stays, the picture it brings when it starts.
+            assertThat(s.state.value.next!!.artworkUrl).isEqualTo("https://cdn.example/zweites.jpg")
+            // A song added to play next: Music Assistant says so, and the cards to come follow.
+            titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied")
+            val changed = withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
+            assertThat(changed.coming.map { it.title }).containsExactly("Eingeschoben", "Zweites Lied").inOrder()
+            // Nothing left to come: nothing is next.
+            titles = listOf("Erstes Lied")
+            withTimeout(5_000) { s.state.first { it.queueKnown && it.next == null } }
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `without Music Assistant itself it is never asked what comes next`() = runBlocking {
+        player = maPlayer("Erstes Lied", "c1")
+        queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
+        val s = source(maQueueMs = 100L)
+        s.start()
+        withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
+        delay(600)
+        assertThat(s.state.value.next!!.title).isEqualTo("Zweites Lied")
+        assertThat(maCommands).isEmpty()
         s.stop()
     }
 

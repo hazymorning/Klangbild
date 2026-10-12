@@ -117,10 +117,13 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 precision and Home Assistant's temperature unit, a button run (a script with its
                 variables and `player`), the lights' states and calls; a Music Assistant song
                 published once its queue has described it; the words of the song that plays,
-                found by the URI Home Assistant names as what plays),
+                found by the URI Home Assistant names as what plays; with Music Assistant set up,
+                its own queue asked every 15 s while a song plays, since Home Assistant hears nothing
+                of a queue changed mid-song: what comes next and the cards to come),
                 StationPictures (a station's song: the best picture on offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
-                `metadata/get_track_lyrics` on a client of its own with a long timeout),
+                `metadata/get_track_lyrics` on a client of its own with a long timeout;
+                `player_queues/get`: the queue as it stands, its next item always up to date),
                 MaQueue (queue items around the current one → QueueWindow with the current item's
                 speed, the current and next songs' URIs and the words they bring; books' authors,
                 episodes' shows, chapters; pictures via imageproxy), MaLyrics (the words of the song

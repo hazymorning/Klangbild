@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.domain.MediaKind
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Test
 
 /** Music Assistant's queue items (as `player_queues/items` returns them) as tracks around the current one. */
@@ -56,6 +57,24 @@ class MaQueueTest {
         assertThat(radio.artworkUrl).isNull()
         assertThat(plain.title).isEqualTo("Nur ein Name")
         assertThat(plain.durationMs).isNull()
+    }
+
+    @Test
+    fun `the queue as it stands says where it is and what comes next, or that nothing does`() {
+        fun item(id: String, title: String) =
+            """{"queue_item_id":"$id","name":"$title","media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}]}}"""
+        val now = MaQueue.now(
+            Json.parseToJsonElement("""{"queue_id":"q1","current_index":3,"items":9,"current_item":${item("a", "Eins")},"next_item":${item("b", "Zwei")}}""").jsonObject,
+            "http://192.168.1.5:8095",
+        )
+        assertThat(now.index).isEqualTo(3)
+        assertThat(now.items).isEqualTo(9)
+        assertThat(now.current!!.title).isEqualTo("Eins")
+        assertThat(now.next!!.title).isEqualTo("Zwei")
+        assertThat(now.nextId).isEqualTo("b")
+        val last = MaQueue.now(Json.parseToJsonElement("""{"current_index":8,"current_item":${item("z", "Neun")},"next_item":null}""").jsonObject, "http://h")
+        assertThat(last.next).isNull()
+        assertThat(last.nextId).isNull()
     }
 
     @Test
