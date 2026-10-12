@@ -13,16 +13,16 @@ the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the 
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
 button under the first paragraph. The first picture and the button come in a light and a dark
 version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
-wall in daylight with the lights behind the TV off, as they are by day, the logo on its night blue
-tile; at night the dark wall with the lights in the cover's colors. The mockups stay calm and real,
-as a photograph of a room would be: the lights' colors soft on a matte wall, no colorful
-backgrounds; the three views, one after another on the same evening, in one cozy room worked out in
-3D on a deep winter night (Single cover on its cover colors, Cover Flow, the landscape with stars, a
-thin moon and the campfire), a lamp's light falling through its shade, candles, books and a record
-sleeve on a walnut sideboard; one song by day and at night.
+wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
+the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
+be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
+another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
+on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
+light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
+by day and at night.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
 a ring and a light dot, blue on night blue), drawn from it by `tools/make_launcher_assets.py` for
-the banner, the icons, the mockups and the button, never scaled from a bitmap. Release notes are
+the banner, the icons and the button, never scaled from a bitmap. Release notes are
 easy to scan and in everyday words: a small heading for each kind of change there is (`### New`,
 `### Better`, `### Bug fixes`), under it a few short points a user understands at once, nothing
 technical. As short as the release allows; up to 300 words only when a release needs them and every

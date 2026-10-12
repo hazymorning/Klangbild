@@ -278,22 +278,11 @@ def logo_tile(side, ss=4):
     return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
-def wordmark(img, cx, top, cap, color=(236, 239, 244), tile=False):
-    """The logo and "Klangbild" side by side, centered on [cx], the name's cap height from [top];
-    on a light wall the logo sits on its [tile]."""
+def wordmark(img, cx, top, cap, color=(236, 239, 244)):
+    """ "Klangbild" centered on [cx] by its ink, its cap height from [top]."""
     word = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
-    side = int(round(cap * 1.5))
-    gap = int(round(cap * 0.5))
-    x0 = int(round(cx - (side + gap + word.shape[1]) / 2))
-    y0 = int(round(top + cap / 2 - side / 2))
-    if tile:
-        mark, a = logo_tile(side)
-    else:
-        mark = np.asarray(logo(side, background=None), dtype=np.float64)
-        a = mark[..., 3:4] / 255.0
-    region = img[y0:y0 + side, x0:x0 + side]
-    region[:] = region * (1 - a) + mark[..., :3] * a
-    paste(img, word, x0 + side + gap, int(top), color, 0.96)
+    cols = np.nonzero(word.max(axis=0) > 0.02)[0]
+    paste(img, word, int(round(cx - (cols[0] + cols[-1] + 1) / 2)), int(top), color, 0.96)
 
 
 def now_playing():
@@ -313,7 +302,7 @@ def now_playing_light():
     tv = Tv(W / 2, 872, 1480, 9)
     img, rim = daylight_room(W, H, tv)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
-    wordmark(img, W / 2, 196, 54, color=(22, 32, 58), tile=True)
+    wordmark(img, W / 2, 196, 54, color=(22, 32, 58))
     save(img, "mockup-now-playing-light.jpg")
 
 
