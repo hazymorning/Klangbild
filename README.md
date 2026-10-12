@@ -111,12 +111,8 @@ In the quick settings you can switch views and add your own Home Assistant butto
 
 ## Contributing
 
-Klangbild is a small project made for the joy of it, and help is very welcome. Whether you'd like to fix a bug, add a language or bring Klangbild to another TV platform, feel free to open a discussion or a pull request. Everyone with a TV in the living room should get to enjoy a calm picture while the music plays.
+Klangbild is a small project made for the joy of it, and help is very welcome. Whether you'd like to fix a bug, add a language or bring Klangbild to another TV platform, feel free to open a discussion or a pull request.
 
 ## Privacy
 
 Klangbild doesn't have accounts or tracking. Your Home Assistant login is stored encrypted on the TV and is only sent to your own Home Assistant.
-
-## License
-
-Klangbild is licensed under the MIT license. The name is German and roughly means "sound picture".
