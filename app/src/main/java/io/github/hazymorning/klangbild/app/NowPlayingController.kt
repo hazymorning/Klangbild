@@ -144,6 +144,8 @@ data class UiState(
     val texts: Texts? = null,
     /** The values of one's own in words, as far as Home Assistant can tell them ("Outside 12 °C"). */
     val values: List<String> = emptyList(),
+    /** The link of the party playing here, while its code shows where the cover stands (the quick settings' Party code). */
+    val partyCode: String? = null,
 )
 
 /** The window view while it shows: what plays (for the mini player) and where the label sits. */
@@ -667,7 +669,10 @@ class NowPlayingController(
         // A menu nobody uses closes by itself: it must not stand still on the OLED.
         menu.expire(t)
         quick.expire(t, menu.isOpen)
-        val decision: ScreenDecision = machine.decide(src, t)
+        // While a party's code shows, neither the clock nor the window view takes its place by
+        // itself (the window view comes only when chosen): the guests can always scan the code.
+        val party = quick.partyWanted(src.party)
+        val decision: ScreenDecision = machine.decide(src, t, holdPause = party)
         val appearance = appearanceFor(s, src)
         val look = Look(appearance, s.light.factor, coverField = s.background == BackgroundMode.COVER)
         val stage = decision.screen as? Screen.Stage
@@ -688,7 +693,12 @@ class NowPlayingController(
         val previous = _ui.value
         val menuState = menu.state(s, appearance, stage?.track)
         // The window view waits while the menu is open.
-        val quietLongEnough = vistaPolicy.shows(decision.screen, t, s.vistaPauseSeconds * 1000L, s.vistaPlayingSeconds * 1000L)
+        val quietLongEnough = vistaPolicy.shows(
+            decision.screen,
+            t,
+            if (party) 0L else s.vistaPauseSeconds * 1000L,
+            if (party) 0L else s.vistaPlayingSeconds * 1000L,
+        )
         // While the quick settings are open, the window view stays as it was (unless they change it).
         val vistaOn = quick.vistaHeld ?: quietLongEnough
         val vista = if (vistaOn && menuState == null) VistaUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer) else null
@@ -715,6 +725,7 @@ class NowPlayingController(
                 val e = src.entities[v.entity]
                 ValueText.of(v, e?.state, e?.attributes, src.precision[v.entity], src.temperatureUnit, texts, t)
             },
+            partyCode = quick.partyCode.takeIf { party },
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)

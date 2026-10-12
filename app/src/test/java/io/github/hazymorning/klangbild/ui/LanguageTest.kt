@@ -155,9 +155,9 @@ class LanguageTest {
 
     /**
      * The quick settings in every state they can be in; with [buttons] also with buttons of one's
-     * own, of every kind and in every state.
+     * own, of every kind and in every state, and with [party] also during a party.
      */
-    private fun allQuick(t: Texts, buttons: Boolean = false): List<QuickState> = buildList {
+    private fun allQuick(t: Texts, buttons: Boolean = false, party: Boolean = buttons): List<QuickState> = buildList {
         val own = if (!buttons) emptyList() else listOf(
             QuickAction("Ungroup", "script.ungroup"), QuickAction("Movie", "scene.movie"),
             QuickAction("Bell", "button.bell"), QuickAction("Party", "switch.party"),
@@ -166,8 +166,8 @@ class LanguageTest {
         val states = if (!buttons) listOf(emptyMap()) else ActionState.entries.map { st -> own.indices.associateWith { st } }
         for (s in settings) for (music in listOf(true, false)) for (vista in listOf(true, false)) for (actions in states) {
             for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in Picture.entries + null) {
-                for (lyrics in LyricsChoice.entries + null) {
-                    val rows = QuickMenu.rows(s, QuickContext(vista, pending, music, favorite, shuffle, actions, lyrics), t)
+                for (lyrics in LyricsChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
+                    val rows = QuickMenu.rows(s, QuickContext(vista, pending, music, favorite, shuffle, actions, lyrics, code), t)
                     add(QuickState(rows, 0))
                 }
             }
@@ -325,7 +325,10 @@ class LanguageTest {
         }
     }
 
-    /** The built-in entries fit; with buttons of one's own the row may be longer, and then it glides. */
+    /**
+     * The built-in entries fit; with buttons of one's own, or with the party code during a party,
+     * the row may be longer, and then it glides.
+     */
     @Test
     fun theQuickSettingsFitTheScreenInBothLanguages() {
         measuring()

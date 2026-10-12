@@ -111,8 +111,10 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 sending, the connected address on every hop), ArtworkUrls (CDN hi-res rewrites),
                 HaSource (NowPlayingSource + LightBridge: player + sun.sun + MA queue (one read
                 at a time, only for MA players with a queue) + "Everywhere" from the registry's
-                MA players + the optional MA queue window, commands only where supported, seek
-                in seconds, shuffle, the favorite button by its translation key, the entities of
+                MA players + the optional MA queue window + a party of Music Assistant's Party
+                plugin playing here (`party/player` every 60 s; `party/url`, the link its guests
+                open), commands only where supported, seek in seconds, shuffle, the favorite
+                button by its translation key, the entities of
                 one's own followed (the buttons', their conditions', the values') with their
                 precision and Home Assistant's temperature unit, a button run (a script with its
                 variables and `player`), the lights' states and calls; a Music Assistant song
@@ -191,15 +193,15 @@ lights/         LightSync (any light behind the TV via Home Assistant: a color p
                 LightColor (xy of a color's hue at its purest, grays as white (neutral by day,
                 warmer at night), a color temperature for white-only lights, brightness floor)
 app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts)
-                and its parts: MenuControl, QuickControl (+ the own buttons), Seeking (jumps
-                with the remote), SleepControl, LightTargets; ControllerHost (what the parts
-                need), Scenes (scene cache + builds off the main thread), KlangbildApp/AppGraph
-                (http, tokenHttp without redirects, localizer)
+                and its parts: MenuControl, QuickControl (+ the own buttons, the party code),
+                Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
+                (what the parts need), Scenes (scene cache + builds off the main thread),
+                KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, LightLevel, AppearanceMode, BackgroundMode,
                 MotionLevel, RoomLights, RoomLightLevel) + SettingsStore (DataStore; tokens sealed by
                 SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (entries, values,
                 explanations, steps), QuickMenu (the quick settings' entries and values, Lyrics
-                On / Off / None),
+                On / Off / None, Party code On / Off),
                 QuickActions (the own buttons: a name, an entity, what its kind does, a script's
                 variables) + Condition (when a button shows: a state or attribute is, is not, is
                 above or below a value; a list counts its entries), OwnValues (the values in the
@@ -220,11 +222,13 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek; pr
                 stage/ (Stage layers, Typesetting, StageTheatre transitions, ProgressBar (a range:
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
-                main thread, one canvas, LyricsViews keeping their places through a change),
+                main thread, one canvas, LyricsViews keeping their places through a change;
+                PartyCode: the party's code where the cover stands, one picture per wall),
                 Motion (+ StageTick: one frame tick for bar, field and words; animateGlide:
                 a list's glide that carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
-                flow/ (FlowStrip: cards as quads; FlowTheatre: keyed strip transitions),
+                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheatre:
+                keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid), QuickBar (+ QuickGrid; a long row glides), RestScreen,
                 SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
@@ -405,17 +409,18 @@ UI words are given in English with the German in parentheses where it matters.
 - **Quick settings** (`QuickMenu`, `QuickBar`; down on the remote): one row along the bottom
   edge, rising 22 dp as it fades in, where the key points: View (Single cover / Cover Flow /
   Window view, taken 0.9 s after the last press so no view in between shows), Lyrics On / Off,
-  or None while this song has no synced words (only with Music Assistant connected and a song
-  on stage), Favorite (with Music Assistant), Lights On / Off (off remembers the level),
-  Shuffle On / Off (only where the player can shuffle; the sleep timer lives in the menu), then
-  the own buttons. Left and right choose, OK changes, down, up or back close, 20 s alone close
-  them. Each entry is its name (15 sp, quiet) over its value (20 sp), on the stage grid from
-  88 dp; its place is as wide as its widest value (only the last is as wide as what it says), so
-  nothing moves when a value changes; the chosen one lit from below like the menu's line. The
-  built-in entries fit the screen in both languages (`LanguageTest`); a row longer than the
-  room (own buttons) glides to show the chosen entry whole, entries beyond its ends faded out.
-  An opaque veil (black, paper) from 448 dp down, softened above: nothing behind shows through.
-  They leave the window view as it was.
+  or None while this song has no synced words (only with Music Assistant connected and a song on
+  stage), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
+  Lights On / Off (off remembers the level), Shuffle On / Off (only where the player can
+  shuffle; the sleep timer lives in the menu), then the own buttons. Left and right choose, OK
+  changes, down, up or back close, 20 s alone close them. Each entry is its name (15 sp, quiet)
+  over its value (20 sp), on the stage grid from 88 dp; its place is as wide as its widest value
+  (only the last is as wide as what it says), so nothing moves when a value changes; the chosen
+  one lit from below like the menu's line. The built-in entries fit the screen in both languages
+  (`LanguageTest`); a row longer than the room (own buttons; in German, the party code) glides
+  to show the chosen entry whole, entries beyond its ends faded out. An opaque veil (black,
+  paper) from 448 dp down, softened above: nothing behind shows through. They leave the window
+  view as it was.
 - **Own buttons** (`QuickActions`, the setup page's section 7, at most 6): a name of one's own
   (at most 32 characters; without one, the entity's own words) and a Home Assistant entity,
   whose kind says what OK does: a script runs (`script.turn_on` with its variables (the fields
@@ -431,6 +436,20 @@ UI words are given in English with the German in parentheses where it matters.
   the speaker plays in a group; anything more is a template helper's state) unless it is just
   saying how its call went. Buttons are told apart by their place: one script can be two
   buttons with other variables.
+- **Party code** (`PartyCode`; Music Assistant's Party plugin with guest access on): while a
+  party plays to this speaker (`party/player` names its queue, asked every 60 s; two failed
+  questions in a row end it; a server without the plugin is not asked again), the quick settings
+  offer Party code Off / On, off at first. On: the QR code of the link guests open (`party/url`,
+  asked again every 60 s, since a code expires) stands where the cover stands, a card like the
+  setup's on whole pixels with the cover's corners and light, dimmed in a pause; in Cover Flow
+  in the middle card's place, with its mirror image, the cards turning beneath it (those passing
+  the middle fade under it). The song's lines stay beside it, the wall's light and the lights
+  stay the song's. It comes and goes in a quiet cross-fade once its picture is made, stays while
+  songs change, and takes the new paper with the wall. Turning it on leaves the window view;
+  while it shows, the window view comes only when chosen and a pause never turns into the clock,
+  so the guests can always scan it. Off, or when the party ends or plays elsewhere: the cover
+  comes back, and the next party starts without it. `PartyCodeTest` reads the code from rendered
+  pixels in both views, on both walls, on the cover's colors and in a pause.
 - **Settings menu** (OK long-press or Menu): the stage's grid, heading and the chosen line's
   explanation on the left, lines on the right; the chosen line sits at the screen's middle in
   a soft, low band of light (σ 120 × 12 dp, ≈ L* 10) that lights it alone; the list glides
@@ -600,10 +619,11 @@ UI words are given in English with the German in parentheses where it matters.
   hours of poses, the bank under the label included); stills show it at rest. No preview in
   the menu (removed in 5.2: never build features nobody asked for); the time-lapse is only the
   `window_view=timelapse` extra for measuring. Comes after the pause delay (default 3 min; the
-  rest clock first), during music only if set, never over trouble, setup or the menu; up on
-  the remote or the quick settings (View) bring it whatever plays, until it is left (up again,
-  back, or another view there). Every key starts the delays again; one that came by itself
-  goes with any key, which still does its work. Baked ahead only while it shows or is on its
+  rest clock first), during music only if set, never over trouble, setup or the menu, nor by
+  itself while a party's code shows; up on the remote or the quick settings (View) bring it
+  whatever plays, until it is left (up again, back, or another view there). Every key starts
+  the delays again; one that came by itself goes with any key, which still does its work.
+  Baked ahead only while it shows or is on its
   way (`VistaPolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the app
   goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
   (after 1 s), the far range's own skyline stands in the screen's middle as one thin line,

@@ -27,6 +27,8 @@ import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.Balance
+import io.github.hazymorning.klangbild.render.FlowCard
+import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.RisingText
@@ -41,12 +43,15 @@ import io.github.hazymorning.klangbild.ui.stage.TextLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLine
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
+import io.github.hazymorning.klangbild.ui.stage.partyCard
+import io.github.hazymorning.klangbild.ui.stage.rememberPartyCode
 import io.github.hazymorning.klangbild.ui.stage.rememberTextPlan
 import io.github.hazymorning.klangbild.ui.stage.samePicture
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /** How two consecutive strips differ, which decides the choreography. */
 private enum class FlowChange {
@@ -114,6 +119,8 @@ fun FlowTheatre(
     lightFactor: () -> Float = { 1f },
     /** The link is down: the stage dims like a pause. */
     dimmed: Boolean = false,
+    /** The link of the party playing here, while its code shows in the middle card's place. */
+    partyCode: String? = null,
 ) {
     var current by remember { mutableStateOf(flow) }
     var previous by remember { mutableStateOf<FlowData?>(null) }
@@ -212,6 +219,8 @@ fun FlowTheatre(
     val softText = kind == FlowChange.SOFT || kind == FlowChange.WALL
     // The whole strip cross-fades when the same middle card takes a new look.
     val restrip = prev != null && (softText || (kind == FlowChange.TEXT && !samePicture(prev.middle.scene, middle.scene)))
+    val oldStrip = prev?.middle?.scene?.takeIf { restrip }
+    val party = rememberPartyCode(partyCode, setOfNotNull(appearance, oldStrip?.appearance), geometry) { url, wall -> partySign(url, wall, geometry) }
     val newWall: () -> Float = {
         when {
             prev == null -> 1f
@@ -241,10 +250,13 @@ fun FlowTheatre(
             BaseWall(wall, alpha = newWall, beyondOnly = true)
         }
         WallLayer(middle.scene, alpha = newWall, level = level, shift = { balance().cards }, column = { balance().column })
-        if (prev != null && restrip) {
+        if (prev != null && oldStrip != null) {
             // A new look of the same strip: the old cards stay underneath while the new ones come up.
-            val old = prev.middle.scene
-            FlowStrip(resting(prev), geometry, old.appearance, old.palette.wall.asColor(), dim = { cardDim }, edges = !old.coverField, shift = { balance().cards })
+            FlowStrip(
+                resting(prev), geometry, oldStrip.appearance, oldStrip.palette.wall.asColor(),
+                dim = { cardDim }, edges = !oldStrip.coverField, shift = { balance().cards },
+                sign = party.on(oldStrip.appearance), signAlpha = party.shown,
+            )
         }
         FlowStrip(
             cards = motions,
@@ -256,6 +268,8 @@ fun FlowTheatre(
             alpha = { if (restrip) p(0, total, Motion.Sine) else 1f },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
+            sign = party.on(appearance),
+            signAlpha = party.shown,
         )
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             if (prevModel != null && prevPlan != null && kind != FlowChange.SIDES) {
@@ -272,6 +286,17 @@ fun FlowTheatre(
         }
         StatusLayer(curModel, shift = { balance().column })
     }
+}
+
+/**
+ * A party's code as a card of the strip for [wall]: facing the room in the middle card's place,
+ * with its mirror image on the dark gloss.
+ */
+private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): FlowCard? {
+    val layout = geometry.layout
+    val density = layout.screen.density
+    val card = partyCard(url, (layout.art * density).roundToInt(), wall) ?: return null
+    return FlowCards.build(card, round = false, cornerPx = layout.radius * density, geometry = geometry, density = density, appearance = wall)
 }
 
 private fun changeOf(old: FlowData, new: FlowData): FlowChange {

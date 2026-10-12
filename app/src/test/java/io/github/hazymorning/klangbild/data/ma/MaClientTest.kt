@@ -53,6 +53,28 @@ class MaClientTest {
     }
 
     @Test
+    fun `a party is asked where it plays and for the link its guests open`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("\"ma_kitchen\"").build())
+        assertThat(client.partyPlayer()).isEqualTo("ma_kitchen")
+        server.enqueue(MockResponse.Builder().body("\"http://192.168.1.5:8095/?join=Q4WZ8TNP\"").build())
+        assertThat(client.partyUrl()).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
+        // Guest access off: no party, no link.
+        server.enqueue(MockResponse.Builder().body("null").build())
+        assertThat(client.partyPlayer()).isNull()
+        server.enqueue(MockResponse.Builder().body("null").build())
+        assertThat(client.partyUrl()).isNull()
+        val commands = (1..4).map { Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content }
+        assertThat(commands).containsExactly("party/player", "party/url", "party/player", "party/url").inOrder()
+    }
+
+    @Test
+    fun `a server without the party plugin says it does not know the question`() = runBlocking {
+        server.enqueue(MockResponse.Builder().code(400).body("Invalid Command: party/player").build())
+        val unknown = runCatching { client.partyPlayer() }.exceptionOrNull()
+        assertThat(unknown).isInstanceOf(MaUnknownCommandException::class.java)
+    }
+
+    @Test
     fun `the address is read from a picture link`() {
         assertThat(MaClient.addressIn("http://192.168.1.5:8095/imageproxy/3f2a?size=512")).isEqualTo("http://192.168.1.5:8095")
         assertThat(MaClient.addressIn("http://mass.local:8095/imageproxy?path=x&size=0")).isEqualTo("http://mass.local:8095")

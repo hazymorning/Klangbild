@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -30,6 +31,10 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The source against a stand-in Home Assistant (and Music Assistant): what it asks, and how
@@ -150,6 +155,7 @@ class HaSourceTest {
     private fun source(
         ma: MaClient? = null,
         refreshMs: Long = 60_000L,
+        partyMs: Long = HaSource.PARTY_MS,
         detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS,
         queueSettleMs: Long = HaSource.QUEUE_SETTLE_MS,
         maQueueMs: Long = HaSource.MA_QUEUE_MS,
@@ -160,6 +166,7 @@ class HaSourceTest {
         "media_player.wz",
         ma = ma,
         queueRefreshMs = refreshMs,
+        partyMs = partyMs,
         actionAnswerMs = 500L,
         detailsWaitMs = detailsWaitMs,
         queueSettleMs = queueSettleMs,
@@ -234,6 +241,93 @@ class HaSourceTest {
         delay(200)
         assertThat(calls.map { it["service"]!!.jsonPrimitive.content }).containsExactly("media_play_pause", "media_next_track").inOrder()
         s.stop()
+    }
+
+    /** A stand-in Music Assistant whose Party plugin answers `party/player` with [party]. */
+    private fun partyServer(party: () -> MockResponse) = MockWebServer().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                maCommands += command
+                return if (command == "party/player") party() else MockResponse.Builder().body("[]").build()
+            }
+        }
+        start()
+    }
+
+    private fun partyQuestions() = maCommands.count { it == "party/player" }
+
+    @Test
+    fun `a party is told while it plays to this speaker, not while it plays elsewhere`() = runBlocking {
+        player = """{"media_title":"Erstes Lied","media_artist":"A","app_id":"music_assistant","mass_player_type":"player","active_queue":"q1"}"""
+        var answer = "\"q2\""
+        val ma = partyServer { MockResponse.Builder().body(answer).build() }
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), partyMs = 100L)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.player != null } }
+            withTimeout(5_000) { while (partyQuestions() < 3) delay(20) }
+            assertThat(s.state.value.party).isFalse()
+            answer = "\"q1\""
+            withTimeout(5_000) { s.state.first { it.party } }
+            // Guest access off: the party is over.
+            answer = "null"
+            withTimeout(5_000) { s.state.first { !it.party } }
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `a party outlasts one failed question, not two in a row`() = runBlocking {
+        player = """{"media_title":"Erstes Lied","media_artist":"A","app_id":"music_assistant","mass_player_type":"player","active_queue":"q1"}"""
+        val failing = AtomicBoolean(false)
+        val failures = AtomicInteger(0)
+        val secondAsked = CountDownLatch(1)
+        val answerIt = CountDownLatch(1)
+        val ma = partyServer {
+            if (!failing.get()) {
+                MockResponse.Builder().body("\"q1\"").build()
+            } else {
+                if (failures.incrementAndGet() == 2) {
+                    secondAsked.countDown()
+                    answerIt.await(5, TimeUnit.SECONDS)
+                }
+                MockResponse.Builder().code(500).build()
+            }
+        }
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), partyMs = 100L)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.party } }
+            failing.set(true)
+            // The second question is under way, so the first failure has been taken in.
+            assertThat(withContext(Dispatchers.IO) { secondAsked.await(5, TimeUnit.SECONDS) }).isTrue()
+            assertThat(s.state.value.party).isTrue()
+            answerIt.countDown()
+            withTimeout(5_000) { s.state.first { !it.party } }
+            s.stop()
+        } finally {
+            answerIt.countDown()
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `a server without the party plugin is not asked again`() = runBlocking {
+        val ma = partyServer { MockResponse.Builder().code(400).body("Invalid Command: party/player").build() }
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), partyMs = 50L)
+            s.start()
+            withTimeout(5_000) { while (partyQuestions() < 1) delay(20) }
+            delay(500)
+            assertThat(partyQuestions()).isEqualTo(1)
+            assertThat(s.state.value.party).isFalse()
+            s.stop()
+        } finally {
+            ma.close()
+        }
     }
 
     @Test

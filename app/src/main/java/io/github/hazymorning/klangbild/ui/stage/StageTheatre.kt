@@ -76,6 +76,8 @@ fun StageTheatre(
     lightFactor: () -> Float = { 1f },
     /** The link is down: the stage dims like a pause. */
     dimmed: Boolean = false,
+    /** The link of the party playing here, while its code shows where the cover stands. */
+    partyCode: String? = null,
 ) {
     var current by remember { mutableStateOf(stage) }
     var previous by remember { mutableStateOf<StageData?>(null) }
@@ -158,6 +160,8 @@ fun StageTheatre(
 
     val curModel = remember(cur, modelFor) { modelFor(cur) }
     val prevModel = remember(prev, modelFor) { prev?.let(modelFor) }
+    val px = cur.scene.cover.width
+    val party = rememberPartyCode(partyCode, setOfNotNull(cur.scene.appearance, prev?.scene?.appearance), px) { url, wall -> partyCard(url, px, wall) }
     val curPlan = rememberTextPlan(curModel)
     val prevPlan = prevModel?.let { rememberTextPlan(it) }
 
@@ -205,6 +209,11 @@ fun StageTheatre(
         WallLayer(cur.scene, alpha = newGlow, level = level)
         if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, dim = { coverDim })
         ArtworkLayer(cur.scene, alpha = newPicture, dim = { coverDim })
+        // A party's code covers the picture and stays while the songs change beneath it; with the
+        // wall it changes its paper.
+        val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
+        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, dim = { coverDim })
+        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { coverDim })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             if (prevModel != null && prevPlan != null) {
                 TextLayer(

@@ -47,6 +47,16 @@ class ScreenStateMachineTest {
     }
 
     @Test
+    fun `a pause with a party's code on the stage never turns into the clock`() {
+        val m = ScreenStateMachine(timing)
+        m.decide(src(), 0)
+        m.decide(src(PlayerStatus.PAUSED), 1_000, holdPause = true)
+        assertThat(m.decide(src(PlayerStatus.PAUSED), 1_000 + 180_000, holdPause = true).screen).isInstanceOf(Screen.Stage::class.java)
+        // The code gone, the clock comes as it would.
+        assertThat(m.decide(src(PlayerStatus.PAUSED), 1_000 + 181_000).screen).isEqualTo(Screen.Rest(RestReason.PAUSED))
+    }
+
+    @Test
     fun `idle and off rest with the speaker name`() {
         val m = ScreenStateMachine(timing)
         assertThat(m.decide(src(PlayerStatus.IDLE, track = null), 0).screen).isEqualTo(Screen.Rest(RestReason.IDLE, "Wohnzimmer"))

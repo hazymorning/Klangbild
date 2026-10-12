@@ -74,6 +74,9 @@ class CardMotion(
  *   cover's colors, which reach the edges, they pass the edges.
  * @param shift how far the cards stand to the right of their place in the grid (dp), so that
  *   a strip with cards missing stands in the middle ([FlowGeometry.balance]).
+ * @param sign a card that stands in the middle card's place (a party's code), facing the room
+ *   whatever the strip does; [signAlpha] is how far it has come up. The cards passing the middle
+ *   fade beneath it, their mirror images with them.
  */
 @Composable
 fun FlowStrip(
@@ -87,6 +90,8 @@ fun FlowStrip(
     alpha: () -> Float = { 1f },
     edges: Boolean = true,
     shift: () -> Float = { 0f },
+    sign: FlowCard? = null,
+    signAlpha: () -> Float = { 0f },
 ) {
     val n = cards.size
     val pos = remember(cards) { FloatArray(n) }
@@ -101,13 +106,15 @@ fun FlowStrip(
         val t = time().coerceIn(0f, 1f)
         val d = dim().coerceIn(0f, 1f)
         val all = alpha().coerceIn(0f, 1f)
+        val covered = signAlpha().coerceIn(0f, 1f)
         for (i in 0 until n) {
             val c = cards[i]
             val s = Motion.Turn.transform(c.move.of(t))
             val p = if (c.rolls) geometry.rolled(c.from, c.to, s) else c.from + (c.to - c.from) * s
             pos[i] = p
             val fade = c.fromAlpha + (c.toAlpha - c.fromAlpha) * Motion.Sine.transform(c.fade.of(t))
-            alphas[i] = fade * geometry.presence(p) * all
+            // Beneath a sign, the cards passing the middle fade, their mirror images with them.
+            alphas[i] = fade * geometry.presence(p) * all * (1f - covered * (1f - HaloLight.smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
             order[i] = i
         }
         // Farthest first (insertion sort: a handful of cards, no allocation).
@@ -138,6 +145,14 @@ fun FlowStrip(
                 val half = 1f - HaloLight.smoothstep(HALF_FROM, HALF_TO, width)
                 if (half < 1f) quad(native, card, false, a, filter, tools, snap = pos[i] == 0f)
                 if (half > 0f) quad(native, card, true, a * half, filter, tools, snap = false)
+            }
+            // The sign facing the room in the middle card's place, crisp on whole pixels, lit as the middle card.
+            if (sign != null && covered * all > 0.004f) {
+                geometry.corners(0f, tools.dp)
+                for (k in 0 until 8) tools.dst[k] = (tools.dp[k] + if (k % 2 == 0) dx else 0f) * density
+                val step = (geometry.light(0f) * d * STEPS).roundToInt()
+                val filter = filters.getOrPut(step) { ColorMatrixColorFilter(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
+                quad(native, sign, false, covered * all, filter, tools, snap = true)
             }
         }
         // The cards dissolve into the wall before the screen's edges (on an OLED the band stays
@@ -239,6 +254,10 @@ private fun cardMatrix(light: Float, appearance: Appearance, paper: Int): ColorM
         )
     }
 }
+
+/** A card passing the middle fades beneath a sign there from this far from it (in card places), fully within [SIGN_NEAR]. */
+private const val SIGN_NEAR = 0.3f
+private const val SIGN_FAR = 0.8f
 
 /** Steps of the cached light levels. */
 private const val STEPS = 48

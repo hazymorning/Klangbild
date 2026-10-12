@@ -208,13 +208,14 @@ object Fixtures {
 
     /** The animated cover flow for one strip; what comes next is the card to the right. */
     @Composable
-    fun FlowTheatreOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING) {
+    fun FlowTheatreOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
         val next = flow.cards.getOrNull(flow.current + 1)?.track
         io.github.hazymorning.klangbild.ui.flow.FlowTheatre(
             flow = flow,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
+            partyCode = partyCode,
         )
     }
 
@@ -228,6 +229,7 @@ object Fixtures {
         group: String? = null,
         muted: Boolean = false,
         linkDown: Boolean = false,
+        partyCode: String? = null,
     ) {
         val lead = StageTexts.lead(status, muted, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = texts)
         StageTheatre(
@@ -236,6 +238,7 @@ object Fixtures {
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
             lightFactor = { lightFactor },
             dimmed = linkDown,
+            partyCode = partyCode,
         )
     }
 }
