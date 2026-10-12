@@ -56,6 +56,13 @@ internal class QuickControl(private val host: ControllerHost) {
     /** A switch just turned from the quick settings: shown as asked until Home Assistant reports it, or a while. */
     private val switchWanted = HashMap<String, Pair<Boolean, Long>>()
 
+    /** The party's code is to show (OK on "Party code"); a party that ends switches it off. */
+    @Volatile private var partyOn = false
+
+    /** The link guests open, while the code is to show: asked when it is switched on, and again now and then (a code expires). */
+    @Volatile private var partyUrl: String? = null
+    private var partyJob: Job? = null
+
     val isOpen: Boolean get() = cursor != null
 
     /** Opens the quick settings on the view entry. */
@@ -125,6 +132,7 @@ internal class QuickControl(private val host: ControllerHost) {
                 host.applySettings(s.copy(roomLightLevel = level))
             }
             QuickItem.SHUFFLE -> toggleShuffle()
+            QuickItem.PARTY -> toggleParty()
             QuickItem.ACTION -> host.settings.quickActions.getOrNull(row.key.action)?.let { runAction(row.key.action, it) }
         }
     }
@@ -221,6 +229,55 @@ internal class QuickControl(private val host: ControllerHost) {
             host.recompute()
         }
     }
+
+    /**
+     * Shows the party's code, or no longer. On, its link is asked for at once and again every
+     * [PARTY_URL_MS] (soon again when no answer came); a link once had stays until a new one
+     * comes. The code shows at once: the window view makes way.
+     */
+    private fun toggleParty() {
+        val src = host.source ?: return
+        val on = synchronized(host.lock) {
+            partyOn = !partyOn
+            partyJob?.cancel()
+            partyJob = null
+            partyUrl = null
+            if (partyOn) {
+                partyJob = host.scope.launch {
+                    while (true) {
+                        val url = src.partyUrl()
+                        synchronized(host.lock) { if (partyOn && url != null) partyUrl = url }
+                        host.recompute()
+                        delay(if (url != null) PARTY_URL_MS else PARTY_RETRY_MS)
+                    }
+                }
+            }
+            partyOn
+        }
+        if (on) {
+            if (hold != null) hold = false
+            host.hideVista()
+        } else {
+            host.recompute()
+        }
+    }
+
+    /**
+     * Whether the party's code is to show, with a party playing [here]: a party that has ended
+     * (or plays elsewhere) switches it off, so the next one starts without it (called under the lock).
+     */
+    fun partyWanted(here: Boolean): Boolean {
+        if (!here && partyOn) {
+            partyOn = false
+            partyUrl = null
+            partyJob?.cancel()
+            partyJob = null
+        }
+        return partyOn
+    }
+
+    /** The link to show as a code now, once it has come (called under the lock, after [partyWanted]). */
+    val partyCode: String? get() = partyUrl.takeIf { partyOn }
 
     /**
      * Turns shuffle the other way: shown at once and sent to the player, which reports it back in
@@ -325,6 +382,7 @@ internal class QuickControl(private val host: ControllerHost) {
             shuffle = shuffleShown(),
             actions = actionStates(),
             lyrics = track?.let { lyricsChoice(it) },
+            party = partyOn.takeIf { host.ui.source.party },
         )
     }
 
@@ -355,6 +413,12 @@ internal class QuickControl(private val host: ControllerHost) {
 
         /** How long a button says how its call went before it says again what it does. */
         const val RESULT_MS = 4_000L
+
+        /** While the party's code shows, its link is asked for again this often: Music Assistant renews an expired code. */
+        const val PARTY_URL_MS = 60_000L
+
+        /** When the party's link could not be had, it is asked for again after this long. */
+        const val PARTY_RETRY_MS = 5_000L
 
         /** Home Assistant's state for an entity that is there but cannot be used. */
         private const val UNAVAILABLE = "unavailable"

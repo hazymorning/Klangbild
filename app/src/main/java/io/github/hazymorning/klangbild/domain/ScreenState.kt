@@ -83,7 +83,8 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
 
     val isSetupRequested: Boolean get() = setupRequested
 
-    fun decide(source: SourceState, now: Long): ScreenDecision {
+    /** [holdPause]: a paused stage shows something to be seen (a party's code) and does not turn into the rest screen. */
+    fun decide(source: SourceState, now: Long, holdPause: Boolean = false): ScreenDecision {
         val raw = screenFor(source, now)
         val screen = when {
             raw is Screen.Stage && raw.status != PlayerStatus.PAUSED -> raw.also {
@@ -103,7 +104,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
         val limit = if (screen is Screen.Setup) timing.sleepAfterMs * 3 else timing.sleepAfterMs
         val asleep = !playing && idleFor >= limit
         // A paused stage that has waited long enough becomes the rest screen.
-        val shown = if (screen is Screen.Stage && screen.status == PlayerStatus.PAUSED && idleFor >= timing.pauseToRestMs) {
+        val shown = if (!holdPause && screen is Screen.Stage && screen.status == PlayerStatus.PAUSED && idleFor >= timing.pauseToRestMs) {
             Screen.Rest(RestReason.PAUSED)
         } else {
             screen

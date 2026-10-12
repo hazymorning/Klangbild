@@ -68,6 +68,14 @@ class QuickControlTest {
             variables += action.variables
             return answer.await()
         }
+
+        /** The link a party's guests open, as Music Assistant hands it out now; how often it was asked for. */
+        var partyLink: String? = null
+        var partyAsked = 0
+        override suspend fun partyUrl(): String? {
+            partyAsked++
+            return partyLink
+        }
     }
 
     private val source = FakeSource()
@@ -91,6 +99,9 @@ class QuickControlTest {
     /** The song's words in the text column, as the quick settings set them. */
     private var lyrics = false
 
+    /** How often the window view was left. */
+    private var vistaLeft = 0
+
     private val host = object : ControllerHost {
         override val lock: Any = this
         override val scope = test
@@ -108,7 +119,10 @@ class QuickControlTest {
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
         override fun showVista() = Unit
-        override fun hideVista() = false
+        override fun hideVista(): Boolean {
+            vistaLeft++
+            return false
+        }
     }
 
     private val quick = QuickControl(host)
@@ -250,5 +264,82 @@ class QuickControlTest {
         test.runCurrent()
         assertThat(source.ran).containsExactly("script.group", "script.group")
         assertThat(source.variables).containsExactly(join.variables, leave.variables).inOrder()
+    }
+
+    /** Opens the quick settings and goes right to [item]. */
+    private fun chooseEntry(item: QuickItem) {
+        if (!quick.isOpen) quick.open(menuOpen = false)
+        repeat(rows().size) {
+            val s = quick.state(ui.screen, vista = false)!!
+            if (s.rows[s.cursor].item == item) return
+            quick.move(+1)
+        }
+        error("no entry $item")
+    }
+
+    private fun partyValue() = rows().first { it.item == QuickItem.PARTY }.value
+
+    private fun partyHere(here: Boolean) {
+        ui = ui.copy(source = ui.source.copy(party = here))
+    }
+
+    @Test
+    fun `the party code shows once switched on, and goes for good when the party ends`() {
+        source.partyLink = "http://192.168.1.5:8095/?join=Q4WZ8TNP"
+        partyHere(true)
+        chooseEntry(QuickItem.PARTY)
+        assertThat(partyValue()).isEqualTo("Off")
+        quick.change()
+        test.runCurrent()
+        assertThat(partyValue()).isEqualTo("On")
+        assertThat(quick.partyWanted(true)).isTrue()
+        assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
+        // It shows at once: the window view makes way.
+        assertThat(vistaLeft).isEqualTo(1)
+        // The code expired: Music Assistant's new link comes with the next question.
+        source.partyLink = "http://192.168.1.5:8095/?join=M2KD7RXA"
+        test.advanceTimeBy(QuickControl.PARTY_URL_MS)
+        test.runCurrent()
+        assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=M2KD7RXA")
+        // The party ends: the code goes and nobody asks for its link any more.
+        assertThat(quick.partyWanted(false)).isFalse()
+        assertThat(quick.partyCode).isNull()
+        partyHere(false)
+        assertThat(rows().map { it.item }).doesNotContain(QuickItem.PARTY)
+        val asked = source.partyAsked
+        test.advanceTimeBy(5 * QuickControl.PARTY_URL_MS)
+        test.runCurrent()
+        assertThat(source.partyAsked).isEqualTo(asked)
+        // The next party starts without it.
+        partyHere(true)
+        assertThat(partyValue()).isEqualTo("Off")
+        assertThat(quick.partyWanted(true)).isFalse()
+    }
+
+    @Test
+    fun `a party link that could not be had is asked for again soon, and one once had stays`() {
+        partyHere(true)
+        chooseEntry(QuickItem.PARTY)
+        quick.change()
+        test.runCurrent()
+        assertThat(quick.partyWanted(true)).isTrue()
+        assertThat(quick.partyCode).isNull()
+        source.partyLink = "http://192.168.1.5:8095/?join=Q4WZ8TNP"
+        test.advanceTimeBy(QuickControl.PARTY_RETRY_MS)
+        test.runCurrent()
+        assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
+        // No answer later on: the code stays as it was.
+        source.partyLink = null
+        test.advanceTimeBy(QuickControl.PARTY_URL_MS)
+        test.runCurrent()
+        assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
+        // Off: no code, no more questions.
+        quick.change()
+        assertThat(partyValue()).isEqualTo("Off")
+        assertThat(quick.partyCode).isNull()
+        val asked = source.partyAsked
+        test.advanceTimeBy(5 * QuickControl.PARTY_URL_MS)
+        test.runCurrent()
+        assertThat(source.partyAsked).isEqualTo(asked)
     }
 }

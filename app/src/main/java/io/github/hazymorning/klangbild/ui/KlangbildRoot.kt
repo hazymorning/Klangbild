@@ -146,10 +146,10 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         ) { k ->
             when (val c = latest[k] ?: Content.Dark) {
                 is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    StageTheatre(stage = c.stage, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown)
+                    StageTheatre(stage = c.stage, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
                 }
                 is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    FlowTheatre(flow = c.flow, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown)
+                    FlowTheatre(flow = c.flow, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
                 }
                 is Content.RestContent -> RestScreen(
                     reason = c.reason,

@@ -76,6 +76,21 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
     }
 
     /**
+     * The queue a party of Music Assistant's Party plugin plays to (`party/player`), while its
+     * guests may join; null while guest access is off. Throws [MaUnknownCommandException] where
+     * the plugin is not there.
+     */
+    suspend fun partyPlayer(): String? = text(command("party/player", JsonObject(emptyMap())))
+
+    /**
+     * The link guests open to join the party (`party/url`); null while guest access is off. Music
+     * Assistant hands out the same link until its code expires, then a new one.
+     */
+    suspend fun partyUrl(): String? = text(command("party/url", JsonObject(emptyMap())))
+
+    private fun text(answer: JsonElement): String? = (answer as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+
+    /**
      * The words Music Assistant has for [track] (a queue item's `media_item`): plain and with
      * times (`metadata/get_track_lyrics`, Music Assistant 2.8 and later). It may look them up
      * online first, which it does at most once in 30 seconds, so the answer may take a while:

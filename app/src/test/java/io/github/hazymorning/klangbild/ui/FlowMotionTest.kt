@@ -22,7 +22,8 @@ import org.robolectric.annotation.GraphicsMode
  * turns over by one card), a step back, a jump to something new (it rolls in from the end of
  * the strip), a song put in between, the queue changing beside the middle, quick skips (the
  * running turn hurries, the lines of the song skipped past never come up), a skip undone at
- * once, and a card that joins during a turn (it waits for the turn to land).
+ * once, a card that joins during a turn (it waits for the turn to land), and the turn beneath a
+ * party's code.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,10 +44,15 @@ class FlowMotionTest {
     }.toMap()
 
     /** Shows [from], then each of [then] at its frame (counted from 1), capturing every [stepMs]. */
-    private fun run(name: String, from: FlowData, then: Map<Int, FlowData>, frames: Int = 12, stepMs: Long = 100) {
+    private fun run(name: String, from: FlowData, then: Map<Int, FlowData>, frames: Int = 12, stepMs: Long = 100, partyCode: String? = null) {
         var flow by mutableStateOf(from)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.FlowTheatreOf(flow) }
+        compose.setContent { Fixtures.FlowTheatreOf(flow, partyCode = partyCode) }
+        // A party's code is made off the main thread, then comes up.
+        if (partyCode != null) repeat(20) {
+            Thread.sleep(20)
+            compose.mainClock.advanceTimeBy(100)
+        }
         compose.mainClock.advanceTimeBy(100)
         compose.onRoot().captureRoboImage("build/screenshots/flow_motion/${name}_00.png")
         for (i in 1..frames) {
@@ -56,13 +62,20 @@ class FlowMotionTest {
         }
     }
 
-    private fun run(name: String, from: FlowData, to: FlowData, frames: Int = 12, stepMs: Long = 100) =
-        run(name, from, mapOf(1 to to), frames, stepMs)
+    private fun run(name: String, from: FlowData, to: FlowData, frames: Int = 12, stepMs: Long = 100, partyCode: String? = null) =
+        run(name, from, mapOf(1 to to), frames, stepMs, partyCode)
 
     @Test
     fun forward() {
         val s = scenes()
         run("forward", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 3, 4, 5), 3))
+    }
+
+    @Test
+    fun forwardBeneathAPartyCode() {
+        // The code stays in the middle card's place; the cards turn beneath it.
+        val s = scenes()
+        run("party", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 3, 4, 5), 3), partyCode = "http://192.168.1.5:8095/?join=Q4WZ8TNP")
     }
 
     @Test

@@ -43,6 +43,20 @@ class QuickMenuTest {
     }
 
     @Test
+    fun `the party code stands with what the screen shows, only while a party plays here`() {
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.OFF, party = false)
+        val rows = QuickMenu.rows(lights, ctx, de)
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.PICTURE, QuickItem.LYRICS, QuickItem.PARTY, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE).inOrder()
+        assertThat(rows[2].label).isEqualTo("Party-Code")
+        assertThat(rows[2].value).isEqualTo("Aus")
+        assertThat(QuickMenu.rows(lights, ctx.copy(party = true), de)[2].value).isEqualTo("An")
+        assertThat(QuickMenu.rows(lights, ctx, TestTexts.english())[2].label).isEqualTo("Party code")
+        // No party here, or no song on the stage to stand beside the code: no entry.
+        assertThat(QuickMenu.rows(lights, ctx.copy(party = null), de).map { it.item }).doesNotContain(QuickItem.PARTY)
+        assertThat(QuickMenu.rows(lights, ctx.copy(music = false), de).map { it.item }).doesNotContain(QuickItem.PARTY)
+    }
+
+    @Test
     fun `the sleep timer lives in the settings, not in the quick settings`() {
         assertThat(QuickItem.entries.map { it.label }).doesNotContain(R.string.entry_sleep_timer)
         assertThat(SettingsMenu.entries).contains(MenuEntry.SLEEP_TIMER)

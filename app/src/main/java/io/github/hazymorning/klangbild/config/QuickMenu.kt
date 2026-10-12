@@ -33,6 +33,7 @@ enum class FavoriteState {
 enum class QuickItem(@StringRes val label: Int?) {
     PICTURE(R.string.quick_view),
     LYRICS(R.string.quick_lyrics),
+    PARTY(R.string.quick_party),
     FAVORITE(R.string.quick_favorite),
     LIGHTS(R.string.quick_lights),
     SHUFFLE(R.string.quick_shuffle),
@@ -89,6 +90,8 @@ data class QuickContext(
     val actions: Map<Int, ActionState> = emptyMap(),
     /** The song's words as the entry says it; null without Music Assistant or without a song. */
     val lyrics: LyricsChoice? = null,
+    /** Whether a party's code shows; null while no party of Music Assistant's plays to this speaker. */
+    val party: Boolean? = null,
 )
 
 /**
@@ -97,15 +100,16 @@ data class QuickContext(
  * (those stay on OK held). Left and right choose an entry, OK changes it (or does what it
  * says), up leaves the row. Entries that cannot do anything now are left out (no lyrics without
  * Music Assistant or without a song, no favorite without music, no lights before they are set
- * up, no shuffle on a player that cannot, no button whose entity is unavailable or whose
- * condition does not hold). The buttons set up on the phone come last. The sleep timer lives in
- * the settings.
+ * up, no shuffle on a player that cannot, no party code without a party playing here, no button
+ * whose entity is unavailable or whose condition does not hold). The buttons set up on the phone
+ * come last. The sleep timer lives in the settings.
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t)))
         row(QuickItem.PICTURE, pictureValue(ctx.pending ?: picture(s, ctx), t))
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t))
+        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
         if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightLevel == RoomLightLevel.OFF) R.string.off else R.string.on])
         if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) R.string.on else R.string.off])
@@ -177,7 +181,7 @@ object QuickMenu {
         QuickItem.PICTURE -> PICTURES.map { pictureValue(it, t) }
         QuickItem.LYRICS -> LyricsChoice.entries.map { lyricsValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LIGHTS, QuickItem.SHUFFLE -> listOf(t[R.string.on], t[R.string.off])
+        QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
     }
 

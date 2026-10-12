@@ -187,6 +187,7 @@
     <string name="quick_favorite">Favorite</string>
     <string name="quick_lights">Lights</string>
     <string name="quick_shuffle">Shuffle</string>
+    <string name="quick_party">Party code</string>
     <!-- The lyrics entry while this song has no synced words -->
     <string name="lyrics_none">None</string>
     <string name="favorite_add">Add</string>

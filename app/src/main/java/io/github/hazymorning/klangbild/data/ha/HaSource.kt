@@ -11,6 +11,7 @@ import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaLink
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
 import io.github.hazymorning.klangbild.data.ma.MaQueue
+import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.data.ma.QueueWindow
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
@@ -58,6 +59,8 @@ class HaSource(
     private val weatherEntities: List<String> = emptyList(),
     /** How often the queue is read again while music plays (shorter in tests). */
     private val queueRefreshMs: Long = QUEUE_REFRESH_MS,
+    /** How often Music Assistant is asked whether a party runs (shorter in tests). */
+    private val partyMs: Long = PARTY_MS,
     /** How long a button's call may go unanswered before it counts as still running (shorter in tests). */
     private val actionAnswerMs: Long = ACTION_ANSWER_MS,
     /** How long a new song may wait for Music Assistant's queue to describe it (shorter in tests). */
@@ -91,6 +94,12 @@ class HaSource(
     private var awaited: String? = null
     private var awaitedSince = 0L
     private var awaitEnd: Job? = null
+
+    /** Asks Music Assistant now and then whether a party runs ([partyQueue]). */
+    private var partyPoller: Job? = null
+
+    /** The queue a party of Music Assistant's Party plugin plays to, while its guests may join. */
+    @Volatile private var partyQueue: String? = null
 
     /** A station's pictures, ranked and steady while a song plays (only touched in [publish]). */
     private val stationPictures = StationPictures()
@@ -176,6 +185,7 @@ class HaSource(
             combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
                 .collect { (st, ents) -> publish(st, ents) }
         }
+        partyPoller = ma?.let { client -> scope.launch { followParty(client) } }
         queuePoller = scope.launch {
             ma?.let {
                 maLink = it.check()
@@ -197,7 +207,41 @@ class HaSource(
         queueJob?.cancel()
         awaitEnd?.cancel()
         lyrics?.stop()
+        partyPoller?.cancel()
         connection.stop()
+    }
+
+    /**
+     * Whether a party of Music Assistant's Party plugin runs, and to which queue: asked now and
+     * then. An answer that fails twice in a row counts as no party; a server without the plugin
+     * is not asked again.
+     */
+    private suspend fun followParty(client: MaClient) {
+        var failed = 0
+        while (true) {
+            val queue = try {
+                client.partyPlayer().also { failed = 0 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: MaUnknownCommandException) {
+                return
+            } catch (_: Exception) {
+                partyQueue.takeIf { ++failed < PARTY_FAILURES }
+            }
+            if (queue != partyQueue) {
+                partyQueue = queue
+                publish(connection.status.value, connection.entities.value)
+            }
+            delay(partyMs)
+        }
+    }
+
+    override suspend fun partyUrl(): String? = try {
+        ma?.partyUrl()
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
 
     /** The network came back: do not wait for the backoff timer. */
@@ -327,6 +371,7 @@ class HaSource(
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
             temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
             words = enriched?.track?.let { wordsOf(it, entity, currentWindow) },
+            party = partyQueue?.let { q -> q == player?.activeQueue } == true,
         )
         // Until the new song is described, what was shown stays: the song before it, all of it.
         _state.value = if (player != null && key != null && awaitsDetails(player, key, t)) fresh.showing(_state.value) else fresh
@@ -584,6 +629,12 @@ class HaSource(
 
         /** Music Assistant's queue is read again after this long even when nothing seems to have moved. */
         const val WINDOW_MAX_AGE_MS = 5 * 60_000L
+
+        /** Music Assistant is asked this often whether a party runs. */
+        const val PARTY_MS = 60_000L
+
+        /** After this many failed questions in a row, a party counts as over. */
+        const val PARTY_FAILURES = 2
 
         /** A book without chapters is asked once more after this long. */
         const val CHAPTERS_AGAIN_MS = 10_000L

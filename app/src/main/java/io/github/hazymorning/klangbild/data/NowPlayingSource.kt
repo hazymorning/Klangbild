@@ -64,6 +64,8 @@ data class SourceState(
     val temperatureUnit: String? = null,
     /** What Music Assistant knows of the words of the song that plays; null while nothing is known (or without Music Assistant). */
     val words: SongWords? = null,
+    /** A party of Music Assistant's Party plugin plays to this speaker, and its guests may join. */
+    val party: Boolean = false,
 )
 
 enum class RemoteCommand { PLAY_PAUSE, PLAY, PAUSE, NEXT, PREVIOUS, VOLUME_UP, VOLUME_DOWN }
@@ -88,4 +90,7 @@ interface NowPlayingSource {
 
     /** Does what [action] says in Home Assistant; whether Home Assistant took it. */
     suspend fun run(action: QuickAction): Boolean = false
+
+    /** The link guests open to join the party ([SourceState.party]); null when none can be had. */
+    suspend fun partyUrl(): String? = null
 }
