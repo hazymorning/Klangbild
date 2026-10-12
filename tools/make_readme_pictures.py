@@ -269,15 +269,28 @@ def dark_room(W, H, tv, colors, strength, albedo=(122, 118, 114), ambient=0.008,
     return to_srgb(tonemap(lin)), lin / paint
 
 
-def wordmark(img, cx, top, cap, color=(236, 239, 244)):
-    """The logo and "Klangbild" side by side, centered on [cx], the name's cap height from [top]."""
+def logo_tile(side, ss=4):
+    """The logo on its own night blue tile with round corners, as on the TV's home screen: its
+    colors and its coverage, for light backgrounds, where the bare logo would fade."""
+    tile = Image.new("L", (side * ss, side * ss), 0)
+    ImageDraw.Draw(tile).rounded_rectangle([0, 0, side * ss - 1, side * ss - 1], radius=int(side * 0.24 * ss), fill=255)
+    a = np.asarray(tile.resize((side, side), Image.LANCZOS), dtype=np.float64) / 255.0
+    return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
+
+
+def wordmark(img, cx, top, cap, color=(236, 239, 244), tile=False):
+    """The logo and "Klangbild" side by side, centered on [cx], the name's cap height from [top];
+    on a light wall the logo sits on its [tile]."""
     word = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
     side = int(round(cap * 1.5))
-    mark = np.asarray(logo(side, background=None), dtype=np.float64)
     gap = int(round(cap * 0.5))
     x0 = int(round(cx - (side + gap + word.shape[1]) / 2))
     y0 = int(round(top + cap / 2 - side / 2))
-    a = mark[..., 3:4] / 255.0
+    if tile:
+        mark, a = logo_tile(side)
+    else:
+        mark = np.asarray(logo(side, background=None), dtype=np.float64)
+        a = mark[..., 3:4] / 255.0
     region = img[y0:y0 + side, x0:x0 + side]
     region[:] = region * (1 - a) + mark[..., :3] * a
     paste(img, word, x0 + side + gap, int(top), color, 0.96)
@@ -291,6 +304,17 @@ def now_playing():
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing.png"), light * 0.16)
     wordmark(img, W / 2, 196, 54)
     save(img, "mockup-now-playing.jpg")
+
+
+def now_playing_light():
+    """The first picture for a light page: the same song by day on the light wall, the room in
+    daylight and the lights behind the TV off, as they are by day; the name above in night blue."""
+    W, H = 2400, 1500
+    tv = Tv(W / 2, 872, 1480, 9)
+    img, rim = daylight_room(W, H, tv)
+    tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
+    wordmark(img, W / 2, 196, 54, color=(22, 32, 58), tile=True)
+    save(img, "mockup-now-playing-light.jpg")
 
 
 def smooth(e0, e1, v):
@@ -811,20 +835,22 @@ def views():
 def daylight_room(W, H, tv, seed=21):
     """A light wall by day: daylight from a window to the left, a soft band of sun across the wall
     with the shade of the window's bars in it, and the TV's own soft shadow. Returns the image
-    (sRGB floats) and the light on the TV's rim (linear)."""
+    (sRGB floats) and the light on the TV's rim (linear). Its softness is measured for a picture
+    1200 px wide and grows with a wider one."""
+    k = W / 1200
     y, x = np.mgrid[0:H, 0:W] + 0.5
     # Daylight: brighter toward the window, a little brighter toward the ceiling.
     sky = 0.70 + 0.26 * np.clip(1 - x / W, 0, 1) ** 1.4 + 0.08 * np.clip(1 - y / H, 0, 1)
     # The sun falls in a slanted band from the upper left, the window's bars across it.
     a = (x * 0.80 + y * 0.60) / W
-    band = blur(((a > 0.18) & (a < 0.62)).astype(np.float64), 34)
-    bars = blur(((np.abs(a - 0.40) < 0.010) | (np.abs((y * 0.80 - x * 0.60) / W - 0.05) < 0.010)).astype(np.float64), 10)
+    band = blur(((a > 0.18) & (a < 0.62)).astype(np.float64), 34 * k)
+    bars = blur(((np.abs(a - 0.40) < 0.010) | (np.abs((y * 0.80 - x * 0.60) / W - 0.05) < 0.010)).astype(np.float64), 10 * k)
     sun = 0.55 * band * (1 - 0.65 * bars) * np.clip(1.35 - x / W, 0, 1)
     light = sky[..., None] * np.array([1.0, 0.985, 0.960]) + sun[..., None] * np.array([1.0, 0.93, 0.80])
     # The TV keeps some light off the wall below and right of it.
-    shadow = blur(rounded_box(H, W, np.add(tv.outer, (20, 26, 20, 26)), 8.0), 22)
+    shadow = blur(rounded_box(H, W, np.add(tv.outer, np.multiply((20, 26, 20, 26), k)), 8.0 * k), 22 * k)
     light = light * (1 - 0.30 * shadow)[..., None]
-    mottle = noise(H, W, 90, seed) * 0.008 + noise(H, W, 22, seed + 1) * 0.003
+    mottle = noise(H, W, 90 * k, seed) * 0.008 + noise(H, W, 22 * k, seed + 1) * 0.003
     paint = to_linear([240, 234, 224])
     lin = paint * (1 + mottle)[..., None] * light
     rim = (0.25 + 0.75 * np.clip(1.2 - x / W - 0.5 * y / H, 0, 1))[..., None] * np.ones(3) * 0.8
@@ -848,10 +874,12 @@ def ink_width(mask):
     return int(cols[-1] + 1) if len(cols) else mask.shape[1]
 
 
-def download_button(scale=4):
+def download_button(scale=4, light=False):
     """The README's download button, built like a store badge: the logo, then "Download for" over
-    "Android TV", the same space on every side, flat night blue with a hairline edge that holds on
-    light and dark pages alike. Its width follows what it holds; the README shows it 236 px wide."""
+    "Android TV", the same space on every side, flat night blue with a hairline edge. The [light]
+    one, for light pages, is pale with night blue words, and the logo sits on its own night blue
+    tile as on the TV's home screen. Its width follows what it holds; the README shows it 236 px
+    wide."""
     h = 64 * scale
     side = int(round(h * 0.60))                  # the logo
     pad = (h - side) // 2                        # the same space left of it as above and below
@@ -869,27 +897,34 @@ def download_button(scale=4):
     shape = np.asarray(shape.resize((w, h), Image.LANCZOS), dtype=np.float64) / 255.0
     edge = np.asarray(edge.resize((w, h), Image.LANCZOS), dtype=np.float64) / 255.0
     img = np.empty((h, w, 3))
-    img[:] = np.array(NAVY, dtype=np.float64)
-    img = img * (1 - edge[..., None] * 0.22) + np.array([150, 170, 205]) * edge[..., None] * 0.22
-    mark = np.asarray(logo(side, background=None), dtype=np.float64)
-    a = mark[..., 3:4] / 255.0
+    if light:
+        img[:] = np.array([238, 243, 250], dtype=np.float64)
+        img = img * (1 - edge[..., None] * 0.16) + np.array(NAVY) * edge[..., None] * 0.16
+        mark, a = logo_tile(side)
+    else:
+        img[:] = np.array(NAVY, dtype=np.float64)
+        img = img * (1 - edge[..., None] * 0.22) + np.array([150, 170, 205]) * edge[..., None] * 0.22
+        mark = np.asarray(logo(side, background=None), dtype=np.float64)
+        a = mark[..., 3:4] / 255.0
     img[pad:pad + side, pad:pad + side] = img[pad:pad + side, pad:pad + side] * (1 - a) + mark[..., :3] * a
     # The two lines as one block centered on the button: the small line's cap height to the large line's baseline.
     cap_small, cap_large = 0.70 * 10.5 * scale, 0.70 * 21.5 * scale
     line_gap = 6.5 * scale
     y0 = h / 2 - (cap_small + line_gap + cap_large) / 2
     tx = pad + side + gap
-    paste(img, small, tx, int(round(y0)), (186, 202, 226))
-    paste(img, large, tx, int(round(y0 + cap_small + line_gap)), (242, 246, 252))
+    paste(img, small, tx, int(round(y0)), (84, 98, 128) if light else (186, 202, 226))
+    paste(img, large, tx, int(round(y0 + cap_small + line_gap)), (12, 24, 52) if light else (242, 246, 252))
     rgba = np.dstack([np.clip(img, 0, 255), shape * 255]).astype(np.uint8)
     os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "download.png")
+    path = os.path.join(OUT, "download-light.png" if light else "download.png")
     Image.fromarray(rgba, "RGBA").save(path, optimize=True)
     print(path, os.path.getsize(path) // 1024, "KB", f"{w}x{h}")
 
 
 if __name__ == "__main__":
     now_playing()
+    now_playing_light()
     views()
     day_and_night()
     download_button()
+    download_button(light=True)

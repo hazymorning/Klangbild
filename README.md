@@ -5,17 +5,20 @@ Klangbild is a now playing screen for Android TV that works with Home Assistant.
 [![Android TV 12+](https://img.shields.io/badge/Android%20TV%2012%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
 
-![Klangbild on a TV at night, the wall behind it lit in the colors of the cover](docs/screenshots/mockup-now-playing.jpg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
+  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="Klangbild on a TV, the album cover next to the song that plays">
+</picture>
 
 When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.
 
-<a href="https://github.com/hazymorning/Klangbild/releases/latest"><img src="docs/screenshots/download.png" width="236" alt="Download for Android TV"></a>
+<a href="https://github.com/hazymorning/Klangbild/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
 Klangbild works with any media player in Home Assistant and shows the album cover, the song and what's coming up next. With Music Assistant it can also show the queue, synced lyrics, and chapters for audiobooks and podcasts. Klangbild can also color smart lights behind the TV to match the album cover.
 
-The background is light during the day and dark at night, and the picture slowly shifts by a few pixels to help prevent burn-in on OLED screens. When nothing has played for ten minutes, Klangbild lets the TV go to its screen saver or standby.
+The background is light during the day and dark at night, and the picture slowly shifts by a few pixels to help prevent burn-in on OLED screens.
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
