@@ -664,6 +664,49 @@ class HaSourceTest {
         }
     }
 
+    /** Music Assistant itself, answering with its queue of [titles] while [answering]. */
+    private fun maServer(titles: () -> List<String>, answering: () -> Boolean = { true }) = MockWebServer().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                maCommands += command
+                if (!answering()) return MockResponse.Builder().code(500).body("{}").build()
+                return when (command) {
+                    "player_queues/items" -> MockResponse.Builder().body(titles().joinToString(",", "[", "]") { maItem(it) }).build()
+                    "player_queues/get" -> MockResponse.Builder().body(maQueue(titles())).build()
+                    else -> MockResponse.Builder().body("[]").build()
+                }
+            }
+        }
+        start()
+    }
+
+    @Test
+    fun `what Music Assistant itself said comes next is forgotten when the song changes`() = runBlocking {
+        player = maPlayer("Erstes Lied", "c1")
+        queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
+        var answering = true
+        val ma = maServer({ listOf("Erstes Lied", "Eingeschoben", "Zweites Lied") }, { answering })
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
+            // Music Assistant falls silent; Home Assistant alone tells what comes next.
+            answering = false
+            queueAnswer = { queueOf(item("Zweites Lied", "zweites"), item("Erstes Lied", "erstes")) }
+            play("Zweites Lied")
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Zweites Lied" && it.queueKnown } }
+            // The first song again, another song after it this time.
+            queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Drittes Lied", "drittes")) }
+            play("Erstes Lied")
+            val again = withTimeout(5_000) { s.state.first { it.player?.track?.title == "Erstes Lied" && it.queueKnown } }
+            assertThat(again.next?.title).isEqualTo("Drittes Lied")
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
     @Test
     fun `without Music Assistant itself it is never asked what comes next`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")

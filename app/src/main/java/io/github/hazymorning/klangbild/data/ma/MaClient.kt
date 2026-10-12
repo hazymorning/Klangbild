@@ -88,15 +88,13 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
      * guests may join; null while guest access is off. Throws [MaUnknownCommandException] where
      * the plugin is not there.
      */
-    suspend fun partyPlayer(): String? = text(command("party/player", JsonObject(emptyMap())))
+    suspend fun partyPlayer(): String? = command("party/player", JsonObject(emptyMap())).string()?.takeIf { it.isNotBlank() }
 
     /**
      * The link guests open to join the party (`party/url`); null while guest access is off. Music
      * Assistant hands out the same link until its code expires, then a new one.
      */
-    suspend fun partyUrl(): String? = text(command("party/url", JsonObject(emptyMap())))
-
-    private fun text(answer: JsonElement): String? = (answer as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+    suspend fun partyUrl(): String? = command("party/url", JsonObject(emptyMap())).string()?.takeIf { it.isNotBlank() }
 
     /**
      * The words Music Assistant has for [track] (a queue item's `media_item`): plain and with
@@ -106,14 +104,15 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
      * on a version without the command.
      */
     suspend fun lyrics(track: JsonObject): Pair<String?, String?> {
-        val answer = command(LYRICS_COMMAND, buildJsonObject { put("track", track) }, slowHttp, LYRICS_TIMEOUT_MS)
-        fun JsonElement?.text() = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
-        return when (answer) {
-            is JsonArray -> answer.getOrNull(0).text() to answer.getOrNull(1).text()
-            is JsonObject -> answer["lyrics"].text() to answer["lrc_lyrics"].text()
+        return when (val answer = command(LYRICS_COMMAND, buildJsonObject { put("track", track) }, slowHttp, LYRICS_TIMEOUT_MS)) {
+            is JsonArray -> answer.getOrNull(0).string() to answer.getOrNull(1).string()
+            is JsonObject -> answer["lyrics"].string() to answer["lrc_lyrics"].string()
             else -> null to null
         }
     }
+
+    /** The text of a JSON string; null for anything else. */
+    private fun JsonElement?.string(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
     /** The same connections, with room for an answer that takes a while (the lyrics). */
     private val slowHttp: OkHttpClient by lazy { http.newBuilder().readTimeout(LYRICS_TIMEOUT_MS, TimeUnit.MILLISECONDS).build() }

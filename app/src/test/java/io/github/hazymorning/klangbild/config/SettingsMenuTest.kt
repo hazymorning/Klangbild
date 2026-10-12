@@ -96,7 +96,7 @@ class SettingsMenuTest {
             )
             val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE) + needs
             for (ctx in contexts) {
-                for (row in SettingsMenu.rows(s, ctx, de)) {
+                for (row in SettingsMenu.sections.flatMap { SettingsMenu.rows(s, ctx, de, it) }) {
                     val entry = row.entry!!
                     assertThat(row.value).isNotEmpty()
                     assertThat(row.description).endsWith(".")

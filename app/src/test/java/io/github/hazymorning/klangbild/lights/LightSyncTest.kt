@@ -77,6 +77,16 @@ class LightSyncTest {
         /** Home Assistant restarted: its snapshot scenes are gone. */
         var scenesLost = false
 
+        /** Slow lights: what the calls change is reported only on [deliver]. */
+        var holding = false
+        private val held = ArrayList<() -> Unit>()
+
+        /** The slow lights report at last. */
+        fun deliver() {
+            held.forEach { it() }
+            held.clear()
+        }
+
         override fun follow(ids: Set<String>) {
             followed = ids
             onFollow?.let { later ->
@@ -122,8 +132,11 @@ class LightSyncTest {
         }
 
         private fun set(id: String, state: String, attrs: JsonObject, t: Long, ctx: String) {
-            val old = states.value.getValue(id)
-            states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx))
+            val report = {
+                val old = states.value.getValue(id)
+                states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx))
+            }
+            if (holding) held += report else report()
         }
 
         /** Someone else changes a light. */
@@ -308,6 +321,33 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
         assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+    }
+
+    @Test
+    fun `a light sent back off stays off while its report is on its way, and joins in when switched on`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val before = ha.calls.size
+        // A slow light: Home Assistant reports it on for a few seconds after it went off.
+        ha.holding = true
+        s.update(target("a").copy(onlyOn = true))
+        testScheduler.advanceTimeBy(6_000)
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("on")
+        ha.deliver()
+        ha.holding = false
+        testScheduler.advanceTimeBy(5_000)
+        // Dimmed, then its scene (off), and nothing after: never saved again nor taken back.
+        val back = ha.calls.drop(before)
+        assertThat(back.filter { it.id == right }.map { it.brightness }).containsExactly(LightSync.DARKEST)
+        assertThat(back.filter { it.name == "scene.create" }).isEmpty()
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+        // Switched on by hand, it follows the music again.
+        ha.byHand(right, "on", buildJsonObject { put("brightness", 90) })
+        testScheduler.advanceTimeBy(3_000)
+        assertThat(ha.calls.drop(before).filter { it.id == right }).hasSize(2)
     }
 
     @Test

@@ -21,6 +21,9 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
     /** Up or down is held: the cursor runs on with the key's repeats. */
     @Volatile private var held = false
 
+    /** A group was just opened: the repeats of the key that opened it change nothing there. */
+    @Volatile private var opening = false
+
     val isOpen: Boolean get() = cursor != null
 
     /** Opens the menu on its groups (an open one stays where it is). */
@@ -90,30 +93,38 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
     /**
      * OK or right on a group opens it, on its first line. On a setting, changes it: left (-1) or
      * right (+1) along its scale; OK goes round ([wrap]). The connection lines, and the lines that
-     * need something set up first, open the setup code.
+     * need something set up first, open the setup code. A held key ([repeat]) runs along a scale,
+     * but never opens a group, nor goes on into the group it has just opened.
      */
-    fun change(direction: Int, wrap: Boolean) {
-        val c = cursor ?: return
-        touchedAt = host.now()
-        val group = section
-        if (group == null) {
-            if (direction > 0) {
-                synchronized(host.lock) {
-                    section = SettingsMenu.sections[c]
+    fun change(direction: Int, wrap: Boolean, repeat: Boolean = false) {
+        // Read together: the menu may close by itself at any moment (expire).
+        val (c, group) = synchronized(host.lock) {
+            val c = cursor ?: return
+            val group = section
+            if (repeat && (group == null || opening)) return
+            opening = false
+            touchedAt = host.now()
+            if (group == null) {
+                if (direction > 0) {
+                    section = SettingsMenu.sections.getOrNull(c) ?: return
                     cursor = 0
                     held = false
+                    opening = true
                     host.recompute()
                 }
+                return
             }
-            return
+            c to group
         }
-        val entry = SettingsMenu.entriesOf(group)[c]
+        val entry = SettingsMenu.entriesOf(group).getOrNull(c) ?: return
         val s = host.settings
         when {
             // The connections, and what needs them or lights or values first, are set up on the phone.
             entry == MenuEntry.CONNECTION || entry == MenuEntry.MUSIC_ASSISTANT || SettingsMenu.needsSetup(entry, s) -> {
-                cursor = null
-                section = null
+                synchronized(host.lock) {
+                    cursor = null
+                    section = null
+                }
                 host.requestSetup(true)
             }
             // The sleep timer is no setting: it lives until it has paused the music once.

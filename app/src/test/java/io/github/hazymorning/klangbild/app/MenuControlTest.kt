@@ -32,6 +32,7 @@ class MenuControlTest {
     private var recomputed = 0
     private var shown = 0
     private var setup = 0
+    private var applied = 0
 
     private val host = object : ControllerHost {
         override val lock: Any = this
@@ -52,7 +53,9 @@ class MenuControlTest {
             shown++
         }
         override fun openMenu() = Unit
-        override fun applySettings(updated: Settings) = Unit
+        override fun applySettings(updated: Settings) {
+            applied++
+        }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) {
             setup++
@@ -121,6 +124,38 @@ class MenuControlTest {
         menu.open()
         assertThat(state().section).isNull()
         assertThat(state().cursor).isEqualTo(0)
+    }
+
+    @Test
+    fun `right held on a group opens it once and changes nothing in it until it is pressed again`() {
+        menu.open()
+        menu.change(+1, wrap = false)
+        menu.change(+1, wrap = false, repeat = true)
+        menu.change(+1, wrap = false, repeat = true)
+        assertThat(state().section).isEqualTo(MenuSection.PICTURE)
+        assertThat(state().cursor).isEqualTo(0)
+        assertThat(applied).isEqualTo(0)
+        // Pressed again it changes the line, and held it runs along the scale.
+        menu.change(+1, wrap = false)
+        menu.change(+1, wrap = false, repeat = true)
+        assertThat(applied).isEqualTo(2)
+        // On the groups a held key opens none.
+        menu.back()
+        menu.move(+1)
+        menu.change(+1, wrap = false, repeat = true)
+        assertThat(state().section).isNull()
+    }
+
+    @Test
+    fun `a key on a menu that has closed by itself does nothing`() {
+        menu.open()
+        menu.change(+1, wrap = true)
+        repeat(4) { menu.move(+1) }
+        menu.expire(MenuControl.IDLE_MS + 1)
+        menu.change(+1, wrap = false)
+        menu.move(+1)
+        assertThat(menu.isOpen).isFalse()
+        assertThat(applied).isEqualTo(0)
     }
 
     @Test

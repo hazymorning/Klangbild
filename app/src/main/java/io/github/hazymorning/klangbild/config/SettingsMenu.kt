@@ -101,9 +101,6 @@ object SettingsMenu {
     /** Minutes offered for the sleep timeout. */
     val sleepChoices = listOf(5, 10, 15, 20, 30, 45, 60, 90, 120)
 
-    /** Every setting's line, all groups one after the other. */
-    fun rows(s: Settings, ctx: MenuContext, t: Texts): List<MenuRow> = entries.map { row(it, s, ctx, t) }
-
     /** The lines of [section]'s settings. */
     fun rows(s: Settings, ctx: MenuContext, t: Texts, section: MenuSection): List<MenuRow> = entriesOf(section).map { row(it, s, ctx, t) }
 

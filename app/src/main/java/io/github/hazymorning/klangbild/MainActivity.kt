@@ -215,8 +215,8 @@ class MainActivity : ComponentActivity() {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> controller.menuMove(-1, held = event.repeatCount > 0)
             KeyEvent.KEYCODE_DPAD_DOWN -> controller.menuMove(+1, held = event.repeatCount > 0)
-            KeyEvent.KEYCODE_DPAD_LEFT -> controller.menuChange(-1, wrap = false)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> controller.menuChange(+1, wrap = false)
+            KeyEvent.KEYCODE_DPAD_LEFT -> controller.menuChange(-1, wrap = false, repeat = event.repeatCount > 0)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> controller.menuChange(+1, wrap = false, repeat = event.repeatCount > 0)
             // OK acts on release, like everywhere else (a long press must not also change a line).
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> Unit
             KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> controller.closeMenu()

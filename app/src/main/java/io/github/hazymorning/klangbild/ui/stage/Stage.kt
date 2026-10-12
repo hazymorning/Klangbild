@@ -297,7 +297,7 @@ fun TextLayer(
                 }
             }
             // 6: what comes next, on the artwork's bottom edge
-            if (plan.next != null) NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT)) else Box(Modifier)
+            NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT))
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
@@ -387,12 +387,17 @@ internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, wi
 
 /**
  * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays
- * on, or the hint for the quick settings) cross-fades in place.
+ * on, or the hint for the quick settings) cross-fades in place, and so does one that comes or
+ * goes ([text] null: none).
  */
 @Composable
-private fun NextLine(text: String, lead: String, styles: StageStyles, modifier: Modifier) {
-    Crossfade(lead to text, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "next") { (l, t) ->
-        BasicText(nextText(t, styles, l), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun NextLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
+    Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "next") { line ->
+        if (line == null) {
+            Box(Modifier)
+        } else {
+            BasicText(nextText(line.second, styles, line.first), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
