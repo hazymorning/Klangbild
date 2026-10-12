@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Measures the window view on the running Android TV emulator: installs the release APK,
+# Measures the landscape on the running Android TV emulator: installs the release APK,
 # starts the app with the given extras, lets it run, and records frames (gfxinfo), the app's
 # CPU time and its memory (PSS, graphics) once a minute. Leaves everything in measure/ and
 # prints a summary. The emulator renders with a software GPU (SwiftShader): its frame times

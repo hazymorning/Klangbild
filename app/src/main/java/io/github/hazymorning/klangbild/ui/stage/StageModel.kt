@@ -41,6 +41,8 @@ class StageModel(
     val next: String? = null,
     /** The next item's title alone, for when title and artist don't both fit. */
     val nextTitle: String? = null,
+    /** The words before [next]: "Up next", unless the line tells how to open the quick settings. */
+    val nextLead: String? = null,
     /** The status line at the top right: where the music plays, the volume, the time. */
     val statusLine: StatusLine? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */

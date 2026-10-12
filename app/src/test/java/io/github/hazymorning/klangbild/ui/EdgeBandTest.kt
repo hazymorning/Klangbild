@@ -134,11 +134,17 @@ class EdgeBandTest {
     @Test
     fun theScreenEdgesStayBlackBehindTheMenu() {
         val settings = io.github.hazymorning.klangbild.config.Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.wohnzimmer")
-        val rows = io.github.hazymorning.klangbild.config.SettingsMenu.rows(settings, io.github.hazymorning.klangbild.config.MenuContext(), Fixtures.texts)
-        var cursor by mutableStateOf(0)
-        compose.setContent { Fixtures.Still { MenuScreen(io.github.hazymorning.klangbild.app.MenuState(rows, cursor)) } }
+        val section = io.github.hazymorning.klangbild.config.MenuSection.INFO
+        val rows = io.github.hazymorning.klangbild.config.SettingsMenu.rows(settings, io.github.hazymorning.klangbild.config.MenuContext(), Fixtures.texts, section)
+        var state by mutableStateOf(Fixtures.menuGroups())
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
+        val groups = io.github.hazymorning.klangbild.config.SettingsMenu.sections.size
+        for (c in listOf(0, groups - 1)) {
+            state = Fixtures.menuGroups(cursor = c)
+            assertWithMessage("group $c").that(brightestInBand()).isEqualTo(0)
+        }
         for (c in listOf(0, rows.size / 2, rows.size - 1)) {
-            cursor = c
+            state = io.github.hazymorning.klangbild.app.MenuState(rows, c, section = section)
             assertWithMessage(rows[c].label).that(brightestInBand()).isEqualTo(0)
         }
     }

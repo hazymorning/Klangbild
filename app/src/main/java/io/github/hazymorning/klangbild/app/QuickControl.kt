@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The quick settings while they are open (down on the remote): which entry the cursor is on,
- * and what OK does to it. While they are open, the window view stays as it was unless they
+ * and what OK does to it. While they are open, the landscape stays as it was unless they
  * change it. Untouched, they close after [IDLE_MS].
  */
 internal class QuickControl(private val host: ControllerHost) {
@@ -31,7 +31,7 @@ internal class QuickControl(private val host: ControllerHost) {
     @Volatile private var cursor: QuickKey? = null
     @Volatile private var touchedAt = 0L
 
-    /** Whether the window view showed when the quick settings opened: it stays as it was while they are open. */
+    /** Whether the landscape showed when the quick settings opened: it stays as it was while they are open. */
     @Volatile private var hold: Boolean? = null
 
     /** A view chosen with OK, taken once the presses stop (so a step through the views never shows the one between). */
@@ -65,7 +65,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     val isOpen: Boolean get() = cursor != null
 
-    /** Opens the quick settings on the view entry. */
+    /** Opens the quick settings on the view entry. Once opened, the stage no longer tells how. */
     fun open(menuOpen: Boolean) {
         synchronized(host.lock) {
             if (menuOpen || cursor != null) return
@@ -74,6 +74,7 @@ internal class QuickControl(private val host: ControllerHost) {
             hold = host.ui.vista != null
             host.recompute()
         }
+        host.settings.let { s -> if (!s.quickSeen) host.applySettings(s.copy(quickSeen = true)) }
     }
 
     /** Closes the quick settings (up, back, after a while alone); a view still waiting is taken now. */
@@ -134,6 +135,11 @@ internal class QuickControl(private val host: ControllerHost) {
             QuickItem.SHUFFLE -> toggleShuffle()
             QuickItem.PARTY -> toggleParty()
             QuickItem.ACTION -> host.settings.quickActions.getOrNull(row.key.action)?.let { runAction(row.key.action, it) }
+            // The way into all settings: the row makes way for the menu.
+            QuickItem.SETTINGS -> {
+                close()
+                host.openMenu()
+            }
         }
     }
 
@@ -149,7 +155,7 @@ internal class QuickControl(private val host: ControllerHost) {
         }
     }
 
-    /** Whether the window view shows while the quick settings are open; null when they leave it to its delays. */
+    /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
     val vistaHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
     /** The quick settings as they show for [screen], null while they are closed (called under the lock). */
@@ -159,7 +165,7 @@ internal class QuickControl(private val host: ControllerHost) {
         return QuickState(rows, indexOf(rows.map { it.key }, c))
     }
 
-    /** Takes the view chosen in the quick settings: the window view, or one of the stage's two views. */
+    /** Takes the view chosen in the quick settings: the landscape, or one of the stage's two views. */
     private fun applyPicture() {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
@@ -233,7 +239,7 @@ internal class QuickControl(private val host: ControllerHost) {
     /**
      * Shows the party's code, or no longer. On, its link is asked for at once and again every
      * [PARTY_URL_MS] (soon again when no answer came); a link once had stays until a new one
-     * comes. The code shows at once: the window view makes way.
+     * comes. The code shows at once: the landscape makes way.
      */
     private fun toggleParty() {
         val src = host.source ?: return

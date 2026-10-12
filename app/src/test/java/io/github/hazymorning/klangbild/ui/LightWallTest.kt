@@ -54,8 +54,7 @@ class LightWallTest {
 
     @Test fun menu() = shot("menu") {
         val s = Settings(haUrl = "http://ha.local:8123", haToken = "x", entityId = "media_player.wohnzimmer")
-        val rows = SettingsMenu.rows(s, MenuContext(LinkState.CONNECTED, light), Fixtures.texts)
-        MenuScreen(MenuState(rows, SettingsMenu.entries.indexOf(MenuEntry.APPEARANCE)), appearance = light)
+        MenuScreen(Fixtures.menu(MenuEntry.APPEARANCE, s, MenuContext(LinkState.CONNECTED, light)), appearance = light)
     }
 
     @Test fun setup() = shot("setup") {

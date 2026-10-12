@@ -92,9 +92,32 @@ class OptionsTest {
     }
 
     private fun menu(entry: MenuEntry, settings: Settings = configured, ctx: MenuContext = MenuContext(LinkState.CONNECTED)) =
-        MenuState(SettingsMenu.rows(settings, ctx, Fixtures.texts), SettingsMenu.entries.indexOf(entry))
+        Fixtures.menu(entry, settings, ctx)
+
+    @Test fun menuGroups() = shot("menu_groups") { MenuScreen(Fixtures.menuGroups(cursor = 1)) }
+
+    @Test fun menuGroupsLight() = shot("menu_groups_light") { MenuScreen(Fixtures.menuGroups(cursor = 3), appearance = io.github.hazymorning.klangbild.color.Appearance.LIGHT) }
 
     @Test fun menuTop() = shot("menu_clock") { MenuScreen(menu(MenuEntry.CLOCK)) }
+
+    /** Lyrics without Music Assistant: dimmed, and its value says what it needs. */
+    @Test fun menuLyricsNeeds() = shot("menu_lyrics_needs") { MenuScreen(menu(MenuEntry.LYRICS)) }
+
+    /** No lights chosen yet: both lines dimmed, the explanation says how to set them up. */
+    @Test fun menuLightsNeeded() = shot("menu_lights_set_up") { MenuScreen(menu(MenuEntry.LIGHTS)) }
+
+    /** OK on "Information": the groups give way to its settings, the first one in the light. */
+    @Test fun menuOpensAGroup() {
+        var state by androidx.compose.runtime.mutableStateOf(Fixtures.menuGroups(cursor = 1))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MenuScreen(state) }
+        compose.mainClock.advanceTimeBy(100)
+        var frame = 0
+        fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_open_%02d.png".format(frame++))
+        grab()
+        state = menu(MenuEntry.CLOCK)
+        repeat(6) { compose.mainClock.advanceTimeBy(80); grab() }
+    }
 
     @Test fun menuGroup() = shot("menu_group") { MenuScreen(menu(MenuEntry.GROUP)) }
 
@@ -123,16 +146,16 @@ class OptionsTest {
         grab()
         state = menu(MenuEntry.GROUP)
         repeat(6) { compose.mainClock.advanceTimeBy(70); grab() }
-        state = menu(MenuEntry.APPEARANCE)
+        state = menu(MenuEntry.LYRICS)
         repeat(6) { compose.mainClock.advanceTimeBy(70); grab() }
     }
 
     /**
-     * Down held from "Album and year": the list runs on through the light and the explanation
-     * goes; let go, the list comes to rest and the explanation of its line comes back.
+     * Down held from "Clock": the list runs on through the light and the explanation goes; let
+     * go, the list comes to rest and the explanation of its line comes back.
      */
     @Test fun menuHeld() {
-        var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
+        var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.CLOCK))
         compose.mainClock.autoAdvance = false
         compose.setContent { MenuScreen(state) }
         compose.mainClock.advanceTimeBy(100)
@@ -143,7 +166,7 @@ class OptionsTest {
         state = state.copy(cursor = state.cursor + 1)
         compose.mainClock.advanceTimeBy(400)
         grab()
-        repeat(8) { i ->
+        repeat(6) { i ->
             state = state.copy(cursor = state.cursor + 1, held = true)
             compose.mainClock.advanceTimeBy(50)
             if (i % 2 == 1) grab()

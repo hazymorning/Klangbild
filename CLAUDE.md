@@ -10,7 +10,7 @@ sentence. Its pictures are mockups in `docs/screenshots/`: the app's own screens
 (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set in a room by
 `tools/make_readme_pictures.py`, made again when the look changes, and the download button under
 the first paragraph. The mockups stay calm and real, as a photograph of a room would be: the
-lights' colors soft on a matte wall, no colorful backgrounds; the window view on a deep winter
+lights' colors soft on a matte wall, no colorful backgrounds; the landscape on a deep winter
 night (stars, a thin moon, the campfire) in a cozy room worked out in 3D, a lamp's light falling
 through its shade, candles, books and a record sleeve on a walnut sideboard.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
@@ -146,7 +146,7 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 one per picture, ids kept), Spoken (MediaKind, Chapter/Chapters/ChapterPlace:
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
-                sun by the local clock, without `sun.sun`), VistaPolicy (when the window view takes
+                sun by the local clock, without `sun.sun`), VistaPolicy (when the landscape takes
                 the screen), ValueText (a value of one's own in words: precision, unit, on and off,
                 a time of day), Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
                 lines with breaks; LyricsCursor: the line in the middle a little early, a small step
@@ -166,7 +166,7 @@ render/         HaloLayout (the grid, per view), CoverField (cover colors: groun
                 perspective; the balance with cards missing), FlowCards (baked card textures),
                 FlowLight (the pool of light above the cards), ImageOps
 art/            ChladniArt (missing-cover art), StableHash
-vista/          The window view, a paper diorama: PaperMotif (folded mountains, forest lines, the
+vista/          The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
                 clearing, the near banks, standees, birches, tent, boulders and the fire per label
                 side, mirrored on the right), PaperBake* (sheets as two ink weights + the paper's
                 light + coverage in boxes of their own, cut front to back with the shade of what
@@ -189,25 +189,27 @@ lights/         LightSync (any light behind the TV via Home Assistant: a color p
                 snapshot_entities and given back with scene.turn_on, our own note as a fallback;
                 rate limits, takeover by others), LightColors (CoverLightColors: the cover's colors
                 kept apart, placed as in the cover, moving on with motion; VistaLightColors: the
-                window view's own palette: sky, meadow or moonlit wood, mountains, sun glow, fire),
+                landscape's own palette: sky, meadow or moonlit wood, mountains, sun glow, fire),
                 LightColor (xy of a color's hue at its purest, grays as white (neutral by day,
                 warmer at night), a color temperature for white-only lights, brightness floor)
 app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts)
-                and its parts: MenuControl, QuickControl (+ the own buttons, the party code),
+                and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
+                own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, LightLevel, AppearanceMode, BackgroundMode,
                 MotionLevel, RoomLights, RoomLightLevel) + SettingsStore (DataStore; tokens sealed by
-                SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (entries, values,
-                explanations, steps), QuickMenu (the quick settings' entries and values, Lyrics
-                On / Off / None, Party code On / Off),
+                SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
+                entries, values, explanations, steps; what needs something set up first dimmed),
+                QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
+                On / Off, Settings),
                 QuickActions (the own buttons: a name, an entity, what its kind does, a script's
                 variables) + Condition (when a button shows: a state or attribute is, is not, is
                 above or below a value; a list counts its entries), OwnValues (the values in the
                 status line: a name, an entity, an attribute),
-                LaunchExtras (am start extras and klangbild:// links: English names and values, the
-                German ones of earlier versions still taken)
+                LaunchExtras (am start extras and klangbild:// links: English names and values, those
+                of earlier versions still taken, the German ones and `window_view`)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
@@ -218,7 +220,8 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
                 arrived is still answered when it stops, checked against the address it came to;
                 once a stop has returned, the port takes no connection: it waits for the thread
                 blocked in accept(), which holds the socket open until it lets go)
-ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek; provides LocalTexts),
+ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, the quick settings'
+                hint; provides LocalTexts),
                 stage/ (Stage layers, Typesetting, StageTheatre transitions, ProgressBar (a range:
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
@@ -230,8 +233,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek; pr
                 flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheatre:
                 keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
-                MenuScreen (+ MenuGrid), QuickBar (+ QuickGrid; a long row glides), RestScreen,
-                SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
+                MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
+                RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
                 held lines), DebugOverlay, vista/ (Vista: bake off the main thread and ahead of
                 time, 20 fps tick, season cross-fade, the weather glided in over minutes;
                 VistaWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
@@ -377,8 +380,9 @@ UI words are given in English with the German in parentheses where it matters.
   time as a time of day (`ValueText`); what Home Assistant cannot tell shows nothing, so a
   template helper can hide a value. The place always has its room: values that do not fit
   beside it are left out from the last, never cut. They tick like the clock, no cross-fade.
-- **The song's words** (`Lyrics`, `LyricsText`; the quick settings' Lyrics (Songtext),
-  remembered like the view; Music Assistant only, nothing to set up): a view of the text column,
+- **The song's words** (`Lyrics`, `LyricsText`; Lyrics (Songtext) in the quick settings and
+  under Information, remembered like the view; Music Assistant only, nothing else to set up): a
+  view of the text column,
   not a screen. The line sung now stands centered on the artwork (first cap height to last
   baseline, `CentringTest`) in the title's ink; the lines around it in the quiet ink, each
   fading as a whole with the distance of its nearer edge (whole within 40 dp, like the settings
@@ -394,33 +398,38 @@ UI words are given in English with the German in parentheses where it matters.
   its place, title and artist stand where "Up next" stands, title block, album and bar give way
   (a key brings the bar for a moment, above the song, the words making room). Switching them on
   or off, and words that come late, use the stage's text change (`Change.WORDS`); not in the
-  window view. The words come from the queue item (`media_item.metadata`: `lrc_lyrics`, else
+  landscape. The words come from the queue item (`media_item.metadata`: `lrc_lyrics`, else
   LRC in `lyrics`), else from `metadata/get_track_lyrics` (Music Assistant 2.8 and later; raw
   LRC before 2.10) with a 75 s timeout of its own (Music Assistant asks its online source at
   most once in 30 s), never holding up the queue reads; the song up next is asked ahead. Songs
   only, synced only: plain words are none. Set once per song off the main thread; a frame only
   moves one canvas.
 - **Remote:** OK plays and pauses, held it opens the settings; left and right change the song
-  (spoken word: jump); down opens the quick settings and, pressed again, closes them; up
-  brings the window view and, pressed again, leaves it (both also show hidden parts for a
-  moment; with "Up and down: Volume" both turn the speaker's volume instead); back closes
-  what lies on top (settings, quick settings, window view), else the app. Commands go to Home
-  Assistant only where the player's `supported_features` allow them.
+  (spoken word: jump); down opens the quick settings and, pressed again, closes them; up brings
+  the landscape and, pressed again, leaves it (both also show hidden parts for a moment; with
+  "Up and down: Volume" both turn the speaker's volume instead); back closes what lies on top (a
+  settings group goes back to the groups first, then the settings, the quick settings, the
+  landscape), else the app. Commands go to Home Assistant only where the player's
+  `supported_features` allow them.
 - **Quick settings** (`QuickMenu`, `QuickBar`; down on the remote): one row along the bottom
   edge, rising 22 dp as it fades in, where the key points: View (Single cover / Cover Flow /
-  Window view, taken 0.9 s after the last press so no view in between shows), Lyrics On / Off,
-  or None while this song has no synced words (only with Music Assistant connected and a song on
+  Landscape, taken 0.9 s after the last press so no view in between shows), Lyrics On / Off, or
+  None while this song has no synced words (only with Music Assistant connected and a song on
   stage), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
   Lights On / Off (off remembers the level), Shuffle On / Off (only where the player can
-  shuffle; the sleep timer lives in the menu), then the own buttons. Left and right choose, OK
-  changes, down, up or back close, 20 s alone close them. Each entry is its name (15 sp, quiet)
-  over its value (20 sp), on the stage grid from 88 dp; its place is as wide as its widest value
-  (only the last is as wide as what it says), so nothing moves when a value changes; the chosen
-  one lit from below like the menu's line. The built-in entries fit the screen in both languages
-  (`LanguageTest`); a row longer than the room (own buttons; in German, the party code) glides
-  to show the chosen entry whole, entries beyond its ends faded out. An opaque veil (black,
-  paper) from 448 dp down, softened above: nothing behind shows through. They leave the window
-  view as it was.
+  shuffle; the sleep timer lives in the menu), then the own buttons, and last Settings: Open,
+  the way into all settings. Left and right choose, OK changes, down, up or back close, 20 s
+  alone close them. Each entry is its name (15 sp, quiet) over its value (20 sp), on the stage
+  grid from 88 dp; its place is as wide as its widest value (only the last is as wide as what it
+  says), so nothing moves when a value changes; the chosen one lit from below like the menu's
+  line. A row longer than the room (in German the built-in entries alone are) glides to show the
+  chosen entry whole, entries beyond its ends faded out; every entry fits the room on its own
+  (`LanguageTest`). An opaque veil (black, paper) from 448 dp down, softened above: nothing
+  behind shows through. They leave the landscape as it was. Until they have been opened once
+  (`Settings.quickSeen`), the stage tells how: 3 s after it comes, for 12 s, its bottom line
+  says "Arrow down opens the quick settings" (Pfeil runter öffnet die Schnelleinstellungen) in
+  the place and style of "Up next" (`QuickHintTest`); not with "Up and down: Volume", not beside
+  the song's words.
 - **Own buttons** (`QuickActions`, the setup page's section 7, at most 6): a name of one's own
   (at most 32 characters; without one, the entity's own words) and a Home Assistant entity,
   whose kind says what OK does: a script runs (`script.turn_on` with its variables (the fields
@@ -445,32 +454,39 @@ UI words are given in English with the German in parentheses where it matters.
   in the middle card's place, with its mirror image, the cards turning beneath it (those passing
   the middle fade under it). The song's lines stay beside it, the wall's light and the lights
   stay the song's. It comes and goes in a quiet cross-fade once its picture is made, stays while
-  songs change, and takes the new paper with the wall. Turning it on leaves the window view;
-  while it shows, the window view comes only when chosen and a pause never turns into the clock,
+  songs change, and takes the new paper with the wall. Turning it on leaves the landscape;
+  while it shows, the landscape comes only when chosen and a pause never turns into the clock,
   so the guests can always scan it. Off, or when the party ends or plays elsewhere: the cover
   comes back, and the next party starts without it. `PartyCodeTest` reads the code from rendered
   pixels in both views, on both walls, on the cover's colors and in a pause.
-- **Settings menu** (OK long-press or Menu): the stage's grid, heading and the chosen line's
-  explanation on the left, lines on the right; the chosen line sits at the screen's middle in
-  a soft, low band of light (σ 120 × 12 dp, ≈ L* 10) that lights it alone; the list glides
-  through it and fades with distance. A held key runs the list on evenly (`animateGlide`: a
-  glide that comes while one runs carries on from its pace; until 6.3 it started over from a
+- **Settings menu** (OK long-press, Menu, or Settings in the quick settings), in two levels as
+  on every TV: first the groups, then the settings of the one opened. It opens on the groups; OK
+  or right opens a group on its first line, Back goes to the groups (on the group left) and from
+  there out. The stage's grid, heading (Settings, or the group's name) and the chosen line's
+  explanation on the left (on the groups, what is in each), lines on the right; the chosen line
+  sits at the screen's middle in a soft, low band of light (σ 120 × 12 dp, ≈ L* 10) that lights
+  it alone; the list glides through it and fades with distance. Into a group or back out, the
+  level left fades (140 ms), then the new one comes (220 ms), already resting on its line: two
+  lists never lie over each other. A held key runs the list on evenly (`animateGlide`: a glide
+  that comes while one runs carries on from its pace; until 6.3 it started over from a
   standstill at every repeat and stuttered), a step moves only the cursor, and the explanation
   goes while the key is held and comes back with the line it is let go on; the quick settings'
-  row glides the same way. Values are words, changes apply at once (left and right
-  clamp, OK wraps), closes itself after 60 s. Options show or hide parts, choose the view, the
-  wall and the language, and dim the light; no fonts, colors or layout variants. Labels are
-  the common words people know from TVs and phones, values plain words: sections Picture
-  (View: Single cover / Cover Flow, Appearance), Information (Clock, Progress bar, Next track,
-  Album and year, Speaker group, Volume, Values), Effects (Background: Plain / Cover colors,
-  Intensity, Motion: Off / Slow / Medium / Fast, Lights: Off / 10 to 100% with a slider,
-  Lights that are off: Turn on / Leave off),
-  Window view (When paused, While playing, Mini player: Bottom left / Bottom right / Off),
-  Remote (Control music, Up and down: Window view, menu / Volume, Audiobooks, podcasts: Jump /
-  Change track), Timer (Sleep timer, Turn off after, When turning off: Close app / Screen
-  saver), Connection (Home Assistant, Music Assistant), System (Language: System language /
-  English / Deutsch). Label + value fit the 352 dp column on one line in both languages
-  (`LanguageTest` measures every value).
+  row glides the same way. Values are words, changes apply at once (left and right clamp, OK
+  wraps), closes itself after 60 s. Every setting is always there: one that cannot work until
+  something is set up on the phone (Lyrics without Music Assistant: "Needs Music Assistant"; the
+  lights and the values while none are chosen: "Set up") is dimmed, never brighter when chosen
+  than another line at rest, its explanation says what it needs, and OK opens the setup. Options
+  show or hide parts, choose the view, the wall and the language, and dim the light; no fonts,
+  colors or layout variants. Labels are the common words people know from TVs and phones, values
+  plain words: groups Picture (View: Single cover / Cover Flow, Appearance, Background: Plain /
+  Cover colors, Intensity, Motion: Off / Slow / Medium / Fast), Information (Clock, Progress
+  bar, Next track, Album and year, Speaker group, Volume, Values, Lyrics), Lights (Brightness:
+  Off / 10 to 100% with a slider, Lights that are off: Turn on / Leave off), Landscape (When
+  paused, While playing, Mini player: Bottom left / Bottom right / Off), Remote (Control music,
+  Up and down: Landscape, menu / Volume, Audiobooks, podcasts: Jump / Change track), Timer
+  (Sleep timer, Turn off after, When turning off: Close app / Screen saver), System (Home
+  Assistant, Music Assistant, Language: System language / English / Deutsch). Label + value fit
+  the 352 dp column on one line in both languages (`LanguageTest` measures every value).
 - **Language:** English is the default, German in `values-de`. The menu's Language line uses
   Android's per-app language (`LocaleManager` from API 33, where the choice also shows in the
   system's app settings; the app's own preference on API 31 and 32) and applies at once
@@ -499,7 +515,7 @@ UI words are given in English with the German in parentheses where it matters.
   (`FieldClock`): a pause freezes it, nothing jumps; screen and lights read the same clock. One
   frame tick (about 30 a second) for the field and the progress bar, never two loops out of step,
   and none while nothing reads it (no bar shown, the colors still, the settings over the stage).
-  In the window view the label's bar is redrawn in the scenery's frames.
+  In the landscape the label's bar is redrawn in the scenery's frames.
 - **Lights** (any light Home Assistant controls, chosen on the setup page; Off or 10 to 100% in
   steps of 10, default 60%, a slider in the menu): brighter by day, the level as set while the
   sun is up, down to × 0.45 at night (sun elevation 6° to −8°), so they show in daylight and
@@ -508,7 +524,7 @@ UI words are given in English with the German in parentheses where it matters.
   Oklab apart, placed as they sit in the cover (leftmost color left, rightmost right, the
   third above the TV); one color gives itself and its neighbors ±32° round the hue circle, a
   gray cover three whites. With motion the colors move on from light to light (a step per 90 s
-  of field time, resting 70% of it). In the window view (`VistaLightColors`) its own palette:
+  of field time, resting 70% of it). In the landscape (`VistaLightColors`) its own palette:
   above the TV its sky (the weather's too), on the side away from the fire the clearing's green
   (by night the moonlit wood), on the fire's side the mountains' paper and at night the fire's
   light, the glow of dawn or dusk on the sun's side; worked out every 30 s of its sky's time,
@@ -579,63 +595,61 @@ UI words are given in English with the German in parentheses where it matters.
   figures) in the very middle of a dim pool of light (the user wants it centered; burn-in care
   is the ±6 dp drift, the changing figures and the screen ending after "Turn off after"); one
   plain sentence when something is wrong ("Home Assistant can't be reached.").
-- **Window view** (Fensterblick, `vista/`): a diorama of real paper, not a flat illustration
-  (the smooth paper cut read as a comic) and not a photograph. Every sheet with its grain
-  (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven hand,
-  mountains folded from card (the faces toward the sun or moon lit, some light from the upper
-  right always), snow caps of torn white paper a hair wider than their mountain, forest strips
-  as silhouettes, standees (firs, birches) with a narrow margin of the card's light core (a
-  breath of the tree in it, never plain white) and slim trunks (a tall fir's no bell), broad
-  trees with clustered crowns, soft shadows and the shade of what stands close in front, the
-  far sheets a little out of focus. Mountains and forest, a campfire of crumpled tissue in the
+- **Landscape** (Landschaft, `vista/`; the window view until 6.3): a diorama of real paper, not
+  a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
+  with its grain (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven
+  hand, mountains folded from card (the faces toward the sun or moon lit, some light from the
+  upper right always), snow caps of torn white paper a hair wider than their mountain, forest
+  strips as silhouettes, standees (firs, birches) with a narrow margin of the card's light core
+  (a breath of the tree in it, never plain white) and slim trunks (a tall fir's no bell), broad
+  trees with clustered crowns, soft shadows and the shade of what stands close in front, the far
+  sheets a little out of focus. Mountains and forest, a campfire of crumpled tissue in the
   clearing (always burning; at night the light of the clearing; sparks rising, thin smoke
   drifting off with the wind), a tent beside it (a lantern flickering in its door at night),
   boulders, flowers in spring and summer, fallen leaves in autumn, fireflies on summer nights;
   no lake, no figures, animals or events, no lightning flashes. Plates per hour (morning and
   evening apart) blended by the sun; papers per season; white paper sinks into the night more
-  than color; moonlight; seasons by date (south half a year on), shapes re-cut in 1/16 steps
-  and cross-faded (blossom only colors). **The weather is seen** (`Weather` from the entity's
-  state, `cloud_coverage` and `wind_speed` in its `wind_speed_unit`, glided in over minutes):
-  a clear day's deeper blue; strips of tissue, heaps as it clouds over, an overcast ceiling of
-  heaps hung upside down; the slate of rain, a storm's dark ceiling over a pale horizon; the
-  bright gray of snow; fog's milk swallowing the far range; rain and storm darken the land,
-  falling weather veils the far sheets. Snowflakes of white paper (each with a breath of
-  shadow) and rain as fine threads fall at three depths with their layers and land on the
-  meadow; mist lies as thin tissue in the valley and the forest (fog, rain, calm mornings),
-  never over the clearing. The wind drives the clouds (on a clock of their own, so a gust
-  never makes them jump), bends the flames and the rain, and sways the cut-outs. The user found
-  5.1 far too subtle: motion must be **visible**, calm but plain. Clouds cross the screen in a
-  few minutes; the cut-outs sway 1.1° to 4° about their feet (leaning into the wind, gusts
-  shared by the meadow), the tall firs on the near banks (sprites cut whole beyond the screen)
-  a little less; never a loop, 20 fps; light recomputed every 10 s, each step below one level.
-  The camera (`VistaCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view
-  wandering as far as the paper reaches at that zoom (±6 dp drift on top), but never so far
-  that the near bank would leave the label (`BANK_MARGIN`); a swing in about two minutes, sums
-  of sines in the golden ratio; each layer follows by its `Depth` (sky 0.15, far range 0.35,
-  clearing 0.65, near banks 1), so the parallax is plain to see. The label stands still: it is
-  no part of the scenery (riding the bank's scale and pan, its text shimmered in 5.2); the
-  camera keeps its bank under it. No edge and no gap between layers ever shows
-  (`VistaCameraTest` renders every corner of the range, `VistaCameraJourneyTest` checks six
-  hours of poses, the bank under the label included); stills show it at rest. No preview in
-  the menu (removed in 5.2: never build features nobody asked for); the time-lapse is only the
-  `window_view=timelapse` extra for measuring. Comes after the pause delay (default 3 min; the
-  rest clock first), during music only if set, never over trouble, setup or the menu, nor by
-  itself while a party's code shows; up on the remote or the quick settings (View) bring it
-  whatever plays, until it is left (up again, back, or another view there). Every key starts
-  the delays again; one that came by itself goes with any key, which still does its work.
-  Baked ahead only while it shows or is on its
-  way (`VistaPolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the app
-  goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
-  (after 1 s), the far range's own skyline stands in the screen's middle as one thin line,
-  drawn like the progress bar in the rest screen's quiet ink and traced from the left as the
-  paper is cut (the bake's progress weighted by what each part takes, gliding, never going
-  back, its head breathing); once the picture is ready it is drawn to its end and gone while
-  the landscape comes up (`VistaWaiting`; a turning ring read as too plain in 6.1). The label
-  (cover 56 dp, Jost 24 / DM Sans 17, bar) lies on the dark near bank (snow only along its
-  edge), the fire on the other side;
-  beside the cover one block exactly centered on it: the title's cap height to the bar's lower
-  edge (filling the cover's height), or without a bar (a station) to the last baseline
-  (`VistaLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
+  than color; moonlight; seasons by date (south half a year on), shapes re-cut in 1/16 steps and
+  cross-faded (blossom only colors). **The weather is seen** (`Weather` from the entity's state,
+  `cloud_coverage` and `wind_speed` in its `wind_speed_unit`, glided in over minutes): a clear
+  day's deeper blue; strips of tissue, heaps as it clouds over, an overcast ceiling of heaps
+  hung upside down; the slate of rain, a storm's dark ceiling over a pale horizon; the bright
+  gray of snow; fog's milk swallowing the far range; rain and storm darken the land, falling
+  weather veils the far sheets. Snowflakes of white paper (each with a breath of shadow) and
+  rain as fine threads fall at three depths with their layers and land on the meadow; mist lies
+  as thin tissue in the valley and the forest (fog, rain, calm mornings), never over the
+  clearing. The wind drives the clouds (on a clock of their own, so a gust never makes them
+  jump), bends the flames and the rain, and sways the cut-outs. The user found 5.1 far too
+  subtle: motion must be **visible**, calm but plain. Clouds cross the screen in a few minutes;
+  the cut-outs sway 1.1° to 4° about their feet (leaning into the wind, gusts shared by the
+  meadow), the tall firs on the near banks (sprites cut whole beyond the screen) a little less;
+  never a loop, 20 fps; light recomputed every 10 s, each step below one level. The camera
+  (`VistaCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view wandering as
+  far as the paper reaches at that zoom (±6 dp drift on top), but never so far that the near
+  bank would leave the label (`BANK_MARGIN`); a swing in about two minutes, sums of sines in the
+  golden ratio; each layer follows by its `Depth` (sky 0.15, far range 0.35, clearing 0.65, near
+  banks 1), so the parallax is plain to see. The label stands still: it is no part of the
+  scenery (riding the bank's scale and pan, its text shimmered in 5.2); the camera keeps its
+  bank under it. No edge and no gap between layers ever shows (`VistaCameraTest` renders every
+  corner of the range, `VistaCameraJourneyTest` checks six hours of poses, the bank under the
+  label included); stills show it at rest. No preview in the menu (removed in 5.2: never build
+  features nobody asked for); the time-lapse is only the `landscape=timelapse` extra for
+  measuring. Comes after the pause delay (default 3 min; the rest clock first), during music
+  only if set, never over trouble, setup or the menu, nor by itself while a party's code shows;
+  up on the remote or the quick settings (View) bring it whatever plays, until it is left (up
+  again, back, or another view there). Every key starts the delays again; one that came by
+  itself goes with any key, which still does its work. Baked ahead only while it shows or is on
+  its way (`VistaPolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
+  app goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
+  (after 1 s), the far range's own skyline stands in the screen's middle as one thin line, drawn
+  like the progress bar in the rest screen's quiet ink and traced from the left as the paper is
+  cut (the bake's progress weighted by what each part takes, gliding, never going back, its head
+  breathing); once the picture is ready it is drawn to its end and gone while the landscape
+  comes up (`VistaWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
+  Jost 24 / DM Sans 17, bar) lies on the dark near bank (snow only along its edge), the fire on
+  the other side; beside the cover one block exactly centered on it: the title's cap height to
+  the bar's lower edge (filling the cover's height), or without a bar (a station) to the last
+  baseline (`VistaLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
   (`PaperLightTest`). Every sheet in its own box, baked only down to where nearer paper hides
   it, each piece cut in a box of its own; sky, far range, clearing and near banks stand as
   layers between light changes, each only as tall as its paper, moved by the camera as a whole;

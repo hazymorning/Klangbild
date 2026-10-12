@@ -75,7 +75,7 @@ class KlangbildApp : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // Nothing shows in the background: the covers, the scenes and the window view's picture
+        // Nothing shows in the background: the covers, the scenes and the landscape's picture
         // go, and are made again on return.
         if (level >= TRIM_MEMORY_UI_HIDDEN && graph.controller.releaseMemory()) releaseBakedVista()
     }

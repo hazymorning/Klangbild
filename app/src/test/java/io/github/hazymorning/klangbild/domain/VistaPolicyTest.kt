@@ -14,7 +14,7 @@ class VistaPolicyTest {
     private fun shows(screen: Screen, at: Long, playingMs: Long = off, pauseMs: Long = pause) = policy.shows(screen, at, pauseMs, playingMs)
 
     @Test
-    fun `a pause turns into the window view after its delay`() {
+    fun `a pause turns into the landscape after its delay`() {
         assertThat(shows(playing, 0)).isFalse()
         assertThat(shows(paused, 10_000)).isFalse()
         assertThat(shows(paused, 10_000 + pause - 1)).isFalse()
@@ -44,7 +44,7 @@ class VistaPolicyTest {
     }
 
     @Test
-    fun `the quiet clock comes first, then the window view`() {
+    fun `the quiet clock comes first, then the landscape`() {
         val idle = Screen.Rest(RestReason.IDLE)
         assertThat(shows(idle, 0)).isFalse()
         assertThat(shows(idle, pause - 1)).isFalse()
@@ -57,7 +57,7 @@ class VistaPolicyTest {
         assertThat(shows(Screen.Rest(RestReason.OFFLINE), 0)).isFalse()
         assertThat(shows(Screen.Rest(RestReason.UNAVAILABLE), pause * 10)).isFalse()
         assertThat(shows(Screen.Setup(SetupReason.REQUESTED), pause * 10)).isFalse()
-        // A lost link dims the stage like a pause, but the window view waits for it.
+        // A lost link dims the stage like a pause, but the landscape waits for it.
         val down = Screen.Stage(track, PlayerStatus.PAUSED, null, linkDown = true)
         val fresh = VistaPolicy()
         fresh.shows(down, 0, pause, off)
@@ -68,7 +68,7 @@ class VistaPolicyTest {
     fun `chosen, it shows at once and stays through other keys until it is left`() {
         policy.request(true)
         assertThat(shows(playing, 0)).isTrue()
-        // Skipping a song, a pause: the keys do their work and the window view stays.
+        // Skipping a song, a pause: the keys do their work and the landscape stays.
         policy.interaction(1_000)
         assertThat(shows(playing, 1_001)).isTrue()
         assertThat(shows(paused, 2_000)).isTrue()

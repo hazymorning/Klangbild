@@ -67,7 +67,7 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
-/** What the window view needs from the world outside: where it is, the weather, its clock. */
+/** What the landscape needs from the world outside: where it is, the weather, its clock. */
 @Stable
 class VistaFeed(
     val place: () -> Place,
@@ -80,7 +80,7 @@ class VistaFeed(
 )
 
 /**
- * The window view: the paper diorama, its light following [feed]'s clock, its clouds and its
+ * The landscape: the paper diorama, its light following [feed]'s clock, its clouds and its
  * campfire moving with the wall clock. The picture is baked once for the screen, the season's
  * shapes and the bank cut wide for the [label]. When the season changes the shapes (snow,
  * leaves, blossom, every few days), a new bake fades in over [SEASON_FADE_MS]. [content] lies on
@@ -127,7 +127,7 @@ fun Vista(
         var shown by remember { mutableStateOf<PaperImages?>(null) }
         var leaving by remember { mutableStateOf<PaperImages?>(null) }
         val fade = remember { Animatable(1f) }
-        // The whole window view (picture and label) comes up out of the dark once baked.
+        // The whole landscape (picture and label) comes up out of the dark once baked.
         val appear = remember { Animatable(if (still) 1f else 0f) }
         LaunchedEffect(images) {
             val next = images ?: return@LaunchedEffect
@@ -169,7 +169,7 @@ fun Vista(
 }
 
 /**
- * The sign that the window view is on its way while its first picture is baked (a few seconds,
+ * The sign that the landscape is on its way while its first picture is baked (a few seconds,
  * more at 4K): the far range's own skyline, drawn as one thin line in the screen's middle, the
  * way the progress bar is drawn (round ends, the track at 16 % in the rest screen's quiet ink).
  * The line is traced from the left as the paper is cut ([progress], 0 to 1), gliding and never
@@ -246,7 +246,7 @@ internal fun VistaWaiting(ready: Boolean, progress: () -> Float = { 0f }) {
 
 /**
  * The far range's skyline ([PaperMotif.skyline]) from foot to foot, as a line [width] wide
- * centered on [center]: the mountains the window view then shows.
+ * centered on [center]: the mountains the landscape then shows.
  */
 private class WaitingSkyline {
     private val points: List<Pair<Float, Float>> = (0..SAMPLES).map { i ->
@@ -279,7 +279,7 @@ private class WaitingSkyline {
 }
 
 /**
- * Bakes the window view's picture ahead, while it is only on its way (the music paused, the
+ * Bakes the landscape's picture ahead, while it is only on its way (the music paused, the
  * delay running), so that it can come out of the dark at once. It bakes in the background, at
  * low priority, a while after the app has settled, and again when the season has moved on.
  */
@@ -320,8 +320,8 @@ private const val AHEAD_DELAY_MS = 8_000L
 private const val AHEAD_RECHECK_MS = 3_600_000L
 
 /**
- * The last bake, kept while the window view shows or is on its way (most often the same screen
- * and season). [releaseBakedVista] lets it go when the window view is no longer coming and when
+ * The last bake, kept while the landscape shows or is on its way (most often the same screen
+ * and season). [releaseBakedVista] lets it go when the landscape is no longer coming and when
  * the app goes to the background.
  */
 private object PaperCache {
@@ -362,7 +362,7 @@ private object PaperCache {
     }
 }
 
-/** Lets the window view's last picture go (tens of megabytes at 4K): it is baked again when it comes. */
+/** Lets the landscape's last picture go (tens of megabytes at 4K): it is baked again when it comes. */
 fun releaseBakedVista() = PaperCache.clear()
 
 /** How often (frames) the season's shapes are checked: every few seconds. */
@@ -376,7 +376,7 @@ private const val FIRST_FADE_MS = 1_200
 
 /**
  * The sign that the picture is on its way comes after this long (the screen switch keeps the
- * window view dark for its first 900 ms anyway), fades in and out this long; its line glides
+ * landscape dark for its first 900 ms anyway), fades in and out this long; its line glides
  * toward the bake's progress with this time constant (s), quicker to its end once the picture
  * is ready, and its head breathes once in [WAIT_BREATH_MS] (as the stage does while it buffers).
  */

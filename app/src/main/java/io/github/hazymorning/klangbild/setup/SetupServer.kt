@@ -310,7 +310,7 @@ class SetupServer(
                 val id = o.id()?.takeIf { it.startsWith("light.") } ?: return@mapNotNull null
                 LightOption(id, o.name() ?: id, stateWord(o.state(), t))
             }.sortedBy { it.name.lowercase() }
-            // Weather entities: their clouds set the window view's sky.
+            // Weather entities: their clouds set the landscape's sky.
             val weather = states.mapNotNull { o ->
                 val id = o.id()?.takeIf { it.startsWith("weather.") } ?: return@mapNotNull null
                 WeatherOption(id, o.name() ?: id, weatherWord(o.state(), t))

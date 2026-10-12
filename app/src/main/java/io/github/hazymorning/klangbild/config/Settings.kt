@@ -92,7 +92,7 @@ enum class RoomLightLevel(val brightness: Float) {
     }
 }
 
-/** Where the music's label sits in the window view. */
+/** Where the music's label sits in the landscape. */
 enum class MiniPlayer { LEFT, RIGHT, OFF }
 
 /** The color lights behind the TV (Home Assistant light entities), from the left; any may be missing. */
@@ -146,7 +146,7 @@ data class Settings(
     /** The values of one's own show in the status line. */
     val showValues: Boolean = true,
     val light: LightLevel = LightLevel.NORMAL,
-    /** Up and down on the remote change the speaker's volume (instead of the window view and the quick settings). */
+    /** Up and down on the remote change the speaker's volume (instead of the landscape and the quick settings). */
     val volumeKeys: Boolean = false,
     val appearance: AppearanceMode = AppearanceMode.AUTO,
     val view: StageView = StageView.SINGLE,
@@ -164,18 +164,20 @@ data class Settings(
     val lightsOnlyOn: Boolean = false,
     /** With an audiobook or a podcast, left and right jump back 15 and ahead 30 seconds. */
     val spokenSkip: Boolean = true,
-    /** The window view takes the screen after the music has been paused this long (s); 0 never. */
+    /** The landscape takes the screen after the music has been paused this long (s); 0 never. */
     val vistaPauseSeconds: Int = 180,
-    /** The window view also comes while music plays, after this long without a key pressed (s); 0 never. */
+    /** The landscape also comes while music plays, after this long without a key pressed (s); 0 never. */
     val vistaPlayingSeconds: Int = 0,
-    /** Where the music's label sits in the window view. */
+    /** Where the music's label sits in the landscape. */
     val miniPlayer: MiniPlayer = MiniPlayer.LEFT,
-    /** The weather entity whose clouds set the window view's sky; null finds Home Assistant's own, [NO_WEATHER] none. */
+    /** The weather entity whose clouds set the landscape's sky; null finds Home Assistant's own, [NO_WEATHER] none. */
     val weatherEntity: String? = null,
     /** Buttons of one's own in the quick settings, set up on the phone. */
     val quickActions: List<QuickAction> = emptyList(),
     /** Values of one's own from Home Assistant in the status line, set up on the phone. */
     val ownValues: List<OwnValue> = emptyList(),
+    /** The quick settings have been opened once: the stage no longer tells how to open them. */
+    val quickSeen: Boolean = false,
 ) {
     /** The weather entities to follow: the one chosen, else Home Assistant's usual forecast entities. */
     val weatherEntities: List<String>
@@ -186,7 +188,7 @@ data class Settings(
         }
 
     companion object {
-        /** No weather entity: the window view's sky stays fair. */
+        /** No weather entity: the landscape's sky stays fair. */
         const val NO_WEATHER = "none"
 
         /** The entities Home Assistant's own weather integration (Met.no) creates. */
@@ -242,11 +244,11 @@ data class Settings(
 data class SessionOptions(
     val showSetup: Boolean = false,
     val debugOverlay: Boolean = false,
-    /** The window view shown at once (`window_view=on`), or with the day passing in two minutes (`timelapse`). */
+    /** The landscape shown at once (`landscape=on`), or with the day passing in two minutes (`timelapse`). */
     val vista: VistaRequest? = null,
 )
 
-/** A window view asked for from outside (a link, `am start`, Home Assistant). */
+/** A landscape asked for from outside (a link, `am start`, Home Assistant). */
 enum class VistaRequest { SHOW, TIMELAPSE, HIDE }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -288,6 +290,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val miniPlayer = stringPreferencesKey("mini_player")
         val weather = stringPreferencesKey("weather_entity")
         val quickActions = stringPreferencesKey("quick_actions")
+        val quickSeen = booleanPreferencesKey("quick_seen")
         val ownValues = stringPreferencesKey("own_values")
         val showValues = booleanPreferencesKey("show_values")
     }
@@ -328,6 +331,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             weatherEntity = p[Keys.weather],
             quickActions = QuickActions.decode(p[Keys.quickActions]),
             ownValues = OwnValues.decode(p[Keys.ownValues]),
+            quickSeen = p[Keys.quickSeen] ?: false,
             showValues = p[Keys.showValues] ?: true,
         )
     }
@@ -375,6 +379,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             putOrRemove(Keys.weather, s.weatherEntity)
             putOrRemove(Keys.quickActions, s.quickActions.takeIf { it.isNotEmpty() }?.let(QuickActions::encode))
             putOrRemove(Keys.ownValues, s.ownValues.takeIf { it.isNotEmpty() }?.let(OwnValues::encode))
+            p[Keys.quickSeen] = s.quickSeen
             p[Keys.showValues] = s.showValues
         }
     }
@@ -391,7 +396,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
 /**
  * `am start` extras. Configuration extras (`ha_url`, `token`, `ma_url`, `ma_token`, `entity`,
  * `sleep_minutes`, `sleep_action`, `clock` and the display options) are stored; `setup`,
- * `debug` and `window_view` only apply to this launch. A new address without its token drops
+ * `debug` and `landscape` only apply to this launch. A new address without its token drops
  * the stored one: no other app on the TV can redirect a token to an address of its choosing.
  * Names and values are English; the German ones of earlier versions keep working.
  *
@@ -427,13 +432,13 @@ object LaunchExtras {
     const val LIGHTS_RIGHT = "lights_right"
     const val LIGHTS_LEVEL = "lights_level"
     const val SPOKEN_SKIP = "spoken_skip"
-    const val WINDOW_VIEW_PAUSE = "window_view_pause"
-    const val WINDOW_VIEW_PLAYING = "window_view_playing"
+    const val LANDSCAPE_PAUSE = "landscape_pause"
+    const val LANDSCAPE_PLAYING = "landscape_playing"
     const val MINI_PLAYER = "mini_player"
     const val WEATHER = "weather"
     const val SETUP = "setup"
     const val DEBUG = "debug"
-    const val WINDOW_VIEW = "window_view"
+    const val LANDSCAPE = "landscape"
 
     /** The names earlier versions used: they keep working, and the English name wins when both are given. */
     private val formerNames = mapOf(
@@ -441,15 +446,18 @@ object LaunchExtras {
         "bars_center" to LIGHTS_CENTER,
         "bars_right" to LIGHTS_RIGHT,
         "bar_level" to LIGHTS_LEVEL,
-        "fensterblick_pause" to WINDOW_VIEW_PAUSE,
-        "fensterblick_musik" to WINDOW_VIEW_PLAYING,
-        "fensterblick" to WINDOW_VIEW,
+        "window_view_pause" to LANDSCAPE_PAUSE,
+        "window_view_playing" to LANDSCAPE_PLAYING,
+        "window_view" to LANDSCAPE,
+        "fensterblick_pause" to LANDSCAPE_PAUSE,
+        "fensterblick_musik" to LANDSCAPE_PLAYING,
+        "fensterblick" to LANDSCAPE,
     )
 
     private val stored = listOf(
         HA_URL, TOKEN, MA_URL, MA_TOKEN, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, TIME_LINE, NEXT, ALBUM, GROUP, VOLUME, VALUES, LIGHT,
         VOLUME_KEYS, REMOTE, APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_LEVEL,
-        SPOKEN_SKIP, WINDOW_VIEW_PAUSE, WINDOW_VIEW_PLAYING, MINI_PLAYER, WEATHER,
+        SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER, WEATHER,
     )
 
     /** [extras] under their current names. */
@@ -560,9 +568,9 @@ object LaunchExtras {
             out = out.copy(roomLights = RoomLights(bar(LIGHTS_LEFT, out.roomLights.left), bar(LIGHTS_CENTER, out.roomLights.center), bar(LIGHTS_RIGHT, out.roomLights.right)))
         }
         boolOf(extras[SPOKEN_SKIP])?.let { out = out.copy(spokenSkip = it) }
-        // The window view's delays in seconds ("off" or 0 for never), within what the menu offers.
-        secondsOf(extras[WINDOW_VIEW_PAUSE])?.takeIf { it in 0..3_600 }?.let { out = out.copy(vistaPauseSeconds = it) }
-        secondsOf(extras[WINDOW_VIEW_PLAYING])?.takeIf { it in 0..7_200 }?.let { out = out.copy(vistaPlayingSeconds = it) }
+        // The landscape's delays in seconds ("off" or 0 for never), within what the menu offers.
+        secondsOf(extras[LANDSCAPE_PAUSE])?.takeIf { it in 0..3_600 }?.let { out = out.copy(vistaPauseSeconds = it) }
+        secondsOf(extras[LANDSCAPE_PLAYING])?.takeIf { it in 0..7_200 }?.let { out = out.copy(vistaPlayingSeconds = it) }
         (extras[MINI_PLAYER] as? String)?.let { v ->
             when (v.trim().lowercase()) {
                 "left", "bottom_left", "links", "unten_links" -> MiniPlayer.LEFT
@@ -588,7 +596,7 @@ object LaunchExtras {
 
     fun session(given: Map<String, Any?>): SessionOptions {
         val extras = canonical(given)
-        val vista = extras[WINDOW_VIEW]
+        val vista = extras[LANDSCAPE]
         return SessionOptions(
             showSetup = boolOf(extras[SETUP]) ?: false,
             debugOverlay = boolOf(extras[DEBUG]) ?: false,
@@ -626,8 +634,8 @@ object LaunchExtras {
      */
     private val linkKeys = setOf(
         CLOCK, TIME_LINE, NEXT, ALBUM, GROUP, VOLUME, VALUES, LIGHT, VOLUME_KEYS, REMOTE, SLEEP_MINUTES, SLEEP_ACTION,
-        APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEVEL, SPOKEN_SKIP, WINDOW_VIEW_PAUSE, WINDOW_VIEW_PLAYING, MINI_PLAYER,
-        WINDOW_VIEW,
+        APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEVEL, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
+        LANDSCAPE,
     )
 
     /** The query parameters of a `klangbild://` link as extras, unsafe keys dropped. */

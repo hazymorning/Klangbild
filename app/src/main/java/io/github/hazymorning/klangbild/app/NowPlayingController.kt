@@ -8,6 +8,7 @@ import io.github.hazymorning.klangbild.config.BackgroundMode
 import io.github.hazymorning.klangbild.config.DisplayOptions
 import io.github.hazymorning.klangbild.config.LaunchExtras
 import io.github.hazymorning.klangbild.config.MenuRow
+import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.QuickRow
@@ -100,6 +101,8 @@ data class MenuState(
     val cursor: Int,
     /** Up or down is held: the list runs on, and the explanation waits until the key is let go. */
     val held: Boolean = false,
+    /** The group whose settings show; null while the groups themselves show. */
+    val section: MenuSection? = null,
 )
 
 /** The quick menu while it is open: its lines and the one the cursor is on. */
@@ -136,9 +139,9 @@ data class UiState(
     val chapter: ChapterPlace? = null,
     /** When the sleep timer pauses the music (wall clock), while it is set. */
     val sleepAt: Long? = null,
-    /** The window view, while it has the screen. */
+    /** The landscape, while it has the screen. */
     val vista: VistaUi? = null,
-    /** The window view shows or is on its way: its picture is baked ahead, for its label on this side. */
+    /** The landscape shows or is on its way: its picture is baked ahead, for its label on this side. */
     val vistaAhead: MiniPlayer? = null,
     /** The words in the language shown; null leaves them to the screen's own context. */
     val texts: Texts? = null,
@@ -146,9 +149,11 @@ data class UiState(
     val values: List<String> = emptyList(),
     /** The link of the party playing here, while its code shows where the cover stands (the quick settings' Party code). */
     val partyCode: String? = null,
+    /** The quick settings have never been opened: the stage may tell how (arrow down) for a moment. */
+    val downHint: Boolean = false,
 )
 
-/** The window view while it shows: what plays (for the mini player) and where the label sits. */
+/** The landscape while it shows: what plays (for the mini player) and where the label sits. */
 data class VistaUi(
     val track: TrackInfo?,
     val status: PlayerStatus?,
@@ -188,7 +193,7 @@ class NowPlayingController(
     private val smooth = SmoothedPosition()
     private var lastReportKey: Any? = null
 
-    /** When the window view takes the screen ([VistaPolicy]), and the time its sky shows. */
+    /** When the landscape takes the screen ([VistaPolicy]), and the time its sky shows. */
     private val vistaPolicy = VistaPolicy()
     val vistaClock = VistaClock(now)
 
@@ -218,6 +223,7 @@ class NowPlayingController(
             }
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
+        override fun openMenu(): Unit = this@NowPlayingController.openMenu()
         override fun applySettings(updated: Settings) = this@NowPlayingController.applySettings(updated)
         override fun send(command: RemoteCommand) = this@NowPlayingController.send(command)
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
@@ -393,11 +399,11 @@ class NowPlayingController(
         recompute()
     }
 
-    // --- the window view ---------------------------------------------------------------------
+    // --- the landscape ---------------------------------------------------------------------
 
     /**
-     * A key was pressed: the window view's delays start again. One that came by itself goes, a
-     * chosen one stays; the key goes on to do its work. Returns whether the window view was
+     * A key was pressed: the landscape's delays start again. One that came by itself goes, a
+     * chosen one stays; the key goes on to do its work. Returns whether the landscape was
      * showing before the key.
      */
     @Synchronized
@@ -409,7 +415,7 @@ class NowPlayingController(
     }
 
     /**
-     * The window view now, whatever plays, until it is left (up, back, the quick menu, a link);
+     * The landscape now, whatever plays, until it is left (up, back, the quick menu, a link);
      * [timelapse] lets a day pass in two minutes (for measuring on the device).
      */
     @Synchronized
@@ -419,14 +425,14 @@ class NowPlayingController(
         recompute()
     }
 
-    /** Up on the remote: the window view comes as if chosen (it stays whatever plays), or, showing, goes. */
+    /** Up on the remote: the landscape comes as if chosen (it stays whatever plays), or, showing, goes. */
     @Synchronized
     fun toggleVista() {
         if (_ui.value.vista != null || vistaPolicy.requested) hideVista() else showVista()
     }
 
     /**
-     * Leaves the window view (up, back, the quick menu, a link): the stage comes back, its sky
+     * Leaves the landscape (up, back, the quick menu, a link): the stage comes back, its sky
      * returns to the real moment, and the delays start again. Returns whether it was showing.
      */
     @Synchronized
@@ -481,9 +487,12 @@ class NowPlayingController(
     /** Up and down change the speaker's volume. */
     val volumeKeys: Boolean get() = settings.value.volumeKeys
 
-    fun openMenu() = menu.open()
+    fun openMenu(): Unit = menu.open()
 
     fun closeMenu() = menu.close()
+
+    /** Back in the menu: up a level, or out of it from the groups. Whether it is still open. */
+    fun menuBack(): Boolean = menu.back()
 
     /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
     fun menuMove(delta: Int, held: Boolean = false) = menu.move(delta, held)
@@ -655,7 +664,7 @@ class NowPlayingController(
         }
     }
 
-    /** With the window view on when paused, a paused cover waits for it instead of turning into the clock. */
+    /** With the landscape on when paused, a paused cover waits for it instead of turning into the clock. */
     private fun timingFor(s: Settings) = Timing(
         sleepAfterMs = s.sleepAfterMinutes * 60_000L,
         pauseToRestMs = if (s.vistaPauseSeconds > 0) Long.MAX_VALUE / 4 else Timing().pauseToRestMs,
@@ -669,8 +678,8 @@ class NowPlayingController(
         // A menu nobody uses closes by itself: it must not stand still on the OLED.
         menu.expire(t)
         quick.expire(t, menu.isOpen)
-        // While a party's code shows, neither the clock nor the window view takes its place by
-        // itself (the window view comes only when chosen): the guests can always scan the code.
+        // While a party's code shows, neither the clock nor the landscape takes its place by
+        // itself (the landscape comes only when chosen): the guests can always scan the code.
         val party = quick.partyWanted(src.party)
         val decision: ScreenDecision = machine.decide(src, t, holdPause = party)
         val appearance = appearanceFor(s, src)
@@ -692,14 +701,14 @@ class NowPlayingController(
         sleep.evaluate(t, stage?.track, position, speed, playing)
         val previous = _ui.value
         val menuState = menu.state(s, appearance, stage?.track)
-        // The window view waits while the menu is open.
+        // The landscape waits while the menu is open.
         val quietLongEnough = vistaPolicy.shows(
             decision.screen,
             t,
             if (party) 0L else s.vistaPauseSeconds * 1000L,
             if (party) 0L else s.vistaPlayingSeconds * 1000L,
         )
-        // While the quick settings are open, the window view stays as it was (unless they change it).
+        // While the quick settings are open, the landscape stays as it was (unless they change it).
         val vistaOn = quick.vistaHeld ?: quietLongEnough
         val vista = if (vistaOn && menuState == null) VistaUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer) else null
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
@@ -726,6 +735,7 @@ class NowPlayingController(
                 ValueText.of(v, e?.state, e?.attributes, src.precision[v.entity], src.temperatureUnit, texts, t)
             },
             partyCode = quick.partyCode.takeIf { party },
+            downHint = !s.quickSeen && !s.volumeKeys && stage != null && menuState == null && quickState == null && vista == null,
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)

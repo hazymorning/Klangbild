@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The window view at real moments in Berlin: the sky as it was, the season of the date. */
+/** The landscape at real moments in Berlin: the sky as it was, the season of the date. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")

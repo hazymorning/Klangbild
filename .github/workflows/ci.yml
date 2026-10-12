@@ -13,7 +13,7 @@ on:
         required: false
         default: ""
       measure:
-        description: "Measure the window view on the emulator (1080p and 4K): frames, CPU, memory"
+        description: "Measure the landscape on the emulator (1080p and 4K): frames, CPU, memory"
         required: false
         type: choice
         options: ["off", "short", "15min"]
@@ -231,7 +231,7 @@ jobs:
           script: bash ci/rotation-check.sh klangbild.apk
 
   measure:
-    name: Window view measurement (${{ matrix.profile }})
+    name: Landscape measurement (${{ matrix.profile }})
     needs: apk
     if: github.event_name == 'workflow_dispatch' && inputs.measure != 'off'
     runs-on: ubuntu-latest

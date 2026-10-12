@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.TimeZone
 
-/** The window view on a 4K panel with the UI at 4K: every edge cut for the panel's pixels. */
+/** The landscape on a 4K panel with the UI at 4K: every edge cut for the panel's pixels. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xxxhdpi")

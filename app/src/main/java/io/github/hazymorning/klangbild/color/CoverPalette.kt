@@ -270,7 +270,7 @@ object CoverPalette {
 
     /**
      * The least lightness (Oklab) of three text levels on a dark ground, however dark the night
-     * (the window view's label): the quietest still 4.5:1, the steps between the levels kept.
+     * (the landscape's label): the quietest still 4.5:1, the steps between the levels kept.
      */
     val NIGHT_INK_FLOOR = floatArrayOf(0.79f, 0.68f, 0.57f)
 

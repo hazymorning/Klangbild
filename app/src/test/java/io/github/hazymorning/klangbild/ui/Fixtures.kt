@@ -206,6 +206,22 @@ object Fixtures {
         return FlowData(cards, cards.indexOfFirst { it.id == middle })
     }
 
+    /** The settings menu opened on [entry]'s group, the cursor on [entry]. */
+    fun menu(
+        entry: io.github.hazymorning.klangbild.config.MenuEntry,
+        settings: io.github.hazymorning.klangbild.config.Settings,
+        ctx: io.github.hazymorning.klangbild.config.MenuContext = io.github.hazymorning.klangbild.config.MenuContext(io.github.hazymorning.klangbild.data.LinkState.CONNECTED),
+        t: Texts = texts,
+    ): io.github.hazymorning.klangbild.app.MenuState {
+        val section = entry.section
+        val rows = io.github.hazymorning.klangbild.config.SettingsMenu.rows(settings, ctx, t, section)
+        return io.github.hazymorning.klangbild.app.MenuState(rows, io.github.hazymorning.klangbild.config.SettingsMenu.entriesOf(section).indexOf(entry), section = section)
+    }
+
+    /** The settings menu on its groups, the cursor on [cursor]. */
+    fun menuGroups(cursor: Int = 0, t: Texts = texts) =
+        io.github.hazymorning.klangbild.app.MenuState(io.github.hazymorning.klangbild.config.SettingsMenu.groups(t), cursor)
+
     /** The animated cover flow for one strip; what comes next is the card to the right. */
     @Composable
     fun FlowTheatreOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
