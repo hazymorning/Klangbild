@@ -62,6 +62,8 @@ class HaSource(
     private val actionAnswerMs: Long = ACTION_ANSWER_MS,
     /** How long a new song may wait for Music Assistant's queue to describe it (shorter in tests). */
     private val detailsWaitMs: Long = DETAILS_WAIT_MS,
+    /** How long after a new song's first queue read the queue is read once more (shorter in tests). */
+    private val queueSettleMs: Long = QUEUE_SETTLE_MS,
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
@@ -506,9 +508,15 @@ class HaSource(
         // The words of the song that plays and of the one up next, as they come; never waited for.
         read?.let { w -> lyrics?.want(listOfNotNull(w.currentSong, w.nextSong)) }
         publish(connection.status.value, connection.entities.value)
+        if (again || parsed == null) return
+        // Music Assistant names the next item anew only when the player reports after the new one
+        // has started: a queue replaced as it starts still names the old queue's next for a moment.
+        delay(queueSettleMs)
+        if (lastPlayerKey != key) return
+        refreshQueue(force = true)
         // A book's or an episode's chapters may follow a moment after it starts (Music Assistant 2.11).
-        val current = read?.current
-        if (!again && current != null && current.kind.spoken && current.chapters.isEmpty()) {
+        val current = window?.current
+        if (current != null && current.kind.spoken && current.chapters.isEmpty()) {
             delay(CHAPTERS_AGAIN_MS)
             if (lastPlayerKey == key) refreshQueue(force = true)
         }
@@ -570,6 +578,9 @@ class HaSource(
 
     companion object {
         const val QUEUE_REFRESH_MS = 60_000L
+
+        /** Music Assistant's players report about once a second while they play; this leaves a margin. */
+        const val QUEUE_SETTLE_MS = 2_500L
 
         /** Music Assistant's queue is read again after this long even when nothing seems to have moved. */
         const val WINDOW_MAX_AGE_MS = 5 * 60_000L

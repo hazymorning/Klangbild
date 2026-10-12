@@ -147,7 +147,12 @@ class HaSourceTest {
 
     private fun queueCalls() = calls.count { it["service"]?.jsonPrimitive?.content == "get_queue" }
 
-    private fun source(ma: MaClient? = null, refreshMs: Long = 60_000L, detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS) = HaSource(
+    private fun source(
+        ma: MaClient? = null,
+        refreshMs: Long = 60_000L,
+        detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS,
+        queueSettleMs: Long = HaSource.QUEUE_SETTLE_MS,
+    ) = HaSource(
         http,
         scope,
         HaConfig(HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good"))),
@@ -156,6 +161,7 @@ class HaSourceTest {
         queueRefreshMs = refreshMs,
         actionAnswerMs = 500L,
         detailsWaitMs = detailsWaitMs,
+        queueSettleMs = queueSettleMs,
     )
 
     @Test
@@ -493,6 +499,22 @@ class HaSourceTest {
         assertThat(queueCalls()).isEqualTo(before)
         assertThat(second.artworkUrl).isEqualTo("https://cdn.example/zweites.jpg")
         assertThat(second.year).isEqualTo(2024)
+        s.stop()
+    }
+
+    @Test
+    fun `a queue replaced as its first song starts names the new next song a moment later`() = runBlocking {
+        player = maPlayer("Erstes Lied", "c1")
+        queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
+        val s = source(queueSettleMs = 300L)
+        s.start()
+        withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
+        // Music Assistant still names the old queue's next until the player reports.
+        queueAnswer = { queueOf(item("Anderes Lied", "anderes"), item("Zweites Lied", "zweites")) }
+        play("Anderes Lied")
+        withTimeout(5_000) { s.state.first { it.player?.track?.title == "Anderes Lied" && it.queueKnown } }
+        queueAnswer = { queueOf(item("Anderes Lied", "anderes"), item("Noch ein Lied", "noch")) }
+        withTimeout(5_000) { s.state.first { it.next?.title == "Noch ein Lied" } }
         s.stop()
     }
 
