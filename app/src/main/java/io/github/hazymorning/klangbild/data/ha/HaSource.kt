@@ -350,6 +350,9 @@ class HaSource(
 
         val key = player?.track?.let { trackKey(it) }
         if (key != null && key != lastPlayerKey) {
+            // What Music Assistant itself said comes next belonged to the song before (the same
+            // song again later has a queue of its own).
+            maNext = null
             lastPlayerKey = key
             if (player.isMusicAssistant) startQueueRead(force = false)
         }

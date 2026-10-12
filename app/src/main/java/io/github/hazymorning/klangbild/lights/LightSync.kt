@@ -162,6 +162,13 @@ class LightSync(
 
     /** The lights were taken over with [Target.onlyOn]. */
     private var takenOnlyOn = false
+
+    /**
+     * Lights turned back off for "Leave off", and when: one Home Assistant still reports on is
+     * not taken up again for [GIVEN_BACK_MS].
+     */
+    private val givenBack = HashMap<String, Long>()
+
     private var saved: Map<String, Saved> = emptyMap()
 
     /** The lights whose state Home Assistant holds in a snapshot scene of ours. */
@@ -314,6 +321,13 @@ class LightSync(
         for ((id, slot) in wanted) {
             if (id in lights) continue
             val s = states[id] ?: continue
+            // Turned off for "Leave off" just now: its report may still be on its way (a slow
+            // light reads on a while longer). Switched on after that, it joins in again.
+            val offAt = givenBack[id]
+            if (offAt != null) {
+                if (s.state != "off" && t - offAt < GIVEN_BACK_MS) continue
+                givenBack.remove(id)
+            }
             if (s.state == UNAVAILABLE || (onlyOn && s.state == "off")) continue
             if (id !in saved) save(b, mapOf(id to s))
             lights[id] = Light(id, slot).also {
@@ -337,6 +351,7 @@ class LightSync(
             savedAt = t
         }
         lights.clear()
+        givenBack.clear()
         activeFor = wanted.keys.toSet()
         takenOnlyOn = onlyOn
         activeLights = true
@@ -489,6 +504,7 @@ class LightSync(
         val scenes = snapshots
         val toRestore = lights.values.filter { !it.takenOver }
         lights.values.removeAll { it.takenOver }
+        givenBack.clear()
         activeFor = null
         shownSong = null
         idleSince = null
@@ -516,6 +532,8 @@ class LightSync(
         for (id in ids.filter { it in scenes }) b.call("scene", "delete", "scene.${sceneId(id)}", null)
         snapshots = snapshots - ids
         saved = saved - ids
+        val off = now()
+        for (id in ids) givenBack[id] = off
     }
 
     /**
@@ -695,6 +713,9 @@ class LightSync(
 
         /** How long to wait for the lights' states after they are first followed. */
         const val STATES_WAIT_MS = 10_000L
+
+        /** A light turned off for "Leave off" that Home Assistant still reports on is left alone this long. */
+        const val GIVEN_BACK_MS = 10_000L
         const val IDLE_RELEASE_MS = 5 * 60_000L
         const val REUSE_SNAPSHOT_MS = 60_000L
         const val SETTLE_REPORT_MS = 2_000L

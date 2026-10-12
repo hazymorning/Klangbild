@@ -500,8 +500,8 @@ class NowPlayingController(
     /** The key held to run through the menu is let go. */
     fun menuRelease() = menu.release()
 
-    /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]). */
-    fun menuChange(direction: Int, wrap: Boolean) = menu.change(direction, wrap)
+    /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]); [repeat]: the key is held. */
+    fun menuChange(direction: Int, wrap: Boolean, repeat: Boolean = false) = menu.change(direction, wrap, repeat)
 
     /** A change from one of the menus: shown at once, written behind it. */
     private fun applySettings(updated: Settings) {

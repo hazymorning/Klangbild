@@ -140,13 +140,14 @@ class LanguageTest {
             for (appearance in io.github.hazymorning.klangbild.color.Appearance.entries) add(MenuContext(LinkState.CONNECTED, appearance))
         }
         val out = LinkedHashSet<MenuRow>(SettingsMenu.groups(t))
+        fun rows(settings: Settings, ctx: MenuContext) = SettingsMenu.sections.flatMap { SettingsMenu.rows(settings, ctx, t, it) }
         for (base in bases) {
-            for (ctx in contexts) out += SettingsMenu.rows(base, ctx, t)
+            for (ctx in contexts) out += rows(base, ctx)
             for (entry in MenuEntry.entries) {
                 var s = base
                 repeat(STEPS) {
                     s = SettingsMenu.step(entry, s, +1, wrap = true) ?: return@repeat
-                    for (ctx in contexts.take(3)) out += SettingsMenu.rows(s, ctx, t)
+                    for (ctx in contexts.take(3)) out += rows(s, ctx)
                 }
             }
         }

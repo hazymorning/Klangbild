@@ -121,7 +121,8 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 published once its queue has described it; the words of the song that plays,
                 found by the URI Home Assistant names as what plays; with Music Assistant set up,
                 its own queue asked every 15 s while a song plays, since Home Assistant hears nothing
-                of a queue changed mid-song: what comes next and the cards to come),
+                of a queue changed mid-song: what comes next and the cards to come; its word holds
+                for that song only),
                 StationPictures (a station's song: the best picture on offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
                 `metadata/get_track_lyrics` on a client of its own with a long timeout;
@@ -428,8 +429,9 @@ UI words are given in English with the German in parentheses where it matters.
   behind shows through. They leave the landscape as it was. Until they have been opened once
   (`Settings.quickSeen`), the stage tells how: 3 s after it comes, for 12 s, its bottom line
   says "Arrow down opens the quick settings" (Pfeil runter öffnet die Schnelleinstellungen) in
-  the place and style of "Up next" (`QuickHintTest`); not with "Up and down: Volume", not beside
-  the song's words.
+  the place and style of "Up next" (`QuickHintTest`), coming and going in its cross-fade; not
+  with "Up and down: Volume", not beside the song's words, not in the screensaver (any key
+  ends it).
 - **Own buttons** (`QuickActions`, the setup page's section 7, at most 6): a name of one's own
   (at most 32 characters; without one, the entity's own words) and a Home Assistant entity,
   whose kind says what OK does: a script runs (`script.turn_on` with its variables (the fields
@@ -472,7 +474,8 @@ UI words are given in English with the German in parentheses where it matters.
   standstill at every repeat and stuttered), a step moves only the cursor, and the explanation
   goes while the key is held and comes back with the line it is let go on; the quick settings'
   row glides the same way. Values are words, changes apply at once (left and right clamp, OK
-  wraps), closes itself after 60 s. Every setting is always there: one that cannot work until
+  wraps; right held on a group opens it once, and changes nothing in it until pressed again),
+  closes itself after 60 s. Every setting is always there: one that cannot work until
   something is set up on the phone (Lyrics without Music Assistant: "Needs Music Assistant"; the
   lights and the values while none are chosen: "Set up") is dimmed, never brighter when chosen
   than another line at rest, its explanation says what it needs, and OK opens the setup. Options
@@ -549,7 +552,8 @@ UI words are given in English with the German in parentheses where it matters.
   above) or Leave off: then a light that is off is never switched on and not saved; one switched
   on during the music is saved and joins in, one switched off is let go and joins in again when
   switched on, and after the music each is as it was before it first joined. Leave off chosen
-  while they glow: the lights that were off go back off, the others keep their colors.
+  while they glow: the lights that were off go back off, the others keep their colors; one that
+  Home Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
 - **A song arrives whole** (`HaSource.awaitsDetails`): Home Assistant reports a Music Assistant
