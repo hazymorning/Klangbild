@@ -9,7 +9,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.math.exp
 
-/** Where on Earth the window looks out (degrees, north and east positive). */
+/** Where on Earth the landscape lies (degrees, north and east positive). */
 data class Place(val latitude: Double, val longitude: Double)
 
 /** The sky over a place at one moment: sun and moon (degrees, azimuth from north through east) and the stars' turn. */

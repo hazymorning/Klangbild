@@ -31,8 +31,8 @@ import kotlin.math.abs
 /**
  * Any lights Home Assistant controls, in the colors of what the screen shows: each light a color
  * of its own ([LightColors]). These are the cover's most telling colors, kept apart and placed
- * as they sit in the cover (with motion on they move on from light to light), or in the window
- * view its sky, the sun's glow on its side and the campfire's light on the fire's. A light
+ * as they sit in the cover (with motion on they move on from light to light), or in the
+ * landscape its sky, the sun's glow on its side and the campfire's light on the fire's. A light
  * shows what it can: a color, a warmer or cooler white, a brightness, or just on.
  *
  * It is gentle on the lights' network and on whoever else uses the lights:
