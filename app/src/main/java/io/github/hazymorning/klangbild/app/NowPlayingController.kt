@@ -254,11 +254,17 @@ class NowPlayingController(
             withContext(Dispatchers.IO) { SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value) }
         },
         save = { updated ->
-            settingsStore.write(updated)
             // Leaving setup: the new settings start a fresh connection.
             session.value = session.value.copy(showSetup = false)
             synchronized(this@NowPlayingController) { machine.requestSetup(false) }
-            take(updated, "setup page")
+            if (updated.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the setup page: connection ${if (updated.isConfigured) "set" else "not set"}")
+            localEdits.incrementAndGet()
+            try {
+                onSettings(updated)
+                persist()
+            } finally {
+                localEdits.decrementAndGet()
+            }
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
         clientId = { setupServer.origin?.let { "$it/" } },
@@ -388,7 +394,7 @@ class NowPlayingController(
                 val current = settingsStore.settings.first()
                 val updated = LaunchExtras.applyTo(current, extras)
                 settingsStore.write(updated)
-                take(updated, "extras")
+                take(updated)
             }
         }
         reconcileSource()
@@ -511,12 +517,20 @@ class NowPlayingController(
         onSettings(updated)
         scope.launch {
             try {
-                // Always the newest state: quick presses may overtake each other.
-                persistLock.withLock { settingsStore.write(settings.value) }
+                persist()
             } finally {
                 localEdits.decrementAndGet()
             }
         }
+    }
+
+    /**
+     * Writes the settings as they are now. Always the newest state, one write at a time: quick
+     * presses overtake each other, and a save from the setup page never comes back undone by a
+     * menu's write that was still on its way.
+     */
+    private suspend fun persist() {
+        persistLock.withLock { settingsStore.write(settings.value) }
     }
 
     // --- quick settings ------------------------------------------------------------------
@@ -539,13 +553,13 @@ class NowPlayingController(
     fun quickChange() = quick.change()
 
     /**
-     * Settings just written by the app itself (from the launch's extras, from the setup page),
-     * taken at once: the store's own echo of them has been seen to stay away on a first start
-     * (Android TV 14 emulator, right after installing), which left the app on the setup page.
+     * Settings just written from the launch's extras, taken at once: the store's own echo of them
+     * has been seen to stay away on a first start (Android TV 14 emulator, right after
+     * installing), which left the app on the setup page.
      */
-    private fun take(s: Settings, from: String) {
+    private fun take(s: Settings) {
         if (localEdits.get() != 0) return
-        if (s.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the $from: connection ${if (s.isConfigured) "set" else "not set"}")
+        if (s.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the launch's extras: connection ${if (s.isConfigured) "set" else "not set"}")
         onSettings(s)
     }
 
