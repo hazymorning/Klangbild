@@ -506,6 +506,18 @@ class SetupHandlerTest {
     }
 
     @Test
+    fun `the page fills every placeholder, and its script uses every word it gets`() {
+        for (words in listOf(TestTexts.german, TestTexts.english())) {
+            texts = words
+            val html = String(get("/").body)
+            assertThat(Regex("""\{\{\w+}}|__[A-Z_]+__""").find(html)?.value).isNull()
+            val given = Json.parseToJsonElement(Regex("""const T = (\{.*?});""").find(html)!!.groupValues[1]).jsonObject.keys
+            val used = Regex("""\bT\.(\w+)""").findAll(html).map { it.groupValues[1] }.toSet()
+            assertThat(given).containsExactlyElementsIn(used)
+        }
+    }
+
+    @Test
     fun `qr code encodes the url`() {
         val m = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=123456")
         assertThat(m.size).isAtLeast(21)
