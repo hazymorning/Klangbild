@@ -145,21 +145,22 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 a book's description never an album; supported_features → PlayerAbilities),
                 HaUrls, LocalNetwork (cleartext only to private addresses: the name before
                 sending, the connected address on every hop), ArtworkUrls (CDN hi-res rewrites),
-                HaSource (NowPlayingSource + LightBridge: player + sun.sun + MA queue (one read
-                at a time, only for MA players with a queue) + "Everywhere" from the registry's
-                MA players + the optional MA queue window + a party of Music Assistant's Party
+                HaSource (NowPlayingSource + LightBridge: player + sun.sun + the weather +
+                "Everywhere" from the registry's MA players + a party of Music Assistant's Party
                 plugin playing here (`party/player` every 60 s; `party/url`, the link its guests
                 open), commands only where supported, seek in seconds, shuffle, the favorite
-                button by its translation key, the entities of
-                one's own followed (the buttons', their conditions', the values') with their
-                precision and Home Assistant's temperature unit, a button run (a script with its
-                variables and `player`), the lights' states and calls; a Music Assistant song
-                published once its queue has described it; the words of the song that plays,
-                found by the URI Home Assistant names as what plays; with Music Assistant set up,
-                its own queue asked every 15 s while a song plays, since Home Assistant hears nothing
-                of a queue changed mid-song: what comes next and the cards to come; its word holds
-                for that song only),
-                StationPictures (a station's song: the best picture on offer wins and holds)
+                button by its translation key, the entities of one's own followed (the buttons',
+                their conditions', the values') with their precision and Home Assistant's
+                temperature unit, a button run (a script with its variables and `player`), the
+                lights' states and calls), QueueReader (the queue around the song that plays: MA
+                queue (one read at a time, only for MA players with a queue) + the optional MA
+                queue window; a Music Assistant song published once its queue has described it;
+                the words of the song that plays, found by the URI Home Assistant names as what
+                plays; with Music Assistant set up, its own queue asked every 15 s while a song
+                plays, since Home Assistant hears nothing of a queue changed mid-song: what comes
+                next and the cards to come; its word holds for that song only), TrackMatch (one
+                song in two descriptions), StationPictures (a station's song: the best picture on
+                offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
                 `metadata/get_track_lyrics` on a client of its own with a long timeout;
                 `player_queues/get`: the queue as it stands, its next item always up to date),
@@ -597,7 +598,7 @@ UI words are given in English with the German in parentheses where it matters.
   Home Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
-- **A song arrives whole** (`HaSource.awaitsDetails`): Home Assistant reports a Music Assistant
+- **A song arrives whole** (`QueueReader.awaitsDetails`): Home Assistant reports a Music Assistant
   song first with a 512 px picture and without its year; the queue tells the rest about 0.4 s
   later. A song the queue announced as next is described at once; any other waits for its
   queue read (at most 2 s), while the song before it stays as it was, all of it. So the first
