@@ -11,11 +11,13 @@ squeeze a sentence. Issues are for bugs: the issue template says so kindly and s
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
-button under the first paragraph. The first picture and the button come in a light and a dark
-version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
-wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
-the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
-be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
+button under the first paragraph, which downloads the newest APK at once
+(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). The
+first picture and the button come in a light and a dark version, switched by the reader's theme
+(`<picture>` with `prefers-color-scheme`): by day the light wall in daylight with the lights behind
+the TV off, as they are by day; at night the dark wall with the lights in the cover's colors. The
+mockups stay calm and real, as a photograph of a room would be: the lights' colors soft on a matte
+wall, no colorful backgrounds; the three views, one after
 another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
 on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
 light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
