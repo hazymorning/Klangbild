@@ -46,7 +46,7 @@ object Catalogue {
      * Invented words for the stills, as Music Assistant gives them (LRC). "Neonlicht über der
      * A40" has a break after its first verse (an empty line) and a long line that takes two rows.
      */
-    val neonWords = """
+    val neonLyrics = """
         [00:14.20]Die Stadt schläft unter Glas
         [00:18.60]und ich fahre ohne Ziel
         [00:23.10]Die Ampeln zählen leise mit
@@ -84,7 +84,7 @@ object Catalogue {
     """.trimIndent()
 
     /** English words for the English stills (an invented song to the same cover). */
-    val nightWords = """
+    val nightLyrics = """
         [00:12.00]The city sleeps beneath the glass
         [00:16.40]and I drive without a plan
         [00:20.90]The traffic lights are counting quietly
@@ -106,7 +106,7 @@ object Catalogue {
     """.trimIndent()
 
     /** Japanese words, for the smaller size of their script. */
-    val nightJapaneseWords = """
+    val nightJapaneseLyrics = """
         [00:10.00]夜の街を走る
         [00:14.00]光が消えるまで
         [00:18.00]君の声が聞こえる
@@ -115,7 +115,7 @@ object Catalogue {
     """.trimIndent()
 
     /** Arabic words, right to left. */
-    val arabicWords = """
+    val arabicLyrics = """
         [00:10.00]الليل طويل
         [00:14.00]وأنا أنتظر حتى الصباح
         [00:18.00]القمر فوق المدينة
@@ -123,7 +123,7 @@ object Catalogue {
     """.trimIndent()
 
     /** Long lines: a smaller size, so that each still takes no more than its rows. */
-    val longWords = """
+    val longLyrics = """
         [00:10.00]Wir haben die ganze Nacht auf dem Dach gesessen und den Zügen nachgesehen
         [00:16.00]bis die letzte Bahn vorbei war und die Stadt ganz leise wurde
         [00:22.00]Du hast gesagt, dass alles irgendwann vorbeigeht, und ich habe dir geglaubt

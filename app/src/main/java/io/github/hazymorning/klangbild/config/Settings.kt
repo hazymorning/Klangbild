@@ -35,7 +35,7 @@ enum class VolumeDisplay {
 }
 
 /** How strongly the artwork lights the wall around it (a factor on the light's luminance). */
-enum class LightLevel(val factor: Float) {
+enum class Intensity(val factor: Float) {
     STRONG(1.45f),
     NORMAL(1f),
     SUBTLE(0.5f),
@@ -71,7 +71,7 @@ enum class MotionLevel(val speed: Float) {
  * How brightly the lights behind the TV glow by day, as a share of their full brightness,
  * in steps of a tenth. At night they dim on their own.
  */
-enum class RoomLightLevel(val brightness: Float) {
+enum class RoomLightBrightness(val brightness: Float) {
     OFF(0f), P10(0.1f), P20(0.2f), P30(0.3f), P40(0.4f), P50(0.5f), P60(0.6f), P70(0.7f), P80(0.8f), P90(0.9f), P100(1f);
 
     val percent: Int get() = (brightness * 100f).roundToInt()
@@ -80,7 +80,7 @@ enum class RoomLightLevel(val brightness: Float) {
         val DEFAULT = P60
 
         /** A stored level by name. The four steps of earlier versions read as their nearest. */
-        fun named(name: String): RoomLightLevel? = when (name) {
+        fun named(name: String): RoomLightBrightness? = when (name) {
             "SUBTLE" -> P30
             "NORMAL" -> P50
             "STRONG" -> P80
@@ -88,7 +88,7 @@ enum class RoomLightLevel(val brightness: Float) {
         }
 
         /** The step nearest to [percent] (1 to 100); 0 or less is off. */
-        fun ofPercent(percent: Int): RoomLightLevel = if (percent <= 0) OFF else entries.drop(1).minBy { kotlin.math.abs(it.percent - percent) }
+        fun ofPercent(percent: Int): RoomLightBrightness = if (percent <= 0) OFF else entries.drop(1).minBy { kotlin.math.abs(it.percent - percent) }
     }
 }
 
@@ -107,7 +107,7 @@ data class RoomLights(val left: String? = null, val center: String? = null, val 
 data class DisplayOptions(
     val clock: Boolean = true,
     /** The progress bar (named after the time line it replaced; stored under that name). */
-    val timeLine: Boolean = true,
+    val progressBar: Boolean = true,
     /** What comes next, on the artwork's bottom edge. */
     val next: Boolean = true,
     val album: Boolean = true,
@@ -116,7 +116,7 @@ data class DisplayOptions(
     val volume: VolumeDisplay = VolumeDisplay.ON_CHANGE,
     /** The values of one's own from Home Assistant, after the clock. */
     val values: Boolean = true,
-    val light: LightLevel = LightLevel.NORMAL,
+    val intensity: Intensity = Intensity.NORMAL,
     val background: BackgroundMode = BackgroundMode.WALL,
     val motion: MotionLevel = MotionLevel.OFF,
 )
@@ -138,14 +138,14 @@ data class Settings(
     val sleepAction: SleepAction = SleepAction.RELEASE,
     val showClock: Boolean = true,
     val remoteControl: Boolean = true,
-    val showTimeLine: Boolean = true,
+    val showProgressBar: Boolean = true,
     val showNext: Boolean = true,
     val showAlbum: Boolean = true,
     val showGroup: Boolean = true,
     val volumeDisplay: VolumeDisplay = VolumeDisplay.ON_CHANGE,
     /** The values of one's own show in the status line. */
     val showValues: Boolean = true,
-    val light: LightLevel = LightLevel.NORMAL,
+    val intensity: Intensity = Intensity.NORMAL,
     /** Up and down on the remote change the speaker's volume (instead of the landscape and the quick settings). */
     val volumeKeys: Boolean = false,
     val appearance: AppearanceMode = AppearanceMode.AUTO,
@@ -159,7 +159,7 @@ data class Settings(
     val motion: MotionLevel = MotionLevel.OFF,
     /** The color lights behind the TV and how brightly they join in (by day; at night they dim on their own). */
     val roomLights: RoomLights = RoomLights(),
-    val roomLightLevel: RoomLightLevel = RoomLightLevel.DEFAULT,
+    val roomLightBrightness: RoomLightBrightness = RoomLightBrightness.DEFAULT,
     /** Lights that are off when the music starts stay off. */
     val lightsOnlyOn: Boolean = false,
     /** With an audiobook or a podcast, left and right jump back 15 and ahead 30 seconds. */
@@ -228,13 +228,13 @@ data class Settings(
     val display: DisplayOptions
         get() = DisplayOptions(
             clock = showClock,
-            timeLine = showTimeLine,
+            progressBar = showProgressBar,
             next = showNext,
             album = showAlbum,
             group = showGroup,
             volume = volumeDisplay,
             values = showValues,
-            light = light,
+            intensity = intensity,
             background = background,
             motion = motion,
         )
@@ -265,12 +265,12 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val sleepAction = stringPreferencesKey("sleep_action")
         val clock = booleanPreferencesKey("show_clock")
         val remote = booleanPreferencesKey("remote_control")
-        val timeLine = booleanPreferencesKey("show_time_line")
+        val progressBar = booleanPreferencesKey("show_time_line")
         val next = booleanPreferencesKey("show_next")
         val album = booleanPreferencesKey("show_album")
         val group = booleanPreferencesKey("show_group")
         val volume = stringPreferencesKey("volume_display")
-        val light = stringPreferencesKey("light_level")
+        val intensity = stringPreferencesKey("light_level")
         val volumeKeys = booleanPreferencesKey("volume_keys")
         val appearance = stringPreferencesKey("appearance")
         val view = stringPreferencesKey("view")
@@ -279,10 +279,10 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val maToken = stringPreferencesKey("ma_token")
         val background = stringPreferencesKey("background")
         val motion = stringPreferencesKey("motion")
-        val barsLeft = stringPreferencesKey("bars_left")
-        val barsCenter = stringPreferencesKey("bars_center")
-        val barsRight = stringPreferencesKey("bars_right")
-        val roomLightLevel = stringPreferencesKey("bar_level")
+        val lightsLeft = stringPreferencesKey("bars_left")
+        val lightsCenter = stringPreferencesKey("bars_center")
+        val lightsRight = stringPreferencesKey("bars_right")
+        val roomLightBrightness = stringPreferencesKey("bar_level")
         val lightsOnlyOn = booleanPreferencesKey("lights_only_on")
         val spokenSkip = booleanPreferencesKey("spoken_skip")
         val landscapePause = intPreferencesKey("vista_pause_s")
@@ -307,12 +307,12 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             sleepAction = p[Keys.sleepAction]?.let { runCatching { SleepAction.valueOf(it) }.getOrNull() } ?: SleepAction.RELEASE,
             showClock = p[Keys.clock] ?: true,
             remoteControl = p[Keys.remote] ?: true,
-            showTimeLine = p[Keys.timeLine] ?: true,
+            showProgressBar = p[Keys.progressBar] ?: true,
             showNext = p[Keys.next] ?: true,
             showAlbum = p[Keys.album] ?: true,
             showGroup = p[Keys.group] ?: true,
             volumeDisplay = p[Keys.volume]?.let { runCatching { VolumeDisplay.valueOf(it) }.getOrNull() } ?: VolumeDisplay.ON_CHANGE,
-            light = p[Keys.light]?.let { runCatching { LightLevel.valueOf(it) }.getOrNull() } ?: LightLevel.NORMAL,
+            intensity = p[Keys.intensity]?.let { runCatching { Intensity.valueOf(it) }.getOrNull() } ?: Intensity.NORMAL,
             volumeKeys = p[Keys.volumeKeys] ?: false,
             appearance = p[Keys.appearance]?.let { runCatching { AppearanceMode.valueOf(it) }.getOrNull() } ?: AppearanceMode.AUTO,
             view = p[Keys.view]?.let { runCatching { StageView.valueOf(it) }.getOrNull() } ?: StageView.SINGLE,
@@ -321,8 +321,8 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             maToken = p[Keys.maToken]?.let(secrets::open),
             background = p[Keys.background]?.let { runCatching { BackgroundMode.valueOf(it) }.getOrNull() } ?: BackgroundMode.WALL,
             motion = p[Keys.motion]?.let { runCatching { MotionLevel.valueOf(it) }.getOrNull() } ?: MotionLevel.OFF,
-            roomLights = RoomLights(p[Keys.barsLeft], p[Keys.barsCenter], p[Keys.barsRight]),
-            roomLightLevel = p[Keys.roomLightLevel]?.let { RoomLightLevel.named(it) } ?: RoomLightLevel.DEFAULT,
+            roomLights = RoomLights(p[Keys.lightsLeft], p[Keys.lightsCenter], p[Keys.lightsRight]),
+            roomLightBrightness = p[Keys.roomLightBrightness]?.let { RoomLightBrightness.named(it) } ?: RoomLightBrightness.DEFAULT,
             lightsOnlyOn = p[Keys.lightsOnlyOn] ?: false,
             spokenSkip = p[Keys.spokenSkip] ?: true,
             landscapePauseSeconds = p[Keys.landscapePause] ?: 180,
@@ -353,12 +353,12 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             p[Keys.sleepAction] = s.sleepAction.name
             p[Keys.clock] = s.showClock
             p[Keys.remote] = s.remoteControl
-            p[Keys.timeLine] = s.showTimeLine
+            p[Keys.progressBar] = s.showProgressBar
             p[Keys.next] = s.showNext
             p[Keys.album] = s.showAlbum
             p[Keys.group] = s.showGroup
             p[Keys.volume] = s.volumeDisplay.name
-            p[Keys.light] = s.light.name
+            p[Keys.intensity] = s.intensity.name
             p[Keys.volumeKeys] = s.volumeKeys
             p[Keys.appearance] = s.appearance.name
             p[Keys.view] = s.view.name
@@ -367,10 +367,10 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             putSecret(Keys.maToken, s.maToken)
             p[Keys.background] = s.background.name
             p[Keys.motion] = s.motion.name
-            putOrRemove(Keys.barsLeft, s.roomLights.left)
-            putOrRemove(Keys.barsCenter, s.roomLights.center)
-            putOrRemove(Keys.barsRight, s.roomLights.right)
-            p[Keys.roomLightLevel] = s.roomLightLevel.name
+            putOrRemove(Keys.lightsLeft, s.roomLights.left)
+            putOrRemove(Keys.lightsCenter, s.roomLights.center)
+            putOrRemove(Keys.lightsRight, s.roomLights.right)
+            p[Keys.roomLightBrightness] = s.roomLightBrightness.name
             p[Keys.lightsOnlyOn] = s.lightsOnlyOn
             p[Keys.spokenSkip] = s.spokenSkip
             p[Keys.landscapePause] = s.landscapePauseSeconds
@@ -414,13 +414,13 @@ object LaunchExtras {
     const val SLEEP_MINUTES = "sleep_minutes"
     const val SLEEP_ACTION = "sleep_action"
     const val CLOCK = "clock"
-    const val TIME_LINE = "time_line"
+    const val PROGRESS_BAR = "time_line"
     const val NEXT = "next"
     const val ALBUM = "album"
     const val GROUP = "group"
     const val VOLUME = "volume"
     const val VALUES = "values"
-    const val LIGHT = "light"
+    const val INTENSITY = "light"
     const val VOLUME_KEYS = "volume_keys"
     const val REMOTE = "remote"
     const val APPEARANCE = "appearance"
@@ -430,7 +430,7 @@ object LaunchExtras {
     const val LIGHTS_LEFT = "lights_left"
     const val LIGHTS_CENTER = "lights_center"
     const val LIGHTS_RIGHT = "lights_right"
-    const val LIGHTS_LEVEL = "lights_level"
+    const val LIGHTS_BRIGHTNESS = "lights_level"
     const val SPOKEN_SKIP = "spoken_skip"
     const val LANDSCAPE_PAUSE = "landscape_pause"
     const val LANDSCAPE_PLAYING = "landscape_playing"
@@ -445,7 +445,7 @@ object LaunchExtras {
         "bars_left" to LIGHTS_LEFT,
         "bars_center" to LIGHTS_CENTER,
         "bars_right" to LIGHTS_RIGHT,
-        "bar_level" to LIGHTS_LEVEL,
+        "bar_level" to LIGHTS_BRIGHTNESS,
         "window_view_pause" to LANDSCAPE_PAUSE,
         "window_view_playing" to LANDSCAPE_PLAYING,
         "window_view" to LANDSCAPE,
@@ -455,8 +455,8 @@ object LaunchExtras {
     )
 
     private val stored = listOf(
-        HA_URL, TOKEN, MA_URL, MA_TOKEN, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, TIME_LINE, NEXT, ALBUM, GROUP, VOLUME, VALUES, LIGHT,
-        VOLUME_KEYS, REMOTE, APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_LEVEL,
+        HA_URL, TOKEN, MA_URL, MA_TOKEN, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY,
+        VOLUME_KEYS, REMOTE, APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_BRIGHTNESS,
         SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER, WEATHER,
     )
 
@@ -492,7 +492,7 @@ object LaunchExtras {
             }
         }
         boolOf(extras[CLOCK])?.let { out = out.copy(showClock = it) }
-        boolOf(extras[TIME_LINE])?.let { out = out.copy(showTimeLine = it) }
+        boolOf(extras[PROGRESS_BAR])?.let { out = out.copy(showProgressBar = it) }
         boolOf(extras[NEXT])?.let { out = out.copy(showNext = it) }
         boolOf(extras[ALBUM])?.let { out = out.copy(showAlbum = it) }
         boolOf(extras[GROUP])?.let { out = out.copy(showGroup = it) }
@@ -507,14 +507,14 @@ object LaunchExtras {
                 else -> null
             }?.let { out = out.copy(volumeDisplay = it) }
         }
-        (extras[LIGHT] as? String)?.let { v ->
+        (extras[INTENSITY] as? String)?.let { v ->
             when (v.trim().lowercase()) {
-                "strong", "kraeftig", "kräftig" -> LightLevel.STRONG
-                "normal" -> LightLevel.NORMAL
-                "subtle", "dezent" -> LightLevel.SUBTLE
-                "off", "aus" -> LightLevel.OFF
+                "strong", "kraeftig", "kräftig" -> Intensity.STRONG
+                "normal" -> Intensity.NORMAL
+                "subtle", "dezent" -> Intensity.SUBTLE
+                "off", "aus" -> Intensity.OFF
                 else -> null
-            }?.let { out = out.copy(light = it) }
+            }?.let { out = out.copy(intensity = it) }
         }
         (extras[APPEARANCE] as? String)?.let { v ->
             when (v.trim().lowercase()) {
@@ -548,15 +548,15 @@ object LaunchExtras {
             }?.let { out = out.copy(motion = it) }
         }
         // A word, or how bright in percent ("60", "60 %").
-        extras[LIGHTS_LEVEL]?.let { raw ->
+        extras[LIGHTS_BRIGHTNESS]?.let { raw ->
             val v = raw.toString().trim().lowercase()
             when (v) {
-                "off", "aus" -> RoomLightLevel.OFF
-                "subtle", "dezent", "schwach" -> RoomLightLevel.P30
-                "normal" -> RoomLightLevel.P50
-                "strong", "kraeftig", "kräftig", "stark" -> RoomLightLevel.P80
-                else -> v.removeSuffix("%").trim().toIntOrNull()?.let { RoomLightLevel.ofPercent(it) }
-            }?.let { out = out.copy(roomLightLevel = it) }
+                "off", "aus" -> RoomLightBrightness.OFF
+                "subtle", "dezent", "schwach" -> RoomLightBrightness.P30
+                "normal" -> RoomLightBrightness.P50
+                "strong", "kraeftig", "kräftig", "stark" -> RoomLightBrightness.P80
+                else -> v.removeSuffix("%").trim().toIntOrNull()?.let { RoomLightBrightness.ofPercent(it) }
+            }?.let { out = out.copy(roomLightBrightness = it) }
         }
         // A light given as "" or "none" is removed; anything but a light entity is ignored.
         fun bar(key: String, current: String?): String? = when (val v = (extras[key] as? String)?.trim()) {
@@ -633,8 +633,8 @@ object LaunchExtras {
      * speaker or the lights to control. Any page in a browser on the TV could open such a link.
      */
     private val linkKeys = setOf(
-        CLOCK, TIME_LINE, NEXT, ALBUM, GROUP, VOLUME, VALUES, LIGHT, VOLUME_KEYS, REMOTE, SLEEP_MINUTES, SLEEP_ACTION,
-        APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEVEL, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
+        CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY, VOLUME_KEYS, REMOTE, SLEEP_MINUTES, SLEEP_ACTION,
+        APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_BRIGHTNESS, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
         LANDSCAPE,
     )
 

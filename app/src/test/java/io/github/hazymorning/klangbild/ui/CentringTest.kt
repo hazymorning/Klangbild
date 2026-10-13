@@ -88,7 +88,7 @@ class CentringTest {
     @Test
     fun theLineSungNowStandsOnTheArtworksMiddle() {
         // The line sung now is set in the title's ink, the others in the quiet one: only it is this bright.
-        val words = Fixtures.words("[00:05.00]Die Stadt schläft unter Glas\n[00:09.00]Neonlicht über der A40\n[00:14.00]und ich fahre ohne Ziel")
+        val words = Fixtures.lyrics("[00:05.00]Die Stadt schläft unter Glas\n[00:09.00]Neonlicht über der A40\n[00:14.00]und ich fahre ohne Ziel")
         val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
         // Cover Flow with its whole strip, so that its column stands where the grid has it.
         val strip = Fixtures.flowScenes(listOf(SyntheticCover.MOSS, SyntheticCover.MIST, SyntheticCover.NIGHT_DRIVE, SyntheticCover.SALT_WATER, SyntheticCover.CONFETTI).map(Fixtures::track))

@@ -17,7 +17,7 @@ import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -111,7 +111,7 @@ class HaSource(
     private val lyrics: MaLyrics? = ma?.let { MaLyrics(it, scope, now) { publish(connection.status.value, connection.entities.value) } }
 
     /** What was last known of the words of the song that plays (only touched in [publish]). */
-    private var lastWords: SongWords? = null
+    private var lastLyrics: SongLyrics? = null
 
     /**
      * What comes next as Music Assistant itself has it, for the song [key]: [next] (null: nothing
@@ -397,7 +397,7 @@ class HaSource(
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
             temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
-            words = enriched?.track?.let { wordsOf(it, entity, currentWindow) },
+            lyrics = enriched?.track?.let { lyricsOf(it, entity, currentWindow) },
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
         )
         // Until the new song is described, what was shown stays: the song before it, all of it.
@@ -438,7 +438,7 @@ class HaSource(
         coming = shown.coming,
         played = shown.played,
         favorites = shown.favorites,
-        words = shown.words,
+        lyrics = shown.lyrics,
     )
 
     /**
@@ -446,14 +446,14 @@ class HaSource(
      * which Home Assistant names as what plays, else by the queue's current song when that is
      * [track]. Null while nothing is known; without a URI (the link is down) what was known stays.
      */
-    private fun wordsOf(track: TrackInfo, entity: EntityState?, w: QueueWindow?): SongWords? {
+    private fun lyricsOf(track: TrackInfo, entity: EntityState?, w: QueueWindow?): SongLyrics? {
         val loader = lyrics ?: return null
         if (track.kind != MediaKind.MUSIC) return null
         val uri = entity?.string("media_content_id")?.takeIf { it.contains("://") }
             ?: w?.currentSong?.uri?.takeIf { w.current?.let { c -> sameTitle(c.title, track.title) } == true }
-        val words = if (uri == null) lastWords?.takeIf { it.key == track.key } else loader.known(uri)?.let { SongWords(track.key, it.lyrics) }
-        if (words != null) lastWords = words
-        return words
+        val known = if (uri == null) lastLyrics?.takeIf { it.key == track.key } else loader.known(uri)?.let { SongLyrics(track.key, it.lyrics) }
+        if (known != null) lastLyrics = known
+        return known
     }
 
     /**

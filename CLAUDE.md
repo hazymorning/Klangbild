@@ -172,7 +172,7 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 chapters), PlayerSnapshot (+ SpeakerGroup, QueueInfo, speed, PlayerAbilities),
                 SpeakerLabel ("Living room + 5", "Everywhere", room names, "35%"), TrackText
                 (typographic cleanup), Progress (runs at the item's speed) + SmoothedPosition,
-                TimeLine (track times, separator, "Speed 1.5×"),
+                TimeText (track times, separator, "Speed 1.5×"),
                 ScreenStateMachine, StageView (SINGLE / FLOW), CoverStrip (the cover flow's cards:
                 one per picture, ids kept), Spoken (MediaKind, Chapter/Chapters/ChapterPlace:
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
@@ -230,8 +230,8 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
-config/         Settings (+ DisplayOptions, VolumeDisplay, LightLevel, AppearanceMode, BackgroundMode,
-                MotionLevel, RoomLights, RoomLightLevel) + SettingsStore (DataStore; tokens sealed by
+config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
+                MotionLevel, RoomLights, RoomLightBrightness) + SettingsStore (DataStore; tokens sealed by
                 SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
                 QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
@@ -319,7 +319,7 @@ UI words are given in English with the German in parentheses where it matters.
   (`breaksInsideWord`), a word of one to three letters stays with the next ("Spiegel / im
   Spiegel"); artists on one line (smaller, then "and others" (u. a.)); the year leaves the
   album line before anything is cut; "Up next" drops the artist before it cuts; edge emoji
-  dropped (`Emoji.trimEdges`), inner ones dimmed; one separator `TimeLine.SEPARATOR`;
+  dropped (`Emoji.trimEdges`), inner ones dimmed; one separator `TimeText.SEPARATOR`;
   `TrackText.typeset` for dashes and no-break spaces after abbreviations; RTL lines isolated;
   in UI prose a short word opening a sentence never ends a line, and articles and adjectives
   stay with their noun (no-break spaces in the string resources).
@@ -429,7 +429,7 @@ UI words are given in English with the German in parentheses where it matters.
   1.5 s (a corrected position) never moves them. The picture never moves. The status line keeps
   its place, title and artist stand where "Up next" stands, title block, album and bar give way
   (a key brings the bar for a moment, above the song, the words making room). Switching them on
-  or off, and words that come late, use the stage's text change (`Change.WORDS`); not in the
+  or off, and words that come late, use the stage's text change (`Change.LYRICS`); not in the
   landscape. The words come from the queue item (`media_item.metadata`: `lrc_lyrics`, else
   LRC in `lyrics`), else from `metadata/get_track_lyrics` (Music Assistant 2.8 and later; raw
   LRC before 2.10) with a 75 s timeout of its own (Music Assistant asks its online source at

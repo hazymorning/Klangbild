@@ -61,17 +61,17 @@ class LaunchExtrasTest {
                 "values" to "off",
             ),
         )
-        assertThat(s.showTimeLine).isFalse()
+        assertThat(s.showProgressBar).isFalse()
         assertThat(s.showNext).isFalse()
         assertThat(s.showAlbum).isFalse()
         assertThat(s.showGroup).isFalse()
         assertThat(s.volumeDisplay).isEqualTo(VolumeDisplay.ALWAYS)
-        assertThat(s.light).isEqualTo(LightLevel.SUBTLE)
+        assertThat(s.intensity).isEqualTo(Intensity.SUBTLE)
         assertThat(s.volumeKeys).isTrue()
         assertThat(s.remoteControl).isFalse()
         assertThat(s.showValues).isFalse()
-        assertThat(LaunchExtras.applyTo(s, mapOf("light" to "kräftig", "volume" to "bei_änderung")).let { it.light to it.volumeDisplay })
-            .isEqualTo(LightLevel.STRONG to VolumeDisplay.ON_CHANGE)
+        assertThat(LaunchExtras.applyTo(s, mapOf("light" to "kräftig", "volume" to "bei_änderung")).let { it.intensity to it.volumeDisplay })
+            .isEqualTo(Intensity.STRONG to VolumeDisplay.ON_CHANGE)
         assertThat(LaunchExtras.applyTo(s, mapOf("light" to "grell", "volume" to "laut"))).isEqualTo(s)
         assertThat(LaunchExtras.hasStoredExtras(mapOf("light" to "aus"))).isTrue()
     }
@@ -83,7 +83,7 @@ class LaunchExtrasTest {
         )
         assertThat(extras.keys).containsExactly("light", "album")
         val s = LaunchExtras.applyTo(Settings(), extras)
-        assertThat(s.light).isEqualTo(LightLevel.SUBTLE)
+        assertThat(s.intensity).isEqualTo(Intensity.SUBTLE)
         assertThat(s.showAlbum).isFalse()
         assertThat(s.haUrl).isNull()
         assertThat(LaunchExtras.session(extras)).isEqualTo(SessionOptions())
@@ -127,10 +127,10 @@ class LaunchExtrasTest {
         assertThat(s.landscapePlayingSeconds).isEqualTo(0)
         assertThat(s.miniPlayer).isEqualTo(MiniPlayer.RIGHT)
         assertThat(s.roomLights).isEqualTo(RoomLights("light.tv_left", null, "light.tv_right"))
-        assertThat(s.roomLightLevel).isEqualTo(RoomLightLevel.P70)
+        assertThat(s.roomLightBrightness).isEqualTo(RoomLightBrightness.P70)
         assertThat(s.motion).isEqualTo(MotionLevel.GENTLE)
         assertThat(s.background).isEqualTo(BackgroundMode.WALL)
-        assertThat(s.light).isEqualTo(LightLevel.SUBTLE)
+        assertThat(s.intensity).isEqualTo(Intensity.SUBTLE)
         // The German names of earlier versions: the same settings.
         val german = LaunchExtras.applyTo(
             Settings(),

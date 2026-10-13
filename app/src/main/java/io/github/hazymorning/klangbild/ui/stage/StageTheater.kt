@@ -48,7 +48,7 @@ enum class Change {
     WALL,
 
     /** Same track and picture, other words in the column (its lyrics come or go): only the text changes. */
-    WORDS,
+    LYRICS,
     ;
 
     /** A cross-fade of the same track. */
@@ -65,7 +65,7 @@ enum class Change {
  * Every animated value is read inside draw/layer lambdas, so animations never recompose.
  *
  * @param modelFor builds the model for a stage (title, progress, status and so on).
- * @param lightFactor the light's strength from the settings (1 = as designed, 0 = off).
+ * @param intensity the light's strength from the settings (1 = as designed, 0 = off).
  */
 @Composable
 fun StageTheater(
@@ -73,7 +73,7 @@ fun StageTheater(
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,
     modifier: Modifier = Modifier,
-    lightFactor: () -> Float = { 1f },
+    intensity: () -> Float = { 1f },
     /** The link is down: the stage dims like a pause. */
     dimmed: Boolean = false,
     /** The link of the party playing here, while its code shows where the cover stands. */
@@ -99,7 +99,7 @@ fun StageTheater(
             val kind = when {
                 song == old.track.key && target.scene.appearance != old.scene.appearance -> Change.WALL
                 song == old.track.key && target.scene !== old.scene -> Change.SOFT
-                song == old.track.key && target.lyrics !== old.lyrics -> Change.WORDS
+                song == old.track.key && target.lyrics !== old.lyrics -> Change.LYRICS
                 song == old.track.key -> Change.SOFT
                 samePicture(old.scene, target.scene) -> Change.TEXT
                 else -> Change.FULL
@@ -107,7 +107,7 @@ fun StageTheater(
             t.snapTo(0f)
             when (kind) {
                 Change.FULL -> text.begin(TextRise(Motion.TEXT_IN_MS, durationOf(kind)))
-                Change.TEXT, Change.WORDS -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, durationOf(kind)))
+                Change.TEXT, Change.LYRICS -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, durationOf(kind)))
                 else -> Unit
             }
             change = kind
@@ -165,8 +165,8 @@ fun StageTheater(
     val curPlan = rememberTextPlan(curModel)
     val prevPlan = prevModel?.let { rememberTextPlan(it) }
 
-    val level: () -> Float = { pausedLevel * breathing.value * lightFactor() }
-    val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.WORDS
+    val level: () -> Float = { pausedLevel * breathing.value * intensity() }
+    val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.LYRICS
     // A new picture comes up over the old one; the old goes once it is covered (a picture of
     // another shape, such as a round plate, lets the old one's corners fade with it).
     val oldPicture: () -> Float = {
@@ -233,7 +233,7 @@ fun StageTheater(
 
 private fun durationOf(change: Change) = when (change) {
     Change.FULL -> Motion.TRACK_CHANGE_MS
-    Change.TEXT, Change.WORDS -> Motion.TEXT_CHANGE_MS
+    Change.TEXT, Change.LYRICS -> Motion.TEXT_CHANGE_MS
     Change.SOFT -> Motion.SOFT_SWAP_MS
     Change.WALL -> Motion.WALL_CHANGE_MS
 }

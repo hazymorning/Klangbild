@@ -4,14 +4,14 @@ import io.github.hazymorning.klangbild.config.ActionKind
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.config.Picture
+import io.github.hazymorning.klangbild.config.ViewChoice
 import io.github.hazymorning.klangbild.config.QuickAction
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
-import io.github.hazymorning.klangbild.config.RoomLightLevel
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.data.ma.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
@@ -35,11 +35,11 @@ internal class QuickControl(private val host: ControllerHost) {
     @Volatile private var hold: Boolean? = null
 
     /** A view chosen with OK, taken once the presses stop (so a step through the views never shows the one between). */
-    @Volatile private var pendingPicture: Picture? = null
+    @Volatile private var pendingView: ViewChoice? = null
     private var pictureJob: Job? = null
 
     /** The lights' level before they were switched off from the quick settings. */
-    private var lightsBefore = RoomLightLevel.DEFAULT
+    private var lightsBefore = RoomLightBrightness.DEFAULT
 
     /** The current song's way into the favorites (by the song's key). */
     @Volatile private var favorite: Pair<String, FavoriteState>? = null
@@ -69,7 +69,7 @@ internal class QuickControl(private val host: ControllerHost) {
     fun open(menuOpen: Boolean) {
         synchronized(host.lock) {
             if (menuOpen || cursor != null) return
-            cursor = QuickKey(QuickItem.PICTURE)
+            cursor = QuickKey(QuickItem.VIEW)
             touchedAt = host.now()
             hold = host.ui.landscape != null
             host.recompute()
@@ -79,7 +79,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /** Closes the quick settings (up, back, after a while alone); a view still waiting is taken now. */
     fun close() {
-        applyPicture()
+        applyView()
         synchronized(host.lock) {
             cursor = null
             hold = null
@@ -112,13 +112,13 @@ internal class QuickControl(private val host: ControllerHost) {
             rows.getOrNull(indexOf(rows.map { it.key }, c))
         } ?: return
         when (row.item) {
-            QuickItem.PICTURE -> synchronized(host.lock) {
-                val shown = pendingPicture ?: QuickMenu.picture(host.settings, context())
-                pendingPicture = QuickMenu.step(shown, +1, wrap = true)
+            QuickItem.VIEW -> synchronized(host.lock) {
+                val shown = pendingView ?: QuickMenu.view(host.settings, context())
+                pendingView = QuickMenu.step(shown, +1, wrap = true)
                 pictureJob?.cancel()
                 pictureJob = host.scope.launch {
                     delay(SETTLE_MS)
-                    applyPicture()
+                    applyView()
                 }
                 host.recompute()
             }
@@ -128,9 +128,9 @@ internal class QuickControl(private val host: ControllerHost) {
             QuickItem.LIGHTS -> {
                 // On and off: off remembers the level, on brings it back.
                 val s = host.settings
-                val level = if (s.roomLightLevel == RoomLightLevel.OFF) lightsBefore else RoomLightLevel.OFF
-                if (s.roomLightLevel != RoomLightLevel.OFF) lightsBefore = s.roomLightLevel
-                host.applySettings(s.copy(roomLightLevel = level))
+                val level = if (s.roomLightBrightness == RoomLightBrightness.OFF) lightsBefore else RoomLightBrightness.OFF
+                if (s.roomLightBrightness != RoomLightBrightness.OFF) lightsBefore = s.roomLightBrightness
+                host.applySettings(s.copy(roomLightBrightness = level))
             }
             QuickItem.SHUFFLE -> toggleShuffle()
             QuickItem.PARTY -> toggleParty()
@@ -151,7 +151,7 @@ internal class QuickControl(private val host: ControllerHost) {
         if (cursor != null && (t - touchedAt > IDLE_MS || menuOpen)) {
             cursor = null
             hold = null
-            if (pendingPicture != null) host.scope.launch { applyPicture() }
+            if (pendingView != null) host.scope.launch { applyView() }
         }
     }
 
@@ -166,21 +166,21 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /** Takes the view chosen in the quick settings: the landscape, or one of the stage's two views. */
-    private fun applyPicture() {
+    private fun applyView() {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
             pictureJob = null
-            pendingPicture.also { pendingPicture = null }
+            pendingView.also { pendingView = null }
         } ?: return
         val s = host.settings
-        if (next == Picture.LANDSCAPE) {
+        if (next == ViewChoice.LANDSCAPE) {
             if (hold != null) hold = true
             host.showLandscape()
             return
         }
         if (hold != null) hold = false
         host.hideLandscape()
-        val view = if (next == Picture.FLOW) StageView.FLOW else StageView.SINGLE
+        val view = if (next == ViewChoice.FLOW) StageView.FLOW else StageView.SINGLE
         if (view != s.view) host.applySettings(s.copy(view = view))
     }
 
@@ -366,8 +366,8 @@ internal class QuickControl(private val host: ControllerHost) {
     private fun lyricsChoice(track: TrackInfo): LyricsChoice? {
         if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
         if (!host.settings.lyrics) return LyricsChoice.OFF
-        val words = host.ui.source.words?.takeIf { it.key == track.key }
-        return if ((words != null && words.lyrics == null) || track.durationMs == null) LyricsChoice.NONE else LyricsChoice.ON
+        val known = host.ui.source.lyrics?.takeIf { it.key == track.key }
+        return if ((known != null && known.lyrics == null) || track.durationMs == null) LyricsChoice.NONE else LyricsChoice.ON
     }
 
     /** How far [track]'s way into the favorites has come: asked here, or known from Music Assistant. */
@@ -382,7 +382,7 @@ internal class QuickControl(private val host: ControllerHost) {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
             landscape = landscape,
-            pending = pendingPicture,
+            pending = pendingView,
             music = track != null,
             favorite = track?.takeIf { host.ui.source.favorites }?.let { favoriteState(it) },
             shuffle = shuffleShown(),

@@ -24,7 +24,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.ui.LocalStageTick
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
@@ -96,7 +96,7 @@ fun ProgressBar(
     }
     val label = labelStyle.copy(color = colors.label)
     val figures = rememberFigures(labelStyle, Face.TITLE)
-    val length = remember(figures, durationMs) { figures.of(TimeLine.formatClock(durationMs)) }
+    val length = remember(figures, durationMs) { figures.of(TimeText.formatClock(durationMs)) }
     Layout(
         modifier = modifier.fillMaxWidth(),
         content = {
@@ -113,7 +113,7 @@ fun ProgressBar(
                     drawRoundRect(colors.fill.copy(alpha = colors.fill.alpha * fillLevel), Offset.Zero, Size(w, size.height), r)
                 }
             }
-            BasicText(figures.of(TimeLine.formatClock(second * 1000L)), style = label, maxLines = 1)
+            BasicText(figures.of(TimeText.formatClock(second * 1000L)), style = label, maxLines = 1)
             BasicText(length, style = label, maxLines = 1)
         },
     ) { measurables, constraints ->

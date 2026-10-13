@@ -71,7 +71,7 @@ private enum class FlowChange {
     WALL,
 
     /** Same track and picture, other words in the column (its lyrics come or go): only the text changes. */
-    WORDS,
+    LYRICS,
 }
 
 /**
@@ -116,7 +116,7 @@ fun FlowTheater(
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,
     modifier: Modifier = Modifier,
-    lightFactor: () -> Float = { 1f },
+    intensity: () -> Float = { 1f },
     /** The link is down: the stage dims like a pause. */
     dimmed: Boolean = false,
     /** The link of the party playing here, while its code shows in the middle card's place. */
@@ -152,7 +152,7 @@ fun FlowTheater(
             val line = plan.timeline
             when (kind) {
                 FlowChange.MOVE -> text.begin(TextRise(line.clearMs + Motion.FLOW_TEXT_IN_MS, line.totalMs))
-                FlowChange.TEXT, FlowChange.WORDS -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, line.totalMs))
+                FlowChange.TEXT, FlowChange.LYRICS -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, line.totalMs))
                 else -> Unit
             }
             change = kind
@@ -210,11 +210,11 @@ fun FlowTheater(
     val from = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: rest }
     val balance: () -> Balance = { if (prev == null) rest else from.towards(rest, Motion.Turn.transform(line.settle.of(t.value))) }
     // Lines that leave and rise anew keep to their own places; lines that stay move along.
-    val textMoves = kind == FlowChange.MOVE || kind == FlowChange.TEXT || kind == FlowChange.WORDS
+    val textMoves = kind == FlowChange.MOVE || kind == FlowChange.TEXT || kind == FlowChange.LYRICS
     val newColumn: () -> Float = { if (prev != null && textMoves) rest.column else balance().column }
     val oldColumn: () -> Float = { if (textMoves) from.column else balance().column }
     val wall = middle.scene.palette.wall.asColor()
-    val level: () -> Float = { pausedLevel * breathing.value * lightFactor() }
+    val level: () -> Float = { pausedLevel * breathing.value * intensity() }
     // The text cross-fades with a new look of the same track; a new song's lines leave and rise.
     val softText = kind == FlowChange.SOFT || kind == FlowChange.WALL
     // The whole strip cross-fades when the same middle card takes a new look.
@@ -307,7 +307,7 @@ private fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.track.key != b.track.key -> FlowChange.TEXT
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
-        old.lyrics !== new.lyrics -> FlowChange.WORDS
+        old.lyrics !== new.lyrics -> FlowChange.LYRICS
         else -> FlowChange.SIDES
     }
 }
@@ -372,7 +372,7 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
 
     val turnMs = when (kind) {
         FlowChange.MOVE -> Motion.FLOW_TURN_MS
-        FlowChange.TEXT, FlowChange.WORDS -> Motion.TEXT_CHANGE_MS
+        FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_CHANGE_MS
         FlowChange.SIDES -> Motion.FLOW_SIDES_MS
         FlowChange.SOFT -> Motion.SOFT_SWAP_MS
         FlowChange.WALL -> Motion.WALL_CHANGE_MS

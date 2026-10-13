@@ -127,7 +127,7 @@ class ReadmeShotsTest {
 
     /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
     @Test
-    fun windowView() {
+    fun landscapeShot() {
         val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
         val ui = UiState(
             screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),

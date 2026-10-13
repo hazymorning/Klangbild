@@ -44,7 +44,7 @@ internal class LightTargets(
         if (landscape != null) {
             return LightSync.Target(
                 lights = s.roomLights,
-                level = s.roomLightLevel,
+                level = s.roomLightBrightness,
                 colors = landscapeColors(ui.source, landscape.miniPlayer),
                 song = LANDSCAPE_SONG,
                 playing = true,
@@ -61,7 +61,7 @@ internal class LightTargets(
         val field = shown?.scene?.field ?: return null
         return LightSync.Target(
             lights = s.roomLights,
-            level = s.roomLightLevel,
+            level = s.roomLightBrightness,
             colors = coverColors(field, s.motion.speed > 0f),
             song = shown.track.key,
             playing = playing,

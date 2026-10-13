@@ -41,7 +41,7 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.StageView
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.render.ArtworkScene
@@ -424,7 +424,7 @@ fun StatusLayer(
     val clockText = status.clock
     val measurer = rememberTextMeasurer()
     val local = LocalDensity.current
-    val separator = TimeLine.SEPARATOR.trimStart()
+    val separator = TimeText.SEPARATOR.trimStart()
     // Which values fit beside the clock and the place, worked out on their measured widths.
     val values = remember(status, styles, layout, local) {
         fun width(text: AnnotatedString, style: TextStyle) = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width

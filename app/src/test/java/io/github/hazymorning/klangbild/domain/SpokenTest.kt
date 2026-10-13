@@ -102,15 +102,15 @@ class SpokenTest {
 
     @Test
     fun `speed and times in words`() {
-        assertThat(TimeLine.speed(1f, de)).isNull()
-        assertThat(TimeLine.speed(1.004f, de)).isNull()
-        assertThat(TimeLine.speed(1.5f, de)).isEqualTo("Tempo\u00A01,5×")
-        assertThat(TimeLine.speed(1.25f, de)).isEqualTo("Tempo\u00A01,25×")
-        assertThat(TimeLine.speed(2f, de)).isEqualTo("Tempo\u00A02×")
-        assertThat(TimeLine.speed(0.75f, de)).isEqualTo("Tempo\u00A00,75×")
+        assertThat(TimeText.speed(1f, de)).isNull()
+        assertThat(TimeText.speed(1.004f, de)).isNull()
+        assertThat(TimeText.speed(1.5f, de)).isEqualTo("Tempo\u00A01,5×")
+        assertThat(TimeText.speed(1.25f, de)).isEqualTo("Tempo\u00A01,25×")
+        assertThat(TimeText.speed(2f, de)).isEqualTo("Tempo\u00A02×")
+        assertThat(TimeText.speed(0.75f, de)).isEqualTo("Tempo\u00A00,75×")
         assertThat(de.clock(1_791_483_667_000L, java.time.ZoneId.of("Europe/Berlin"))).isEqualTo("20:21")
         // In English: a decimal point, and the time in 12 hours as the system is set.
-        assertThat(TimeLine.speed(1.5f, en)).isEqualTo("Speed\u00A01.5×")
+        assertThat(TimeText.speed(1.5f, en)).isEqualTo("Speed\u00A01.5×")
         assertThat(en.clock(1_791_483_667_000L, java.time.ZoneId.of("Europe/Berlin"))).isEqualTo("8:21\u00A0PM")
         assertThat(TestTexts.english(clock24 = true).clock(1_791_483_667_000L, java.time.ZoneId.of("Europe/Berlin"))).isEqualTo("20:21")
     }

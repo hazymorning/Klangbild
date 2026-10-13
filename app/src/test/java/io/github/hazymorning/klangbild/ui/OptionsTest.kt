@@ -4,7 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.art.SyntheticCover
-import io.github.hazymorning.klangbild.config.LightLevel
+import io.github.hazymorning.klangbild.config.Intensity
 import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.Settings
@@ -79,17 +79,17 @@ class OptionsTest {
 
     @Test fun lightStrong() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_strong") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.STRONG.factor) }
+        shot("light_strong") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.STRONG.factor) }
     }
 
     @Test fun lightSubtle() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_subtle") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.SUBTLE.factor) }
+        shot("light_subtle") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.SUBTLE.factor) }
     }
 
     @Test fun lightOff() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_off") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.OFF.factor) }
+        shot("light_off") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.OFF.factor) }
     }
 
     @Test fun restGrouped() = shot("rest_group") {
@@ -109,7 +109,7 @@ class OptionsTest {
     @Test fun menuLyricsNeeds() = shot("menu_lyrics_needs") { MenuScreen(menu(MenuEntry.LYRICS)) }
 
     /** No lights chosen yet: both lines dimmed, the explanation says how to set them up. */
-    @Test fun menuLightsNeeded() = shot("menu_lights_set_up") { MenuScreen(menu(MenuEntry.LIGHTS)) }
+    @Test fun menuLightsNeeded() = shot("menu_lights_set_up") { MenuScreen(menu(MenuEntry.BRIGHTNESS)) }
 
     /** OK on "Information": the groups give way to its settings, the first one in the light. */
     @Test fun menuOpensAGroup() {
@@ -127,11 +127,11 @@ class OptionsTest {
     @Test fun menuGroup() = shot("menu_group") { MenuScreen(menu(MenuEntry.GROUP)) }
 
     @Test fun menuLight() = shot("menu_light") {
-        MenuScreen(menu(MenuEntry.LIGHT, configured.copy(light = LightLevel.SUBTLE)))
+        MenuScreen(menu(MenuEntry.INTENSITY, configured.copy(intensity = Intensity.SUBTLE)))
     }
 
-    @Test fun menuBars() = shot("menu_bars") {
-        MenuScreen(menu(MenuEntry.LIGHTS, configured.copy(roomLights = io.github.hazymorning.klangbild.config.RoomLights(left = "light.l", right = "light.r"), roomLightLevel = io.github.hazymorning.klangbild.config.RoomLightLevel.P60)))
+    @Test fun menuLights() = shot("menu_bars") {
+        MenuScreen(menu(MenuEntry.BRIGHTNESS, configured.copy(roomLights = io.github.hazymorning.klangbild.config.RoomLights(left = "light.l", right = "light.r"), roomLightBrightness = io.github.hazymorning.klangbild.config.RoomLightBrightness.P60)))
     }
 
     @Test fun menuSleep() = shot("menu_sleep") { MenuScreen(menu(MenuEntry.SLEEP_AFTER)) }

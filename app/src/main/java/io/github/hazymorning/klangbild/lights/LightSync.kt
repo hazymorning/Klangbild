@@ -1,6 +1,6 @@
 package io.github.hazymorning.klangbild.lights
 
-import io.github.hazymorning.klangbild.config.RoomLightLevel
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.data.ha.EntityState
 import kotlinx.coroutines.CoroutineScope
@@ -76,7 +76,7 @@ class LightSync(
     /** What the lights are to show now, set on every tick; null while nothing is on stage. */
     data class Target(
         val lights: RoomLights,
-        val level: RoomLightLevel,
+        val level: RoomLightBrightness,
         /** The colors for each light; a new one is faded to. */
         val colors: LightColors,
         /** The song (or the landscape): a new one changes the lights once it has played a moment. */
@@ -203,7 +203,7 @@ class LightSync(
         val old = this.target
         this.target = target
         if (target != null) lastTarget = target
-        if (old?.lights != target?.lights || (old?.level == RoomLightLevel.OFF) != (target?.level == RoomLightLevel.OFF)) follow(bridge, target)
+        if (old?.lights != target?.lights || (old?.level == RoomLightBrightness.OFF) != (target?.level == RoomLightBrightness.OFF)) follow(bridge, target)
         // Nothing to do without lights, unless lights taken over are still to be given back.
         if (target != null || activeLights) ensureLoop()
         if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old == null || target == null) wake.trySend(Unit)
@@ -252,7 +252,7 @@ class LightSync(
         val b = bridge ?: return
         val tg = target
         val states = b.lights.value
-        if (tg == null || tg.level == RoomLightLevel.OFF || !tg.lights.isSet) {
+        if (tg == null || tg.level == RoomLightBrightness.OFF || !tg.lights.isSet) {
             if (activeFor == null) return
             // The option switched off, or the lights set up anew: given back at once; the music
             // ended: dimmed like a pause, and given back after a while.
@@ -656,7 +656,7 @@ class LightSync(
     }
 
     /** The lights to keep up with: the chosen ones, while they are to join in. */
-    private fun followed(t: Target?): Set<String> = if (t == null || t.level == RoomLightLevel.OFF) emptySet() else t.lights.ids.toSet()
+    private fun followed(t: Target?): Set<String> = if (t == null || t.level == RoomLightBrightness.OFF) emptySet() else t.lights.ids.toSet()
 
     companion object {
         /** Where each light stands: left, behind the middle (its light shows above the screen), right. */

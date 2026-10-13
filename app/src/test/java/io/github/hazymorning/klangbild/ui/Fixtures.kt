@@ -51,7 +51,7 @@ object Fixtures {
     val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalogue.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
 
     /** Synced words from LRC. */
-    fun words(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
+    fun lyrics(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
 
     fun scene(
         track: TrackInfo,
@@ -241,7 +241,7 @@ object Fixtures {
         stage: StageData,
         status: PlayerStatus,
         next: TrackInfo? = null,
-        lightFactor: Float = 1f,
+        intensity: Float = 1f,
         group: String? = null,
         muted: Boolean = false,
         linkDown: Boolean = false,
@@ -252,7 +252,7 @@ object Fixtures {
             stage = stage,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            lightFactor = { lightFactor },
+            intensity = { intensity },
             dimmed = linkDown,
             partyCode = partyCode,
         )

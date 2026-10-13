@@ -35,7 +35,7 @@ import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.RestReason
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
@@ -83,7 +83,7 @@ object RestTexts {
 
     fun lines(reason: RestReason, speaker: String?, entityId: String?, t: Texts): Lines = when (reason) {
         RestReason.IDLE -> Lines(speaker, null)
-        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[R.string.status_paused]).joinToString(TimeLine.SEPARATOR), null)
+        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR), null)
         RestReason.CONNECTING -> Lines(speaker, t[R.string.rest_connecting])
         RestReason.OFFLINE -> Lines(null, t[R.string.rest_offline])
         RestReason.UNAVAILABLE -> Lines(speaker ?: t[R.string.rest_speaker], t[R.string.rest_unavailable])
@@ -150,14 +150,14 @@ fun RestScreen(
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     /** The lamp's strength from the settings (0 = off). */
-    lightFactor: Float = 1f,
+    intensity: Float = 1f,
     appearance: Appearance = Appearance.DARK,
 ) {
     val colors = remember(appearance) { QuietColors.of(appearance) }
     val t = texts()
     val lines = RestTexts.lines(reason, speaker, entityId, t)
     // A lamp only lights a dark wall.
-    val peak = (RestLight.PEAK * lightFactor).takeIf { it > 0f && appearance == Appearance.DARK }
+    val peak = (RestLight.PEAK * intensity).takeIf { it > 0f && appearance == Appearance.DARK }
     val tint = remember(peak) { peak?.let { LampLight.lightTint(LampLight.LAMP, it) } }
     val screen = ScreenSpec(960, 540, 1f)
 

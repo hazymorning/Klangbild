@@ -16,7 +16,7 @@ import io.github.hazymorning.klangbild.data.ma.MaLink
 import io.github.hazymorning.klangbild.domain.Lrc
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
@@ -237,16 +237,16 @@ class QuickControlTest {
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsValue() = rows().first { it.item == QuickItem.LYRICS }.value
-        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.PICTURE, QuickItem.LYRICS).inOrder()
+        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.VIEW, QuickItem.LYRICS).inOrder()
         assertThat(lyricsValue()).isEqualTo("Off")
         quick.move(+1)
         quick.change()
         assertThat(lyrics).isTrue()
         // Not known yet: on. Known to have none: none. With words: on.
         assertThat(lyricsValue()).isEqualTo("On")
-        ui = ui.copy(source = ui.source.copy(words = SongWords(song.key, null)))
+        ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, null)))
         assertThat(lyricsValue()).isEqualTo("None")
-        ui = ui.copy(source = ui.source.copy(words = SongWords(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
+        ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
         assertThat(lyricsValue()).isEqualTo("On")
         quick.change()
         assertThat(lyrics).isFalse()

@@ -9,7 +9,7 @@ import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.StageView
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -44,11 +44,11 @@ class SpokenStageTest {
 
     private fun lead(pace: String?) = pace
 
-    @Test fun audiobook() = shot("audiobook", spokenModel(book, 2_554_000L, lead(TimeLine.speed(1.25f, Fixtures.texts))))
+    @Test fun audiobook() = shot("audiobook", spokenModel(book, 2_554_000L, lead(TimeText.speed(1.25f, Fixtures.texts))))
 
     @Test fun audiobookNumbered() = shot("audiobook_numbered", spokenModel(book, 4_100_000L, lead(StageTexts.sleep(Fixtures.at(23, 10), Fixtures.texts, Fixtures.zone))))
 
-    @Test fun audiobookPaper() = shot("audiobook_paper", spokenModel(book, 2_554_000L, lead(TimeLine.speed(1.5f, Fixtures.texts)), appearance = Appearance.LIGHT))
+    @Test fun audiobookPaper() = shot("audiobook_paper", spokenModel(book, 2_554_000L, lead(TimeText.speed(1.5f, Fixtures.texts)), appearance = Appearance.LIGHT))
 
     @Test fun podcast() = shot("podcast", spokenModel(episode, 1_163_000L, lead(StageTexts.sleep(Fixtures.at(23, 10), Fixtures.texts, Fixtures.zone)), next = Catalogue.nextEpisode))
 

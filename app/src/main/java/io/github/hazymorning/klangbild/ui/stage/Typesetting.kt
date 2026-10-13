@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.ScenePalette
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -214,7 +214,7 @@ private fun planText(
         artistStyle = block.artistSmall
     }
     // The album with its year; the year goes first when both don't fit.
-    val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeLine.SEPARATOR).ifEmpty { null }
+    val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, block.album)) t.album else albumYear
     // What comes next: title and artist, or the title alone rather than a cut-off artist.
     val next = model.next?.let { full ->

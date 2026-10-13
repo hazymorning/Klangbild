@@ -45,9 +45,9 @@ class LyricsMotionTest {
     private val mdpi = ScreenSpec(960, 540, 1f)
 
     private val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
-    private val neonWords = Fixtures.words(Catalogue.neonWords)
+    private val neonLyrics = Fixtures.lyrics(Catalogue.neonLyrics)
     private val salt = Fixtures.track(SyntheticCover.SALT_WATER)
-    private val saltWords = Fixtures.words(Catalogue.saltWords)
+    private val saltWords = Fixtures.lyrics(Catalogue.saltWords)
 
     /** Where the song is (ms), as the progress bar has it. */
     private var position by mutableLongStateOf(80_000L)
@@ -100,7 +100,7 @@ class LyricsMotionTest {
     fun theListGlidesOneLineOn() {
         // "und fang von vorne an" comes at 1:23.8; it moves into the middle a little before.
         position = 82_000L
-        val s = stage(neon, neonWords)
+        val s = stage(neon, neonLyrics)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
         frames("glide", frames = 12, stepMs = 50) { position = 83_550L }
@@ -109,7 +109,7 @@ class LyricsMotionTest {
     @Test
     fun quickLinesHandOverWithoutAHitch() {
         // A line every 0.4 s, the song playing on: each glide carries on into the next.
-        val quick = Fixtures.words(
+        val quick = Fixtures.lyrics(
             listOf("Eins und zwei", "und drei und vier", "Wir zählen mit", "bis alles stimmt", "Fünf und sechs", "und sieben, acht", "Noch einmal", "von vorn")
                 .mapIndexed { i, line -> "[00:%02d.%02d]%s".format(10 + i * 4 / 10, (i * 40) % 100, line) }.joinToString("\n"),
         )
@@ -128,7 +128,7 @@ class LyricsMotionTest {
     @Test
     fun aPauseDimsTheWordsAndNothingMoves() {
         position = 84_000L
-        val s = stage(neon, neonWords)
+        val s = stage(neon, neonLyrics)
         var status by mutableStateOf(PlayerStatus.PLAYING)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s, status) }
@@ -138,7 +138,7 @@ class LyricsMotionTest {
     @Test
     fun aBreakDimsTheLine() {
         position = 30_000L
-        val s = stage(neon, neonWords)
+        val s = stage(neon, neonLyrics)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
         frames("rest", frames = 8, stepMs = 100) { position = 31_700L }
@@ -147,7 +147,7 @@ class LyricsMotionTest {
     @Test
     fun aJumpCrossFades() {
         position = 84_000L
-        val s = stage(neon, neonWords)
+        val s = stage(neon, neonLyrics)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
         frames("jump", frames = 6, stepMs = 100) { position = 130_000L }
@@ -157,7 +157,7 @@ class LyricsMotionTest {
     fun theWordsComeWithTheTextChange() {
         position = 84_000L
         var s by mutableStateOf(stage(neon, null))
-        val on = s.copy(lyrics = neonWords)
+        val on = s.copy(lyrics = neonLyrics)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
         frames("on", frames = 10, stepMs = 100) { s = on }
@@ -166,7 +166,7 @@ class LyricsMotionTest {
     @Test
     fun theWordsGoWithTheTextChange() {
         position = 84_000L
-        var s by mutableStateOf(stage(neon, neonWords))
+        var s by mutableStateOf(stage(neon, neonLyrics))
         val off = s.copy(lyrics = null)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
@@ -176,7 +176,7 @@ class LyricsMotionTest {
     @Test
     fun aNewSongBringsItsWords() {
         position = 84_000L
-        var s by mutableStateOf(stage(neon, neonWords))
+        var s by mutableStateOf(stage(neon, neonLyrics))
         val next = stage(salt, saltWords)
         compose.mainClock.autoAdvance = false
         compose.setContent { Theater(s) }
@@ -197,7 +197,7 @@ class LyricsMotionTest {
         position = 84_000L
         val scenes = flowScenes()
         var f by mutableStateOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2))
-        val on = f.copy(lyrics = neonWords)
+        val on = f.copy(lyrics = neonLyrics)
         compose.mainClock.autoAdvance = false
         compose.setContent { Flow(f) }
         frames("flow_on", frames = 10, stepMs = 100) { f = on }
@@ -207,7 +207,7 @@ class LyricsMotionTest {
     fun coverFlowTurnsToTheNextSongWithItsWords() {
         position = 84_000L
         val scenes = flowScenes()
-        var f by mutableStateOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2).copy(lyrics = neonWords))
+        var f by mutableStateOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2).copy(lyrics = neonLyrics))
         val next = Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 3).copy(lyrics = saltWords)
         compose.mainClock.autoAdvance = false
         compose.setContent { Flow(f) }

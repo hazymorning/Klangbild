@@ -767,10 +767,10 @@ class HaSourceTest {
         try {
             val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"))
             s.start()
-            val first = withTimeout(5_000) { s.state.first { it.words != null } }
-            val words = first.words!!
-            assertThat(words.key).isEqualTo(first.player!!.track!!.key)
-            assertThat(words.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
+            val first = withTimeout(5_000) { s.state.first { it.lyrics != null } }
+            val known = first.lyrics!!
+            assertThat(known.key).isEqualTo(first.player!!.track!!.key)
+            assertThat(known.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
             // Asked ahead for the song up next, and only for it.
             withTimeout(5_000) { while (asked.isEmpty()) delay(20) }
             assertThat(asked).containsExactly("library://track/2")
@@ -779,7 +779,7 @@ class HaSourceTest {
             queueAnswer = { queueOf(item("Zweites Lied", "zweites"), null) }
             report("media_title" to "Zweites Lied", "media_content_id" to "library://track/2")
             val second = withTimeout(5_000) { s.state.first { it.player?.track?.title == "Zweites Lied" } }
-            val next = second.words!!
+            val next = second.lyrics!!
             assertThat(next.key).isEqualTo(second.player!!.track!!.key)
             assertThat(next.lyrics!!.lines.first().text).isEqualTo("Noch eine Zeile")
             delay(300)
@@ -796,7 +796,7 @@ class HaSourceTest {
         val s = source()
         s.start()
         withTimeout(5_000) { s.state.first { it.queueKnown } }
-        assertThat(s.state.value.words).isNull()
+        assertThat(s.state.value.lyrics).isNull()
         s.stop()
     }
 

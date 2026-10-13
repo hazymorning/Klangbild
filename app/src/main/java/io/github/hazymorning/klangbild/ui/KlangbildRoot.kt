@@ -36,7 +36,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.StageView
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -145,11 +145,11 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             label = "screen",
         ) { k ->
             when (val c = latest[k] ?: Content.Dark) {
-                is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    StageTheater(stage = c.stage, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
+                is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                    StageTheater(stage = c.stage, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
-                is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    FlowTheater(flow = c.flow, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
+                is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                    FlowTheater(flow = c.flow, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
                 is Content.RestContent -> RestScreen(
                     reason = c.reason,
@@ -157,7 +157,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     speaker = c.speaker?.let { name -> SpeakerLabel.group(ui.source.group, t).takeIf { ui.display.group } ?: name },
                     entityId = ui.entityId,
                     nowMs = wall.value,
-                    lightFactor = ui.display.light.factor,
+                    intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
                 is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionNow, hooks.now)
@@ -239,7 +239,7 @@ private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.lands
 private typealias Theater = @Composable (
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,
-    lightFactor: () -> Float,
+    intensity: () -> Float,
     linkDown: Boolean,
 ) -> Unit
 
@@ -287,7 +287,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     val volume = SpeakerLabel.volume(player?.volume, muted, t)
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = stageScreen?.track?.kind?.spoken == true
-    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeLine.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
+    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
     val lead = StageTexts.lead(status, muted, ui.volumeFlash, volume, group, volumeAlways = display.volume == VolumeDisplay.ALWAYS, t = t, pace = pace)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     val statusLine = StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
@@ -312,7 +312,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 durationMs = ch?.let { it.endMs - it.startMs } ?: s.track.durationMs,
                 positionMs = { if (s.track.key == stage.track.key) hooks.positionNow() else null },
                 year = s.track.year.takeIf { display.album },
-                progress = if (lyrics != null) peek else display.timeLine || peek,
+                progress = if (lyrics != null) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[R.string.hint_down]
@@ -334,8 +334,8 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
         }
     }
     // Changing the light's strength in the menu turns it like a dimmer.
-    val lightFactor by animateFloatAsState(
-        targetValue = display.light.factor,
+    val intensity by animateFloatAsState(
+        targetValue = display.intensity.factor,
         animationSpec = tween(1_200, easing = Motion.Dimmer),
         label = "light-setting",
     )
@@ -344,15 +344,15 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
     // The bar shows when its length is known and nothing stands in its place, by setting or for a
     // moment (beside the song's words only for a moment).
-    val words = stage.lyrics != null
-    val barShown = (if (words) peek else display.timeLine || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
+    val showsLyrics = stage.lyrics != null
+    val barShown = (if (showsLyrics) peek else display.progressBar || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
     // One tick for the bar, the colors and the words, so they are redrawn in the same frames. With
     // nothing to redraw, or with the settings covering the stage, it stops.
     val tick = rememberStageTick(
         fast = moving || status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
-        running = (moving || barShown || words) && ui.menu == null,
+        running = (moving || barShown || showsLyrics) && ui.menu == null,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
-        theater(status, modelFor, { lightFactor }, linkDown)
+        theater(status, modelFor, { intensity }, linkDown)
     }
 }

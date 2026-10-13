@@ -40,7 +40,7 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.ScreenDecision
 import io.github.hazymorning.klangbild.domain.ScreenStateMachine
 import io.github.hazymorning.klangbild.domain.SmoothedPosition
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
@@ -590,7 +590,7 @@ class NowPlayingController(
         stopSource(source)
         // Another speaker (or another server) has its own history.
         strip.clear()
-        lastWords = null
+        lastLyrics = null
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
@@ -683,7 +683,7 @@ class NowPlayingController(
         val party = quick.partyWanted(src.party)
         val decision: ScreenDecision = machine.decide(src, t, holdPause = party)
         val appearance = appearanceFor(s, src)
-        val look = Look(appearance, s.light.factor, coverField = s.background == BackgroundMode.COVER)
+        val look = Look(appearance, s.intensity.factor, coverField = s.background == BackgroundMode.COVER)
         val stage = decision.screen as? Screen.Stage
         val playing = stage?.status == PlayerStatus.PLAYING && !stage.linkDown
         val speed = src.player?.speed ?: 1f
@@ -778,16 +778,16 @@ class NowPlayingController(
     }
 
     /** What was last known of the words of the song on stage: it stays while a moment between two songs says nothing. */
-    private var lastWords: SongWords? = null
+    private var lastLyrics: SongLyrics? = null
 
     /**
      * The words that take the text column for [track]: with Lyrics on, the synced words Music
      * Assistant has for a song whose position is known (the words follow it).
      */
     private fun lyricsFor(s: Settings, src: SourceState, track: TrackInfo): Lyrics? {
-        src.words?.let { lastWords = it }
+        src.lyrics?.let { lastLyrics = it }
         if (!s.lyrics || track.kind != MediaKind.MUSIC || track.durationMs == null) return null
-        return lastWords?.takeIf { it.key == track.key }?.lyrics
+        return lastLyrics?.takeIf { it.key == track.key }?.lyrics
     }
 
     /** The stage shows [stage]'s track as soon as its scene is ready (the next track's is made ahead). */

@@ -4,7 +4,7 @@ import io.github.hazymorning.klangbild.config.QuickAction
 import io.github.hazymorning.klangbild.data.ha.EntityState
 import io.github.hazymorning.klangbild.data.ma.MaLink
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +63,7 @@ data class SourceState(
     /** Home Assistant's unit for temperatures ("°C"), for a thermostat's attributes; null until known. */
     val temperatureUnit: String? = null,
     /** What Music Assistant knows of the words of the song that plays; null while nothing is known (or without Music Assistant). */
-    val words: SongWords? = null,
+    val lyrics: SongLyrics? = null,
     /** A party of Music Assistant's Party plugin plays to this speaker, and its guests may join. */
     val party: Boolean = false,
 )

@@ -3,7 +3,7 @@ package io.github.hazymorning.klangbild.lights
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.config.RoomLightLevel
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.data.ha.EntityState
 import io.github.hazymorning.klangbild.render.CoverField
@@ -192,7 +192,7 @@ class LightSyncTest {
     private fun target(
         song: String,
         playing: Boolean = true,
-        level: RoomLightLevel = RoomLightLevel.P20,
+        level: RoomLightBrightness = RoomLightBrightness.P20,
         motion: Float = 0f,
         f: FieldScene = field,
         lights: RoomLights = pair,
@@ -498,12 +498,12 @@ class LightSyncTest {
         val s = sync()
         s.attach(ha)
         val colors = coverColors(fourColors(), moving = true)
-        s.update(LightSync.Target(pair, RoomLightLevel.P20, colors, "a", true, 0f, 0.06f, 0f, { 0.0 }))
+        s.update(LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 0f, { 0.0 }))
         testScheduler.advanceTimeBy(60_000)
         assertThat(ha.to(left)).hasSize(1)
 
         var t = 0.0
-        val moving = LightSync.Target(pair, RoomLightLevel.P20, colors, "a", true, 0f, 0.06f, 1f, { t })
+        val moving = LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 1f, { t })
         s.update(moving)
         // Five minutes: the colors move on from light to light slowly, and only visible steps are sent.
         repeat(600) {
@@ -550,7 +550,7 @@ class LightSyncTest {
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
         val before = ha.calls.size
-        s.update(target("a", level = RoomLightLevel.OFF))
+        s.update(target("a", level = RoomLightBrightness.OFF))
         testScheduler.advanceTimeBy(5_000)
         val back = ha.calls.drop(before)
         assertThat(back.first { it.id == "scene.klangbild_tv_left" }.name).isEqualTo("scene.turn_on")
@@ -576,7 +576,7 @@ class LightSyncTest {
         // Home Assistant restarted: the snapshot scenes are gone.
         ha.scenesLost = true
         val before = ha.calls.size
-        s.update(target("a", level = RoomLightLevel.OFF))
+        s.update(target("a", level = RoomLightBrightness.OFF))
         testScheduler.advanceTimeBy(5_000)
         val back = ha.calls.drop(before).filter { it.domain == "light" }
         val on = back.single { it.id == left }

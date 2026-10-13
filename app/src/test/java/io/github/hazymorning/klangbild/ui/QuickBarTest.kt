@@ -13,7 +13,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.QuickAction
 import io.github.hazymorning.klangbild.config.QuickKey
-import io.github.hazymorning.klangbild.config.RoomLightLevel
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.MiniPlayer
@@ -48,7 +48,7 @@ class QuickBarTest {
         TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone))
     }
 
-    private val withLights = Settings(roomLights = RoomLights(left = "light.links", center = "light.mitte", right = "light.rechts"), roomLightLevel = RoomLightLevel.P50)
+    private val withLights = Settings(roomLights = RoomLights(left = "light.links", center = "light.mitte", right = "light.rechts"), roomLightBrightness = RoomLightBrightness.P50)
 
     private fun state(focus: QuickItem, ctx: QuickContext, s: Settings = withLights): QuickState {
         val rows = QuickMenu.rows(s, ctx, Fixtures.texts)
@@ -64,7 +64,7 @@ class QuickBarTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(track, next = Fixtures.spiegel))
-                    QuickBar(state(QuickItem.PICTURE, playing), Appearance.DARK)
+                    QuickBar(state(QuickItem.VIEW, playing), Appearance.DARK)
                 }
             }
         }
@@ -90,7 +90,7 @@ class QuickBarTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(track, next = Fixtures.spiegel))
-                    QuickBar(state(QuickItem.PICTURE, QuickContext(music = true), Settings()), Appearance.DARK)
+                    QuickBar(state(QuickItem.VIEW, QuickContext(music = true), Settings()), Appearance.DARK)
                 }
             }
         }
@@ -121,14 +121,14 @@ class QuickBarTest {
                 }
             }
         }
-        shot("buttons_start", QuickKey(QuickItem.PICTURE))
+        shot("buttons_start", QuickKey(QuickItem.VIEW))
         shot("buttons_first", QuickKey(QuickItem.ACTION, 0))
         shot("buttons_end", QuickKey(QuickItem.ACTION, 2))
         shot("buttons_end_en", QuickKey(QuickItem.ACTION, 2), io.github.hazymorning.klangbild.text.TestTexts.english())
     }
 
     @Test
-    fun overTheWindowView() {
+    fun overTheLandscape() {
         val t = java.time.ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
         val track = Fixtures.track(SyntheticCover.BAUHAUS)
         val ui = UiState(
@@ -142,7 +142,7 @@ class QuickBarTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     LandscapeScreen(ui, ui.landscape!!, clock, positionNow = { 60_000L }, now = { t }, modifier = Modifier.fillMaxSize())
-                    QuickBar(state(QuickItem.PICTURE, playing.copy(landscape = true)), Appearance.DARK)
+                    QuickBar(state(QuickItem.VIEW, playing.copy(landscape = true)), Appearance.DARK)
                 }
             }
         }

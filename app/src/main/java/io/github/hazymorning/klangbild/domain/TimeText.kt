@@ -5,7 +5,7 @@ import io.github.hazymorning.klangbild.text.Texts
 import java.util.Locale
 
 /** Durations as text, and the one separator every line uses. */
-object TimeLine {
+object TimeText {
     /** The one separator used everywhere: a middle dot, glued to the word before it. */
     const val SEPARATOR = " · "
 

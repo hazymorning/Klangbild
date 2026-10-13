@@ -6,7 +6,7 @@ import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.Texts
 
 /** What the screen shows: one of the two views of the music, or the landscape. */
-enum class Picture { SINGLE, FLOW, LANDSCAPE }
+enum class ViewChoice { SINGLE, FLOW, LANDSCAPE }
 
 /** The song's words in the text column: on, off, or on while this song has no synced words. */
 enum class LyricsChoice { ON, OFF, NONE }
@@ -32,7 +32,7 @@ enum class FavoriteState {
  * all settings ([SETTINGS]).
  */
 enum class QuickItem(@StringRes val label: Int?) {
-    PICTURE(R.string.quick_view),
+    VIEW(R.string.quick_view),
     LYRICS(R.string.quick_lyrics),
     PARTY(R.string.quick_party),
     FAVORITE(R.string.quick_favorite),
@@ -74,7 +74,7 @@ data class QuickContext(
     /** The screen shows the landscape. */
     val landscape: Boolean = false,
     /** A view chosen with OK that is taken once the presses stop. */
-    val pending: Picture? = null,
+    val pending: ViewChoice? = null,
     /** Something plays (or is paused) on the stage. */
     val music: Boolean = false,
     /**
@@ -109,11 +109,11 @@ data class QuickContext(
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t)))
-        row(QuickItem.PICTURE, pictureValue(ctx.pending ?: picture(s, ctx), t))
+        row(QuickItem.VIEW, viewValue(ctx.pending ?: view(s, ctx), t))
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t))
         if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
-        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightLevel == RoomLightLevel.OFF) R.string.off else R.string.on])
+        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) R.string.off else R.string.on])
         if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) R.string.on else R.string.off])
         s.quickActions.forEachIndexed { i, a ->
             val kind = a.kind ?: return@forEachIndexed
@@ -124,17 +124,17 @@ object QuickMenu {
     }
 
     /** What the screen shows now. */
-    fun picture(s: Settings, ctx: QuickContext): Picture = when {
-        ctx.landscape -> Picture.LANDSCAPE
-        s.view == StageView.FLOW -> Picture.FLOW
-        else -> Picture.SINGLE
+    fun view(s: Settings, ctx: QuickContext): ViewChoice = when {
+        ctx.landscape -> ViewChoice.LANDSCAPE
+        s.view == StageView.FLOW -> ViewChoice.FLOW
+        else -> ViewChoice.SINGLE
     }
 
-    fun pictureValue(p: Picture, t: Texts): String = t[
+    fun viewValue(p: ViewChoice, t: Texts): String = t[
         when (p) {
-            Picture.SINGLE -> R.string.view_single
-            Picture.FLOW -> R.string.view_flow
-            Picture.LANDSCAPE -> R.string.view_landscape
+            ViewChoice.SINGLE -> R.string.view_single
+            ViewChoice.FLOW -> R.string.view_flow
+            ViewChoice.LANDSCAPE -> R.string.view_landscape
         },
     ]
 
@@ -181,7 +181,7 @@ object QuickMenu {
      * nothing moves when a value changes (for the buttons: what any of them can show).
      */
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
-        QuickItem.PICTURE -> PICTURES.map { pictureValue(it, t) }
+        QuickItem.VIEW -> VIEWS.map { viewValue(it, t) }
         QuickItem.LYRICS -> LyricsChoice.entries.map { lyricsValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
         QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
@@ -190,11 +190,11 @@ object QuickMenu {
     }
 
     /** From the music's own picture outward: the cover, the strip of covers, the landscape. */
-    val PICTURES = listOf(Picture.SINGLE, Picture.FLOW, Picture.LANDSCAPE)
+    val VIEWS = listOf(ViewChoice.SINGLE, ViewChoice.FLOW, ViewChoice.LANDSCAPE)
 
     /** The picture after one step from [p] (−1 or +1); [wrap] goes round. */
-    fun step(p: Picture, direction: Int, wrap: Boolean): Picture {
-        val i = PICTURES.indexOf(p) + direction
-        return if (wrap) PICTURES[Math.floorMod(i, PICTURES.size)] else PICTURES[i.coerceIn(0, PICTURES.size - 1)]
+    fun step(p: ViewChoice, direction: Int, wrap: Boolean): ViewChoice {
+        val i = VIEWS.indexOf(p) + direction
+        return if (wrap) VIEWS[Math.floorMod(i, VIEWS.size)] else VIEWS[i.coerceIn(0, VIEWS.size - 1)]
     }
 }

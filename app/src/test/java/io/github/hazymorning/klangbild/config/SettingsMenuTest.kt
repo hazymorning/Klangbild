@@ -30,11 +30,11 @@ class SettingsMenuTest {
     @Test
     fun `scales stop at their ends with left and right and wrap around with OK`() {
         val normal = Settings()
-        assertThat(SettingsMenu.step(MenuEntry.LIGHT, normal, +1)!!.light).isEqualTo(LightLevel.STRONG)
-        assertThat(SettingsMenu.step(MenuEntry.LIGHT, normal, -1)!!.light).isEqualTo(LightLevel.SUBTLE)
-        val strong = normal.copy(light = LightLevel.STRONG)
-        assertThat(SettingsMenu.step(MenuEntry.LIGHT, strong, +1)!!.light).isEqualTo(LightLevel.STRONG)
-        assertThat(SettingsMenu.step(MenuEntry.LIGHT, strong, +1, wrap = true)!!.light).isEqualTo(LightLevel.OFF)
+        assertThat(SettingsMenu.step(MenuEntry.INTENSITY, normal, +1)!!.intensity).isEqualTo(Intensity.STRONG)
+        assertThat(SettingsMenu.step(MenuEntry.INTENSITY, normal, -1)!!.intensity).isEqualTo(Intensity.SUBTLE)
+        val strong = normal.copy(intensity = Intensity.STRONG)
+        assertThat(SettingsMenu.step(MenuEntry.INTENSITY, strong, +1)!!.intensity).isEqualTo(Intensity.STRONG)
+        assertThat(SettingsMenu.step(MenuEntry.INTENSITY, strong, +1, wrap = true)!!.intensity).isEqualTo(Intensity.OFF)
         assertThat(SettingsMenu.step(MenuEntry.VOLUME, normal, -1)!!.volumeDisplay).isEqualTo(VolumeDisplay.OFF)
         assertThat(SettingsMenu.step(MenuEntry.VOLUME, normal, +1)!!.volumeDisplay).isEqualTo(VolumeDisplay.ALWAYS)
     }
@@ -63,14 +63,14 @@ class SettingsMenuTest {
 
     @Test
     fun `lights that are off are set up first, then turned on or left off`() {
-        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, configured, MenuContext(), de)).isEqualTo("Einrichten")
-        assertThat(SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, configured, +1)).isNull()
+        assertThat(SettingsMenu.value(MenuEntry.OFF_LIGHTS, configured, MenuContext(), de)).isEqualTo("Einrichten")
+        assertThat(SettingsMenu.step(MenuEntry.OFF_LIGHTS, configured, +1)).isNull()
         val lights = configured.copy(roomLights = RoomLights(left = "light.links"))
-        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, lights, MenuContext(), de)).isEqualTo("Einschalten")
-        val leaveOff = SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, lights, +1)!!
+        assertThat(SettingsMenu.value(MenuEntry.OFF_LIGHTS, lights, MenuContext(), de)).isEqualTo("Einschalten")
+        val leaveOff = SettingsMenu.step(MenuEntry.OFF_LIGHTS, lights, +1)!!
         assertThat(leaveOff.lightsOnlyOn).isTrue()
-        assertThat(SettingsMenu.value(MenuEntry.LIGHTS_ONLY_ON, leaveOff, MenuContext(), de)).isEqualTo("Auslassen")
-        assertThat(SettingsMenu.step(MenuEntry.LIGHTS_ONLY_ON, leaveOff, -1)!!.lightsOnlyOn).isFalse()
+        assertThat(SettingsMenu.value(MenuEntry.OFF_LIGHTS, leaveOff, MenuContext(), de)).isEqualTo("Auslassen")
+        assertThat(SettingsMenu.step(MenuEntry.OFF_LIGHTS, leaveOff, -1)!!.lightsOnlyOn).isFalse()
     }
 
     @Test
@@ -85,12 +85,12 @@ class SettingsMenuTest {
             MenuContext(sleep = SleepChoice.MIN_30, sleepAt = 1_791_483_667_000L),
             MenuContext(sleep = SleepChoice.ITEM_END, kind = MediaKind.PODCAST),
         )
-        for (s in listOf(Settings(), configured, configured.copy(light = LightLevel.OFF, volumeKeys = true), withMa, withLights, withValues)) {
+        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withLights, withValues)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
             // (the system keeps it), and the lights and the values until they are set up.
             val needs = setOfNotNull(
-                MenuEntry.LIGHTS.takeIf { !s.roomLights.isSet },
-                MenuEntry.LIGHTS_ONLY_ON.takeIf { !s.roomLights.isSet },
+                MenuEntry.BRIGHTNESS.takeIf { !s.roomLights.isSet },
+                MenuEntry.OFF_LIGHTS.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
             )
@@ -155,7 +155,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactlyElementsIn(SettingsMenu.entries).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.VIEW, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.LIGHT, MenuEntry.MOTION,
+            MenuEntry.VIEW, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         ).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.LANGUAGE).inOrder()
     }

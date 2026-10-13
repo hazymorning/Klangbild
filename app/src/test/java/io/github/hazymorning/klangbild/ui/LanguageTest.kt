@@ -22,7 +22,7 @@ import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
-import io.github.hazymorning.klangbild.config.Picture
+import io.github.hazymorning.klangbild.config.ViewChoice
 import io.github.hazymorning.klangbild.config.QuickAction
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
@@ -39,7 +39,7 @@ import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -166,7 +166,7 @@ class LanguageTest {
         val settings = listOf(Settings(), configured.copy(roomLights = RoomLights("light.left", null, null))).map { it.copy(quickActions = own) }
         val states = if (!buttons) listOf(emptyMap()) else ActionState.entries.map { st -> own.indices.associateWith { st } }
         for (s in settings) for (music in listOf(true, false)) for (landscape in listOf(true, false)) for (actions in states) {
-            for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in Picture.entries + null) {
+            for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in ViewChoice.entries + null) {
                 for (lyrics in LyricsChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
                     val rows = QuickMenu.rows(s, QuickContext(landscape, pending, music, favorite, shuffle, actions, lyrics, code), t)
                     add(QuickState(rows, 0))
@@ -212,7 +212,7 @@ class LanguageTest {
         val volumes = listOf(SpeakerLabel.volume(0.35f, false, en), SpeakerLabel.volume(0.35f, true, en), null)
         for (status in PlayerStatus.entries) for (muted in listOf(true, false)) for (flash in listOf(true, false)) {
             for (volume in volumes) for (group in groups + null) for (always in listOf(true, false)) {
-                for (pace in listOf(null, TimeLine.speed(1.5f, en), StageTexts.sleep(Fixtures.at(23, 10), en, Fixtures.zone))) {
+                for (pace in listOf(null, TimeText.speed(1.5f, en), StageTexts.sleep(Fixtures.at(23, 10), en, Fixtures.zone))) {
                     assertEnglish("status line", StageTexts.lead(status, muted, flash, volume, group, always, en, pace))
                 }
             }

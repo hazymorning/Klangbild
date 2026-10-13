@@ -8,7 +8,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
@@ -91,9 +91,9 @@ object StageTexts {
         pace: String? = null,
     ): String? = when {
         volumeFlash && !muted && volume != null -> t.format(R.string.status_volume, volume)
-        muted -> listOfNotNull(group, t[R.string.status_muted]).joinToString(TimeLine.SEPARATOR)
-        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeLine.SEPARATOR)
-        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeLine.SEPARATOR).ifEmpty { null }
+        muted -> listOfNotNull(group, t[R.string.status_muted]).joinToString(TimeText.SEPARATOR)
+        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR)
+        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
 
     /** "Pauses at 11:10 PM": when the sleep timer pauses the music. */
@@ -102,7 +102,7 @@ object StageTexts {
 
     /** "Spiegel im Spiegel · Arvo Pärt". */
     fun next(track: TrackInfo?, t: Texts): String? =
-        track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeLine.SEPARATOR) }
+        track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
 
     /** "Spiegel im Spiegel". */
     fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[R.string.artists_others]).title }
