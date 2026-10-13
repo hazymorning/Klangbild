@@ -397,7 +397,9 @@ UI words are given in English with the German in parentheses where it matters.
   cover): quiet cross-fade. Pause (600 ms) dims light, artwork and text; nothing moves, so the
   lines hung on the artwork's edges stay aligned.
   Mute is only a word; a lost link dims like a pause. Nothing slides, nothing bounces.
-  Screens switch by fading through dark. **One change at a time:** what arrives during a
+  Screens switch by fading through dark; another view waits on the view before until its
+  first scene is made, then the two cross at once (until 2026.10 the screen waited in the
+  dark, which read as stuck). **One change at a time:** what arrives during a
   change waits until it has landed, then the newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
   strip, a queue update or a better cover just wait. Lines on their way up stop where they

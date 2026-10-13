@@ -56,7 +56,8 @@ internal class LightTargets(
             )
         }
         if (stage == null) return null
-        val shown = if (s.view == StageView.FLOW) ui.flow?.middle?.stage else ui.stage
+        // While a view switch waits for the new view's first scene, the view before still shows.
+        val shown = if (s.view == StageView.FLOW) ui.flow?.middle?.stage ?: ui.stage else ui.stage ?: ui.flow?.middle?.stage
         val field = shown?.scene?.field ?: return null
         return LightSync.Target(
             lights = s.roomLights,

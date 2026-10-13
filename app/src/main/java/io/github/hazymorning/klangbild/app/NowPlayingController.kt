@@ -116,11 +116,14 @@ data class UiState(
     val keepScreenOn: Boolean = true,
     val asleep: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
-    /** The latest scene that is ready; may lag behind [screen] while a new cover loads. */
+    /**
+     * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays
+     * through a switch to Cover Flow until the cards' first scene is made.
+     */
     val stage: StageData? = null,
     /** How the stage shows what plays. */
     val view: StageView = StageView.SINGLE,
-    /** The cover flow (in [StageView.FLOW]); like [stage] it may lag behind [screen]. */
+    /** The cover flow (in [StageView.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
     val flow: FlowData? = null,
     /** Light wall by day, dark at night (or as set). */
     val appearance: Appearance = Appearance.DARK,
@@ -584,10 +587,12 @@ class NowPlayingController(
     private fun onSettings(s: Settings) {
         val view = s.view
         if (view != settings.value.view || _ui.value.view != view) {
-            // Another view needs other scenes; the strip starts afresh.
+            // Another view needs other scenes; the strip starts afresh. The view before stays on
+            // screen until the new one's first scene is made (it goes then), so the switch never
+            // waits in the dark.
             scenes.frame = scenes.frame.copy(view = view)
             strip.clear()
-            _ui.value = _ui.value.copy(view = view, stage = null, flow = null)
+            _ui.value = _ui.value.copy(view = view)
         }
         settings.value = s
         val timing = timingFor(s)
@@ -839,8 +844,9 @@ class NowPlayingController(
             return
         }
         val shown = _ui.value.stage
-        if (shown?.track != stage.track || shown.scene !== scene || shown.lyrics !== lyrics) {
-            _ui.value = _ui.value.copy(stage = StageData(stage.track, scene, lyrics))
+        if (shown?.track != stage.track || shown.scene !== scene || shown.lyrics !== lyrics || _ui.value.flow != null) {
+            // The view before (a cover flow) goes now.
+            _ui.value = _ui.value.copy(stage = StageData(stage.track, scene, lyrics), flow = null)
         }
         stage.next?.let { scenes.prepare(it, look) }
     }
@@ -872,7 +878,8 @@ class NowPlayingController(
             scene?.let { FlowEntry(c.id, c.track, it) }
         }
         val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics)
-        if (flow != _ui.value.flow) _ui.value = _ui.value.copy(flow = flow)
+        // The view before (a single cover) goes now.
+        if (flow != _ui.value.flow || _ui.value.stage != null) _ui.value = _ui.value.copy(flow = flow, stage = null)
     }
 
     companion object {
