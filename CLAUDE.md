@@ -11,11 +11,13 @@ squeeze a sentence. Issues are for bugs: the issue template says so kindly and s
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
-button under the first paragraph. The first picture and the button come in a light and a dark
-version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
-wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
-the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
-be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
+button under the first paragraph, which downloads the newest APK at once
+(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). The
+first picture and the button come in a light and a dark version, switched by the reader's theme
+(`<picture>` with `prefers-color-scheme`): by day the light wall in daylight with the lights behind
+the TV off, as they are by day; at night the dark wall with the lights in the cover's colors. The
+mockups stay calm and real, as a photograph of a room would be: the lights' colors soft on a matte
+wall, no colorful backgrounds; the three views, one after
 another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
 on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
 light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
@@ -112,6 +114,9 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   CI, with throwaway keys.
 - Only a version publishes a release: a pushed tag (`v2026.11.0`), or a manual CI run on main with
   the version as `release` (the release creates the tag). Its text is `docs/releases/<tag>.md`.
+- Claude never publishes a release on its own: no version tag, no release run, unless the user
+  has said in so many words to publish it. Getting a release ready means its notes in
+  `docs/releases/` and a link to read them, then waiting for that word.
 - Versions follow the calendar, the way Home Assistant's do, from the first release after 6.4.0
   on: the first release in a month is named after it (`v2026.11.0` for November 2026), and later
   releases that month count up the last number (`v2026.11.1`). A pre-release carries a hyphen
