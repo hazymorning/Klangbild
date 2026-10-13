@@ -54,9 +54,10 @@ pictures: effort goes into the app, not into documents.
 ## Build and test
 
 ```bash
-./gradlew :app:testDebugUnitTest                               # all JVM tests (unit + Robolectric screenshots)
-./gradlew :app:testDebugUnitTest -Proborazzi.test.record=true  # same, writes PNGs to app/build/screenshots/
-./gradlew :app:testDebugUnitTest --tests '*HaloStageTest*' -Proborazzi.test.record=true   # one class
+./gradlew :app:testDebugUnitTest                               # the checks (unit + Robolectric), not the picture tests
+./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # everything, every picture to app/build/screenshots/
+./gradlew :app:testDebugUnitTest --tests '*HaloStageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
+python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what looks different (Pillow)
 ./gradlew :app:lintRelease                                     # Android Lint: every warning fails
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
@@ -69,9 +70,15 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   A suppression always carries a one-line reason (`app/lint.xml`, `@Suppress` with a comment).
 - Maven Central rate-limits shared IPs (HTTP 429): Gradle and Robolectric use Google's
   mirror first (`settings.gradle.kts`, `robolectric.dependency.repo.url` in `app/build.gradle.kts`).
-- Screenshots are not committed as baselines; tests render to `app/build/screenshots/`
-  (CI uploads them as an artifact). A refactor must leave every render identical: compare
-  the PNGs of a run before and after with Pillow.
+- Picture tests render how the screens look and check nothing themselves; they carry
+  `@Category(Pictures::class)` and only run with `-Pklangbild.pictures`, so the everyday run
+  stays quick. A new test that only renders pictures gets the category too. Pictures are not
+  committed: CI renders them all, uploads them, and on a pull request also renders the branch it
+  goes into and compares every picture (`ci/compare-pictures.py`; the job summary lists what
+  changed, the artifact `picture-changes` marks each changed pixel in red). A refactor must leave
+  every picture identical; locally, compare a copy of `app/build/screenshots/` from before the
+  change with the same script. Renders must be the same on every run: an animated sequence
+  whose content is made off the main thread wraps it like a still (`LocalStill`).
 - Tests that need words use `TestTexts.german` or `TestTexts.english()` (Robolectric). Renders
   default to German through `Fixtures.texts` (the catalogue's music and rooms are German);
   `Fixtures.Still(t) { }` renders in other words.
@@ -87,8 +94,8 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   minutes. The app logs its connection steps with the tag `Klangbild`, never a token.
 - Run Gradle with a UTF-8 locale (`export LC_ALL=C.UTF-8`): test names and data hold umlauts.
 - CI runs three jobs side by side: the release APK (the emulator smoke test and the key
-  rotation checks start from it), the JVM tests (they upload the screenshots) and lint. A
-  release waits for all of them. A push or pull request that changes only the texts and
+  rotation checks start from it), all tests with their pictures, and lint. A release waits for
+  all of them. A push or pull request that changes only the texts and
   pictures around the app (README, CLAUDE.md, LICENSE, `docs/`, `tools/`, `.claude/`, the issue
   templates) runs nothing; tags and manual runs always run everything. The emulator jobs fetch
   their system image with `ci/install-system-image.sh`, which tries a broken download again.

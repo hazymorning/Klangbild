@@ -22,12 +22,15 @@ import org.robolectric.annotation.GraphicsMode
 import org.shredzone.commons.suncalc.SunTimes
 import java.time.ZonedDateTime
 import java.util.TimeZone
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The landscape through the year, as the app shows it in Berlin: for each season a day
  * (sunrise, noon, golden hour, dusk, blue hour, night) and the weather's moods. The pictures
  * go to build/screenshots/vista/gallery/, to be looked at side by side.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")

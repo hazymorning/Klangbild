@@ -14,6 +14,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * Motion as a sequence of stills: the track change (the new artwork settles over the old,
@@ -21,6 +23,7 @@ import org.robolectric.annotation.GraphicsMode
  * album (only the text changes), quick skips and a skip undone at once, the pause (the
  * artwork recedes and dims) and buffering.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")

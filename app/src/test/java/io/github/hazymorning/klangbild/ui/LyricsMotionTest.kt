@@ -25,12 +25,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The song's words in motion, as sequences of stills: the list gliding one line on, a break
  * dimming the line, a jump cross-fading the list, the words coming and going with the stage's
  * text change, a new song's words, and the same in Cover Flow.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")

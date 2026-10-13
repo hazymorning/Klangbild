@@ -107,8 +107,10 @@ jobs:
           path: klangbild.apk
           if-no-files-found: error
 
+  # Every test, the picture tests too: their pictures are uploaded, and on a pull request they are
+  # compared with the pictures of the branch it goes into.
   tests:
-    name: Unit and screenshot tests
+    name: Tests and pictures
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -127,10 +129,10 @@ jobs:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Unit and screenshot tests
-        run: ./gradlew :app:testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+      - name: Tests and pictures
+        run: ./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true --stacktrace
 
-      - name: Upload the screenshots
+      - name: Upload the pictures
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -145,6 +147,82 @@ jobs:
           name: test-report
           path: app/build/reports/tests
           if-no-files-found: warn
+
+  # The same pictures as the branch the pull request goes into has them, rendered alongside.
+  pictures-before:
+    name: Pictures before the change
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Cache Robolectric android-all
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Render the pictures
+        run: ./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true --stacktrace
+
+      - name: Upload the pictures
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots-before
+          path: app/build/screenshots
+          if-no-files-found: error
+
+  # Every picture before and after, pixel by pixel. The summary lists what looks different; the
+  # artifact picture-changes shows each such picture before, after, and its changed pixels in red.
+  picture-changes:
+    name: Picture comparison
+    needs: [tests, pictures-before]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: screenshots-before
+          path: before
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: screenshots
+          path: after
+
+      - name: Compare
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow
+          set +e
+          "$RUNNER_TEMP/venv/bin/python" ci/compare-pictures.py before after changes > summary.md
+          status=$?
+          set -e
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" = 1 ]; then
+            echo "::warning title=Pictures::$(head -1 summary.md)"
+          fi
+          [ "$status" -le 1 ]
+
+      - name: Upload what looks different
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: picture-changes
+          path: changes
+          if-no-files-found: ignore
 
   lint:
     name: Android Lint

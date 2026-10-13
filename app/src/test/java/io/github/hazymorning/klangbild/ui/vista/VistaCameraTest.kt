@@ -33,6 +33,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The camera's journey: in every corner of its range, and with the screen's own drift against
@@ -116,6 +118,7 @@ class VistaCameraTest {
         assertWithMessage("pixels that moved with the breeze").that(changed).isGreaterThan(40)
     }
 
+    @Category(Pictures::class)
     @Test
     fun theLayersDriftApart() {
         // Three minutes of the camera, a frame every half minute: the near banks move most.
@@ -127,6 +130,7 @@ class VistaCameraTest {
         }
     }
 
+    @Category(Pictures::class)
     @Test
     fun theLabelStandsStillOnItsBank() {
         // The label at the corners of the camera's range, on either side: always on its dark bank.

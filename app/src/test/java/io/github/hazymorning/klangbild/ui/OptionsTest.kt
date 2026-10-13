@@ -17,6 +17,8 @@ import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
@@ -24,8 +26,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /** The adjustable parts: the speaker group in the status line, volume, hidden lines, light, menu. */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -110,7 +115,7 @@ class OptionsTest {
     @Test fun menuOpensAGroup() {
         var state by androidx.compose.runtime.mutableStateOf(Fixtures.menuGroups(cursor = 1))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_open_%02d.png".format(frame++))
@@ -139,7 +144,7 @@ class OptionsTest {
     @Test fun menuGlide() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_glide_%02d.png".format(frame++))
@@ -157,7 +162,7 @@ class OptionsTest {
     @Test fun menuHeld() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.CLOCK))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_held_%02d.png".format(frame++))
@@ -178,4 +183,11 @@ class OptionsTest {
     @Test fun menuConnection() = shot("menu_connection") {
         MenuScreen(menu(MenuEntry.CONNECTION, Settings(), MenuContext(LinkState.UNCONFIGURED)))
     }
+
+    /**
+     * A sequence of frames on the test's own clock. The menu's light is made off the main thread on
+     * the real clock, so here it is made at once, as in a still: every run shows the same frames.
+     */
+    @Composable
+    private fun Frames(content: @Composable () -> Unit) = CompositionLocalProvider(LocalStill provides true, content = content)
 }

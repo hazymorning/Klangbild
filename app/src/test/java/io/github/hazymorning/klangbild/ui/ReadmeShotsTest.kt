@@ -35,12 +35,15 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.time.ZonedDateTime
 import java.util.TimeZone
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The screens in the README's pictures, in English; beside each song the colors the lights
  * behind the TV would show (a JSON file). `tools/make_readme_pictures.py` sets them in a room
  * and saves the pictures to docs/screenshots/ when the look changes.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")

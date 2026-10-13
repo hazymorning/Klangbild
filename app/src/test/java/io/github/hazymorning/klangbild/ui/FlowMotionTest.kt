@@ -16,6 +16,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The cover flow in motion, as sequences of stills: the next picture arriving (the strip
@@ -25,6 +27,7 @@ import org.robolectric.annotation.GraphicsMode
  * once, a card that joins during a turn (it waits for the turn to land), and the turn beneath a
  * party's code.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")
