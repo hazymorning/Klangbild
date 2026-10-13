@@ -816,4 +816,12 @@ class HaSourceTest {
         s.stop()
     }
 
+
+    @Test
+    fun `a weather entity's wind is read in its own unit`() {
+        assertThat(kmh(10.0, null)).isEqualTo(10.0)
+        assertThat(kmh(10.0, "m/s")).isWithin(0.01).of(36.0)
+        assertThat(kmh(10.0, "mph")).isWithin(0.01).of(16.09)
+        assertThat(kmh(10.0, "furlongs")).isNull()
+    }
 }

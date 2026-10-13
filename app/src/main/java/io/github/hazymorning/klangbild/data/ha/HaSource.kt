@@ -22,8 +22,7 @@ import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.lights.LightBridge
-import io.github.hazymorning.klangbild.landscape.WeatherMood
+import io.github.hazymorning.klangbild.data.LightBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -393,7 +392,7 @@ class HaSource(
             place = placeOf(connection.config.value) ?: _state.value.place,
             weather = weather?.state?.takeIf { it != "unavailable" && it != "unknown" } ?: _state.value.weather.takeIf { weather == null },
             cloudCoverage = weather?.number("cloud_coverage") ?: _state.value.cloudCoverage.takeIf { weather == null },
-            windKmh = weather?.let { w -> w.number("wind_speed")?.let { speed -> WeatherMood.kmh(speed, w.string("wind_speed_unit")) } }
+            windKmh = weather?.let { w -> w.number("wind_speed")?.let { speed -> kmh(speed, w.string("wind_speed_unit")) } }
                 ?: _state.value.windKmh.takeIf { weather == null },
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
@@ -788,4 +787,20 @@ class HaSource(
             return x == y || (x.isNotEmpty() && y.isNotEmpty() && (x.startsWith(y) || y.startsWith(x)))
         }
     }
+}
+
+/**
+ * [value] of a wind speed in [unit] in km/h; null for a unit the weather entity cannot have.
+ * The units are Home Assistant's `UnitOfSpeed` values a weather entity may use; without a
+ * unit the speed is taken as km/h, the unit of the metric system.
+ */
+internal fun kmh(value: Double, unit: String?): Double? = when (unit) {
+    null, "km/h" -> value
+    "m/s" -> value * 3.6
+    "mph" -> value * 1.609344
+    "kn" -> value * 1.852
+    "ft/s" -> value * 1.09728
+    // Beaufort's own formula: v = 0.836 B^1.5 m/s.
+    "Beaufort" -> 0.836 * 3.6 * Math.pow(value.coerceAtLeast(0.0), 1.5)
+    else -> null
 }

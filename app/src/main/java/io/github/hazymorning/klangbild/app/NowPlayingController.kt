@@ -47,7 +47,7 @@ import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.domain.LandscapePolicy
-import io.github.hazymorning.klangbild.lights.LightBridge
+import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec

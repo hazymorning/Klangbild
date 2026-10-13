@@ -103,8 +103,5 @@ class WorldTest {
         assertThat(WeatherMood.of("sunny", null, windKmh = 2.0)!!.wind).isLessThan(0.15f)
         assertThat(WeatherMood.of("sunny", null, windKmh = 40.0)!!.wind).isWithin(0.05f).of(0.6f)
         assertThat(WeatherMood.of("windy", null, windKmh = 10.0)!!.wind).isAtLeast(0.6f)
-        assertThat(WeatherMood.kmh(10.0, "m/s")).isWithin(0.01).of(36.0)
-        assertThat(WeatherMood.kmh(10.0, "mph")).isWithin(0.01).of(16.09)
-        assertThat(WeatherMood.kmh(10.0, "furlongs")).isNull()
     }
 }

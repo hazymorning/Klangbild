@@ -199,20 +199,4 @@ object WeatherMood {
 
     /** Wind 0..1 from km/h: still at 0, a breeze about 10, 0.6 at 40, a gale from about 90. */
     fun windOf(kmh: Double): Float = (0.05 + 0.95 * (1.0 - kotlin.math.exp(-kmh.coerceAtLeast(0.0) / 45.0))).toFloat()
-
-    /**
-     * [value] of a wind speed in [unit] in km/h; null for a unit the weather entity cannot have.
-     * The units are Home Assistant's `UnitOfSpeed` values a weather entity may use; without a
-     * unit the speed is taken as km/h, the unit of the metric system.
-     */
-    fun kmh(value: Double, unit: String?): Double? = when (unit) {
-        null, "km/h" -> value
-        "m/s" -> value * 3.6
-        "mph" -> value * 1.609344
-        "kn" -> value * 1.852
-        "ft/s" -> value * 1.09728
-        // Beaufort's own formula: v = 0.836 B^1.5 m/s.
-        "Beaufort" -> 0.836 * 3.6 * Math.pow(value.coerceAtLeast(0.0), 1.5)
-        else -> null
-    }
 }
