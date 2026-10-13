@@ -55,7 +55,7 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 ## Setup
 
-You need a TV with Android TV 9 or later and Home Assistant.
+You need a TV with Android TV 9 or later and Home Assistant. Android TV 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
 
 <details>
 <summary><b>1. Install Klangbild on your TV</b></summary>
