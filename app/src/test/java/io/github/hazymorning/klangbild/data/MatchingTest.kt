@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.data
 
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.data.ha.HaSource
+import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.ui.Catalog
 import org.junit.Test
 
@@ -20,9 +20,9 @@ class MatchingTest {
 
     @Test
     fun `player and queue titles are matched loosely`() {
-        assertThat(HaSource.sameTitle("Bohemian Rhapsody (Remastered 2011)", "Bohemian Rhapsody (Remastered 2011)")).isTrue()
-        assertThat(HaSource.sameTitle("Café del Mar", "Cafe del Mar")).isTrue()
-        assertThat(HaSource.sameTitle("Heroes", "Heroes (Remastered 2017)")).isTrue()
-        assertThat(HaSource.sameTitle("Heroes", "Changes")).isFalse()
+        assertThat(TrackMatch.sameTitle("Bohemian Rhapsody (Remastered 2011)", "Bohemian Rhapsody (Remastered 2011)")).isTrue()
+        assertThat(TrackMatch.sameTitle("Café del Mar", "Cafe del Mar")).isTrue()
+        assertThat(TrackMatch.sameTitle("Heroes", "Heroes (Remastered 2017)")).isTrue()
+        assertThat(TrackMatch.sameTitle("Heroes", "Changes")).isFalse()
     }
 }

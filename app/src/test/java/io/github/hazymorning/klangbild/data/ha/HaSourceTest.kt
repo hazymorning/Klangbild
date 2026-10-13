@@ -156,9 +156,9 @@ class HaSourceTest {
         ma: MaClient? = null,
         refreshMs: Long = 60_000L,
         partyMs: Long = HaSource.PARTY_MS,
-        detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS,
-        queueSettleMs: Long = HaSource.QUEUE_SETTLE_MS,
-        maQueueMs: Long = HaSource.MA_QUEUE_MS,
+        detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
+        queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
+        maQueueMs: Long = QueueReader.MA_QUEUE_MS,
     ) = HaSource(
         http,
         scope,
