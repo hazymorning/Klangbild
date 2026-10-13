@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.setup
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.OwnValues
 import io.github.hazymorning.klangbild.config.QuickActions
+import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -26,6 +27,7 @@ object SetupPage {
             .replace("__MAX_NAME__", QuickActions.MAX_NAME.toString())
             .replace("__MAX_VALUES__", OwnValues.MAX.toString())
             .replace("__MAX_VALUE_NAME__", OwnValues.MAX_NAME.toString())
+            .replace("__MAX_SLEEP__", Settings.MAX_SLEEP_MINUTES.toString())
             .replace("__SCRIPT_TEXTS__", script)
         for ((key, value) in words) page = page.replace("{{$key}}", escape(value))
         return page
@@ -249,7 +251,7 @@ object SetupPage {
 
   <section>
     <h2>{{generalHeading}}</h2>
-    <div class="inline">{{sleepBefore}} <input id="sleep" type="number" min="1" max="720" value="10"> {{sleepAfter}}</div>
+    <div class="inline">{{sleepBefore}} <input id="sleep" type="number" min="1" max="__MAX_SLEEP__" value="10"> {{sleepAfter}}</div>
     <label class="row"><input type="radio" name="action" value="release" checked> {{release}}</label>
     <label class="row"><input type="radio" name="action" value="close"> {{close}}</label>
     <label class="row"><input id="clock" type="checkbox" checked> {{clock}}</label>

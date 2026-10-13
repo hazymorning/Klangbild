@@ -394,7 +394,7 @@ class SetupHandler(
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_speaker]))
         val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
-        if (minutes !in 1..MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
+        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
         val action = when (body.string("sleepAction")) {
             "close" -> SleepAction.CLOSE
             "release" -> SleepAction.RELEASE
@@ -500,9 +500,6 @@ class SetupHandler(
 
         /** The random state of a sign-in (bytes). */
         private const val STATE_BYTES = 32
-
-        /** The longest "turn off after" the page takes (minutes). */
-        private const val MAX_SLEEP_MINUTES = 720
 
         /** The redirect URI that belongs to [clientId]: the same host and port, as Home Assistant requires. */
         fun redirectUri(clientId: String): String = clientId.trimEnd('/') + CALLBACK_PATH
