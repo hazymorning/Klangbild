@@ -1,14 +1,14 @@
 name: Tidy up
 
-# Run by hand from the Actions tab: keeps only the newest releases (the older ones go, their
-# version tags stay) and deletes the branches that are fully merged into main.
+# Run by hand from the Actions tab: keeps only the newest releases (the older ones go, and their
+# version tags with them) and deletes the branches that are fully merged into main.
 on:
   workflow_dispatch:
     inputs:
       keep:
         description: "How many of the newest releases to keep"
         required: true
-        default: "2"
+        default: "3"
 
 permissions:
   contents: write
@@ -42,10 +42,28 @@ jobs:
             --jq '.[] | select(.draft | not) | [.published_at, .tag_name] | @tsv' |
             sort -r | tail -n +"$((KEEP + 1))" | cut -f2 |
             while read -r tag; do
-              gh release delete "$tag" -R "$REPO" --yes
-              echo "Deleted the release $tag (its tag stays)." >> "$GITHUB_STEP_SUMMARY"
+              gh release delete "$tag" -R "$REPO" --yes --cleanup-tag
+              echo "Deleted the release $tag and its tag." >> "$GITHUB_STEP_SUMMARY"
             done
           echo "The newest $KEEP releases are kept." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete the tags of releases that are gone
+        # A release deleted on the website leaves its tag behind. A tag on a commit newer than the
+        # oldest release kept stays, since its release may still be on its way.
+        run: |
+          releases="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[].tag_name')"
+          oldest="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[] | select(.draft | not) | .published_at' | sort | sed -n 1p)"
+          [ -n "$oldest" ] || exit 0
+          gh api --paginate "repos/$REPO/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' |
+            while IFS=$'\t' read -r tag sha; do
+              [[ "$tag" == v* ]] || continue
+              grep -qxF "$tag" <<< "$releases" && continue
+              made="$(gh api "repos/$REPO/commits/$sha" --jq .commit.committer.date)"
+              if [ "$(date -d "$made" +%s)" -lt "$(date -d "$oldest" +%s)" ]; then
+                gh api -X DELETE "repos/$REPO/git/refs/tags/$tag"
+                echo "Deleted the tag $tag, whose release is gone." >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
 
       - name: Delete merged branches
         run: |
