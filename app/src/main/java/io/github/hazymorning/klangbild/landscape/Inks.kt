@@ -11,8 +11,8 @@ package io.github.hazymorning.klangbild.landscape
  */
 data class Inks(val base: Int, val first: Int, val second: Int) {
 
-    /** The 4 × 5 color matrix (Android layout) with the sheet's alpha scaled by [alpha]. */
-    fun matrix(alpha: Float = 1f, out: FloatArray = FloatArray(20)): FloatArray {
+    /** The 4 × 5 color matrix (Android layout), the sheet's alpha kept. */
+    fun matrix(out: FloatArray = FloatArray(20)): FloatArray {
         for (c in 0 until 3) {
             val shift = 16 - 8 * c
             val b = (base shr shift and 0xFF) / 255f
@@ -28,7 +28,7 @@ data class Inks(val base: Int, val first: Int, val second: Int) {
         out[15] = 0f
         out[16] = 0f
         out[17] = 0f
-        out[18] = alpha
+        out[18] = 1f
         out[19] = 0f
         return out
     }

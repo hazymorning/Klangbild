@@ -18,7 +18,8 @@ class Coverage(val width: Int, val height: Int) {
     private val acc = FloatArray(stride * height)
 
     /** Adds the closed polygon ([xs], [ys]) in pixels of this raster (any winding, non-zero fill). */
-    fun polygon(xs: FloatArray, ys: FloatArray, n: Int = xs.size) {
+    fun polygon(xs: FloatArray, ys: FloatArray) {
+        val n = xs.size
         for (i in 0 until n) {
             val j = if (i + 1 == n) 0 else i + 1
             line(xs[i], ys[i], xs[j], ys[j])

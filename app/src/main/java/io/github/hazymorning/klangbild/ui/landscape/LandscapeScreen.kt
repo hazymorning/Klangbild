@@ -29,7 +29,7 @@ fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, 
     val side = labelSide(landscape.miniPlayer)
     Landscape(feed, modifier, label = side) { look ->
         val text = landscape.track?.takeIf { side != LabelSide.NONE }?.let { track ->
-            LabelText.Music(track, artworkFor(ui, track), landscape.status == PlayerStatus.PLAYING, positionNow)
+            LabelText(track, artworkFor(ui, track), landscape.status == PlayerStatus.PLAYING, positionNow)
         }
         if (text != null) LandscapeLabel(text, side, inks = { look().label }, coverLight = { look().labelCover })
     }

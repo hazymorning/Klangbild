@@ -66,36 +66,6 @@ object Noise {
         return 0.7 * (x1 + v * (x2 - x1))
     }
 
-    /** Fractal sum of [octaves] 1D octaves, each half as strong and twice as fine. */
-    fun fbm(x: Double, octaves: Int, gain: Double = 0.5, lacunarity: Double = 2.0): Double {
-        var sum = 0.0
-        var amp = 1.0
-        var f = 1.0
-        var norm = 0.0
-        repeat(octaves) { i ->
-            sum += amp * at(x * f + i * 17.31)
-            norm += amp
-            amp *= gain
-            f *= lacunarity
-        }
-        return sum / norm
-    }
-
-    /** Fractal sum of [octaves] 2D octaves. */
-    fun fbm(x: Double, y: Double, octaves: Int, gain: Double = 0.5, lacunarity: Double = 2.0): Double {
-        var sum = 0.0
-        var amp = 1.0
-        var f = 1.0
-        var norm = 0.0
-        repeat(octaves) { i ->
-            sum += amp * at(x * f + i * 17.31, y * f - i * 9.73)
-            norm += amp
-            amp *= gain
-            f *= lacunarity
-        }
-        return sum / norm
-    }
-
     /**
      * A slow wander for things that move by themselves: the sum of a few noises at
      * incommensurate rates, so nothing ever repeats. [t] in seconds, [period] the rough time

@@ -40,8 +40,6 @@ class FieldBlob(
     val focus: Float,
     /** Adds light (screen blend) instead of covering (over). Used for the bright shapes in front. */
     val glow: Boolean,
-    /** 0 far, 1 middle, 2 near: the nearer, the quicker it drifts (parallax). */
-    val depth: Int,
     val homeX: Float,
     val homeY: Float,
     val wanderX: Float,
@@ -324,21 +322,21 @@ object CoverField {
         return when (tier) {
             Tier.FAR -> FieldBlob(
                 color, light, alpha = 0.92f,
-                radius = 0.34f + 0.2f * w, aspect = r(0.6f, 0.85f), focus = 0f, glow = false, depth = 0,
+                radius = 0.34f + 0.2f * w, aspect = r(0.6f, 0.85f), focus = 0f, glow = false,
                 homeX = home[0], homeY = home[1], wanderX = r(0.1f, 0.16f), wanderY = r(0.1f, 0.16f),
                 periodX = r(110f, 160f), periodY = r(120f, 170f), phase = phase,
                 turnStart = r(0f, 360f), turnSpeed = turn(200f, 300f), breath = 0.06f, breathPeriod = r(60f, 90f),
             )
             Tier.MIDDLE -> FieldBlob(
                 color, light, alpha = 0.8f,
-                radius = 0.19f + 0.1f * w, aspect = r(0.55f, 0.8f), focus = 0.3f, glow = false, depth = 1,
+                radius = 0.19f + 0.1f * w, aspect = r(0.55f, 0.8f), focus = 0.3f, glow = false,
                 homeX = home[0], homeY = home[1], wanderX = r(0.12f, 0.18f), wanderY = r(0.12f, 0.2f),
                 periodX = r(80f, 110f), periodY = r(85f, 120f), phase = phase,
                 turnStart = r(0f, 360f), turnSpeed = turn(150f, 220f), breath = 0.07f, breathPeriod = r(45f, 70f),
             )
             else -> FieldBlob(
                 color, light, alpha = if (dark) 0.5f else 0.6f,
-                radius = r(0.13f, 0.18f), aspect = r(0.5f, 0.72f), focus = 0.25f, glow = true, depth = 2,
+                radius = r(0.13f, 0.18f), aspect = r(0.5f, 0.72f), focus = 0.25f, glow = true,
                 homeX = home[0], homeY = home[1], wanderX = r(0.06f, 0.1f), wanderY = r(0.12f, 0.2f),
                 periodX = r(55f, 75f), periodY = r(60f, 85f), phase = phase,
                 turnStart = r(0f, 360f), turnSpeed = turn(110f, 160f), breath = 0.08f, breathPeriod = r(35f, 55f),
@@ -505,9 +503,9 @@ object FieldMotion {
 
 /**
  * The field computed point by point, the way the screen composes it: the ground, each shape
- * over it (painted, or added as light) with its falloff, then a little more vivid. It is used
- * for the lights (the color at the screen's edges) and for the text's contrast. The screen draws
- * the shapes on the GPU ([io.github.hazymorning.klangbild.ui.stage.FieldLayer]).
+ * over it (painted, or added as light) with its falloff, then a little more vivid. It tells how
+ * much shade the text needs ([CoverField.textScrim]). The screen draws the shapes on the GPU
+ * ([io.github.hazymorning.klangbild.ui.stage.FieldLayer]).
  */
 object FieldModel {
     /** Floats per shape in [places]: [FieldMotion.place]'s four, then the turn's cosine and sine. */
@@ -526,10 +524,10 @@ object FieldModel {
         return out
     }
 
-    /** The wall's color (sRGB 0..1, before the veil) at ([u], [v]), in shares of the screen, at time [t]. */
-    fun color(field: FieldScene, u: Float, v: Float, t: Double, out: FloatArray) = color(field, u, v, places(field, t), out)
-
-    /** The same with the shapes' [places] at hand. */
+    /**
+     * The wall's color (sRGB 0..1, before the veil) at ([u], [v]), in shares of the screen, with
+     * the shapes where [places] puts them.
+     */
     fun color(field: FieldScene, u: Float, v: Float, places: FloatArray, out: FloatArray) {
         var r = ((field.base shr 16) and 0xFF) / 255f
         var g = ((field.base shr 8) and 0xFF) / 255f
@@ -552,23 +550,6 @@ object FieldModel {
             }
         }
         saturate(r, g, b, CoverField.SATURATION, out)
-    }
-
-    /**
-     * The cover's colors at ([u], [v]) at time [t], blended as the screen blends its shapes
-     * (linear sRGB). This is what a light there shows.
-     */
-    fun light(field: FieldScene, u: Float, v: Float, t: Double, out: FloatArray) {
-        val places = places(field, t)
-        out[0] = field.baseLight[0]
-        out[1] = field.baseLight[1]
-        out[2] = field.baseLight[2]
-        for (i in field.blobs.indices) {
-            val blob = field.blobs[i]
-            val a = blob.alpha * strength(blob, u, v, places, i * STRIDE)
-            if (a <= 0f) continue
-            for (k in 0..2) out[k] += (blob.light[k] - out[k]) * a
-        }
     }
 
     /** The shape's falloff at ([u], [v]): into its own turned, stretched frame, then [CoverField.falloff]. */

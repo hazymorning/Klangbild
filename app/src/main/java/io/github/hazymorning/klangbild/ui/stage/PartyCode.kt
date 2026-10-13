@@ -98,7 +98,7 @@ fun PartyCodeLayer(card: Bitmap?, scene: ArtworkScene, alpha: () -> Float, dim: 
     val brush = remember(shader) { ShaderBrush(shader) }
     val place = remember { android.graphics.Matrix() }
     val filters = remember(scene.appearance) { HashMap<Int, ColorFilter>() }
-    val rect = scene.coverRect
+    val rect = scene.layout.artRect
     Canvas(Modifier.fillMaxSize()) {
         // The fade goes with the draw call: no layer of the screen's size.
         val a = alpha().coerceIn(0f, 1f)

@@ -54,13 +54,7 @@ class StageModel(
      * and the progress bar shows only for a moment after a key ([progress]).
      */
     val lyrics: Lyrics? = null,
-) {
-    fun fraction(): Float? {
-        val d = durationMs ?: return null
-        val p = positionMs() ?: return null
-        return if (d > 0) ((p - rangeStartMs).toFloat() / d).coerceIn(0f, 1f) else null
-    }
-}
+)
 
 /**
  * The quiet line at the top of the column: [clock], the time, then the [values] of one's own

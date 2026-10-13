@@ -55,12 +55,9 @@ import io.github.hazymorning.klangbild.landscape.PaperMotif
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-/** What the label on the near bank says: the music. */
-sealed interface LabelText {
-    /** What plays (or played last): its cover's scene once it is ready, and whether it plays. */
-    class Music(val track: TrackInfo, val scene: ArtworkScene?, val playing: Boolean, val positionNow: () -> Long?) : LabelText {
-        val key: String get() = track.key
-    }
+/** What the label on the near bank says: what plays (or played last), its cover's scene once it is ready, and whether it plays. */
+class LabelText(val track: TrackInfo, val scene: ArtworkScene?, val playing: Boolean, val positionNow: () -> Long?) {
+    val key: String get() = track.key
 }
 
 /**
@@ -78,8 +75,8 @@ fun LandscapeLabel(text: LabelText, side: LabelSide, inks: () -> IntArray, modif
     // Only another track cross-fades; a pause or a new cover changes the label in place. The one
     // shown always reads the latest, and the one leaving keeps what it said.
     val latest by rememberUpdatedState(text)
-    val said = remember { HashMap<Any, LabelText>() }
-    val key = keyOf(text)
+    val said = remember { HashMap<String, LabelText>() }
+    val key = text.key
     if (said.size > 4) said.keys.retainAll(setOf(key))
     said[key] = text
     Crossfade(
@@ -88,16 +85,9 @@ fun LandscapeLabel(text: LabelText, side: LabelSide, inks: () -> IntArray, modif
         animationSpec = tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
         label = "landscape-label",
     ) { k ->
-        val t = if (k == keyOf(latest)) latest else said[k]
-        when (t) {
-            is LabelText.Music -> MusicLabel(t, side, inks, coverLight)
-            null -> Unit
-        }
+        val t = if (k == latest.key) latest else said[k]
+        if (t != null) MusicLabel(t, side, inks, coverLight)
     }
-}
-
-private fun keyOf(t: LabelText): Any = when (t) {
-    is LabelText.Music -> t.key
 }
 
 /** The label's box on the screen (dp): left edge, top, the cover's side, the text column's left edge and width. */
@@ -110,7 +100,7 @@ private class LabelBox(side: LabelSide) {
 }
 
 @Composable
-private fun MusicLabel(m: LabelText.Music, side: LabelSide, inks: () -> IntArray, coverLight: () -> Float) {
+private fun MusicLabel(m: LabelText, side: LabelSide, inks: () -> IntArray, coverLight: () -> Float) {
     val box = remember(side) { LabelBox(side) }
     val density = LocalDensity.current.density
     val others = texts()[R.string.artists_others]

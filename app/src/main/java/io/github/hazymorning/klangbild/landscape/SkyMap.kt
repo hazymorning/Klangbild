@@ -18,8 +18,7 @@ class SkyPlaces(
     val moonY: Float,
     val moonFraction: Float,
     val stars: List<StarPlace>,
-    /** Whether the sun and the moon stand above the horizon. */
-    val sunUp: Boolean = true,
+    /** Whether the moon stands above the horizon. */
     val moonUp: Boolean = false,
 )
 
@@ -59,7 +58,7 @@ object SkyMap {
         val moonX = x(s.moonAzimuth)
         return SkyPlaces(
             sunX, y(s.sunElevation, sunX), moonX, y(s.moonElevation, moonX), s.moonFraction, stars(lstDeg, latDeg),
-            sunUp = s.sunElevation > 0f, moonUp = s.moonElevation > 0f,
+            moonUp = s.moonElevation > 0f,
         )
     }
 

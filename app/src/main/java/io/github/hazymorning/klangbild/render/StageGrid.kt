@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.render
 
 import io.github.hazymorning.klangbild.domain.StageView
-import kotlin.math.min
 
 /**
  * The stage's grid on a 960 × 540 dp screen. The artwork is the heaviest element and sets
@@ -65,13 +64,6 @@ data class StageGrid(val screen: ScreenSpec, val view: StageView = StageView.SIN
 
     /** Corner radius of a square artwork (dp): a hair over 2 % of its side. */
     val radius get() = RADIUS * art / SINGLE.art
-
-    /** The cover rect for a cover of [coverDp], centered in the artwork's square. */
-    fun coverRect(coverDp: Float): RectDp {
-        val s = artRect
-        val size = min(coverDp, s.width)
-        return RectDp(s.left + (s.width - size) / 2f, s.top + (s.height - size) / 2f, size, size)
-    }
 
     /** Margins, artwork and gap of a view at 960 × 540 dp. */
     private class Grid(val margin: Float, val art: Float, val gap: Float, val rightMargin: Float)

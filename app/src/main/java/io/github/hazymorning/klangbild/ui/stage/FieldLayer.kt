@@ -63,7 +63,7 @@ val LocalFieldTime = staticCompositionLocalOf { FieldTime.STILL }
  * they are nothing but soft shapes. Each pool is one quad with its own radial gradient, turned
  * and stretched where [FieldMotion] puts it, so a frame costs a dozen small quads and one scaled
  * copy. Over it, at full resolution, come a grain of a level or two (soft dark ramps would
- * otherwise show bands) and the veil: the shade under the text and the artwork's shadow.
+ * otherwise show bands) and the veil: the shade under the text.
  * While the field moves, it is redrawn with the stage's tick (~30 times a second), nothing else.
  *
  * [alpha] fades it during a change, [level] dims it (pause, a lost link).

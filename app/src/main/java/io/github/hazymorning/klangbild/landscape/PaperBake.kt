@@ -23,7 +23,6 @@ object PaperBake {
         label: LabelSide = LabelSide.LEFT,
         progress: (Float) -> Unit = {},
     ): PaperBaked {
-        val started = System.nanoTime()
         var done = 0f
         fun step(cost: Float) {
             done += cost
@@ -59,8 +58,7 @@ object PaperBake {
             cw, ch, density, ordered, shadows, clouds, clouds.map { b.shadow(it, shadowBlurDp(CLOUD_DEPTH)) },
             b.flames(), b.px(b.fg.fireX), b.px(b.fg.fireY), standees, frontStandees, b.px(b.fg.tentX), b.px(b.tentFoot - TENT_HEIGHT * 0.24f),
             b.disc(SUN_RADIUS, 77), b.disc(MOON_RADIUS, 78),
-            b.shadow(b.disc(SUN_RADIUS, 79), DISC_SHADOW_DP), b.glow(), shapes, leafAlpha(shapes.leaves), label,
-            (System.nanoTime() - started) / 1_000_000,
+            b.shadow(b.disc(SUN_RADIUS, 79), DISC_SHADOW_DP), b.glow(), leafAlpha(shapes.leaves),
         )
         step(REST_COST)
         return baked

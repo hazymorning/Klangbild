@@ -117,7 +117,7 @@ class PaperLook(
     /** How bright the label's cover is: at night it dims with everything else. */
     val labelCover: Float,
 ) {
-    fun inks(id: SheetId): Inks = sheets[id] ?: sheets.getValue(SheetId.FRONT_LEFT)
+    fun inks(id: SheetId): Inks = sheets.getValue(id)
 
     /** The near bank's own color, where the label lies. */
     val bank: Int get() = inks(SheetId.FRONT_LEFT).mix(0.5f, 0f)

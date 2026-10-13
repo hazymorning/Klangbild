@@ -5,7 +5,6 @@ import io.github.hazymorning.klangbild.art.ChladniArt
 import io.github.hazymorning.klangbild.art.stableHash
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverAnalysis
-import io.github.hazymorning.klangbild.color.CoverKind
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.StageView
@@ -28,8 +27,6 @@ class ArtworkScene(
     /** The print's outline on the wall. */
     val shape: PrintShape,
     val coverGenerated: Boolean,
-    /** Size of the source image (shorter side), null for generated art. */
-    val coverNativePx: Int?,
     /**
      * The wall around the print, scaled to the whole screen. In the dark it is the print's light
      * on black ([WallGlow]; in Cover Flow the pool of light above the cards, [FlowLight]); in the
@@ -56,9 +53,6 @@ class ArtworkScene(
 
     val appearance: Appearance get() = palette.appearance
 
-    /** The square the print bitmap occupies (dp). */
-    val coverRect: RectDp get() = layout.coverRect(layout.art)
-
     /** Corner radius the artwork is drawn with (dp); none for a round plate. */
     val corner: Float get() = if (shape.round) 0f else shape.corner
 }
@@ -81,17 +75,15 @@ object SceneBuilder {
     ): ArtworkScene {
         val layout = StageGrid(screen, view)
         val slotPx = (layout.art * screen.density).roundToInt()
-        val slotRect = layout.coverRect(layout.art)
+        val slotRect = layout.artRect
         val coverPixels: IntArray
         val coverSize: Int
-        val nativePx: Int?
         val thumb: IntArray
         val shape: PrintShape
         if (source != null) {
             val side = min(source.width, source.height)
             val square = IntArray(side * side)
             source.getPixels(square, 0, side, (source.width - side) / 2, (source.height - side) / 2, side, side)
-            nativePx = side
             // Every cover fills the square. A small one (a station's picture) is enlarged once
             // with Lanczos, never shown as a smaller print inside a frame.
             coverPixels = ImageOps.resize(square, side, side, slotPx, slotPx)
@@ -99,7 +91,6 @@ object SceneBuilder {
             thumb = ImageOps.thumbnail(square, side, side, THUMB)
             shape = PrintShape(slotRect, corner = layout.radius)
         } else {
-            nativePx = null
             coverPixels = ChladniArt.render(ChladniArt.specFor(artSeed), slotPx, seed = stableHash(artSeed))
             coverSize = slotPx
             thumb = ImageOps.thumbnail(coverPixels, slotPx, slotPx, THUMB)
@@ -108,7 +99,7 @@ object SceneBuilder {
         }
         val cover = Bitmap.createBitmap(coverPixels, coverSize, coverSize, Bitmap.Config.ARGB_8888)
         val analysis = CoverPalette.analyze(thumb)
-        return assemble(key, layout, cover, shape, source == null, nativePx, analysis, thumb, appearance, wallTint, coverField)
+        return assemble(key, layout, cover, shape, source == null, analysis, thumb, appearance, wallTint, coverField)
     }
 
     /** Re-light an existing scene (appearance, wall tint or background changed) without the source image. */
@@ -116,8 +107,8 @@ object SceneBuilder {
         val sameWall = scene.appearance == appearance
         return assemble(
             scene.key, scene.layout, scene.cover, scene.shape, scene.coverGenerated,
-            scene.coverNativePx, scene.analysis, scene.thumb, appearance, wallTint, coverField,
-            // The card only changes with the wall (its mirror image and hairline).
+            scene.analysis, scene.thumb, appearance, wallTint, coverField,
+            // The card only changes with the wall (its mirror image).
             card = scene.card.takeIf { sameWall },
         )
     }
@@ -128,7 +119,6 @@ object SceneBuilder {
         cover: Bitmap,
         shape: PrintShape,
         generated: Boolean,
-        nativePx: Int?,
         analysis: CoverAnalysis,
         thumb: IntArray,
         appearance: Appearance,
@@ -172,7 +162,6 @@ object SceneBuilder {
             cover = cover,
             shape = shape,
             coverGenerated = generated,
-            coverNativePx = nativePx,
             wall = wall,
             palette = palette,
             analysis = analysis,

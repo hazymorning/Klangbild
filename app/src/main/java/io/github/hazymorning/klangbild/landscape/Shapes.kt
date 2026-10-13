@@ -19,9 +19,8 @@ class Outline(val xs: FloatArray, val ys: FloatArray) {
     fun minY() = ys.min()
     fun maxY() = ys.max()
 
-    /** Moved by ([dx], [dy]) and scaled by [s] about the origin. */
-    fun transformed(s: Float, dx: Float = 0f, dy: Float = 0f) =
-        Outline(FloatArray(size) { xs[it] * s + dx }, FloatArray(size) { ys[it] * s + dy })
+    /** Moved by ([dx], [dy]). */
+    fun moved(dx: Float, dy: Float) = Outline(FloatArray(size) { xs[it] + dx }, FloatArray(size) { ys[it] + dy })
 
     companion object {
         fun of(points: List<Pair<Float, Float>>) = Outline(FloatArray(points.size) { points[it].first }, FloatArray(points.size) { points[it].second })
@@ -49,19 +48,6 @@ class Polyline(val xs: FloatArray, val ys: FloatArray) {
         val dx = xs[hi] - xs[lo]
         val t = if (dx == 0f) 0f else (x - xs[lo]) / dx
         return ys[lo] + (ys[hi] - ys[lo]) * t.coerceIn(0f, 1f)
-    }
-
-    /** Closed down to [bottom]: the shape of a layer of paper under this line. */
-    fun closedDown(bottom: Float): Outline {
-        val n = size
-        val xs2 = FloatArray(n + 2)
-        val ys2 = FloatArray(n + 2)
-        for (i in 0 until n) {
-            xs2[i] = xs[i]; ys2[i] = ys[i]
-        }
-        xs2[n] = xs[n - 1]; ys2[n] = bottom
-        xs2[n + 1] = xs[0]; ys2[n + 1] = bottom
-        return Outline(xs2, ys2)
     }
 }
 

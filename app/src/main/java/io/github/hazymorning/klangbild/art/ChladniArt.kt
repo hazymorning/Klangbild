@@ -27,8 +27,11 @@ import kotlin.random.Random
  */
 object ChladniArt {
 
+    /**
+     * One figure: the ring mode J₀(k1·r), plus [mix] times the mode J_n2(k2·r)·cos(n2·θ) with
+     * [n2] lobes; the [plate]'s and the [sand]'s colors.
+     */
     data class Spec(
-        val n1: Int,
         val k1: Float,
         val n2: Int,
         val k2: Float,
@@ -70,7 +73,7 @@ object ChladniArt {
         }
         mix = mix.coerceAtMost(MAX_MIX) * (if (rnd.nextBoolean()) 1f else -1f)
         val (plate, sand) = palettes[rnd.nextInt(palettes.size)]
-        return Spec(0, k1, n2, k2, mix, plate, sand)
+        return Spec(k1, n2, k2, mix, plate, sand)
     }
 
     /** The first zeros of J₀: where the nodal circles of a ring mode lie. */
@@ -94,8 +97,7 @@ object ChladniArt {
      * construction.
      */
     fun field(spec: Spec, r: Float, theta: Float): Float =
-        besselTable(spec.n1).at(spec.k1 * r) * cos(spec.n1 * theta) +
-            spec.mix * besselTable(spec.n2).at(spec.k2 * r) * cos(spec.n2 * theta)
+        besselTable(0).at(spec.k1 * r) + spec.mix * besselTable(spec.n2).at(spec.k2 * r) * cos(spec.n2 * theta)
 
     /** Plate radius as a share of half the image. */
     const val PLATE = 0.84f
@@ -110,7 +112,7 @@ object ChladniArt {
     fun render(spec: Spec, size: Int, seed: Int = 1): IntArray {
         val out = IntArray(size * size)
         val rnd = Random(seed)
-        val j1 = besselTable(spec.n1)
+        val j1 = besselTable(0)
         val j2 = besselTable(spec.n2)
 
         val pr = (spec.plate shr 16) and 0xFF
@@ -143,18 +145,16 @@ object ChladniArt {
                     continue
                 }
                 val theta = atan2(v, u)
-                // f = A(r)·cos(n₁θ) + mix·B(r)·cos(n₂θ) and its gradient in polar form
+                // f = A(r) + mix·B(r)·cos(n₂θ) and its gradient in polar form
                 val a = j1.at(spec.k1 * r)
                 val b = j2.at(spec.k2 * r)
                 val da = spec.k1 * j1.slope(spec.k1 * r)
                 val db = spec.k2 * j2.slope(spec.k2 * r)
-                val c1 = cos(spec.n1 * theta)
-                val s1 = sin(spec.n1 * theta)
                 val c2 = cos(spec.n2 * theta)
                 val s2 = sin(spec.n2 * theta)
-                val f = a * c1 + spec.mix * b * c2
-                val fr = da * c1 + spec.mix * db * c2
-                val ft = (-spec.n1 * a * s1 - spec.mix * spec.n2 * b * s2) / max(r, 1e-3f)
+                val f = a + spec.mix * b * c2
+                val fr = da + spec.mix * db * c2
+                val ft = -spec.mix * spec.n2 * b * s2 / max(r, 1e-3f)
                 val dist = abs(f) / max(hypot(fr, ft), 0.6f)
                 val line = exp(-(dist / lineWidth) * (dist / lineWidth))
                 val halo = exp(-(dist / (lineWidth * 4f)) * (dist / (lineWidth * 4f)))

@@ -199,7 +199,7 @@ private class FilterCache {
 
     fun of(inks: Inks): ColorFilter {
         if (cache.size > 96) cache.clear()
-        return cache.getOrPut(inks) { ColorFilter.colorMatrix(ColorMatrix(inks.matrix(1f, matrix).copyOf())) }
+        return cache.getOrPut(inks) { ColorFilter.colorMatrix(ColorMatrix(inks.matrix(matrix).copyOf())) }
     }
 
     fun tint(argb: Int): ColorFilter {

@@ -87,7 +87,7 @@ class LandscapeLabelTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
                     LandscapeLabel(
-                        LabelText.Music(track, scene, playing = true, positionNow = { 100_000L }),
+                        LabelText(track, scene, playing = true, positionNow = { 100_000L }),
                         side,
                         inks = { INKS },
                     )

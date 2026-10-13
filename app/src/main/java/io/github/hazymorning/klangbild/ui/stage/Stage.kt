@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
@@ -85,7 +84,7 @@ const val BEYOND_EDGES_DP = 24f
  * The wall around the artwork, one static bitmap scaled softly to the screen. In the dark it is
  * the artwork's light ([io.github.hazymorning.klangbild.render.WallGlow]), and [level] is its
  * brightness in linear light (pause, the Intensity setting: 0 = off, 1 = as designed,
- * 1.45 = strong). In the light it is paper with the artwork's shadow. [alpha] fades the layer
+ * 1.45 = strong). In the light it is plain paper. [alpha] fades the layer
  * during a change; [shift] moves the light with the cover flow's cards (dp), the cover's colors
  * stay where they are. In Cover Flow's dark the light fades out before the text column, wherever
  * it stands ([column]: its shift from the grid, dp).
@@ -152,8 +151,7 @@ private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
 /**
  * The artwork, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display
  * size) with softly rounded corners. [dim] (pause) darkens it through the color matrix, not
- * through transparency; [scale] lets it settle during a change. Nothing is drawn around it:
- * no frame, no line, no shadow.
+ * through transparency. Nothing is drawn around it: no frame, no line, no shadow.
  */
 @Composable
 fun ArtworkLayer(
@@ -161,7 +159,6 @@ fun ArtworkLayer(
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
     dim: () -> Float = { 1f },
-    scale: () -> Float = { 1f },
 ) {
     val shader = remember(scene) {
         android.graphics.BitmapShader(scene.cover, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
@@ -169,17 +166,11 @@ fun ArtworkLayer(
     val brush = remember(shader) { ShaderBrush(shader) }
     val place = remember { android.graphics.Matrix() }
     val filters = remember(scene) { HashMap<Int, ColorFilter>() }
-    val rect = scene.coverRect
+    val rect = scene.layout.artRect
     Canvas(
         modifier
             .fillMaxSize()
-            .graphicsLayer {
-                this.alpha = alpha().coerceIn(0f, 1f)
-                val s = scale()
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin(rect.centerX / scene.screen.widthDp, rect.centerY / scene.screen.heightDp)
-            },
+            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
     ) {
         val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
         val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
@@ -413,7 +404,6 @@ private fun NextLine(text: String?, lead: String, styles: StageStyles, modifier:
 fun StatusLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
-    alpha: () -> Float = { 1f },
     shift: () -> Float = { 0f },
 ) {
     val status = model.statusLine
@@ -443,9 +433,7 @@ fun StatusLayer(
     }
     val leadAfter = clockText != null || values.isNotEmpty()
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
+        modifier = modifier.fillMaxSize(),
         content = {
             if (clockText != null) BasicText(figures.of(clockText), style = styles.time.copy(color = styles.muted), maxLines = 1) else Box(Modifier)
             values.forEachIndexed { i, v ->

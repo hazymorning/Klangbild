@@ -298,12 +298,6 @@
     <string name="page_action_what">Was sie tut</string>
     <string name="page_action_add">Taste hinzufügen</string>
     <string name="page_action_remove">Entfernen</string>
-    <string name="page_group_scripts">Skripte</string>
-    <string name="page_group_scenes">Szenen</string>
-    <string name="page_group_automations">Automatisierungen</string>
-    <string name="page_group_buttons">Tasten</string>
-    <string name="page_group_switches">Schalter</string>
-    <string name="page_group_lights">Lichter</string>
     <string name="page_search">Nach Namen suchen</string>
     <string name="page_search_none">Nichts gefunden.</string>
     <string name="page_search_more">Tippe weiter, um die Liste einzugrenzen.</string>

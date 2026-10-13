@@ -110,12 +110,8 @@ class PaperBaked(
     val discShadow: Sheet,
     /** A soft round light (white, coverage only) for glows; drawn scaled. */
     val glow: Sheet,
-    val shapes: SeasonShapes,
     /** How strongly the broad-leaved crowns show: they thin out in autumn and come back in spring. */
     val leafAlpha: Float,
-    /** The side the near bank is cut wide for, under the music's label. */
-    val label: LabelSide,
-    val bakeMs: Long,
 ) {
     /** Canvas pixels of a screen position in dp. */
     fun px(dp: Float): Float = (dp + PaperMotif.OVERSCAN) * density

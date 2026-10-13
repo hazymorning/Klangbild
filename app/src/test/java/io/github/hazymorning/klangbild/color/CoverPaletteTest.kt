@@ -30,18 +30,6 @@ class CoverPaletteTest {
     }
 
     @Test
-    fun `classifies edge cases`() {
-        assertThat(CoverPalette.analyze(solid(0xFF070708.toInt())).kind).isEqualTo(CoverKind.DARK)
-        assertThat(CoverPalette.analyze(solid(0xFF8A8A8A.toInt())).kind).isEqualTo(CoverKind.MONOCHROME)
-        assertThat(CoverPalette.analyze(mix(0xFF0A0A0D.toInt() to 0.95f, 0xFFE9DDBA.toInt() to 0.05f)).kind)
-            .isEqualTo(CoverKind.DARK)
-        assertThat(CoverPalette.analyze(mix(0xFFF6F5F1.toInt() to 0.97f, 0xFF4060A0.toInt() to 0.03f)).kind)
-            .isEqualTo(CoverKind.LIGHT)
-        assertThat(CoverPalette.analyze(mix(0xFFFF00FF.toInt() to 0.5f, 0xFF00FFFF.toInt() to 0.5f)).kind)
-            .isEqualTo(CoverKind.VIVID)
-    }
-
-    @Test
     fun `text stays readable on both walls for every edge case`() {
         for (pixels in covers) for (appearance in Appearance.entries) {
             val p = CoverPalette.derive(CoverPalette.analyze(pixels), appearance)
@@ -71,8 +59,6 @@ class CoverPaletteTest {
         val blue = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT)
         val teal = CoverPalette.derive(CoverPalette.analyze(solid(0xFF1F7A78.toInt())), Appearance.LIGHT)
         val gray = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
-        assertThat(red.lead).isNotNull()
-        assertThat(gray.lead).isNull()
         assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(gray.wall).chroma)
         // paper is never mint or blue: a cool cover gives it less color, not its hue
         for (p in listOf(red, blue, teal, gray)) {

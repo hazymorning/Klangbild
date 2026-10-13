@@ -85,7 +85,6 @@ object ImageOps {
     fun toArgbDithered(
         img: LinearImage,
         seed: Int = 1,
-        alpha: FloatArray? = null,
         ditherLsb: Float = 1f,
         blackBelow: Float = -1f,
     ): IntArray {
@@ -98,7 +97,7 @@ object ImageOps {
             return (state ushr 8) / 16777216f
         }
         for (i in out.indices) {
-            if (img.r[i] < blackBelow && img.g[i] < blackBelow && img.b[i] < blackBelow && alpha == null) {
+            if (img.r[i] < blackBelow && img.g[i] < blackBelow && img.b[i] < blackBelow) {
                 out[i] = 0xFF shl 24 // true black stays black: no dither noise where there is no light
                 continue
             }
@@ -106,8 +105,7 @@ object ImageOps {
             val r = (Oklab.linearToSrgb(img.r[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val g = (Oklab.linearToSrgb(img.g[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val b = (Oklab.linearToSrgb(img.b[i]) * 255f + d).roundToInt().coerceIn(0, 255)
-            val a = if (alpha == null) 255 else (alpha[i] * 255f + d).roundToInt().coerceIn(0, 255)
-            out[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+            out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
         return out
     }

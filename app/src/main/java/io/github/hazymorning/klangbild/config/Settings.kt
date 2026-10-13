@@ -52,7 +52,7 @@ enum class AppearanceMode {
 
 /** What stands behind the picture. */
 enum class BackgroundMode {
-    /** The wall: black with the artwork's light on it, or paper with its shadow. */
+    /** The wall: black with the artwork's light on it, or plain paper. */
     WALL,
 
     /** The cover's own colors, softly blurred, fill the screen. */

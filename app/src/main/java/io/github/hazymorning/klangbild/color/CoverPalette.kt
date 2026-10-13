@@ -9,16 +9,10 @@ import kotlin.random.Random
 /** A color cluster of the cover in Oklab with its share of the image (0..1). */
 data class ColorCluster(val lab: Lab, val weight: Float)
 
-/** Rough character of a cover; drives the edge-case handling of the palette. */
-enum class CoverKind { DARK, LIGHT, MONOCHROME, VIVID, BALANCED }
-
+/** A cover's colors as clusters, and its mean lightness (Oklab). */
 data class CoverAnalysis(
     val clusters: List<ColorCluster>,
     val meanL: Float,
-    val meanChroma: Float,
-    /** 90th percentile of chroma: "how colorful are the colorful parts". */
-    val highChroma: Float,
-    val kind: CoverKind,
 )
 
 /**
@@ -37,9 +31,6 @@ data class ScenePalette(
     val inkMuted: Int,
     /** Everything else. */
     val inkQuiet: Int,
-    val kind: CoverKind,
-    /** The cover's leading color, or null for a neutral cover. */
-    val lead: Lab?,
     /**
      * The progress bar's fill: the artist's level on the plain wall. On the cover's colors
      * ([CoverPalette.derive] with `cover`) it takes the cover's leading hue, light enough to stand out.
@@ -72,22 +63,9 @@ object CoverPalette {
             if ((p ushr 24) < 128) continue
             labs += Oklab.fromArgb(p)
         }
-        if (labs.isEmpty()) {
-            return CoverAnalysis(emptyList(), 0f, 0f, 0f, CoverKind.DARK)
-        }
+        if (labs.isEmpty()) return CoverAnalysis(emptyList(), 0f)
         val meanL = labs.sumOf { it.l.toDouble() }.toFloat() / labs.size
-        val chromas = labs.map { it.chroma }.sorted()
-        val meanChroma = chromas.average().toFloat()
-        val highChroma = chromas[((chromas.size - 1) * 0.9f).toInt()]
-        val clusters = kMeans(labs)
-        val kind = when {
-            meanL < 0.24f -> CoverKind.DARK
-            meanL > 0.84f && meanChroma < 0.06f -> CoverKind.LIGHT
-            highChroma < NEUTRAL_CHROMA -> CoverKind.MONOCHROME
-            highChroma > 0.2f -> CoverKind.VIVID
-            else -> CoverKind.BALANCED
-        }
-        return CoverAnalysis(clusters, meanL, meanChroma, highChroma, kind)
+        return CoverAnalysis(kMeans(labs), meanL)
     }
 
     private fun kMeans(points: List<Lab>): List<ColorCluster> {
@@ -253,8 +231,6 @@ object CoverPalette {
             ink = ink(0),
             inkMuted = muted,
             inkQuiet = ink(2),
-            kind = analysis.kind,
-            lead = lead,
             accent = accent,
         )
     }

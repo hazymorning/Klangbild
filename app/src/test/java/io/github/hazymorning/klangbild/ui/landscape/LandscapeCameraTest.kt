@@ -146,7 +146,7 @@ class LandscapeCameraTest {
                     Fixtures.Still {
                         Box(Modifier.fillMaxSize()) {
                             PaperView(imagesFor(side), { look }, { places }, { PaperMotion(0.0, emptyList(), pose) }, Modifier.fillMaxSize())
-                            LandscapeLabel(LabelText.Music(track, scene, true) { (track.durationMs ?: 0L) / 3 }, side, inks = { look.label })
+                            LandscapeLabel(LabelText(track, scene, true) { (track.durationMs ?: 0L) / 3 }, side, inks = { look.label })
                         }
                     }
                 }

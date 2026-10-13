@@ -28,7 +28,7 @@ internal fun Baker.cloud(i: Int): Sheet {
     // Laid out around a point well inside the canvas, then made relative to it.
     val ox = 200f
     val oy = 200f
-    val shifted = outlines.map { it.transformed(1f, ox, oy) }
+    val shifted = outlines.map { it.moved(ox, oy) }
     val m = mask(shifted, pad = (2f * d).toInt() + 3)!!
     val baseline = pieces[0][1]
     val th = pieces[0][3]

@@ -321,12 +321,6 @@
     <string name="page_action_what">What it does</string>
     <string name="page_action_add">Add a button</string>
     <string name="page_action_remove">Remove</string>
-    <string name="page_group_scripts">Scripts</string>
-    <string name="page_group_scenes">Scenes</string>
-    <string name="page_group_automations">Automations</string>
-    <string name="page_group_buttons">Buttons</string>
-    <string name="page_group_switches">Switches</string>
-    <string name="page_group_lights">Lights</string>
     <string name="page_search">Search by name</string>
     <string name="page_search_none">Nothing found.</string>
     <string name="page_search_more">Type more to narrow it down.</string>

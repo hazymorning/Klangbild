@@ -100,9 +100,6 @@ object Motion {
     /** Quick start, long settle: for things arriving at their place. */
     val Decelerate = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
-    /** Slow start, quick end: for things leaving. */
-    val Accelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
-
     /**
      * The cover flow turning over: a gentle start, an unhurried middle (at most about twice
      * the average speed) and a long soft landing.
