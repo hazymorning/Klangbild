@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.color.Appearance
@@ -189,8 +190,13 @@ fun FlowTheater(
     val level: () -> Float = { dim.light * intensity() }
     // The text cross-fades with a new look of the same track; a new song's lines leave and rise.
     val softText = kind == FlowChange.SOFT || kind == FlowChange.WALL
-    // The whole strip cross-fades when the same middle card takes a new look.
-    val restrip = prev != null && (softText || (kind == FlowChange.TEXT && !samePicture(prev.middle.scene, middle.scene)))
+    // The whole strip cross-fades when its cards take a new look (a better cover, the other wall);
+    // a song only described anew changes its text alone.
+    val restrip = prev != null && when (kind) {
+        FlowChange.SOFT, FlowChange.WALL -> !sameCards(prev, current)
+        FlowChange.TEXT -> !samePicture(prev.middle.scene, middle.scene)
+        else -> false
+    }
     val oldStrip = prev?.middle?.scene?.takeIf { restrip }
     val party = rememberPartyCode(partyCode, setOfNotNull(appearance, oldStrip?.appearance), geometry) { url, wall -> partySign(url, wall, geometry) }
     val newWall: () -> Float = {
@@ -235,9 +241,11 @@ fun FlowTheater(
             geometry = geometry,
             appearance = appearance,
             wall = wall,
+            // A new look comes up over the old strip as one picture, so its cards beside the middle
+            // never show through the middle card while it fades in.
+            modifier = Modifier.graphicsLayer { alpha = if (restrip) p(0, total, Motion.Sine) else 1f },
             time = { if (softText) 1f else t.value },
             dim = { dim.picture },
-            alpha = { if (restrip) p(0, total, Motion.Sine) else 1f },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
             sign = party.on(appearance),
@@ -270,6 +278,11 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
     val card = partyCard(url, (layout.art * density).roundToInt(), wall) ?: return null
     return FlowCards.build(card, round = false, cornerPx = layout.radius * density, geometry = geometry, density = density, appearance = wall)
 }
+
+/** Whether [a] and [b] show the same cards in the same places, each with the same picture. */
+private fun sameCards(a: FlowData, b: FlowData): Boolean =
+    a.current == b.current && a.cards.size == b.cards.size &&
+        a.cards.indices.all { a.cards[it].id == b.cards[it].id && a.cards[it].scene === b.cards[it].scene }
 
 private fun changeOf(old: FlowData, new: FlowData): FlowChange {
     val a = old.middle

@@ -74,7 +74,7 @@ class LandscapeMotionTest {
 
     @Test
     fun arrival() {
-        // The first picture keeps one waiting: the ring turns in the dark, then goes as the picture comes up.
+        // The first picture keeps one waiting: the words and the bar wait in the dark, then go as the picture comes up.
         val wall = java.time.ZonedDateTime.of(2026, 10, 10, 15, 30, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
         val feed = LandscapeFeed(place = { berlin }, weather = { Weather(cover = 0.6f) }, clock = LandscapeClock(now = { wall }), zone = { Fixtures.zone }, wall = { wall })
         compose.mainClock.autoAdvance = false

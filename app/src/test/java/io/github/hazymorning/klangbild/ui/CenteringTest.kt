@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Settings
@@ -68,6 +69,18 @@ class CenteringTest {
                 assertWithMessage("$case: a line under the clock, at ${line.top}").that(abs(line.centerX - 960f)).isAtMost(3f)
             }
         }
+    }
+
+    @Test
+    fun theRestClocksColonStandsInTheMiddleOfItsFiguresAndTheOneAmongThem() {
+        val ink = render { Fixtures.Still { RestScreen(RestReason.IDLE, "Wohnzimmer", null, Fixtures.at(18, 40), zone = Fixtures.zone) } }
+        val clock = ink.lines().first()
+        // "1", "8", ":", "4" and "0", each its own run of ink; the eight reaches as far over the
+        // figures' top as below their baseline, so its middle is theirs.
+        val (one, eight, colon) = ink.runs(clock.inkTop, clock.inkBottom)
+        assertThat(abs((colon.top + colon.bottom) / 2f - (eight.top + eight.bottom) / 2f)).isAtMost(2f)
+        // The one keeps no more room to the eight than the eight keeps to the colon.
+        assertThat(eight.left - one.right).isAtMost(colon.left - eight.right)
     }
 
     @Test
@@ -142,8 +155,11 @@ class CenteringTest {
 
     private class Box(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
-    /** A line of text: its ink across, its top and its baseline (where most of its columns end). */
-    private class Line(val left: Int, val right: Int, val top: Int, val baseline: Int) {
+    /**
+     * A line of text: its ink across, its top and its baseline (where most of its columns end), and
+     * the rows its ink reaches.
+     */
+    private class Line(val left: Int, val right: Int, val top: Int, val baseline: Int, val inkTop: Int, val inkBottom: Int) {
         val centerX get() = (left + right + 1) / 2f
     }
 
@@ -172,6 +188,23 @@ class CenteringTest {
             return Box(l, t, r, b)
         }
 
+        /** Runs of ink across, separated by empty columns, between the rows [top] and [bottom], left to right. */
+        fun runs(top: Int, bottom: Int, threshold: Int = THRESHOLD): List<Box> {
+            val columns = (0 until w).map { x -> (top..bottom).any { value[it * w + x] > threshold } }
+            val out = ArrayList<Box>()
+            var x = 0
+            while (x < w) {
+                if (!columns[x]) {
+                    x++
+                    continue
+                }
+                val left = x
+                while (x < w && columns[x]) x++
+                out += box(left, top, x, bottom + 1, threshold)
+            }
+            return out
+        }
+
         /** Rows of ink between [x0] and [x1], brighter than [threshold], separated by empty rows, top to bottom. */
         fun lines(x0: Int = 0, x1: Int = w, threshold: Int = THRESHOLD): List<Line> {
             fun lit(i: Int) = value[i] > threshold
@@ -187,10 +220,12 @@ class CenteringTest {
                 while (y < h && rows[y]) y++
                 val bottom = y - 1
                 val box = box(x0, top, x1, bottom + 1, threshold)
-                // Where most columns start and end: the top of the figures and the baseline
-                // (descenders and round overshoots are few).
+                // Where most columns start in the line's upper half and end in its lower half: the
+                // top of the figures and the baseline (descenders, round overshoots and the bar
+                // of a seven are few).
                 val starts = IntArray(h)
                 val ends = IntArray(h)
+                val middle = (top + bottom) / 2
                 for (x in box.left..box.right) {
                     var first = -1
                     var last = -1
@@ -198,10 +233,10 @@ class CenteringTest {
                         if (first < 0) first = yy
                         last = yy
                     }
-                    if (first >= 0) starts[first]++
-                    if (last >= 0) ends[last]++
+                    if (first in 0..middle) starts[first]++
+                    if (last >= middle) ends[last]++
                 }
-                out += Line(box.left, box.right, starts.indices.maxBy { starts[it] }, ends.indices.maxBy { ends[it] })
+                out += Line(box.left, box.right, starts.indices.maxBy { starts[it] }, ends.indices.maxBy { ends[it] }, top, bottom)
             }
             return out
         }

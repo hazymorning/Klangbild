@@ -68,7 +68,6 @@ class CardMotion(
  *
  * @param time how far the change has come (0..1, linear); each card eases its own stretch.
  * @param dim brightness of the cards (pause).
- * @param alpha opacity of the whole strip (a new strip coming up over the old one).
  * @param edges the cards dissolve into the plain wall before the screen's edges. On the
  *   cover's colors, which reach the edges, they pass the edges.
  * @param shift how far the cards stand to the right of their place in the grid (dp), so that
@@ -86,7 +85,6 @@ fun FlowStrip(
     modifier: Modifier = Modifier,
     time: () -> Float = { 1f },
     dim: () -> Float = { 1f },
-    alpha: () -> Float = { 1f },
     edges: Boolean = true,
     shift: () -> Float = { 0f },
     sign: FlowCard? = null,
@@ -104,7 +102,6 @@ fun FlowStrip(
     Canvas(modifier.fillMaxSize()) {
         val t = time().coerceIn(0f, 1f)
         val d = dim().coerceIn(0f, 1f)
-        val all = alpha().coerceIn(0f, 1f)
         val covered = signAlpha().coerceIn(0f, 1f)
         for (i in 0 until n) {
             val c = cards[i]
@@ -113,7 +110,7 @@ fun FlowStrip(
             pos[i] = p
             val fade = c.fromAlpha + (c.toAlpha - c.fromAlpha) * Motion.Sine.transform(c.fade.of(t))
             // Beneath a sign, the cards passing the middle fade, their mirror images with them.
-            alphas[i] = fade * geometry.presence(p) * all * (1f - covered * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
+            alphas[i] = fade * geometry.presence(p) * (1f - covered * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
             order[i] = i
         }
         // Farthest first (insertion sort: a handful of cards, no allocation).
@@ -146,12 +143,12 @@ fun FlowStrip(
                 if (half > 0f) quad(native, card, true, a * half, filter, tools, snap = false)
             }
             // The sign facing the room in the middle card's place, crisp on whole pixels, lit as the middle card.
-            if (sign != null && covered * all > 0.004f) {
+            if (sign != null && covered > 0.004f) {
                 geometry.corners(0f, tools.dp)
                 for (k in 0 until 8) tools.dst[k] = (tools.dp[k] + if (k % 2 == 0) dx else 0f) * density
                 val step = (geometry.light(0f) * d * STEPS).roundToInt()
                 val filter = filters.getOrPut(step) { ColorMatrixColorFilter(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
-                quad(native, sign, false, covered * all, filter, tools, snap = true)
+                quad(native, sign, false, covered, filter, tools, snap = true)
             }
         }
         // The cards dissolve into the wall before the screen's edges (on an OLED the band stays

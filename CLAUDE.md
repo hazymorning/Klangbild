@@ -5,9 +5,9 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, its views, setup with a tip for letting Home Assistant open it, the
-remote, an open invitation to contribute, privacy and the license. Leave a feature out rather than
-squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+Klangbild is and what it does, its views, setup with an optional third step that lets Home
+Assistant open it, the remote (and that its buttons can be changed), an open invitation to
+contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
@@ -225,7 +225,8 @@ landscape/      The landscape, a paper diorama: PaperMotif (folded mountains, fo
                 stands in front, each on a Depth layer; snow caps, folds, silhouette forests,
                 clustered crowns, flowers and fallen leaves, the tent; the meadow's cut-outs and
                 the near banks' tall firs as Standee sprites about their feet; tissue clouds and
-                flames, focus blur, shadows; its progress weighted by what each part takes), PaperGrain (pulp clouds, fibers, tooth per sheet),
+                flames, focus blur, shadows; its progress weighted by what each part takes, each
+                part saying where it ends: BakeProgress), PaperGrain (pulp clouds, fibers, tooth per sheet),
                 Inks/InkRaster/Coverage/Shapes (color matrices, exact AA, outlines), PaperLight
                 (plates per hour: sky, key and fill light, folds, haze, fire, lantern; season
                 papers, moonlight, the weather's skies and veils, mist, smoke, fireflies, label
@@ -292,7 +293,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
                 held lines), DebugOverlay, landscape/ (Landscape: bake ahead of time on a thread of low
                 priority, the picture on screen on a thread of its own, never the shared ones; 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
-                LandscapeWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
+                LandscapeWaiting: words over a bar while the first bake goes, WaitingPace keeping the
+                bar's pace even; PaperView: sky, far
                 range, clearing and near banks as layers redrawn only when the light moves on,
                 each only as tall as its paper, moved by the camera as a whole; stars, clouds,
                 mist, snow and rain, swaying cut-outs and firs, the fire, its smoke, sparks and
@@ -336,7 +338,10 @@ UI words are given in English with the German in parentheses where it matters.
   17 sp; labels, times, status, next 15 sp/440, nothing smaller. Large lines are pulled left by
   their extra side bearing (`opticalIndent`). Times are set in Jost with `Figures`: digits in
   equal cells (DM Sans has no tabular figures and a narrow 1), colon raised 0.123 em; the
-  rest clock keeps natural figures and dissolves into each new minute. Neither face has
+  rest clock keeps natural figures, set by hand as outlines (`ClockFigures`): its colon raised
+  to the figures' middle as measured at its weight (on the baseline it sagged 18 dp below them
+  until 2026.10), each 1 drawn in by most of its wide side bearings (it stood apart), and it
+  dissolves into each new minute. Neither face has
   U+202F, U+2009 or U+2002: `Texts` turns the platform's narrow spaces into U+00A0.
   Titles ≤ 3 lines, prefer breaks after section dashes, no mid-word breaks
   (`breaksInsideWord`), a word of one to three letters stays with the next ("Spiegel / im
@@ -392,7 +397,9 @@ UI words are given in English with the German in parentheses where it matters.
   cover): quiet cross-fade. Pause (600 ms) dims light, artwork and text; nothing moves, so the
   lines hung on the artwork's edges stay aligned.
   Mute is only a word; a lost link dims like a pause. Nothing slides, nothing bounces.
-  Screens switch by fading through dark. **One change at a time:** what arrives during a
+  Screens switch by fading through dark; another view waits on the view before until its
+  first scene is made, then the two cross at once (until 2026.10 the screen waited in the
+  dark, which read as stuck). **One change at a time:** what arrives during a
   change waits until it has landed, then the newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
   strip, a queue update or a better cover just wait. Lines on their way up stop where they
@@ -699,11 +706,14 @@ UI words are given in English with the German in parentheses where it matters.
   itself goes with any key, which still does its work. Baked ahead only while it shows or is on
   its way (`LandscapePolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
   app goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
-  (after 1 s), the far range's own skyline stands in the screen's middle as one thin line, drawn
-  like the progress bar in the rest screen's quiet ink and traced from the left as the paper is
-  cut (the bake's progress weighted by what each part takes, gliding, never going back, its head
-  breathing); once the picture is ready it is drawn to its end and gone while the landscape
-  comes up (`LandscapeWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
+  (after 1 s), one quiet line, "Preparing the landscape…" (Landschaft wird erstellt …, DM Sans
+  17 sp in the rest screen's quiet ink), stands 16 dp over a bar drawn like the stage's progress
+  bar (240 dp), the two together in the screen's very middle (cap height to the bar's lower
+  edge). The bar fills as the paper is cut, at an even pace: each part of the bake says where it
+  ends, and between the reports the bar runs on at the pace measured so far, never past that end
+  and never back (`WaitingPace`); once the picture is ready it runs to its end and the sign goes
+  while the landscape comes up (`LandscapeWaiting`; a turning ring read as too plain in 6.1, the
+  far range's skyline traced as a line was not liked in 2026.10). The label (cover 56 dp,
   Jost 24 / DM Sans 17, bar) lies on the dark near bank (snow only along its edge), the fire on
   the other side; beside the cover one block exactly centered on it: the title's cap height to
   the bar's lower edge (filling the cover's height), or without a bar (a station) to the last

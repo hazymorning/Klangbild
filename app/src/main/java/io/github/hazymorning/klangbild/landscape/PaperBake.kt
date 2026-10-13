@@ -4,6 +4,20 @@ import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.ceil
 
 /**
+ * How far a bake has come ([done], 0 to 1) and where the part under way ends ([upTo]): a bake
+ * tells its progress only between its parts, and some parts take far longer than others.
+ */
+data class BakeProgress(val done: Float, val upTo: Float) {
+    /** The same progress as the first [share] of a larger whole. */
+    fun scaled(share: Float) = BakeProgress(done * share, upTo * share)
+
+    companion object {
+        val NONE = BakeProgress(0f, 0f)
+        val DONE = BakeProgress(1f, 1f)
+    }
+}
+
+/**
  * Bakes the diorama for a screen. Every piece of paper is cut once, with exact anti-aliasing and
  * the slight unevenness of a hand with scissors, and laid on its sheet. Each sheet gets its
  * paper's grain, is darkened where nearer sheets stand close in front of it, and is softened
@@ -13,8 +27,8 @@ import kotlin.math.ceil
  */
 object PaperBake {
     /**
-     * Bakes the diorama; [progress] hears how far it has come (0 to 1), after each sheet, by the
-     * time each part takes ([COST]).
+     * Bakes the diorama; [progress] hears how far it has come as each part starts, by the time
+     * each part takes ([COST]), and where the part then starting ends.
      */
     fun bake(
         widthPx: Int,
@@ -22,12 +36,14 @@ object PaperBake {
         density: Float,
         shapes: SeasonShapes = SeasonShapes(),
         label: LabelSide = LabelSide.LEFT,
-        progress: (Float) -> Unit = {},
+        progress: (BakeProgress) -> Unit = {},
     ): PaperBaked {
         var done = 0f
-        fun step(cost: Float) {
-            done += cost
-            progress((done / TOTAL_COST).coerceAtMost(1f))
+        var started = 0f
+        fun starting(cost: Float) {
+            done += started
+            started = cost
+            progress(BakeProgress(done / TOTAL_COST, ((done + cost) / TOTAL_COST).coerceAtMost(1f)))
         }
         val m = PaperMotif
         val cw = ceil((m.WIDTH + 2 * m.OVERSCAN) * density).toInt().coerceAtLeast(widthPx)
@@ -38,8 +54,9 @@ object PaperBake {
         val frontStandees = ArrayList<Standee>()
         // Front to back, so that each sheet knows what stands in front of it.
         for (id in SheetId.entries.reversed()) {
+            if (id == SheetId.CROWNS) continue
+            starting(COST[id] ?: 0f)
             when (id) {
-                SheetId.CROWNS -> continue
                 SheetId.STANDEES -> standees = b.standees()
                 SheetId.FRONT_LEFT, SheetId.FRONT_RIGHT -> {
                     frontStandees += b.frontFirs(left = id == SheetId.FRONT_LEFT)
@@ -47,21 +64,21 @@ object PaperBake {
                 }
                 else -> b.cutSheet(id)?.let { sheets[id] = b.finish(it) }
             }
-            step(COST[id] ?: 0f)
         }
         val ordered = LinkedHashMap<SheetId, Sheet>()
         for (id in SheetId.entries) sheets[id]?.let { ordered[id] = it }
+        starting(SHADOWS_COST)
         val shadows = ordered.filterKeys { it.depth > 0f }.mapValues { (id, s) -> b.shadow(s, shadowBlurDp(id.depth)) }
-        step(SHADOWS_COST)
+        starting(CLOUDS_COST)
         val clouds = (0 until CLOUD_DESIGNS).map { b.cloud(it) }
-        step(CLOUDS_COST)
+        starting(REST_COST)
         val baked = PaperBaked(
             cw, ch, density, ordered, shadows, clouds, clouds.map { b.shadow(it, shadowBlurDp(CLOUD_DEPTH)) },
             b.flames(), b.px(b.fg.fireX), b.px(b.fg.fireY), standees, frontStandees, b.px(b.fg.tentX), b.px(b.tentFoot - TENT_HEIGHT * 0.24f),
             b.disc(SUN_RADIUS, 77), b.disc(MOON_RADIUS, 78),
             b.shadow(b.disc(SUN_RADIUS, 79), DISC_SHADOW_DP), b.glow(), leafAlpha(shapes.leaves),
         )
-        step(REST_COST)
+        progress(BakeProgress.DONE)
         return baked
     }
 

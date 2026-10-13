@@ -76,7 +76,7 @@ You can set up Music Assistant, your lights and custom buttons on the same page,
 </details>
 
 <details>
-<summary><b>Tip: let Home Assistant open Klangbild when the music starts</b></summary>
+<summary><b>3. Optional: let Home Assistant open Klangbild when the music starts</b></summary>
 <br>
 
 If your TV is connected to Home Assistant through the Android Debug Bridge integration, Home Assistant can open apps on it, and that includes Klangbild. The integration starts an app with the `media_player.select_source` action and the app's ID as the source, so a small automation like this one brings Klangbild up whenever your speaker starts playing:
@@ -107,7 +107,7 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-In the quick settings you can switch views and add your own Home Assistant buttons, for example one that groups all your speakers.
+In the settings you can change what the buttons do, for example let up and down turn the volume. In the quick settings you can switch views and add your own Home Assistant buttons, such as one that groups all your speakers.
 
 ## Contributing
 

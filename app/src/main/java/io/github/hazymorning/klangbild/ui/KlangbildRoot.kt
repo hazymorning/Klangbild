@@ -226,9 +226,12 @@ private const val DRIFT_DP = 6f
 private const val SCREEN_SWITCH_MS = 3_000L
 
 private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.landscape != null) Content.LandscapeContent(ui.landscape) else when (val s = ui.screen) {
-    is Screen.Stage ->
-        if (ui.view == StageView.FLOW) ui.flow?.let { Content.FlowContent(it) } ?: Content.Dark
-        else ui.stage?.let { Content.StageContent(it) } ?: Content.Dark
+    is Screen.Stage -> {
+        // The view chosen once its first scene is made; until then the view before it stays.
+        val flow = ui.flow?.let { Content.FlowContent(it) }
+        val single = ui.stage?.let { Content.StageContent(it) }
+        (if (ui.view == StageView.FLOW) flow ?: single else single ?: flow) ?: Content.Dark
+    }
     is Screen.Rest ->
         if (quietStart && s.reason == io.github.hazymorning.klangbild.domain.RestReason.CONNECTING) Content.Dark
         else Content.RestContent(s.reason, s.speaker, ui.appearance)

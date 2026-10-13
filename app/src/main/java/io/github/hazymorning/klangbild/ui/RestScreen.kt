@@ -6,25 +6,28 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,10 +47,12 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
-import io.github.hazymorning.klangbild.ui.theme.rememberInkShift
+import io.github.hazymorning.klangbild.ui.theme.ClockFigures
+import io.github.hazymorning.klangbild.ui.theme.rememberClockFigures
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import java.time.ZoneId
+import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
@@ -195,15 +200,13 @@ fun RestScreen(
  */
 @Composable
 private fun RestBlock(time: String, date: String?, label: String?, sentence: String?, colors: QuietColors) {
-    val clock = titleType(CLOCK_SP, 320, colors.primary, lineHeight = 140f, tracking = -0.01f).merge(TextStyle(textAlign = TextAlign.Center))
+    val clock = titleType(CLOCK_SP, 320, colors.primary, lineHeight = 140f, tracking = -0.01f)
     Layout(
         content = {
             // The figures keep their own widths (in cells this large the "1" would stand apart);
             // a new minute dissolves in, so the re-centered line never jumps.
             Crossfade(targetState = time, Modifier.layoutId(CLOCK), animationSpec = tween(700, easing = Motion.Dimmer), label = "minute") { t ->
-                // Centered on its ink: the figures' side bearings differ.
-                val shift = rememberInkShift(t, clock)
-                BasicText(t, Modifier.offset { IntOffset(shift.roundToInt(), 0) }, style = clock)
+                ClockFace(t, clock)
             }
             if (date != null) {
                 BasicText(date, Modifier.layoutId(DATE), style = textType(22f, 420, colors.secondary).merge(TextStyle(textAlign = TextAlign.Center)))
@@ -257,6 +260,27 @@ private fun RestBlock(time: String, date: String?, label: String?, sentence: Str
                 p.place(x, y.roundToInt())
             }
         }
+    }
+}
+
+/**
+ * One minute's figures ([ClockFigures]), drawn as outlines in a box that ends where their ink
+ * ends, so a layout centers what is seen; the baseline is marked for the lines under it.
+ */
+@Composable
+private fun ClockFace(time: String, style: TextStyle) {
+    val figures = rememberClockFigures(time, style)
+    val outline = remember(figures) { figures.outline.asComposePath() }
+    val ink = figures.ink
+    val color = style.color
+    val above = ceil(-ink.top).toInt()
+    val width = ceil(ink.width()).toInt()
+    Layout(
+        Modifier
+            .semantics { contentDescription = time }
+            .drawBehind { translate((width - ink.width()) / 2f - ink.left, above.toFloat()) { drawPath(outline, color) } },
+    ) { _, _ ->
+        layout(width, above + ceil(ink.bottom).toInt(), mapOf(FirstBaseline to above, LastBaseline to above)) {}
     }
 }
 
