@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
@@ -132,8 +131,8 @@ class ReadmeShotsTest {
         val ui = UiState(
             screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),
             stage = Fixtures.stage(polarNight),
-            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "clear-night"),
-            landscape = LandscapeUi(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT),
+            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40),
+            landscape = Fixtures.landscape(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT, "clear-night"),
         )
         val landscapeClock = LandscapeClock(now = { at })
         shot("landscape") {

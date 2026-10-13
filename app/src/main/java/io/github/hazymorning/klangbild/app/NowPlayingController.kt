@@ -58,6 +58,9 @@ import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
+import io.github.hazymorning.klangbild.landscape.Weather
+import io.github.hazymorning.klangbild.landscape.WeatherGlide
+import io.github.hazymorning.klangbild.landscape.WeatherMood
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -152,11 +155,12 @@ data class UiState(
     val downHint: Boolean = false,
 )
 
-/** The landscape while it shows: what plays (for the mini player) and where the label sits. */
+/** The landscape while it shows: what plays (for the mini player), where the label sits, and the weather it shows. */
 data class LandscapeUi(
     val track: TrackInfo?,
     val status: PlayerStatus?,
     val miniPlayer: MiniPlayer,
+    val weather: WeatherGlide = WeatherGlide.still(Weather.FAIR),
 )
 
 /**
@@ -196,6 +200,9 @@ class NowPlayingController(
     /** When the landscape takes the screen ([LandscapePolicy]), and the time its sky shows. */
     private val landscapePolicy = LandscapePolicy()
     val landscapeClock = LandscapeClock(now)
+
+    /** The weather the landscape shows, while it does: the picture and the lights read the same. */
+    private var landscapeWeather: WeatherGlide? = null
 
     /** The next chapter's start on the wall clock, so the stage turns to it on time. */
     @Volatile private var chapterEndsAt: Long? = null
@@ -352,6 +359,7 @@ class NowPlayingController(
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
         lastReportKey = null
         lastVolume = null
+        landscapeWeather = null
         _ui.value = _ui.value.copy(
             source = SourceState(LinkState.CONNECTING),
             screen = Screen.Rest(RestReason.CONNECTING),
@@ -726,7 +734,15 @@ class NowPlayingController(
         )
         // While the quick settings are open, the landscape stays as it was (unless they change it).
         val landscapeOn = quick.landscapeHeld ?: quietLongEnough
-        val landscape = if (landscapeOn && menuState == null) LandscapeUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer) else null
+        val landscape = if (landscapeOn && menuState == null) {
+            // The weather outside as the landscape comes, then gliding toward every change.
+            val outside = WeatherMood.of(src.weather, src.cloudCoverage, src.windKmh) ?: Weather.FAIR
+            val weather = landscapeWeather?.toward(outside, t) ?: WeatherGlide.still(outside)
+            LandscapeUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer, weather = weather)
+        } else {
+            null
+        }
+        landscapeWeather = landscape?.weather
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
         val quickState = quick.state(decision.screen, landscape != null)
         _ui.value = previous.copy(

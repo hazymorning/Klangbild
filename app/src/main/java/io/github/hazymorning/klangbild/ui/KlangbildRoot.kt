@@ -118,7 +118,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             },
     ) {
         // The landscape's picture is baked while it is only on its way, so it comes at once.
-        ui.landscapeAhead?.let { LandscapeAhead(rememberLandscapeFeed(ui, hooks.landscapeClock, hooks.now), labelSide(it)) }
+        ui.landscapeAhead?.let { LandscapeAhead(rememberLandscapeFeed(ui, ui.landscape, hooks.landscapeClock, hooks.now), labelSide(it)) }
         // No longer coming: its picture is let go after a while, and baked anew the next time.
         if (ui.landscapeAhead == null && ui.landscape == null && !LocalStill.current) {
             LaunchedEffect(Unit) {

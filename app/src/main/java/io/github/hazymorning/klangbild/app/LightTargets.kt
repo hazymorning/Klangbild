@@ -16,7 +16,6 @@ import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.Place
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.Weather
-import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.landscape.World
 import java.time.ZoneId
 
@@ -33,8 +32,8 @@ internal class LightTargets(
     /** The colors for a cover's field, made once per field (a new object fades the lights to it). */
     private var coverColors: Pair<Any, CoverLightColors>? = null
 
-    /** The colors for the landscape as it looked when they were worked out. */
-    private var landscapeColors: Pair<List<Any?>, LandscapeLightColors>? = null
+    /** The colors for the landscape as it looked when they were worked out, and its weather then. */
+    private var landscapeColors: Triple<List<Any?>, Weather, LandscapeLightColors>? = null
 
     /** The target for the lights now, or null when they have nothing to show. */
     fun target(s: Settings, ui: UiState, stage: Screen.Stage?, playing: Boolean, landscape: LandscapeUi?): LightSync.Target? {
@@ -45,7 +44,7 @@ internal class LightTargets(
             return LightSync.Target(
                 lights = s.roomLights,
                 level = s.roomLightBrightness,
-                colors = landscapeColors(ui.source, landscape.miniPlayer),
+                colors = landscapeColors(ui.source, landscape),
                 song = LANDSCAPE_SONG,
                 playing = true,
                 night = night,
@@ -80,21 +79,21 @@ internal class LightTargets(
     }
 
     /**
-     * The colors for the landscape as it looks now (its sky's moment, the place, the
-     * weather), worked out again only when the sky has moved on a little: the lights follow in
-     * long fades anyway.
+     * The colors for the landscape as it looks now (its sky's moment, the place, the weather
+     * as the picture shows it), worked out again only when the sky or the weather has moved on
+     * a little: the lights follow in long fades anyway.
      */
-    private fun landscapeColors(src: SourceState, mini: MiniPlayer): LandscapeLightColors {
+    private fun landscapeColors(src: SourceState, landscape: LandscapeUi): LandscapeLightColors {
         val zone = ZoneId.systemDefault()
         val place = src.place?.let { (lat, lon) -> Place(lat, lon) } ?: World.guessPlace(zone)
         val sky = landscapeClock.sky()
-        val weather = WeatherMood.of(src.weather, src.cloudCoverage, src.windKmh) ?: Weather.FAIR
+        val weather = landscape.weather.at(now())
         // The fire burns on the side of the clearing away from the label (without one, right of the middle).
-        val fireOnRight = mini != MiniPlayer.RIGHT
-        val key = listOf(sky / LANDSCAPE_STEP_MS, weather.copy(wind = 0f), place, fireOnRight)
-        landscapeColors?.takeIf { it.first == key }?.let { return it.second }
+        val fireOnRight = landscape.miniPlayer != MiniPlayer.RIGHT
+        val key = listOf(sky / LANDSCAPE_STEP_MS, place, fireOnRight)
+        landscapeColors?.takeIf { (k, w) -> k == key && w.distance(weather) <= Weather.LIGHT_STEP }?.let { return it.third }
         val look = PaperLight.look(World.sky(sky, place, zone, weather).first)
-        return LandscapeLightColors(look, fireOnRight).also { landscapeColors = key to it }
+        return LandscapeLightColors(look, fireOnRight).also { landscapeColors = Triple(key, weather, it) }
     }
 
     /** 0 by day to 1 at night, by the sun (Home Assistant's elevation, else the local clock): how far the lights dim. */

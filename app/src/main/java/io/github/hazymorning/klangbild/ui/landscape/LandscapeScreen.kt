@@ -14,7 +14,6 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.landscape.LabelSide
 import io.github.hazymorning.klangbild.landscape.Place
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.landscape.World
 import java.time.ZoneId
 
@@ -25,7 +24,7 @@ import java.time.ZoneId
  */
 @Composable
 fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, positionNow: () -> Long?, now: () -> Long, modifier: Modifier = Modifier) {
-    val feed = rememberLandscapeFeed(ui, clock, now)
+    val feed = rememberLandscapeFeed(ui, landscape, clock, now)
     val side = labelSide(landscape.miniPlayer)
     Landscape(feed, modifier, label = side) { look ->
         val text = landscape.track?.takeIf { side != LabelSide.NONE }?.let { track ->
@@ -35,14 +34,18 @@ fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, 
     }
 }
 
-/** What the landscape knows of the world: Home Assistant's place (or one guessed from the time zone) and weather. */
+/**
+ * What the landscape knows of the world: Home Assistant's place (or one guessed from the time
+ * zone) and the weather [landscape] shows.
+ */
 @Composable
-fun rememberLandscapeFeed(ui: UiState, clock: LandscapeClock, now: () -> Long): LandscapeFeed {
+fun rememberLandscapeFeed(ui: UiState, landscape: LandscapeUi?, clock: LandscapeClock, now: () -> Long): LandscapeFeed {
     val latest by rememberUpdatedState(ui)
+    val shown by rememberUpdatedState(landscape)
     return remember(clock) {
         LandscapeFeed(
             place = { latest.source.place?.let { (lat, lon) -> Place(lat, lon) } ?: World.guessPlace(ZoneId.systemDefault()) },
-            weather = { WeatherMood.of(latest.source.weather, latest.source.cloudCoverage, latest.source.windKmh) },
+            weather = { shown?.weather?.at(now()) },
             clock = clock,
             wall = now,
         )

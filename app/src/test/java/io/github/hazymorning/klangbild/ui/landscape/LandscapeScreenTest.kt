@@ -5,7 +5,6 @@ import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.LinkState
@@ -50,8 +49,8 @@ class LandscapeScreenTest {
         val ui = UiState(
             screen = Screen.Stage(track, status, null),
             stage = Fixtures.stage(track),
-            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = weather),
-            landscape = LandscapeUi(track, status, side),
+            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40),
+            landscape = Fixtures.landscape(track, status, side, weather),
         )
         val clock = LandscapeClock(now = { t })
         captureRoboImage("build/screenshots/landscape/screen/$name.png") {

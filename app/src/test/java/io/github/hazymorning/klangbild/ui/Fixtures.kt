@@ -4,10 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.art.SyntheticCovers
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
@@ -15,6 +17,9 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.domain.StageView
+import io.github.hazymorning.klangbild.landscape.Weather
+import io.github.hazymorning.klangbild.landscape.WeatherGlide
+import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
@@ -196,6 +201,10 @@ object Fixtures {
         appearance: Appearance = Appearance.DARK,
         coverField: Boolean = false,
     ) = StageData(track, scene(track, screen, appearance, coverField = coverField))
+
+    /** The landscape with [track]'s label on [side], showing the weather Home Assistant calls [weather] (none: a fair sky). */
+    fun landscape(track: TrackInfo?, status: PlayerStatus?, side: MiniPlayer, weather: String? = null) =
+        LandscapeUi(track, status, side, WeatherGlide.still(WeatherMood.of(weather, null) ?: Weather.FAIR))
 
     /** A cover flow of [scenes] (ids as given), the card with id [middle] in the middle. */
     fun flow(scenes: Map<Long, ArtworkScene>, ids: List<Long>, middle: Long): FlowData {

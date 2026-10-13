@@ -71,7 +71,7 @@ import kotlin.math.roundToInt
 @Stable
 class LandscapeFeed(
     val place: () -> Place,
-    /** The weather outside, or null when there is no weather entity (a fair sky then). */
+    /** The weather the picture shows now (gliding toward the weather outside), or null for a fair sky. */
     val weather: () -> Weather?,
     val clock: LandscapeClock,
     val zone: () -> ZoneId = ZoneId::systemDefault,
@@ -415,7 +415,6 @@ private class LandscapeFrameState(private val feed: LandscapeFeed, private val l
 
     private var lookSky = Long.MIN_VALUE
     private var lookWeather: Weather? = null
-    private var weather: Weather? = null
     private var cloudTime = 0.0
     private var drift = 0.0
     private var lastWall = 0L
@@ -432,18 +431,15 @@ private class LandscapeFrameState(private val feed: LandscapeFeed, private val l
         frames++
         val wall = feed.wall()
         val sky = feed.clock.sky()
-        // The weather glides toward the weather outside over a few minutes: rain sets in, clouds gather.
-        val target = feed.weather() ?: Weather.FAIR
+        val w = feed.weather() ?: Weather.FAIR
         val dt = if (lastWall == 0L) -1.0 else (wall - lastWall).coerceAtLeast(0L) / 1000.0
         lastWall = wall
-        val w = weather?.takeIf { dt >= 0.0 }?.towards(target, (1.0 - exp(-dt / WEATHER_TAU_S)).toFloat()) ?: target
-        weather = w
         val seconds = (wall - MOTION_EPOCH_MS) / 1000.0
         // The clouds' own clock runs faster in the wind; a gust speeds them up, it never moves them.
         cloudTime = if (dt < 0.0) seconds * CloudField.speed(w.wind) else cloudTime + dt * CloudField.speed(w.wind)
         drift = if (dt < 0.0) seconds * w.wind else drift + dt * w.wind
         val moving = feed.clock.timelapse
-        val relit = moving || abs(sky - lookSky) >= LOOK_EVERY_MS || lookWeather?.let { it.distance(w) > 0.01f } != false
+        val relit = moving || abs(sky - lookSky) >= LOOK_EVERY_MS || lookWeather?.let { it.distance(w) > Weather.LIGHT_STEP } != false
         if (relit) {
             lookSky = sky
             lookWeather = w
@@ -466,9 +462,6 @@ private class LandscapeFrameState(private val feed: LandscapeFeed, private val l
     companion object {
         /** The colors are worked out anew after this much of the sky's own time. */
         const val LOOK_EVERY_MS = 10_000L
-
-        /** How fast the picture's weather follows the weather outside (s). */
-        const val WEATHER_TAU_S = 150.0
 
         /** Origin of the clock for what moves by itself: January 1, 2026 (keeps the numbers small). */
         const val MOTION_EPOCH_MS = 1_767_225_600_000L

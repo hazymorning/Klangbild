@@ -7,7 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.ActionState
@@ -134,8 +133,8 @@ class QuickBarTest {
         val ui = UiState(
             screen = Screen.Stage(track, PlayerStatus.PLAYING, null),
             stage = Fixtures.stage(track),
-            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "partlycloudy"),
-            landscape = LandscapeUi(track, PlayerStatus.PLAYING, MiniPlayer.LEFT),
+            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40),
+            landscape = Fixtures.landscape(track, PlayerStatus.PLAYING, MiniPlayer.LEFT, "partlycloudy"),
         )
         val clock = LandscapeClock(now = { t })
         captureRoboImage("build/screenshots/quick/landscape.png") {

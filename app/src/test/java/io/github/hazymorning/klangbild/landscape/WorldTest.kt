@@ -104,4 +104,17 @@ class WorldTest {
         assertThat(WeatherMood.of("sunny", null, windKmh = 40.0)!!.wind).isWithin(0.05f).of(0.6f)
         assertThat(WeatherMood.of("windy", null, windKmh = 10.0)!!.wind).isAtLeast(0.6f)
     }
+
+    @Test
+    fun `the weather shown glides toward the weather outside and never jumps`() {
+        val rain = WeatherMood.of("rainy", null)!!
+        val glide = WeatherGlide.still(Weather.FAIR).toward(rain, 1_000L)
+        assertThat(glide.at(1_000L)).isEqualTo(Weather.FAIR)
+        // About two thirds of the way after its time constant, all of it after a quarter of an hour.
+        assertThat(glide.at(151_000L).rain).isWithin(0.01f).of(rain.rain * 0.63f)
+        assertThat(glide.at(901_000L).distance(rain)).isLessThan(Weather.LIGHT_STEP)
+        // A change on the way goes on from where the glide is; the same weather outside changes nothing.
+        assertThat(glide.toward(Weather.FAIR, 61_000L).at(61_000L)).isEqualTo(glide.at(61_000L))
+        assertThat(glide.toward(rain, 500_000L)).isSameInstanceAs(glide)
+    }
 }

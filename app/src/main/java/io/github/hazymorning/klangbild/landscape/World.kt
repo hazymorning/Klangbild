@@ -7,6 +7,7 @@ import org.shredzone.commons.suncalc.SunPosition
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.math.exp
 
 /** Where on Earth the window looks out (degrees, north and east positive). */
 data class Place(val latitude: Double, val longitude: Double)
@@ -161,6 +162,34 @@ data class Weather(
 
         /** Without a weather entity: a fair sky with a few clouds and a breeze. */
         val FAIR = Weather(cover = 0.25f)
+
+        /** The light is worked out anew once the weather has moved on this far ([distance]), each step far below a visible one. */
+        const val LIGHT_STEP = 0.01f
+    }
+}
+
+/**
+ * The weather the landscape shows: it glides from [from] toward the weather outside, [to],
+ * which came at [sinceMs] (wall clock), so rain sets in and clouds gather over a few minutes.
+ * The picture and the lights read the same glide.
+ */
+data class WeatherGlide(val from: Weather, val to: Weather, val sinceMs: Long) {
+    /** The weather shown at [wallMs]. */
+    fun at(wallMs: Long): Weather {
+        val seconds = (wallMs - sinceMs).coerceAtLeast(0L) / 1000.0
+        return from.towards(to, (1.0 - exp(-seconds / TAU_S)).toFloat())
+    }
+
+    /** On toward [outside] from where the glide is at [wallMs]; the same glide while the weather outside stays. */
+    fun toward(outside: Weather, wallMs: Long): WeatherGlide =
+        if (outside == to) this else WeatherGlide(at(wallMs), outside, wallMs)
+
+    companion object {
+        /** How fast the weather shown follows the weather outside (s). */
+        const val TAU_S = 150.0
+
+        /** [weather] as it is: the landscape comes up with the weather outside at once. */
+        fun still(weather: Weather) = WeatherGlide(weather, weather, 0L)
     }
 }
 
@@ -198,5 +227,5 @@ object WeatherMood {
     }
 
     /** Wind 0..1 from km/h: still at 0, a breeze about 10, 0.6 at 40, a gale from about 90. */
-    fun windOf(kmh: Double): Float = (0.05 + 0.95 * (1.0 - kotlin.math.exp(-kmh.coerceAtLeast(0.0) / 45.0))).toFloat()
+    fun windOf(kmh: Double): Float = (0.05 + 0.95 * (1.0 - exp(-kmh.coerceAtLeast(0.0) / 45.0))).toFloat()
 }
