@@ -15,7 +15,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import io.github.hazymorning.klangbild.app.graph
+import io.github.hazymorning.klangbild.graph
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.KlangbildRoot
 import io.github.hazymorning.klangbild.ui.RootHooks
@@ -51,14 +51,14 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         window.decorView.setViewTreeLifecycleOwner(this)
         window.decorView.setViewTreeSavedStateRegistryOwner(this)
         val controller = graph.controller
-        val spec = screenSpec()
+        val spec = ScreenSpec.of(resources.displayMetrics)
         setContentView(
             ComposeView(this).apply {
                 setViewTreeLifecycleOwner(this@KlangbildDream)
                 setViewTreeSavedStateRegistryOwner(this@KlangbildDream)
                 setContent {
                     val ui by controller.ui.collectAsStateWithLifecycle()
-                    val hooks = remember { RootHooks(positionNow = controller::positionNow, fieldTime = controller::fieldTime, vistaClock = controller.vistaClock) }
+                    val hooks = remember { RootHooks(positionNow = controller::positionNow, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
                     // Any key ends the dream: it never tells which key opens the quick settings.
                     KlangbildRoot(ui.copy(downHint = false), spec, hooks)
                 }
@@ -68,7 +68,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
-        graph.controller.attach(screenSpec())
+        graph.controller.attach(ScreenSpec.of(resources.displayMetrics))
         registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         lifecycleScope.launch {
@@ -89,10 +89,5 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     override fun onDestroy() {
         registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
-    }
-
-    private fun screenSpec(): ScreenSpec {
-        val m = resources.displayMetrics
-        return ScreenSpec(maxOf(m.widthPixels, m.heightPixels), minOf(m.widthPixels, m.heightPixels), m.density)
     }
 }

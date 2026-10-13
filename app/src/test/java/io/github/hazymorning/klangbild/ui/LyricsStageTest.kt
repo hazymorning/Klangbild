@@ -25,20 +25,23 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The song's words in the text column: both views, both walls, the cover's colors, German and
  * English; a break in the singing, the first line waiting, the bar for a moment, long lines,
  * other scripts, a lost link, and the quick settings' Lyrics entry over them.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class LyricsStageTest {
     private val en = TestTexts.english()
     private val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
-    private val neonWords = Fixtures.words(Catalogue.neonWords)
-    private val nightWords = Fixtures.words(Catalogue.nightWords)
+    private val neonLyrics = Fixtures.lyrics(Catalog.neonLyrics)
+    private val nightLyrics = Fixtures.lyrics(Catalog.nightLyrics)
 
     private fun shot(name: String, model: StageModel, t: Texts = Fixtures.texts) =
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { Stage(model) } }
@@ -52,46 +55,46 @@ class LyricsStageTest {
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { FlowStage(model, Fixtures.restingCards(scenes, 2)) } }
     }
 
-    @Test fun dark() = shot("single_dark", Fixtures.lyricsModel(neon, neonWords))
+    @Test fun dark() = shot("single_dark", Fixtures.lyricsModel(neon, neonLyrics))
 
-    @Test fun light() = shot("single_light", Fixtures.lyricsModel(neon, neonWords, appearance = Appearance.LIGHT))
+    @Test fun light() = shot("single_light", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT))
 
-    @Test fun darkEnglish() = shot("single_dark_en", Fixtures.lyricsModel(Fixtures.night, nightWords, position = { 81_000L }, t = en, group = "Living room"), en)
+    @Test fun darkEnglish() = shot("single_dark_en", Fixtures.lyricsModel(Fixtures.night, nightLyrics, position = { 81_000L }, t = en, group = "Living room"), en)
 
-    @Test fun lightEnglish() = shot("single_light_en", Fixtures.lyricsModel(Fixtures.night, nightWords, position = { 81_000L }, appearance = Appearance.LIGHT, t = en, group = "Living room"), en)
+    @Test fun lightEnglish() = shot("single_light_en", Fixtures.lyricsModel(Fixtures.night, nightLyrics, position = { 81_000L }, appearance = Appearance.LIGHT, t = en, group = "Living room"), en)
 
-    @Test fun coverColors() = shot("single_cover_colors", Fixtures.lyricsModel(neon, neonWords, coverField = true))
+    @Test fun coverColors() = shot("single_cover_colors", Fixtures.lyricsModel(neon, neonLyrics, coverField = true))
 
-    @Test fun coverColorsPaper() = shot("single_cover_colors_paper", Fixtures.lyricsModel(neon, neonWords, appearance = Appearance.LIGHT, coverField = true))
+    @Test fun coverColorsPaper() = shot("single_cover_colors_paper", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT, coverField = true))
 
-    @Test fun flowDark() = flowShot("flow_dark", neon, neonWords, Appearance.DARK)
+    @Test fun flowDark() = flowShot("flow_dark", neon, neonLyrics, Appearance.DARK)
 
-    @Test fun flowLight() = flowShot("flow_light", neon, neonWords, Appearance.LIGHT)
+    @Test fun flowLight() = flowShot("flow_light", neon, neonLyrics, Appearance.LIGHT)
 
-    @Test fun flowDarkEnglish() = flowShot("flow_dark_en", Fixtures.night, nightWords, Appearance.DARK, en)
+    @Test fun flowDarkEnglish() = flowShot("flow_dark_en", Fixtures.night, nightLyrics, Appearance.DARK, en)
 
-    @Test fun flowLightEnglish() = flowShot("flow_light_en", Fixtures.night, nightWords, Appearance.LIGHT, en)
+    @Test fun flowLightEnglish() = flowShot("flow_light_en", Fixtures.night, nightLyrics, Appearance.LIGHT, en)
 
-    @Test fun flowCoverColors() = flowShot("flow_cover_colors", neon, neonWords, Appearance.DARK, coverField = true)
+    @Test fun flowCoverColors() = flowShot("flow_cover_colors", neon, neonLyrics, Appearance.DARK, coverField = true)
 
     /** A break in the singing (the guitar takes over): the line sung last stays in the middle, unlit. */
-    @Test fun rest() = shot("rest", Fixtures.lyricsModel(neon, neonWords, position = { 36_000L }))
+    @Test fun rest() = shot("rest", Fixtures.lyricsModel(neon, neonLyrics, position = { 36_000L }))
 
     /** Before the first line: it waits in the middle, unlit. */
-    @Test fun intro() = shot("intro", Fixtures.lyricsModel(neon, neonWords, position = { 5_000L }))
+    @Test fun intro() = shot("intro", Fixtures.lyricsModel(neon, neonLyrics, position = { 5_000L }))
 
     /** A key brings the progress bar for a moment, above the song; the words make room for it. */
-    @Test fun barForAMoment() = shot("bar", Fixtures.lyricsModel(neon, neonWords, peek = true))
+    @Test fun barForAMoment() = shot("bar", Fixtures.lyricsModel(neon, neonLyrics, peek = true))
 
     /** The link is lost: the notice stands where the bar would. */
-    @Test fun linkDown() = shot("link_down", Fixtures.lyricsModel(neon, neonWords, linkDown = true))
+    @Test fun linkDown() = shot("link_down", Fixtures.lyricsModel(neon, neonLyrics, linkDown = true))
 
     /** Long lines: the whole song a size smaller. */
-    @Test fun longLines() = shot("long_lines", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.MOSS), Fixtures.words(Catalogue.longWords), position = { 17_000L }))
+    @Test fun longLines() = shot("long_lines", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.MOSS), Fixtures.lyrics(Catalog.longLyrics), position = { 17_000L }))
 
-    @Test fun japanese() = shot("japanese", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.NOCTURNE), Fixtures.words(Catalogue.nightJapaneseWords), position = { 15_000L }))
+    @Test fun japanese() = shot("japanese", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.NOCTURNE), Fixtures.lyrics(Catalog.nightJapaneseLyrics), position = { 15_000L }))
 
-    @Test fun arabic() = shot("arabic", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.TERRACOTTA), Fixtures.words(Catalogue.arabicWords), position = { 15_000L }))
+    @Test fun arabic() = shot("arabic", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.TERRACOTTA), Fixtures.lyrics(Catalog.arabicLyrics), position = { 15_000L }))
 
     /** The quick settings' Lyrics entry over the words, and its None for a song without them. */
     @Test
@@ -103,7 +106,7 @@ class LyricsStageTest {
         captureRoboImage("build/screenshots/lyrics/quick_on.png") {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
-                    Stage(Fixtures.lyricsModel(neon, neonWords))
+                    Stage(Fixtures.lyricsModel(neon, neonLyrics))
                     QuickBar(quick(QuickItem.LYRICS, LyricsChoice.ON, Fixtures.texts), Appearance.DARK)
                 }
             }

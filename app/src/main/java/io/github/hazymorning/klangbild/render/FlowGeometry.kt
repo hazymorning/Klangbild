@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.render
 
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
@@ -20,7 +21,7 @@ import kotlin.math.sign
  * Measured from the design (at 960 × 540 dp): the middle cover is 300 dp, and the outer edges
  * of the side cards stand 222.5 and 255 dp beside its center, at 92 % of its height.
  */
-class FlowGeometry(val layout: HaloLayout) {
+class FlowGeometry(val layout: StageGrid) {
     /** Side of a card (dp). */
     val side: Float get() = layout.art
 
@@ -94,13 +95,13 @@ class FlowGeometry(val layout: HaloLayout) {
      * Where the center of the card at [position] stands on screen, beside the middle (dp, from
      * [cx]; the mean of the upper corners).
      */
-    fun centre(position: Float): Float {
+    fun center(position: Float): Float {
         cornersOf(position, -side / 2f, -side / 2f, side / 2f, -side / 2f, probe)
         return (probe[0] + probe[2]) / 2f - cx
     }
 
     /** Card centers beside the middle for positions 0, 1/[TABLE_STEPS] and so on, up to [TABLE_END]. */
-    private val centres: FloatArray by lazy { FloatArray(TABLE_SIZE) { centre(it / TABLE_STEPS.toFloat()) } }
+    private val centers: FloatArray by lazy { FloatArray(TABLE_SIZE) { center(it / TABLE_STEPS.toFloat()) } }
 
     private val probe = FloatArray(8)
 
@@ -120,12 +121,12 @@ class FlowGeometry(val layout: HaloLayout) {
     private fun at(position: Float): Float {
         val i = (position.coerceIn(0f, TABLE_END) * TABLE_STEPS)
         val k = i.toInt().coerceAtMost(TABLE_SIZE - 2)
-        return centres[k] + (centres[k + 1] - centres[k]) * (i - k)
+        return centers[k] + (centers[k + 1] - centers[k]) * (i - k)
     }
 
-    /** The position whose card center stands [x] dp beside the middle (the inverse of [centre]). */
+    /** The position whose card center stands [x] dp beside the middle (the inverse of [center]). */
     private fun positionAt(x: Float): Float {
-        val c = centres
+        val c = centers
         if (x <= c[0]) return 0f
         if (x >= c[TABLE_SIZE - 1]) return TABLE_END
         var lo = 0
@@ -147,7 +148,7 @@ class FlowGeometry(val layout: HaloLayout) {
     }
 
     /** How present a card at [position] is: the third card on each side is already gone. */
-    fun presence(position: Float): Float = 1f - HaloLight.smoothstep(MAX_SIDE, EDGE, abs(position))
+    fun presence(position: Float): Float = 1f - smoothstep(MAX_SIDE, EDGE, abs(position))
 
     /**
      * Where the composition stands when only some of the cards are there: [left] cards beside
@@ -191,7 +192,7 @@ class FlowGeometry(val layout: HaloLayout) {
     private val stripGap: Float get() = layout.columnLeft - cx - reach(MAX_SIDE.toInt())
 
     /** From the middle card to the text column when nothing comes (dp): the single view's gap. */
-    private val heroGap: Float get() = HaloLayout.ART_TEXT_GAP * layout.screen.widthDp / HaloLayout.GRID_WIDTH
+    private val heroGap: Float get() = StageGrid.ART_TEXT_GAP * layout.screen.widthDp / StageGrid.GRID_WIDTH
 
     companion object {
 

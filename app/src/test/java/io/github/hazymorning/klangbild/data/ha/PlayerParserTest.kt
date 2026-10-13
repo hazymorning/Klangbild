@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import kotlinx.serialization.json.Json

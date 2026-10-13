@@ -1,16 +1,16 @@
 package io.github.hazymorning.klangbild.setup
 
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.hazymorning.klangbild.R
-import io.github.hazymorning.klangbild.config.ActionKind
+import io.github.hazymorning.klangbild.data.HttpStatusException
+import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaRest
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
+import io.github.hazymorning.klangbild.json.string
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -145,7 +145,7 @@ class SetupServer(
     }
 
     private fun publish(url: String) {
-        _info.value = SetupInfo(url, handler.code, qrMatrix("$url/?code=${handler.code}"))
+        _info.value = SetupInfo(url, handler.code, QrCode.matrix("$url/?code=${handler.code}"))
     }
 
     /** The listening socket, on the LAN address only: the first of [PORTS] that is free, else any. */
@@ -233,12 +233,6 @@ class SetupServer(
         /** How long a stop waits for the thread taking the connections to let go of the port. */
         private const val STOP_WAIT_MS = 2_000L
 
-        fun qrMatrix(text: String): Array<BooleanArray> {
-            val hints = mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M, EncodeHintType.MARGIN to 0)
-            val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, hints)
-            return Array(m.height) { y -> BooleanArray(m.width) { x -> m.get(x, y) } }
-        }
-
         /** First private IPv4 address of an up, non-loopback interface (Ethernet or Wi-Fi). */
         fun guessLanAddress(): InetAddress? = runCatching {
             NetworkInterface.getNetworkInterfaces().toList()
@@ -275,10 +269,9 @@ class SetupServer(
             } catch (_: HaAuthRejectedException) {
                 DiscoverResult.Failed(t[R.string.discover_rejected])
             } catch (e: IOException) {
-                val code = Regex("""answered (\d{3})""").find(e.message.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
-                when {
-                    code != null -> DiscoverResult.Failed(t.format(R.string.discover_unexpected, code))
-                    e is LocalNetwork.CleartextRefused -> DiscoverResult.Failed(t[R.string.discover_cleartext])
+                when (e) {
+                    is HttpStatusException -> DiscoverResult.Failed(t.format(R.string.discover_unexpected, e.code))
+                    is LocalNetwork.CleartextRefused -> DiscoverResult.Failed(t[R.string.discover_cleartext])
                     else -> DiscoverResult.Failed(t.format(R.string.discover_unreachable, url))
                 }
             } catch (_: IllegalArgumentException) {
@@ -346,7 +339,7 @@ class SetupServer(
                     else -> Unit
                 }
             }
-            val unit = (attrs?.get("unit_of_measurement") as? JsonPrimitive)?.takeIf { it.isString }?.content
+            val unit = attrs?.string("unit_of_measurement")
             return EntityOption(id, name, state.take(MAX_ATTRIBUTE_TEXT), unit, words, lists)
         }
 
@@ -381,8 +374,7 @@ class SetupServer(
         }
 
         private fun scriptField(key: String, f: JsonObject): ScriptField? {
-            if (!Regex("[A-Za-z_][A-Za-z0-9_]{0,63}").matches(key)) return null
-            fun str(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.takeIf { it.isString }?.content
+            if (!QuickActions.isVariableName(key)) return null
             val selector = f["selector"] as? JsonObject
             val (kind, config) = selector?.entries?.firstOrNull()?.let { it.key to (it.value as? JsonObject) } ?: ("text" to null)
             val multiple = (config?.get("multiple") as? JsonPrimitive)?.content == "true"
@@ -397,7 +389,7 @@ class SetupServer(
             val options = (config?.get("options") as? JsonArray).orEmpty().mapNotNull { o ->
                 when (o) {
                     is JsonPrimitive -> o.content to o.content
-                    is JsonObject -> str(o, "value")?.let { v -> v to (str(o, "label") ?: v) }
+                    is JsonObject -> o.string("value")?.let { v -> v to (o.string("label") ?: v) }
                     else -> null
                 }
             }
@@ -414,8 +406,8 @@ class SetupServer(
             }
             return ScriptField(
                 key = key,
-                name = str(f, "name") ?: key,
-                description = str(f, "description"),
+                name = f.string("name") ?: key,
+                description = f.string("description"),
                 required = (f["required"] as? JsonPrimitive)?.content == "true",
                 type = if (type == ScriptField.SELECT && options.isEmpty()) ScriptField.TEXT else type,
                 options = options,

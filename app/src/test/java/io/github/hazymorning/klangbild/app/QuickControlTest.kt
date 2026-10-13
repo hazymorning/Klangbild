@@ -2,21 +2,21 @@ package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.Condition
+import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
-import io.github.hazymorning.klangbild.data.ha.EntityState
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.SourceState
+import io.github.hazymorning.klangbild.domain.EntityState
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.Lrc
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
@@ -103,7 +103,7 @@ class QuickControlTest {
     private var quickSeen = false
 
     /** How often the landscape was left, and the settings menu opened. */
-    private var vistaLeft = 0
+    private var landscapeLeft = 0
     private var menuOpened = 0
 
     private val host = object : ControllerHost {
@@ -126,16 +126,16 @@ class QuickControlTest {
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
-        override fun showVista() = Unit
-        override fun hideVista(): Boolean {
-            vistaLeft++
+        override fun showLandscape() = Unit
+        override fun hideLandscape(): Boolean {
+            landscapeLeft++
             return false
         }
     }
 
     private val quick = QuickControl(host)
 
-    private fun rows() = quick.state(ui.screen, vista = false)!!.rows
+    private fun rows() = quick.state(ui.screen, landscape = false)!!.rows
 
     private fun value(entity: String) = rows().first { it.item == QuickItem.ACTION && host.settings.quickActions[it.key.action].entity == entity }.value
 
@@ -143,7 +143,7 @@ class QuickControlTest {
     private fun choose(entity: String) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, vista = false)!!
+            val s = quick.state(ui.screen, landscape = false)!!
             val row = s.rows[s.cursor]
             if (row.item == QuickItem.ACTION && host.settings.quickActions[row.key.action].entity == entity) return
             quick.move(+1)
@@ -237,16 +237,16 @@ class QuickControlTest {
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsValue() = rows().first { it.item == QuickItem.LYRICS }.value
-        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.PICTURE, QuickItem.LYRICS).inOrder()
+        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.VIEW, QuickItem.LYRICS).inOrder()
         assertThat(lyricsValue()).isEqualTo("Off")
         quick.move(+1)
         quick.change()
         assertThat(lyrics).isTrue()
         // Not known yet: on. Known to have none: none. With words: on.
         assertThat(lyricsValue()).isEqualTo("On")
-        ui = ui.copy(source = ui.source.copy(words = SongWords(song.key, null)))
+        ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, null)))
         assertThat(lyricsValue()).isEqualTo("None")
-        ui = ui.copy(source = ui.source.copy(words = SongWords(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
+        ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
         assertThat(lyricsValue()).isEqualTo("On")
         quick.change()
         assertThat(lyrics).isFalse()
@@ -278,7 +278,7 @@ class QuickControlTest {
     private fun chooseEntry(item: QuickItem) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, vista = false)!!
+            val s = quick.state(ui.screen, landscape = false)!!
             if (s.rows[s.cursor].item == item) return
             quick.move(+1)
         }
@@ -303,7 +303,7 @@ class QuickControlTest {
         assertThat(quick.partyWanted(true)).isTrue()
         assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
         // It shows at once: the landscape makes way.
-        assertThat(vistaLeft).isEqualTo(1)
+        assertThat(landscapeLeft).isEqualTo(1)
         // The code expired: Music Assistant's new link comes with the next question.
         source.partyLink = "http://192.168.1.5:8095/?join=M2KD7RXA"
         test.advanceTimeBy(QuickControl.PARTY_URL_MS)

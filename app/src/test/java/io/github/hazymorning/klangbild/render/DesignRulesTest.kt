@@ -17,7 +17,7 @@ import kotlin.random.Random
 /** Design principles as tests, so polishing never quietly breaks them. */
 class DesignRulesTest {
     private val screen = ScreenSpec.TV_1080
-    private val layout = HaloLayout(screen)
+    private val layout = StageGrid(screen)
     private val shape = PrintShape(layout.artRect, corner = layout.radius)
 
     /** A 48 × 48 thumbnail: the top [split] of the rows in [top], the rest in [bottom]. */
@@ -124,8 +124,8 @@ class DesignRulesTest {
             assertThat(ink.chroma).isAtMost(0.015f)
         }
         // a neutral cover gets neutral text
-        val grey = CoverPalette.derive(CoverPalette.analyze(thumb(0xFF808080.toInt())))
-        assertThat(Oklab.fromArgb(grey.ink).chroma).isAtMost(0.007f)
+        val gray = CoverPalette.derive(CoverPalette.analyze(thumb(0xFF808080.toInt())))
+        assertThat(Oklab.fromArgb(gray.ink).chroma).isAtMost(0.007f)
     }
 
     @Test
@@ -191,8 +191,8 @@ class DesignRulesTest {
         val seen = HashSet<Pair<Int, Int>>()
         for (i in 0 until 300) {
             val spec = ChladniArt.specFor("Sender $i")
-            // no nodal diameters: through the center they make crosses, wheels and petals
-            assertThat(spec.n1).isEqualTo(0)
+            // the first mode is a ring mode, with no nodal diameters: through the center they make
+            // crosses, wheels and petals
             assertThat(spec.n2).isIn(setOf(2, 3, 4, 5, 6, 8))
             // the second mode only bends the circles
             assertThat(kotlin.math.abs(spec.mix)).isAtMost(ChladniArt.MAX_MIX)

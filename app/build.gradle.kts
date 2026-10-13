@@ -36,7 +36,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.hazymorning.klangbild"
-        minSdk = 31
+        minSdk = 28
         targetSdk = 36
         versionCode = autoVersionCode
         versionName = autoVersionName
@@ -87,6 +87,12 @@ android {
                 )
                 // FirstLaunchTest against the stand-in Home Assistant (ci/fake_ha.py): -Pklangbild.fakeHa=http://127.0.0.1:8123
                 (project.findProperty("klangbild.fakeHa") as String?)?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
+                // The picture tests render how the screens look and check nothing themselves (see
+                // Pictures in the tests). The everyday run leaves them out; -Pklangbild.pictures
+                // runs them too, as CI's picture comparison does.
+                if (!project.hasProperty("klangbild.pictures")) {
+                    it.useJUnit { excludeCategories("io.github.hazymorning.klangbild.Pictures") }
+                }
             }
         }
     }

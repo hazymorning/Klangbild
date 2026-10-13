@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.render
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -49,7 +50,7 @@ object WallGlow {
      * [MAP_W] × [MAP_H] covering the whole screen.
      */
     fun field(thumb: IntArray, thumbSize: Int, shape: PrintShape, screen: ScreenSpec): IntArray {
-        val edge = edgeColours(thumb, thumbSize)
+        val edge = edgeColors(thumb, thumbSize)
         val n = edge.size
         // Light is diffuse: a point of the wall further from the print sees a longer stretch
         // of its edge, so the colors mix more with distance and there are no streaks.
@@ -83,7 +84,7 @@ object WallGlow {
                 val v = (qy - rect.top) / rect.height
                 val pos = outline(u, v, n)
                 // Blur radius along the edge ≈ 0.7 × the distance (in samples), between the levels.
-                colourAt(levels, pos, (2f + 0.7f * d) * samplesPerDp, rgb)
+                colorAt(levels, pos, (2f + 0.7f * d) * samplesPerDp, rgb)
                 val o = y * MAP_W + x
                 img.r[o] = rgb[0] * fall
                 img.g[o] = rgb[1] * fall
@@ -97,7 +98,7 @@ object WallGlow {
     private val BLUR_LEVELS = floatArrayOf(1f, 2f, 4f, 8f, 16f, 32f)
 
     /** The color at outline position [pos] blurred by about [radius] samples (interpolated between the levels). */
-    private fun colourAt(levels: List<Array<FloatArray>>, pos: Float, radius: Float, out: FloatArray) {
+    private fun colorAt(levels: List<Array<FloatArray>>, pos: Float, radius: Float, out: FloatArray) {
         val n = levels[0].size
         val scaled = radius * 192f / n
         var li = 0
@@ -144,7 +145,7 @@ object WallGlow {
      * artwork at [EDGE_LUMINANCE] (or at [SHARE_OF_EDGE] of its own luminance, if that is less),
      * with its colorfulness capped and a little warmed by the [Lamp].
      */
-    fun edgeColours(thumb: IntArray, size: Int): Array<FloatArray> {
+    fun edgeColors(thumb: IntArray, size: Int): Array<FloatArray> {
         // A blurred copy: the glow takes the color of a region, not of single pixels.
         val lin = LinearImage.fromArgb(thumb, size, size)
         ImageOps.blur(lin, radius = max(1, size / 16))
@@ -198,10 +199,5 @@ object WallGlow {
             dBottom -> 2 * perSide + (1f - u) * last
             else -> 3 * perSide + (1f - v) * last
         }
-    }
-
-    private fun smoothstep(e0: Float, e1: Float, x: Float): Float {
-        val t = ((x - e0) / (e1 - e0)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
     }
 }

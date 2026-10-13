@@ -30,18 +30,6 @@ class CoverPaletteTest {
     }
 
     @Test
-    fun `classifies edge cases`() {
-        assertThat(CoverPalette.analyze(solid(0xFF070708.toInt())).kind).isEqualTo(CoverKind.DARK)
-        assertThat(CoverPalette.analyze(solid(0xFF8A8A8A.toInt())).kind).isEqualTo(CoverKind.MONOCHROME)
-        assertThat(CoverPalette.analyze(mix(0xFF0A0A0D.toInt() to 0.95f, 0xFFE9DDBA.toInt() to 0.05f)).kind)
-            .isEqualTo(CoverKind.DARK)
-        assertThat(CoverPalette.analyze(mix(0xFFF6F5F1.toInt() to 0.97f, 0xFF4060A0.toInt() to 0.03f)).kind)
-            .isEqualTo(CoverKind.LIGHT)
-        assertThat(CoverPalette.analyze(mix(0xFFFF00FF.toInt() to 0.5f, 0xFF00FFFF.toInt() to 0.5f)).kind)
-            .isEqualTo(CoverKind.VIVID)
-    }
-
-    @Test
     fun `text stays readable on both walls for every edge case`() {
         for (pixels in covers) for (appearance in Appearance.entries) {
             val p = CoverPalette.derive(CoverPalette.analyze(pixels), appearance)
@@ -70,19 +58,17 @@ class CoverPaletteTest {
         val red = CoverPalette.derive(CoverPalette.analyze(solid(0xFFB0412E.toInt())), Appearance.LIGHT)
         val blue = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT)
         val teal = CoverPalette.derive(CoverPalette.analyze(solid(0xFF1F7A78.toInt())), Appearance.LIGHT)
-        val grey = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
-        assertThat(red.lead).isNotNull()
-        assertThat(grey.lead).isNull()
-        assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(grey.wall).chroma)
+        val gray = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
+        assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(gray.wall).chroma)
         // paper is never mint or blue: a cool cover gives it less color, not its hue
-        for (p in listOf(red, blue, teal, grey)) {
+        for (p in listOf(red, blue, teal, gray)) {
             assertThat(Oklab.fromArgb(p.wall).hue).isIn(com.google.common.collect.Range.closed(45f, 95f))
         }
         assertThat(Oklab.fromArgb(blue.wall).chroma).isAtMost(Oklab.fromArgb(red.wall).chroma)
-        assertThat(Oklab.fromArgb(grey.wall).hue).isWithin(20f).of(CoverPalette.WARM_HUE)
+        assertThat(Oklab.fromArgb(gray.wall).hue).isWithin(20f).of(Lamp.HUE)
         // the Intensity setting turned off leaves plain paper
         val plain = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT, wallTint = 0f)
-        assertThat(Oklab.fromArgb(plain.wall).chroma).isAtMost(Oklab.fromArgb(grey.wall).chroma)
+        assertThat(Oklab.fromArgb(plain.wall).chroma).isAtMost(Oklab.fromArgb(gray.wall).chroma)
     }
 
     @Test

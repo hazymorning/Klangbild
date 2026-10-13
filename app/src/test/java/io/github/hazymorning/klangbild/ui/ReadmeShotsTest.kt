@@ -6,12 +6,11 @@ import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.VistaUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -25,8 +24,8 @@ import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import io.github.hazymorning.klangbild.ui.vista.VistaScreen
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,12 +34,15 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.time.ZonedDateTime
 import java.util.TimeZone
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * The screens in the README's pictures, in English; beside each song the colors the lights
  * behind the TV would show (a JSON file). `tools/make_readme_pictures.py` sets them in a room
  * and saves the pictures to docs/screenshots/ when the look changes.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -52,7 +54,7 @@ class ReadmeShotsTest {
 
     private val en = TestTexts.english()
 
-    private fun cover(c: SyntheticCover) = Catalogue.SCHEME + c.name
+    private fun cover(c: SyntheticCover) = Catalog.SCHEME + c.name
 
     private val polarNight = TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Lights", 2025, 258_000, artworkUrl = cover(SyntheticCover.AURORA))
     private val saltWater = TrackInfo("Salt Water", listOf("Northern Light Collective"), "Tides", 2023, 214_000, artworkUrl = cover(SyntheticCover.SALT_WATER))
@@ -124,17 +126,17 @@ class ReadmeShotsTest {
 
     /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
     @Test
-    fun windowView() {
+    fun landscapeShot() {
         val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
         val ui = UiState(
             screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),
             stage = Fixtures.stage(polarNight),
-            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "clear-night"),
-            vista = VistaUi(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT),
+            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40),
+            landscape = Fixtures.landscape(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT, "clear-night"),
         )
-        val vistaClock = VistaClock(now = { at })
+        val landscapeClock = LandscapeClock(now = { at })
         shot("landscape") {
-            VistaScreen(ui, ui.vista!!, vistaClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
+            LandscapeScreen(ui, ui.landscape!!, landscapeClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
         }
     }
 

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.render
 
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.Rnd
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -20,13 +21,15 @@ class LinearImage(val width: Int, val height: Int) {
     val b = FloatArray(width * height)
 
     companion object {
+        /** The light of ARGB [pixels]: where they are transparent, only as much as is seen. */
         fun fromArgb(pixels: IntArray, width: Int, height: Int): LinearImage {
             val img = LinearImage(width, height)
             for (i in pixels.indices) {
                 val p = pixels[i]
-                img.r[i] = Oklab.srgbToLinear(p shr 16)
-                img.g[i] = Oklab.srgbToLinear(p shr 8)
-                img.b[i] = Oklab.srgbToLinear(p)
+                val seen = (p ushr 24) / 255f
+                img.r[i] = Oklab.srgbToLinear(p shr 16) * seen
+                img.g[i] = Oklab.srgbToLinear(p shr 8) * seen
+                img.b[i] = Oklab.srgbToLinear(p) * seen
             }
             return img
         }
@@ -85,31 +88,32 @@ object ImageOps {
     fun toArgbDithered(
         img: LinearImage,
         seed: Int = 1,
-        alpha: FloatArray? = null,
         ditherLsb: Float = 1f,
         blackBelow: Float = -1f,
     ): IntArray {
         val out = IntArray(img.width * img.height)
-        var state = seed * 0x9E3779B9.toInt() or 1
-        fun rnd(): Float { // xorshift32 → 0..1
-            state = state xor (state shl 13)
-            state = state xor (state ushr 17)
-            state = state xor (state shl 5)
-            return (state ushr 8) / 16777216f
-        }
+        val rnd = Rnd(seed)
         for (i in out.indices) {
-            if (img.r[i] < blackBelow && img.g[i] < blackBelow && img.b[i] < blackBelow && alpha == null) {
+            if (img.r[i] < blackBelow && img.g[i] < blackBelow && img.b[i] < blackBelow) {
                 out[i] = 0xFF shl 24 // true black stays black: no dither noise where there is no light
                 continue
             }
-            val d = (rnd() - rnd()) * ditherLsb // triangular in -1..1 (× amplitude)
+            val d = (rnd.next() - rnd.next()) * ditherLsb // triangular in -1..1 (× amplitude)
             val r = (Oklab.linearToSrgb(img.r[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val g = (Oklab.linearToSrgb(img.g[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val b = (Oklab.linearToSrgb(img.b[i]) * 255f + d).roundToInt().coerceIn(0, 255)
-            val a = if (alpha == null) 255 else (alpha[i] * 255f + d).roundToInt().coerceIn(0, 255)
-            out[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+            out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
         return out
+    }
+
+    /**
+     * Dither amplitude (gray levels) for a map that is drawn multiplied by [tint]: about one
+     * output level of noise, so even the darkest stretch of a glow never shows bands.
+     */
+    fun ditherFor(tint: Int): Float {
+        val maxC = maxOf((tint shr 16) and 0xFF, (tint shr 8) and 0xFF, tint and 0xFF).coerceAtLeast(16)
+        return (1.25f * 255f / maxC).coerceIn(1f, 6f)
     }
 
     // ---------------------------------------------------------------------------------
@@ -205,7 +209,11 @@ object ImageOps {
         return out
     }
 
-    /** Fast area-average downscale for analysis thumbnails. */
+    /**
+     * Fast area-average downscale for analysis thumbnails. Transparency carries over (a round
+     * plate stays clear in its corners), and the color is what is seen: a transparent pixel
+     * gives none of it.
+     */
     fun thumbnail(src: IntArray, sw: Int, sh: Int, size: Int): IntArray {
         val out = IntArray(size * size)
         for (ty in 0 until size) {
@@ -217,12 +225,14 @@ object ImageOps {
                 var r = 0L
                 var g = 0L
                 var b = 0L
+                var a = 0L
                 var n = 0L
                 for (y in y0 until y1) for (x in x0 until x1) {
                     val p = src[y * sw + x]
-                    r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF; n++
+                    val pa = (p ushr 24).toLong()
+                    r += ((p shr 16) and 0xFF) * pa; g += ((p shr 8) and 0xFF) * pa; b += (p and 0xFF) * pa; a += pa; n++
                 }
-                out[ty * size + tx] = (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
+                out[ty * size + tx] = if (a == 0L) 0 else ((a / n).toInt() shl 24) or ((r / a).toInt() shl 16) or ((g / a).toInt() shl 8) or (b / a).toInt()
             }
         }
         return out

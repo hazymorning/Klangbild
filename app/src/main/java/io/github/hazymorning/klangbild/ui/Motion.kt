@@ -44,16 +44,32 @@ val LocalStageTick = staticCompositionLocalOf<StageTick?> { null }
  */
 @Composable
 fun rememberStageTick(fast: Boolean, running: Boolean = true): StageTick {
+    val frame = rememberFrameLoop(fast, running, TICK_MS)
+    return remember(frame) { StageTick(frame) }
+}
+
+/**
+ * The frames something that moves by itself is redrawn on: the stage's tick, or where there is
+ * none (a part shown alone, as in a test) a loop of its own, every [fastMs] while [fast] and
+ * twice a second otherwise, and none while not [running].
+ */
+@Composable
+fun rememberFrames(fast: Boolean, running: Boolean = true, fastMs: Long = TICK_MS): State<Long> =
+    LocalStageTick.current?.frame ?: rememberFrameLoop(fast, running, fastMs)
+
+/** A frame-aligned loop; nothing runs in a still. */
+@Composable
+private fun rememberFrameLoop(fast: Boolean, running: Boolean, fastMs: Long): State<Long> {
     val frame = remember { mutableLongStateOf(0L) }
     if (running && !LocalStill.current) {
         LaunchedEffect(fast) {
             while (true) {
                 withFrameNanos { frame.longValue = it }
-                delay(if (fast) TICK_MS else SLOW_TICK_MS)
+                delay(if (fast) fastMs else SLOW_TICK_MS)
             }
         }
     }
-    return remember(frame) { StageTick(frame) }
+    return frame
 }
 
 /** About 30 frames a second, aligned to the display's: plenty for a bar and a field this slow. */
@@ -99,9 +115,6 @@ object Motion {
 
     /** Quick start, long settle: for things arriving at their place. */
     val Decelerate = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-
-    /** Slow start, quick end: for things leaving. */
-    val Accelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
     /**
      * The cover flow turning over: a gentle start, an unhurried middle (at most about twice

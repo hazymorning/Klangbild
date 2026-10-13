@@ -4,6 +4,10 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.Condition
+import io.github.hazymorning.klangbild.domain.OwnValue
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -111,12 +115,12 @@ class QuickActionsTest {
             condition = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1"),
         )
         val values = listOf(OwnValue("Outside", "sensor.outside"), OwnValue("", "weather.home", "temperature"))
-        store.update({ it.copy(quickActions = listOf(grouped, party), ownValues = values, showValues = false) }, Settings())
+        store.write(Settings(quickActions = listOf(grouped, party), ownValues = values, showValues = false))
         val back = store.settings.first()
         assertThat(back.quickActions).containsExactly(grouped, party).inOrder()
         assertThat(back.ownValues).containsExactly(*values.toTypedArray()).inOrder()
         assertThat(back.showValues).isFalse()
-        store.update({ it.copy(quickActions = emptyList(), ownValues = emptyList()) }, back)
+        store.write(back.copy(quickActions = emptyList(), ownValues = emptyList()))
         assertThat(store.settings.first().quickActions).isEmpty()
         assertThat(store.settings.first().ownValues).isEmpty()
     }
@@ -126,7 +130,7 @@ class QuickActionsTest {
         val s = Settings(quickActions = listOf(ungroup, movie, party))
         val ctx = QuickContext(music = true, actions = mapOf(0 to ActionState.READY, 2 to ActionState.ON))
         val rows = QuickMenu.rows(s, ctx, en)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.PICTURE, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS).inOrder()
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS).inOrder()
         // The scene's entity is not there (unavailable): its button is left out, the others keep their places.
         assertThat(rows.filter { it.item == QuickItem.ACTION }.map { it.key.action }).containsExactly(0, 2).inOrder()
         assertThat(rows[1].label).isEqualTo("Ungroup")

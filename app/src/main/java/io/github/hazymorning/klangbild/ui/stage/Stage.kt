@@ -18,9 +18,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.AlignmentLine
@@ -30,22 +28,19 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.StageView
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.FlowLight
-import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -85,7 +80,7 @@ const val BEYOND_EDGES_DP = 24f
  * The wall around the artwork, one static bitmap scaled softly to the screen. In the dark it is
  * the artwork's light ([io.github.hazymorning.klangbild.render.WallGlow]), and [level] is its
  * brightness in linear light (pause, the Intensity setting: 0 = off, 1 = as designed,
- * 1.45 = strong). In the light it is paper with the artwork's shadow. [alpha] fades the layer
+ * 1.45 = strong). In the light it is plain paper. [alpha] fades the layer
  * during a change; [shift] moves the light with the cover flow's cards (dp), the cover's colors
  * stay where they are. In Cover Flow's dark the light fades out before the text column, wherever
  * it stands ([column]: its shift from the grid, dp).
@@ -152,8 +147,7 @@ private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
 /**
  * The artwork, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display
  * size) with softly rounded corners. [dim] (pause) darkens it through the color matrix, not
- * through transparency; [scale] lets it settle during a change. Nothing is drawn around it:
- * no frame, no line, no shadow.
+ * through transparency. Nothing is drawn around it: no frame, no line, no shadow.
  */
 @Composable
 fun ArtworkLayer(
@@ -161,7 +155,6 @@ fun ArtworkLayer(
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
     dim: () -> Float = { 1f },
-    scale: () -> Float = { 1f },
 ) {
     val shader = remember(scene) {
         android.graphics.BitmapShader(scene.cover, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
@@ -169,17 +162,11 @@ fun ArtworkLayer(
     val brush = remember(shader) { ShaderBrush(shader) }
     val place = remember { android.graphics.Matrix() }
     val filters = remember(scene) { HashMap<Int, ColorFilter>() }
-    val rect = scene.coverRect
+    val rect = scene.layout.artRect
     Canvas(
         modifier
             .fillMaxSize()
-            .graphicsLayer {
-                this.alpha = alpha().coerceIn(0f, 1f)
-                val s = scale()
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin(rect.centerX / scene.screen.widthDp, rect.centerY / scene.screen.heightDp)
-            },
+            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
     ) {
         val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
         val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
@@ -194,12 +181,34 @@ fun ArtworkLayer(
     }
 }
 
-
 /**
- * Large type has more room before its first stem than small type; left as it is, a title
- * looks indented against the lines below it. Pulled left by the difference (dp).
+ * Color matrix for the artwork: the [Lamp]'s breath of warmth, [dim] (a pause) and a gentle
+ * highlight compression, so even a white cover never glares on black. White becomes a soft paper
+ * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
+ * brightness limiter dim everything. On the light wall a white cover stays a little whiter
+ * than the paper around it.
  */
-internal fun opticalIndent(size: Float): Float = -(0.065f * (size - 15f)).coerceAtLeast(0f)
+fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): ColorFilter {
+    val (r, g, b) = coverScale(dim, appearance)
+    return ColorFilter.colorMatrix(
+        ColorMatrix(
+            floatArrayOf(
+                r, 0f, 0f, 0f, 0f,
+                0f, g, 0f, 0f, 0f,
+                0f, 0f, b, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f,
+            ),
+        ),
+    )
+}
+
+/** The per-channel scale of [coverFilter] (red, green, blue). */
+fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Triple<Float, Float, Float> {
+    val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
+    val w = Lamp.WARMTH
+    return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
+}
+
 
 /**
  * The text block beside the artwork, centered on it from the first line's cap height to the
@@ -232,11 +241,7 @@ fun TextLayer(
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
     val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
 
-    fun line(which: TextLine): Modifier = Modifier.graphicsLayer {
-        this.alpha = alpha(which).coerceIn(0f, 1f)
-        translationY = (rise(which) * density).roundToInt().toFloat()
-    }
-    val showBar = model.line == null && model.progress && model.durationMs != null
+    fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
     val bottomLine = model.line
     val measurer = rememberTextMeasurer(cacheSize = 4)
 
@@ -273,29 +278,7 @@ fun TextLayer(
                 else -> Box(Modifier)
             }
             // 5: progress bar, station or notice; changes cross-fade
-            Crossfade(
-                targetState = when {
-                    bottomLine != null -> bottomLine
-                    showBar -> BAR
-                    else -> null
-                },
-                modifier = line(TextLine.BOTTOM),
-                animationSpec = tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
-                label = "bottom-line",
-            ) { content ->
-                when (content) {
-                    null -> Box(Modifier)
-                    BAR -> ProgressBar(
-                        durationMs = model.durationMs ?: 1L,
-                        positionMs = model.positionMs,
-                        startMs = model.rangeStartMs,
-                        playing = playing,
-                        colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
-                        labelStyle = styles.time,
-                    )
-                    else -> BasicText(content, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+            BottomLine(bottomOf(model), model, styles, playing, line(TextLine.BOTTOM), label = "bottom-line")
             // 6: what comes next, on the artwork's bottom edge
             NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT))
         },
@@ -365,25 +348,6 @@ fun TextLayer(
     }
 }
 
-private const val BAR = "\u0000bar"
-
-/**
- * [text] on one line of [width] px: whole, or cut after its last whole word that leaves room
- * for an ellipsis ("Conversation with Mrs. Grubach, then …"). A single word too long for the
- * line is left to the line's own ellipsis.
- */
-internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): String {
-    fun fits(s: String) = measurer.measure(AnnotatedString(s), style, maxLines = 1, softWrap = false).size.width <= width
-    if (fits(text)) return text
-    var end = text.length
-    while (true) {
-        end = text.lastIndexOfAny(charArrayOf(' ', ' '), end - 1)
-        if (end <= 0) return text
-        // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
-        val head = text.substring(0, end).trimEnd(' ', ' ', '–', '·', ',', ':', ';')
-        if (head.isNotEmpty() && fits("$head …")) return "$head …"
-    }
-}
 
 /**
  * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays
@@ -413,7 +377,6 @@ private fun NextLine(text: String?, lead: String, styles: StageStyles, modifier:
 fun StatusLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
-    alpha: () -> Float = { 1f },
     shift: () -> Float = { 0f },
 ) {
     val status = model.statusLine
@@ -424,7 +387,7 @@ fun StatusLayer(
     val clockText = status.clock
     val measurer = rememberTextMeasurer()
     val local = LocalDensity.current
-    val separator = TimeLine.SEPARATOR.trimStart()
+    val separator = TimeText.SEPARATOR.trimStart()
     // Which values fit beside the clock and the place, worked out on their measured widths.
     val values = remember(status, styles, layout, local) {
         fun width(text: AnnotatedString, style: TextStyle) = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
@@ -443,9 +406,7 @@ fun StatusLayer(
     }
     val leadAfter = clockText != null || values.isNotEmpty()
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
+        modifier = modifier.fillMaxSize(),
         content = {
             if (clockText != null) BasicText(figures.of(clockText), style = styles.time.copy(color = styles.muted), maxLines = 1) else Box(Modifier)
             values.forEachIndexed { i, v ->

@@ -10,12 +10,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * Cover Flow with only some of its cards: the first song (nothing played yet), the last one
  * (nothing to come), a player without a queue (only what played), a single cover. Whatever is
  * there stands in the middle of the screen with the text, as much room left of it as right.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")

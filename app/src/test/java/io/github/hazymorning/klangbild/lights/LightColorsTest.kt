@@ -8,8 +8,8 @@ import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Oklab
 import io.github.hazymorning.klangbild.render.CoverField
 import io.github.hazymorning.klangbild.render.FieldScene
-import io.github.hazymorning.klangbild.vista.PaperLight
-import io.github.hazymorning.klangbild.vista.SkyState
+import io.github.hazymorning.klangbild.landscape.PaperLight
+import io.github.hazymorning.klangbild.landscape.SkyState
 import org.junit.Test
 import kotlin.math.sqrt
 
@@ -64,17 +64,17 @@ class LightColorsTest {
     @Test
     fun `the landscape's light is the sun's glow on its side at dusk and the fire's warmth on its side at night`() {
         // Sunset in the west: to the right of a window looking south.
-        val dusk = lights(VistaLightColors(PaperLight.look(SkyState(sunElevation = 1f, sunAzimuth = 260f)), fireOnRight = true)).map(::lab)
+        val dusk = lights(LandscapeLightColors(PaperLight.look(SkyState(sunElevation = 1f, sunAzimuth = 260f)), fireOnRight = true)).map(::lab)
         assertWithMessage("the sun's side warmer").that(dusk[2].b).isGreaterThan(dusk[0].b + 0.02f)
         // Night, the fire on the left: that light is the warm one, the sky above blue.
-        val night = lights(VistaLightColors(PaperLight.look(SkyState(sunElevation = -30f, sunAzimuth = 0f)), fireOnRight = false)).map(::lab)
+        val night = lights(LandscapeLightColors(PaperLight.look(SkyState(sunElevation = -30f, sunAzimuth = 0f)), fireOnRight = false)).map(::lab)
         assertWithMessage("the fire's side warm").that(night[0].b).isGreaterThan(night[2].b + 0.02f)
         assertWithMessage("the sky above blue").that(night[1].b).isLessThan(0f)
     }
 
     @Test
     fun `at noon the landscape gives three colors of its own, sky, clearing and mountains, none of them amber`() {
-        val noon = lights(VistaLightColors(PaperLight.look(SkyState(sunElevation = 40f, sunAzimuth = 180f)), fireOnRight = true))
+        val noon = lights(LandscapeLightColors(PaperLight.look(SkyState(sunElevation = 40f, sunAzimuth = 180f)), fireOnRight = true))
         val labs = noon.map(::lab)
         for ((a, b) in listOf(labs[0] to labs[1], labs[1] to labs[2], labs[0] to labs[2])) assertThat(distance(a, b)).isGreaterThan(0.05f)
         // As light: each clearly a color, and the sky above the TV blue.

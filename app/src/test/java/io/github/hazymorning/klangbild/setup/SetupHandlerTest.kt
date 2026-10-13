@@ -2,14 +2,15 @@ package io.github.hazymorning.klangbild.setup
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SleepAction
 import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.runBlocking
@@ -298,7 +299,7 @@ class SetupHandlerTest {
         assertThat(post("/api/save", """{$base,"actions":[$button]}""").status).isEqualTo(200)
         val a = stored.quickActions.single()
         assertThat(a.variables.toString()).isEqualTo("""{"mode":"all","volume":0.4}""")
-        assertThat(a.condition).isEqualTo(io.github.hazymorning.klangbild.config.Condition("media_player.wz", "group_members", io.github.hazymorning.klangbild.config.Condition.Test.ABOVE, "1"))
+        assertThat(a.condition).isEqualTo(io.github.hazymorning.klangbild.domain.Condition("media_player.wz", "group_members", io.github.hazymorning.klangbild.domain.Condition.Test.ABOVE, "1"))
         val state = json(post("/api/state", """{"code":"${handler.code}"}"""))
         assertThat(state["actions"].toString()).contains(""""variables":{"mode":"all","volume":0.4}""")
         assertThat(state["actions"].toString()).contains(""""when":{"entity":"media_player.wz","attribute":"group_members","test":"above","value":"1"}""")
@@ -313,8 +314,8 @@ class SetupHandlerTest {
         val two = """[{"name":"Außen","entity":"sensor.outside"},{"name":"","entity":"weather.home","attribute":"temperature"}]"""
         assertThat(post("/api/save", """{$base,"values":$two}""").status).isEqualTo(200)
         assertThat(stored.ownValues).containsExactly(
-            io.github.hazymorning.klangbild.config.OwnValue("Außen", "sensor.outside"),
-            io.github.hazymorning.klangbild.config.OwnValue("", "weather.home", "temperature"),
+            io.github.hazymorning.klangbild.domain.OwnValue("Außen", "sensor.outside"),
+            io.github.hazymorning.klangbild.domain.OwnValue("", "weather.home", "temperature"),
         ).inOrder()
         assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["values"].toString())
             .isEqualTo("""[{"name":"Außen","entity":"sensor.outside"},{"name":"","entity":"weather.home","attribute":"temperature"}]""")
@@ -506,8 +507,20 @@ class SetupHandlerTest {
     }
 
     @Test
+    fun `the page fills every placeholder, and its script uses every word it gets`() {
+        for (words in listOf(TestTexts.german, TestTexts.english())) {
+            texts = words
+            val html = String(get("/").body)
+            assertThat(Regex("""\{\{\w+}}|__[A-Z_]+__""").find(html)?.value).isNull()
+            val given = Json.parseToJsonElement(Regex("""const T = (\{.*?});""").find(html)!!.groupValues[1]).jsonObject.keys
+            val used = Regex("""\bT\.(\w+)""").findAll(html).map { it.groupValues[1] }.toSet()
+            assertThat(given).containsExactlyElementsIn(used)
+        }
+    }
+
+    @Test
     fun `qr code encodes the url`() {
-        val m = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=123456")
+        val m = QrCode.matrix("http://192.168.1.23:8765/?code=123456")
         assertThat(m.size).isAtLeast(21)
         assertThat(m.all { it.size == m.size }).isTrue()
         // finder pattern corner is dark

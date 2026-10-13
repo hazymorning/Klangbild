@@ -54,9 +54,10 @@ pictures: effort goes into the app, not into documents.
 ## Build and test
 
 ```bash
-./gradlew :app:testDebugUnitTest                               # all JVM tests (unit + Robolectric screenshots)
-./gradlew :app:testDebugUnitTest -Proborazzi.test.record=true  # same, writes PNGs to app/build/screenshots/
-./gradlew :app:testDebugUnitTest --tests '*HaloStageTest*' -Proborazzi.test.record=true   # one class
+./gradlew :app:testDebugUnitTest                               # the checks (unit + Robolectric), not the picture tests
+./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # everything, every picture to app/build/screenshots/
+./gradlew :app:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
+python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what looks different (Pillow)
 ./gradlew :app:lintRelease                                     # Android Lint: every warning fails
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
@@ -64,21 +65,27 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 ```
 
 - Local SDK: `local.properties` → `sdk.dir=/opt/android-sdk` (not committed). compileSdk 37,
-  targetSdk 36, minSdk 31.
+  targetSdk 36, minSdk 28 (Android 9: the release signature, scheme v3, needs it).
 - Kotlin warnings and lint warnings fail the build (`allWarningsAsErrors`, `warningsAsErrors`).
   A suppression always carries a one-line reason (`app/lint.xml`, `@Suppress` with a comment).
 - Maven Central rate-limits shared IPs (HTTP 429): Gradle and Robolectric use Google's
   mirror first (`settings.gradle.kts`, `robolectric.dependency.repo.url` in `app/build.gradle.kts`).
-- Screenshots are not committed as baselines; tests render to `app/build/screenshots/`
-  (CI uploads them as an artifact). A refactor must leave every render identical: compare
-  the PNGs of a run before and after with Pillow.
+- Picture tests render how the screens look and check nothing themselves; they carry
+  `@Category(Pictures::class)` and only run with `-Pklangbild.pictures`, so the everyday run
+  stays quick. A new test that only renders pictures gets the category too. Pictures are not
+  committed: CI renders them all, uploads them, and on a pull request also renders the branch it
+  goes into and compares every picture (`ci/compare-pictures.py`; the job summary lists what
+  changed, the artifact `picture-changes` marks each changed pixel in red). A refactor must leave
+  every picture identical; locally, compare a copy of `app/build/screenshots/` from before the
+  change with the same script. Renders must be the same on every run: an animated sequence
+  whose content is made off the main thread wraps it like a still (`LocalStill`).
 - Tests that need words use `TestTexts.german` or `TestTexts.english()` (Robolectric). Renders
-  default to German through `Fixtures.texts` (the catalogue's music and rooms are German);
+  default to German through `Fixtures.texts` (the catalog's music and rooms are German);
   `Fixtures.Still(t) { }` renders in other words.
 - The progress bar refreshes in a loop of its own, so a stage never goes idle: stills wrap
   their content in `Fixtures.Still { }` (provides `LocalStill`), animated sequences use
   `createComposeRule()` with `mainClock.autoAdvance = false`. The static stages for stills
-  (`Stage`, `FlowStage`) live in the test sources; the app only has its theatres.
+  (`Stage`, `FlowStage`) live in the test sources; the app only has its theaters.
 - Motion is judged as contact sheets: `FlowMotionTest`/`TransitionTest` render frames to
   `app/build/screenshots/...`; tile them with Pillow and look at them with the Read tool.
 - The emulator smoke test (CI) talks to a stand-in Home Assistant, `ci/fake_ha.py`, which
@@ -87,8 +94,11 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   minutes. The app logs its connection steps with the tag `Klangbild`, never a token.
 - Run Gradle with a UTF-8 locale (`export LC_ALL=C.UTF-8`): test names and data hold umlauts.
 - CI runs three jobs side by side: the release APK (the emulator smoke test and the key
-  rotation checks start from it), the JVM tests (they upload the screenshots) and lint. A
-  release waits for all of them.
+  rotation checks start from it), all tests with their pictures, and lint. A release waits for
+  all of them. A push or pull request that changes only the texts and
+  pictures around the app (README, CLAUDE.md, LICENSE, `docs/`, `tools/`, `.claude/`, the issue
+  templates) runs nothing; tags and manual runs always run everything. The emulator jobs fetch
+  their system image with `ci/install-system-image.sh`, which tries a broken download again.
 
 ## Signing and releases
 
@@ -98,7 +108,7 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   original key can no longer sign an update. The key, its password and the lineage exist only
   as repository secrets (`RELEASE_KEYSTORE`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_LINEAGE`);
   they were made once, after 6.0.0, and cannot be made again: a new key would be refused by
-  installed copies. `ci/rotation-check.sh` installs over an old-signed copy on API 31 to 36 in
+  installed copies. `ci/rotation-check.sh` installs over an old-signed copy on API 28 to 36 in
   CI, with throwaway keys.
 - Only a version publishes a release: a pushed tag (`v2026.11.0`), or a manual CI run on main with
   the version as `release` (the release creates the tag). Its text is `docs/releases/<tag>.md`.
@@ -115,6 +125,12 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 
 ## Architecture (data source → state model → UI)
 
+The packages build on each other in one direction, and `LayersTest` keeps it so: math, json,
+color, text and art below everything; domain (the app's model and rules) on them; data (Home
+Assistant and Music Assistant) on domain; config (the settings, their store and menus) on data;
+render, landscape and lights; app (the controller); ui on top. MainActivity and KlangbildApp
+(the wiring) stand in the root package and may use everything.
+
 ```
 data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client id → 30 minute access
                 tokens; a refused refresh is never tried again), HaRest (GET /api/states/<id>, all
@@ -129,21 +145,22 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 a book's description never an album; supported_features → PlayerAbilities),
                 HaUrls, LocalNetwork (cleartext only to private addresses: the name before
                 sending, the connected address on every hop), ArtworkUrls (CDN hi-res rewrites),
-                HaSource (NowPlayingSource + LightBridge: player + sun.sun + MA queue (one read
-                at a time, only for MA players with a queue) + "Everywhere" from the registry's
-                MA players + the optional MA queue window + a party of Music Assistant's Party
+                HaSource (NowPlayingSource + LightBridge: player + sun.sun + the weather +
+                "Everywhere" from the registry's MA players + a party of Music Assistant's Party
                 plugin playing here (`party/player` every 60 s; `party/url`, the link its guests
                 open), commands only where supported, seek in seconds, shuffle, the favorite
-                button by its translation key, the entities of
-                one's own followed (the buttons', their conditions', the values') with their
-                precision and Home Assistant's temperature unit, a button run (a script with its
-                variables and `player`), the lights' states and calls; a Music Assistant song
-                published once its queue has described it; the words of the song that plays,
-                found by the URI Home Assistant names as what plays; with Music Assistant set up,
-                its own queue asked every 15 s while a song plays, since Home Assistant hears nothing
-                of a queue changed mid-song: what comes next and the cards to come; its word holds
-                for that song only),
-                StationPictures (a station's song: the best picture on offer wins and holds)
+                button by its translation key, the entities of one's own followed (the buttons',
+                their conditions', the values') with their precision and Home Assistant's
+                temperature unit, a button run (a script with its variables and `player`), the
+                lights' states and calls), QueueReader (the queue around the song that plays: MA
+                queue (one read at a time, only for MA players with a queue) + the optional MA
+                queue window; a Music Assistant song published once its queue has described it;
+                the words of the song that plays, found by the URI Home Assistant names as what
+                plays; with Music Assistant set up, its own queue asked every 15 s while a song
+                plays, since Home Assistant hears nothing of a queue changed mid-song: what comes
+                next and the cards to come; its word holds for that song only), TrackMatch (one
+                song in two descriptions), StationPictures (a station's song: the best picture on
+                offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
                 `metadata/get_track_lyrics` on a client of its own with a long timeout;
                 `player_queues/get`: the queue as it stands, its next item always up to date),
@@ -153,41 +170,48 @@ data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a 
                 that plays and the one up next: from the queue item, else asked, one song at a
                 time, the one that plays first; kept by URI; a call for a song no longer playing
                 or next canceled, its answer dropped; a version without the call: none)
-data/           NowPlayingSource/SourceState/LinkState, ArtworkLoader (size limits; the token only
+data/           NowPlayingSource, LightBridge (what the lights need from Home Assistant), ArtworkLoader (size limits; the token only
                 to Home Assistant's host, through a client without redirects; a larger rendition
                 guessed from the address gets a short try and is not asked again for a while
                 when it fails; two loads at a time; covers cached on disk), Backoff,
-                Http (cancellable OkHttp fetch with a call timeout)
+                Http (cancellable OkHttp fetch with a call timeout; HttpStatusException)
 domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its picture too, kind,
                 chapters), PlayerSnapshot (+ SpeakerGroup, QueueInfo, speed, PlayerAbilities),
                 SpeakerLabel ("Living room + 5", "Everywhere", room names, "35%"), TrackText
                 (typographic cleanup), Progress (runs at the item's speed) + SmoothedPosition,
-                TimeLine (track times, separator, "Speed 1.5×"),
+                TimeText (track times, separator, "Speed 1.5×"),
                 ScreenStateMachine, StageView (SINGLE / FLOW), CoverStrip (the cover flow's cards:
                 one per picture, ids kept), Spoken (MediaKind, Chapter/Chapters/ChapterPlace:
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
-                sun by the local clock, without `sun.sun`), VistaPolicy (when the landscape takes
-                the screen), ValueText (a value of one's own in words: precision, unit, on and off,
-                a time of day), Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
+                sun by the local clock, without `sun.sun`), LandscapePolicy (when the landscape takes
+                the screen), EntityId (what an entity id looks like), ValueText (a value of one's
+                own in words: precision, unit, on and off, a time of day), SourceState (what a source
+                knows: LinkState, MaLink, EntityState), QuickAction (+ ActionKind) and Condition (a
+                button of one's own and when it shows), OwnValue, Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
                 lines with breaks; LyricsCursor: the line in the middle a little early, a small step
                 back held)
 text/           Texts (the words of one language: resources, plurals, numbers, percent, dates, the
                 clock in 12 or 24 hours), AppLanguage + PlatformLanguageStore (LocaleManager from
-                API 33, the app's own preference on 31 and 32), Localizer (StateFlow<Texts>,
+                API 33, the app's own preference below), Localizer (StateFlow<Texts>,
                 refreshed on configuration, locale and time changes), LocalTexts/texts()
 color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, both walls), Lamp (the
-                warm daylight every color is seen in), Appearance (LIGHT / DARK, by the sun)
-render/         HaloLayout (the grid, per view), CoverField (cover colors: ground + soft pools in
+                warm daylight every color is seen in, its hue, near-neutral colors), Appearance
+                (LIGHT / DARK, by the sun), Contrast (WCAG luminance and contrast ratio)
+math/           smoothstep, Rnd (a random source with a fixed seed), hash64 / hashUnit
+json/           string(): a JSON string, or null for anything else
+render/         StageGrid (the grid, per view), ScreenSpec, RectDp, QrCode, PrintShape (the print's
+                outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
-                at a field time) + FieldModel (the field on the CPU: text shade, the lights'
-                colors), WallGlow (the artwork's light on the dark wall), HaloLight (PrintShape;
-                lamp tint for rest and menu), SceneBuilder (per-track precompute: Lanczos cover at
-                exact px, wall, palette, flow card; relight), FlowGeometry (the shared
-                perspective; the balance with cards missing), FlowCards (baked card textures),
-                FlowLight (the pool of light above the cards), ImageOps
+                at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow
+                (the artwork's light on the dark wall), LampLight (lamp tint for rest and menu),
+                SceneBuilder (per-track precompute: Lanczos cover at exact px, wall, palette, flow
+                card; relight), FlowGeometry (the shared perspective; the balance with cards
+                missing), FlowCards (baked card textures), FlowLight (the pool of light above the
+                cards), ImageOps (blur, dither, Lanczos; thumbnails keep transparency: what is clear
+                gives no color)
 art/            ChladniArt (missing-cover art), StableHash
-vista/          The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
+landscape/      The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
                 clearing, the near banks, standees, birches, tent, boulders and the fire per label
                 side, mirrored on the right), PaperBake* (sheets as two ink weights + the paper's
                 light + coverage in boxes of their own, cut front to back with the shade of what
@@ -198,44 +222,46 @@ vista/          The landscape, a paper diorama: PaperMotif (folded mountains, fo
                 Inks/InkRaster/Coverage/Shapes (color matrices, exact AA, outlines), PaperLight
                 (plates per hour: sky, key and fill light, folds, haze, fire, lantern; season
                 papers, moonlight, the weather's skies and veils, mist, smoke, fireflies, label
-                inks), VistaCamera (the journey: zoom and a wandering view within the paper's
+                inks), LandscapeCamera (the journey: zoom and a wandering view within the paper's
                 reach, CameraPose per Depth), SkyMap (south view, elevations from the skyline,
                 stars by sidereal time), World (suncalc: sun, moon, phase; season by date),
                 Weather + WeatherMood (state, cloud coverage and wind in its wind_speed_unit →
-                cover, rain, snow, fog, storm, wind), CloudField (lanes, hashed, never repeats),
-                Weatherfall (snow and rain at three depths) + MistField, VistaClock (real time; a
+                cover, rain, snow, fog, storm, wind) + WeatherGlide (the weather shown, gliding
+                toward the weather outside over minutes; kept in `LandscapeUi`, so the picture and
+                the lights read the same), CloudField (lanes, hashed, never repeats),
+                Weatherfall (snow and rain at three depths) + MistField, LandscapeClock (real time; a
                 day in two minutes only for measuring), Noise
 lights/         LightSync (any light behind the TV via Home Assistant: a color per light, or a
                 white, a brightness or just on, as the light can; saved with scene.create
                 snapshot_entities and given back with scene.turn_on, our own note as a fallback;
                 rate limits, takeover by others), LightColors (CoverLightColors: the cover's colors
-                kept apart, placed as in the cover, moving on with motion; VistaLightColors: the
+                kept apart, placed as in the cover, moving on with motion; LandscapeLightColors: the
                 landscape's own palette: sky, meadow or moonlit wood, mountains, sun glow, fire),
                 LightColor (xy of a color's hue at its purest, grays as white (neutral by day,
                 warmer at night), a color temperature for white-only lights, brightness floor)
-app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts)
-                and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
+app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts;
+                settings from the menus, the setup page and the launch's extras taken at once,
+                the newest written one at a time) and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
                 own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
-                KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
-config/         Settings (+ DisplayOptions, VolumeDisplay, LightLevel, AppearanceMode, BackgroundMode,
-                MotionLevel, RoomLights, RoomLightLevel) + SettingsStore (DataStore; tokens sealed by
-                SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
+                (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
+config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
+                MotionLevel, RoomLights, RoomLightBrightness), SettingsStore (DataStore, written whole
+                in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
                 QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
                 On / Off, Settings),
-                QuickActions (the own buttons: a name, an entity, what its kind does, a script's
-                variables) + Condition (when a button shows: a state or attribute is, is not, is
-                above or below a value; a list counts its entries), OwnValues (the values in the
-                status line: a name, an entity, an attribute),
+                QuickActions (the own buttons as stored: a name, an entity, a script's variables, the
+                condition: a state or attribute is, is not, is above or below a value; a list counts
+                its entries), OwnValues (the values in the status line as stored),
                 LaunchExtras (am start extras and klangbild:// links: English names and values, those
                 of earlier versions still taken, the German ones and `window_view`)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
                 fields), SetupPage (HTML in the language shown; entities chosen by searching),
-                SetupServer (+ QR, discovery; Host, Origin and content type checked, a few
+                SetupServer (+ discovery; Host, Origin and content type checked, a few
                 connections at a time, slow ones closed, only while the setup screen shows and
                 the TV has an address of its own, tried again until it has; a request that has
                 arrived is still answered when it stops, checked against the address it came to;
@@ -243,29 +269,30 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
                 blocked in accept(), which holds the socket open until it lets go)
 ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, the quick settings'
                 hint; provides LocalTexts),
-                stage/ (Stage layers, Typesetting, StageTheatre transitions, ProgressBar (a range:
+                stage/ (Stage layers, Typesetting, StageTheater transitions, ProgressBar (a range:
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
                 main thread, one canvas, LyricsViews keeping their places through a change;
                 PartyCode: the party's code where the cover stands, one picture per wall),
-                Motion (+ StageTick: one frame tick for bar, field and words; animateGlide:
-                a list's glide that carries on from its pace),
+                Motion (+ StageTick: one frame tick for bar, field and words; rememberFrames: that
+                tick, or a loop of its own for a part shown alone; animateGlide: a list's glide that
+                carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
-                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheatre:
+                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheater:
                 keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
-                held lines), DebugOverlay, vista/ (Vista: bake off the main thread and ahead of
-                time, 20 fps tick, season cross-fade, the weather glided in over minutes;
-                VistaWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
+                held lines), DebugOverlay, landscape/ (Landscape: bake ahead of time on a thread of low
+                priority, the picture on screen on a thread of its own, never the shared ones; 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
+                LandscapeWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
                 range, clearing and near banks as layers redrawn only when the light moves on,
                 each only as tall as its paper, moved by the camera as a whole; stars, clouds,
                 mist, snow and rain, swaying cut-outs and firs, the fire, its smoke, sparks and
-                light, fireflies every frame; VistaScreen + VistaLabel: the mini player on the
+                light, fireflies every frame; LandscapeScreen + LandscapeLabel: the mini player on the
                 near bank, standing still while the camera moves)
 dream/          KlangbildDream (DreamService with ComposeView)
-test only       SyntheticCovers + Catalogue (generated test covers and tracks, test://cover/NAME, a
+test only       SyntheticCovers + Catalog (generated test covers and tracks, test://cover/NAME, a
                 book and an episode, invented words, the README's aurora), Fixtures, TestTexts, the static stages for stills
 ```
 
@@ -277,8 +304,8 @@ UI words are given in English with the German in parentheses where it matters.
   The artwork is the heaviest element and always the tallest: the text block beside it takes
   at most 62% of its height (`BLOCK_SHARE`, measured from the first cap height to the last
   baseline, never from text boxes).
-- **Centered, measured on what is seen** (the user checks this; `CentringTest` measures rendered
-  pixels in both languages): the stage grid (960 × 540 dp, `HaloLayout`) is artwork 368 dp at
+- **Centered, measured on what is seen** (the user checks this; `CenteringTest` measures rendered
+  pixels in both languages): the stage grid (960 × 540 dp, `StageGrid`) is artwork 368 dp at
   88 dp from the left, exactly centered vertically; 64 dp gap; text column 352 dp; 88 dp right
   margin, as much room left of the artwork as right of the progress bar. Text block centered on
   the artwork; the column stands within the artwork's straight edge, a corner radius in from its
@@ -308,7 +335,7 @@ UI words are given in English with the German in parentheses where it matters.
   (`breaksInsideWord`), a word of one to three letters stays with the next ("Spiegel / im
   Spiegel"); artists on one line (smaller, then "and others" (u. a.)); the year leaves the
   album line before anything is cut; "Up next" drops the artist before it cuts; edge emoji
-  dropped (`Emoji.trimEdges`), inner ones dimmed; one separator `TimeLine.SEPARATOR`;
+  dropped (`Emoji.trimEdges`), inner ones dimmed; one separator `TimeText.SEPARATOR`;
   `TrackText.typeset` for dashes and no-break spaces after abbreviations; RTL lines isolated;
   in UI prose a short word opening a sentence never ends a line, and articles and adjectives
   stay with their noun (no-break spaces in the string resources).
@@ -405,7 +432,7 @@ UI words are given in English with the German in parentheses where it matters.
   under Information, remembered like the view; Music Assistant only, nothing else to set up): a
   view of the text column,
   not a screen. The line sung now stands centered on the artwork (first cap height to last
-  baseline, `CentringTest`) in the title's ink; the lines around it in the quiet ink, each
+  baseline, `CenteringTest`) in the title's ink; the lines around it in the quiet ink, each
   fading as a whole with the distance of its nearer edge (whole within 40 dp, like the settings
   list), gone before its far edge comes within 8 dp of the status line, the song or the bar.
   One size per song, no size or weight changes: Jost 30, 26 or 24 sp, the largest at which no
@@ -418,7 +445,7 @@ UI words are given in English with the German in parentheses where it matters.
   1.5 s (a corrected position) never moves them. The picture never moves. The status line keeps
   its place, title and artist stand where "Up next" stands, title block, album and bar give way
   (a key brings the bar for a moment, above the song, the words making room). Switching them on
-  or off, and words that come late, use the stage's text change (`Change.WORDS`); not in the
+  or off, and words that come late, use the stage's text change (`Change.LYRICS`); not in the
   landscape. The words come from the queue item (`media_item.metadata`: `lrc_lyrics`, else
   LRC in `lyrics`), else from `metadata/get_track_lyrics` (Music Assistant 2.8 and later; raw
   LRC before 2.10) with a 75 s timeout of its own (Music Assistant asks its online source at
@@ -512,7 +539,7 @@ UI words are given in English with the German in parentheses where it matters.
   the 352 dp column on one line in both languages (`LanguageTest` measures every value).
 - **Language:** English is the default, German in `values-de`. The menu's Language line uses
   Android's per-app language (`LocaleManager` from API 33, where the choice also shows in the
-  system's app settings; the app's own preference on API 31 and 32) and applies at once
+  system's app settings; the app's own preference below API 33) and applies at once
   everywhere, the phone's setup page included, without restarting the activity. Every text
   comes from `Texts` (resources, plurals, numbers, percent, dates); the time of day follows
   the system's 12 or 24 hour setting. A recreated activity never applies its launch extras
@@ -547,8 +574,8 @@ UI words are given in English with the German in parentheses where it matters.
   Oklab apart, placed as they sit in the cover (leftmost color left, rightmost right, the
   third above the TV); one color gives itself and its neighbors ±32° round the hue circle, a
   gray cover three whites. With motion the colors move on from light to light (a step per 90 s
-  of field time, resting 70% of it). In the landscape (`VistaLightColors`) its own palette:
-  above the TV its sky (the weather's too), on the side away from the fire the clearing's green
+  of field time, resting 70% of it). In the landscape (`LandscapeLightColors`) its own palette:
+  above the TV its sky (the weather's too, as the picture shows it), on the side away from the fire the clearing's green
   (by night the moonlit wood), on the fire's side the mountains' paper and at night the fire's
   light, the glow of dawn or dusk on the sun's side; worked out every 30 s of its sky's time,
   sent at most every 20 s in 15 s fades, no pause dimming while it shows. Each light shows
@@ -576,7 +603,7 @@ UI words are given in English with the German in parentheses where it matters.
   Home Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
-- **A song arrives whole** (`HaSource.awaitsDetails`): Home Assistant reports a Music Assistant
+- **A song arrives whole** (`QueueReader.awaitsDetails`): Home Assistant reports a Music Assistant
   song first with a 512 px picture and without its year; the queue tells the rest about 0.4 s
   later. A song the queue announced as next is described at once; any other waits for its
   queue read (at most 2 s), while the song before it stays as it was, all of it. So the first
@@ -619,7 +646,7 @@ UI words are given in English with the German in parentheses where it matters.
   figures) in the very middle of a dim pool of light (the user wants it centered; burn-in care
   is the ±6 dp drift, the changing figures and the screen ending after "Turn off after"); one
   plain sentence when something is wrong ("Home Assistant can't be reached.").
-- **Landscape** (Landschaft, `vista/`; the window view until 6.3): a diorama of real paper, not
+- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
   with its grain (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven
   hand, mountains folded from card (the faces toward the sun or moon lit, some light from the
@@ -648,14 +675,14 @@ UI words are given in English with the German in parentheses where it matters.
   the cut-outs sway 1.1° to 4° about their feet (leaning into the wind, gusts shared by the
   meadow), the tall firs on the near banks (sprites cut whole beyond the screen) a little less;
   never a loop, 20 fps; light recomputed every 10 s, each step below one level. The camera
-  (`VistaCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view wandering as
+  (`LandscapeCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view wandering as
   far as the paper reaches at that zoom (±6 dp drift on top), but never so far that the near
   bank would leave the label (`BANK_MARGIN`); a swing in about two minutes, sums of sines in the
   golden ratio; each layer follows by its `Depth` (sky 0.15, far range 0.35, clearing 0.65, near
   banks 1), so the parallax is plain to see. The label stands still: it is no part of the
   scenery (riding the bank's scale and pan, its text shimmered in 5.2); the camera keeps its
-  bank under it. No edge and no gap between layers ever shows (`VistaCameraTest` renders every
-  corner of the range, `VistaCameraJourneyTest` checks six hours of poses, the bank under the
+  bank under it. No edge and no gap between layers ever shows (`LandscapeCameraTest` renders every
+  corner of the range, `LandscapeCameraJourneyTest` checks six hours of poses, the bank under the
   label included); stills show it at rest. No preview in the menu (removed in 5.2: never build
   features nobody asked for); the time-lapse is only the `landscape=timelapse` extra for
   measuring. Comes after the pause delay (default 3 min; the rest clock first), during music
@@ -663,17 +690,17 @@ UI words are given in English with the German in parentheses where it matters.
   up on the remote or the quick settings (View) bring it whatever plays, until it is left (up
   again, back, or another view there). Every key starts the delays again; one that came by
   itself goes with any key, which still does its work. Baked ahead only while it shows or is on
-  its way (`VistaPolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
+  its way (`LandscapePolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
   app goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
   (after 1 s), the far range's own skyline stands in the screen's middle as one thin line, drawn
   like the progress bar in the rest screen's quiet ink and traced from the left as the paper is
   cut (the bake's progress weighted by what each part takes, gliding, never going back, its head
   breathing); once the picture is ready it is drawn to its end and gone while the landscape
-  comes up (`VistaWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
+  comes up (`LandscapeWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
   Jost 24 / DM Sans 17, bar) lies on the dark near bank (snow only along its edge), the fire on
   the other side; beside the cover one block exactly centered on it: the title's cap height to
   the bar's lower edge (filling the cover's height), or without a bar (a station) to the last
-  baseline (`VistaLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
+  baseline (`LandscapeLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
   (`PaperLightTest`). Every sheet in its own box, baked only down to where nearer paper hides
   it, each piece cut in a box of its own; sky, far range, clearing and near banks stand as
   layers between light changes, each only as tall as its paper, moved by the camera as a whole;

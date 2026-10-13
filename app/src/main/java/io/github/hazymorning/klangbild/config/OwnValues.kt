@@ -1,19 +1,15 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.Condition
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.OwnValue
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-
-/**
- * A value of one's own in the status line, set up on the phone: the state of a Home Assistant
- * entity, or one of its attributes, after a [name] of one's own ("Outside 12 °C"); without a
- * name the value stands alone.
- */
-data class OwnValue(val name: String, val entity: String, val attribute: String? = null)
 
 /** The values as Klangbild keeps them: a small JSON list of names, entities and attributes. */
 object OwnValues {
@@ -43,8 +39,8 @@ object OwnValues {
     /** A value from what the phone sent or what is stored: any entity, a name cut to [MAX_NAME]; null when it is none. */
     fun from(o: JsonObject?): OwnValue? {
         o ?: return null
-        fun str(key: String) = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()
-        val entity = str("entity")?.takeIf { LaunchExtras.isEntityId(it) } ?: return null
+        fun str(key: String) = o.string(key)?.trim()
+        val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
         val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
         if (attribute != null && !Condition.ATTRIBUTE.matches(attribute)) return null
         val name = str("name").orEmpty().replace(Regex("\\s+"), " ").take(MAX_NAME).trimEnd()

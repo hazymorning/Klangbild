@@ -5,12 +5,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -37,10 +34,7 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.CoverField
 import io.github.hazymorning.klangbild.render.FieldBlob
 import io.github.hazymorning.klangbild.render.FieldMotion
-import io.github.hazymorning.klangbild.ui.LocalStageTick
-import io.github.hazymorning.klangbild.ui.LocalStill
-import io.github.hazymorning.klangbild.ui.TICK_MS
-import kotlinx.coroutines.delay
+import io.github.hazymorning.klangbild.ui.rememberFrames
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.random.Random
@@ -63,7 +57,7 @@ val LocalFieldTime = staticCompositionLocalOf { FieldTime.STILL }
  * they are nothing but soft shapes. Each pool is one quad with its own radial gradient, turned
  * and stretched where [FieldMotion] puts it, so a frame costs a dozen small quads and one scaled
  * copy. Over it, at full resolution, come a grain of a level or two (soft dark ramps would
- * otherwise show bands) and the veil: the shade under the text and the artwork's shadow.
+ * otherwise show bands) and the veil: the shade under the text.
  * While the field moves, it is redrawn with the stage's tick (~30 times a second), nothing else.
  *
  * [alpha] fades it during a change, [level] dims it (pause, a lost link).
@@ -82,18 +76,8 @@ fun FieldLayer(
     val places = remember(field) { FloatArray(field.blobs.size * FieldMotion.STRIDE) }
     val dark = field.dark
     val time = LocalFieldTime.current
-    // The stage's one tick, shared with the progress bar. Alone (in a test), a loop of its own.
-    val shared = LocalStageTick.current
-    val own = remember { mutableLongStateOf(0L) }
-    if (time.moving && shared == null && !LocalStill.current) {
-        LaunchedEffect(time) {
-            while (true) {
-                withFrameNanos { own.longValue = it }
-                delay(TICK_MS)
-            }
-        }
-    }
-    val frame = shared?.frame ?: own
+    // The stage's one tick, shared with the progress bar.
+    val frame = rememberFrames(fast = true, running = time.moving)
     val grain = remember { ShaderBrush(ImageShader(Grain.image, TileMode.Repeated, TileMode.Repeated)) }
     val density = LocalDensity.current.density
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -168,8 +152,8 @@ private val UNIT_SIZE = Size(2f, 2f)
 
 /** A pool as a radial gradient on the unit circle: its color, its strength falling off at its [FieldBlob.stops]. */
 private fun brush(b: FieldBlob): Brush {
-    val colour = Color(b.colour)
-    val stops = Array(FieldBlob.STOPS + 1) { i -> i / FieldBlob.STOPS.toFloat() to colour.copy(alpha = b.alpha * b.stops[i]) }
+    val color = Color(b.color)
+    val stops = Array(FieldBlob.STOPS + 1) { i -> i / FieldBlob.STOPS.toFloat() to color.copy(alpha = b.alpha * b.stops[i]) }
     return Brush.radialGradient(*stops, center = Offset.Zero, radius = 1f)
 }
 

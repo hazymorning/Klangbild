@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -16,17 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -55,17 +51,15 @@ import io.github.hazymorning.klangbild.domain.LyricPlace
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.LyricsCursor
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.render.HaloLayout
-import io.github.hazymorning.klangbild.render.HaloLight
-import io.github.hazymorning.klangbild.ui.LocalStageTick
+import io.github.hazymorning.klangbild.math.smoothstep
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.TICK_MS
+import io.github.hazymorning.klangbild.ui.rememberFrames
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -114,10 +108,10 @@ internal class LyricsPlan(
     val indent: Int,
 ) {
     /** Each line's middle, from its first cap height to its last baseline (px). */
-    val centres = FloatArray(tops.size) { (tops[it] + bottoms[it]) / 2f }
+    val centers = FloatArray(tops.size) { (tops[it] + bottoms[it]) / 2f }
 
     /** Where the list stands with [place] in the middle (px). */
-    fun centre(place: LyricPlace): Float = centres[place.index.coerceIn(0, centres.size - 1)]
+    fun center(place: LyricPlace): Float = centers[place.index.coerceIn(0, centers.size - 1)]
 
     /** The first row whose baseline is at least [y] (px). */
     fun firstAt(y: Float): Int {
@@ -185,7 +179,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
 
 /**
  * The words of one song on the stage, kept while its text shows or leaves: how they are set, and
- * where the list stands. The theatre keeps one per song ([LyricsViews]), so the words that leave
+ * where the list stands. The theater keeps one per song ([LyricsViews]), so the words that leave
  * at a change go from where they stood.
  */
 @Stable
@@ -227,7 +221,7 @@ internal class LyricsView(val lyrics: Lyrics) {
         planKey = key
         plan = p
         shown = place
-        scroll = Animatable(p.centre(place))
+        scroll = Animatable(p.center(place))
         lit = Animatable(if (place.lit) 1f else 0f)
         return p
     }
@@ -239,7 +233,7 @@ internal class LyricsView(val lyrics: Lyrics) {
     suspend fun go(place: LyricPlace, plan: LyricsPlan, scope: CoroutineScope) {
         val last = shown ?: return
         shown = place
-        val target = plan.centre(place)
+        val target = plan.center(place)
         val s: Animatable<Float, AnimationVector1D> = scroll
         if (abs(place.index - last.index) <= 1) {
             if (s.targetValue != target) {
@@ -267,7 +261,7 @@ internal class LyricsView(val lyrics: Lyrics) {
     }
 }
 
-/** A theatre's songs' words on the stage: the one shown and the one leaving keep their places. */
+/** A theater's songs' words on the stage: the one shown and the one leaving keep their places. */
 internal class LyricsViews {
     private val views = HashMap<Lyrics, LyricsView>()
 
@@ -279,7 +273,7 @@ internal class LyricsViews {
     }
 }
 
-/** The theatre's songs' words; without one (a still), each column keeps its own. */
+/** The theater's songs' words; without one (a still), each column keeps its own. */
 internal val LocalLyricsViews = staticCompositionLocalOf<LyricsViews?> { null }
 
 /**
@@ -307,45 +301,26 @@ internal fun LyricsText(
     val position by rememberUpdatedState(model.positionMs)
     // The list first stands where the song is.
     val plan = rememberLyricsPlan(view, layout) { view.cursor.at(position()) }
-    val still = LocalStill.current
     val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
 
-    // The place follows the position on the stage's tick (alone, on a loop of its own; in a still, once).
-    val shared = LocalStageTick.current
-    val own = remember { mutableLongStateOf(0L) }
-    if (shared == null && !still) {
-        LaunchedEffect(playing) {
-            while (true) {
-                withFrameNanos { own.longValue = it }
-                delay(if (playing) TICK_MS else PAUSED_TICK_MS)
-            }
-        }
-    }
-    val frames: State<Long>? = shared?.frame ?: own.takeIf { !still }
+    // The place follows the position on the stage's tick (in a still, once).
+    val frames = rememberFrames(fast = playing)
     if (plan != null) {
         LaunchedEffect(view, plan) {
             snapshotFlow {
-                frames?.value
+                frames.value
                 view.cursor.at(position())
             }.distinctUntilChanged().collect { place -> view.go(place, plan, this) }
         }
     }
 
     val bottomLine = model.line
-    val showBar = bottomLine == null && model.progress && model.durationMs != null
-    val slot = when {
-        bottomLine != null -> bottomLine
-        showBar -> BAR
-        else -> null
-    }
+    val slot = bottomOf(model)
     // While the bar or a notice shows above the song, the words make room for it.
     val slotShown = animateFloatAsState(if (slot != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot")
     val colW = (layout.columnWidth * LocalDensity.current.density).roundToInt()
 
-    fun line(which: TextLine): Modifier = Modifier.graphicsLayer {
-        this.alpha = alpha(which).coerceIn(0f, 1f)
-        translationY = (rise(which) * density).roundToInt().toFloat()
-    }
+    fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
     Layout(
         modifier = modifier
@@ -369,20 +344,7 @@ internal fun LyricsText(
                 drawLyrics(p, view.scroll.value, x, focus, room.above, below, inks, glow, a * come)
             }
             // 1: the progress bar or a notice, above the song; changes cross-fade
-            Crossfade(slot, line(TextLine.BOTTOM), tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot-line") { content ->
-                when (content) {
-                    null -> Box(Modifier)
-                    BAR -> ProgressBar(
-                        durationMs = model.durationMs ?: 1L,
-                        positionMs = model.positionMs,
-                        startMs = model.rangeStartMs,
-                        playing = playing,
-                        colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
-                        labelStyle = styles.time,
-                    )
-                    else -> BasicText(content, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+            BottomLine(slot, model, styles, playing, line(TextLine.BOTTOM), label = "lyrics-slot-line")
             // 2: the song itself, where "Up next" stands
             val song = model.next?.let { fitSong(it, model.nextTitle, styles, colW) }
             if (song != null) BasicText(songText(song), line(TextLine.NEXT), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
@@ -415,7 +377,7 @@ internal fun LyricsText(
  * still, else off the main thread (nothing until then).
  */
 @Composable
-private fun rememberLyricsPlan(view: LyricsView, layout: HaloLayout, place: () -> LyricPlace): LyricsPlan? {
+private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () -> LyricPlace): LyricsPlan? {
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val key = layout.columnWidth to density
@@ -435,7 +397,7 @@ private fun rememberLyricsPlan(view: LyricsView, layout: HaloLayout, place: () -
  * The room of the words above and below the middle (dp): to the status line's baseline, and to
  * the song's cap height, or to the bar's top while it shows.
  */
-private class LyricsRoom(layout: HaloLayout, styles: StageStyles) {
+private class LyricsRoom(layout: StageGrid, styles: StageStyles) {
     val above: Float = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
     private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
     private val bar = song - Gaps.BOTTOM - BAR_BLOCK
@@ -494,8 +456,8 @@ private fun lineAlpha(top: Float, bottom: Float, above: Float, below: Float): Fl
     val near = if (bottom <= 0f) -bottom else top
     val far = if (bottom <= 0f) -top else bottom
     val limit = (if (bottom <= 0f) above else below) - EDGE_GONE
-    val byDistance = 1f - HaloLight.smoothstep(FADE_FROM, limit.coerceAtLeast(FADE_FROM + 1f), near)
-    val byEdge = 1f - HaloLight.smoothstep(limit - EDGE_FADE, limit, far)
+    val byDistance = 1f - smoothstep(FADE_FROM, limit.coerceAtLeast(FADE_FROM + 1f), near)
+    val byEdge = 1f - smoothstep(limit - EDGE_FADE, limit, far)
     return byDistance * byEdge
 }
 
@@ -504,7 +466,7 @@ private fun lineAlpha(top: Float, bottom: Float, above: Float, below: Float): Fl
  * so the light goes along as the list glides.
  */
 private fun glowOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
-    val c = plan.centres
+    val c = plan.centers
     val off = c[line] - scroll
     val neighbor = if (off > 0f) c.getOrNull(line - 1) else c.getOrNull(line + 1)
     val step = neighbor?.let { abs(c[line] - it) } ?: (plan.cap * 3f)
@@ -523,8 +485,6 @@ private fun fitSong(full: String, title: String?, styles: StageStyles, width: In
 /** The song's line, isolated if right-to-left (as "Up next" sets what comes). */
 private fun songText(text: String): AnnotatedString = AnnotatedString(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
 
-private const val BAR = "\u0000bar"
-
 /** The space from a line's last baseline to the next line's cap height (em of the words). */
 private const val LINE_GAP_EM = 0.8f
 
@@ -538,7 +498,7 @@ private const val EDGE_GONE = 8f
 private const val EDGE_FADE = 22f
 
 /** The progress bar's block from its top to its labels' baseline (dp): the bar, the gap, the labels' cap height. */
-private const val BAR_BLOCK = 4f + 10f + 15f * Fonts.CAP_HEIGHT
+private const val BAR_BLOCK = BAR_THICKNESS + BAR_LABEL_GAP + 15f * Fonts.CAP_HEIGHT
 
 /** A line takes at most this many rows, however long. */
 private const val MAX_ROWS = 4
@@ -559,6 +519,3 @@ private const val LIT_MS = 600
 private const val JUMP_MS = 600
 private const val JUMP_OUT = 0.4f
 private const val JUMP_IN = 0.45f
-
-/** Paused, the place is looked at twice a second (a jump while paused still shows). */
-private const val PAUSED_TICK_MS = 500L

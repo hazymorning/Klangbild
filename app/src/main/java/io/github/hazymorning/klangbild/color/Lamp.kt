@@ -9,6 +9,9 @@ object Lamp {
     /** How warm the lamp is (0..1). */
     const val WARMTH = 0.06f
 
+    /** The lamp's own hue (Oklab, degrees): a warm amber. Neutral covers and the screens without one take it. */
+    const val HUE = 72f
+
     fun apply(lab: Lab): Lab {
         val w = WARMTH * lab.l
         return Lab(
@@ -19,4 +22,7 @@ object Lamp {
     }
 
     fun applyArgb(argb: Int): Int = apply(Oklab.fromArgb(argb)).toArgb(argb ushr 24)
+
+    /** A near-neutral color of lightness [l] with a breath of [chroma] in the lamp's hue, as the lamp shows it. */
+    fun neutral(l: Float, chroma: Float = 0.004f): Int = applyArgb(Lch(l, chroma, HUE).toArgb())
 }

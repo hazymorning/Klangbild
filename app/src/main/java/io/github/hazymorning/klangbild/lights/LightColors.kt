@@ -3,9 +3,10 @@ package io.github.hazymorning.klangbild.lights
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
-import io.github.hazymorning.klangbild.vista.PaperLook
-import io.github.hazymorning.klangbild.vista.SheetId
+import io.github.hazymorning.klangbild.landscape.PaperLook
+import io.github.hazymorning.klangbild.landscape.SheetId
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -61,7 +62,7 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
         private const val SAME = 0.09f
 
         /** A cover of one color: its neighbors this far round the hue circle (degrees). */
-        private const val NEIGHBOUR_HUE = 32f
+        private const val NEIGHBOR_HUE = 32f
 
         /** The cover's colors for the lights: the most telling ones, kept apart, ordered as they sit from left to right. */
         fun palette(field: FieldScene): List<FloatArray> {
@@ -85,11 +86,11 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
             // gray cover whites a little warmer and cooler.
             if (chosen.size < 3) {
                 val lead = chosen.firstOrNull()?.lab?.toLch() ?: Lch(0.7f, 0f, 0f)
-                val extra = if (lead.c < LightColor.GREY_CHROMA) {
+                val extra = if (lead.c < LightColor.GRAY_CHROMA) {
                     // Whites a breath warmer and cooler: just past what the light shows as gray.
                     listOf(Lch(lead.l, 0.018f, 70f), Lch(lead.l, 0.018f, 250f))
                 } else {
-                    listOf(Lch(lead.l, lead.c, lead.h - NEIGHBOUR_HUE), Lch(lead.l, lead.c, lead.h + NEIGHBOUR_HUE))
+                    listOf(Lch(lead.l, lead.c, lead.h - NEIGHBOR_HUE), Lch(lead.l, lead.c, lead.h + NEIGHBOR_HUE))
                 }
                 for ((n, lch) in extra.withIndex()) {
                     if (chosen.size >= 3) break
@@ -115,10 +116,10 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
  * The landscape's light, three colors from its own palette: in the middle its sky; on the
  * side away from the campfire the clearing's green (by night the moonlit wood); on the fire's
  * side the mountains' paper, and at night the fire's warm light. Where the sun stands low, its
- * side takes the glow of dawn or dusk. The lights stand round the window as the picture's
+ * side takes the glow of dawn or dusk. The lights stand round the screen as the picture's
  * colors stand in it.
  */
-class VistaLightColors(look: PaperLook, fireOnRight: Boolean) : LightColors {
+class LandscapeLightColors(look: PaperLook, fireOnRight: Boolean) : LightColors {
     private val left: FloatArray
     private val center: FloatArray
     private val right: FloatArray
@@ -182,9 +183,4 @@ private fun mixOklab(a: FloatArray, b: FloatArray, f: Float, out: FloatArray) {
             Oklab.toLinear(Lab(x.l + (y.l - x.l) * f, x.a + (y.a - x.a) * f, x.b + (y.b - x.b) * f)).copyInto(out)
         }
     }
-}
-
-private fun smoothstep(e0: Float, e1: Float, v: Float): Float {
-    val t = ((v - e0) / (e1 - e0)).coerceIn(0f, 1f)
-    return t * t * (3f - 2f * t)
 }

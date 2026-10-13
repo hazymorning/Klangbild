@@ -6,17 +6,20 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /** Every designed state at 1080p, plus 4K samples. */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -32,7 +35,7 @@ class StatesTest {
 
     @Test fun paused() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.TERRACOTTA))
-        shot("stage_paused") { Fixtures.Theatre(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
+        shot("stage_paused") { Fixtures.Theater(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
     }
 
     @Test fun everywhere() = stage("stage_everywhere", Fixtures.model(Fixtures.track(SyntheticCover.MOSS), next = spiegel, group = "Überall"))
@@ -44,7 +47,7 @@ class StatesTest {
 
     @Test fun muted() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.BAUHAUS))
-        shot("stage_muted") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, muted = true, group = "Küche") }
+        shot("stage_muted") { Fixtures.Theater(stage, PlayerStatus.PLAYING, muted = true, group = "Küche") }
     }
 
     /** Values of one's own after the time; with a long place, those that do not fit beside it are left out. */
@@ -91,7 +94,7 @@ class StatesTest {
     private val setupInfo = SetupInfo(
         url = "http://192.168.1.23:8765",
         code = "482913",
-        qr = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=482913"),
+        qr = QrCode.matrix("http://192.168.1.23:8765/?code=482913"),
     )
 
     @Test fun setupFirstRun() = shot("setup_first_run") {
@@ -104,6 +107,7 @@ class StatesTest {
 }
 
 /** The same at 3840 × 2160 (xxxhdpi), to check crispness and the true cover scale. */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xxxhdpi")

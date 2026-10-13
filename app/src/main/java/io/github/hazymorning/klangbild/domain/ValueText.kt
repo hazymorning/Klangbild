@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.domain
 
 import io.github.hazymorning.klangbild.R
-import io.github.hazymorning.klangbild.config.OwnValue
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

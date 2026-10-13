@@ -2,7 +2,7 @@
 
 Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
-[![Android TV 12+](https://img.shields.io/badge/Android%20TV%2012%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
+[![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
 
 <picture>
@@ -55,7 +55,7 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 ## Setup
 
-You need a TV with Android TV 12 or later and Home Assistant.
+You need a TV with Android TV 9 or later and Home Assistant. Android TV 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
 
 <details>
 <summary><b>1. Install Klangbild on your TV</b></summary>

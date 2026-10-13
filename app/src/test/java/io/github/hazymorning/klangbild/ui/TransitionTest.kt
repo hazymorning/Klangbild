@@ -14,6 +14,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /**
  * Motion as a sequence of stills: the track change (the new artwork settles over the old,
@@ -21,6 +23,7 @@ import org.robolectric.annotation.GraphicsMode
  * album (only the text changes), quick skips and a skip undone at once, the pause (the
  * artwork recedes and dims) and buffering.
  */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")
@@ -37,7 +40,7 @@ class TransitionTest {
         val b = Fixtures.stage(Fixtures.track(SyntheticCover.MIST), MDPI)
         var stage by mutableStateOf(a)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.Theatre(stage, PlayerStatus.PLAYING) }
+        compose.setContent { Fixtures.Theater(stage, PlayerStatus.PLAYING) }
         compose.mainClock.advanceTimeBy(100)
         compose.onRoot().captureRoboImage("build/screenshots/transition/track_00.png")
         stage = b
@@ -62,7 +65,7 @@ class TransitionTest {
         )
         var stage by mutableStateOf(a)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.Theatre(stage, PlayerStatus.PLAYING) }
+        compose.setContent { Fixtures.Theater(stage, PlayerStatus.PLAYING) }
         compose.mainClock.advanceTimeBy(100)
         stage = b
         for (i in 1..6) {
@@ -92,7 +95,7 @@ class TransitionTest {
     private fun skips(name: String, from: io.github.hazymorning.klangbild.app.StageData, then: Map<Int, io.github.hazymorning.klangbild.app.StageData>) {
         var stage by mutableStateOf(from)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.Theatre(stage, PlayerStatus.PLAYING) }
+        compose.setContent { Fixtures.Theater(stage, PlayerStatus.PLAYING) }
         compose.mainClock.advanceTimeBy(100)
         for (i in 1..20) {
             then[i]?.let { stage = it }
@@ -106,7 +109,7 @@ class TransitionTest {
         val a = Fixtures.stage(Fixtures.track(SyntheticCover.BAUHAUS), MDPI)
         var status by mutableStateOf(PlayerStatus.PLAYING)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.Theatre(a, status) }
+        compose.setContent { Fixtures.Theater(a, status) }
         compose.mainClock.advanceTimeBy(100)
         compose.onRoot().captureRoboImage("build/screenshots/transition/pause_00.png")
         status = PlayerStatus.PAUSED
@@ -121,7 +124,7 @@ class TransitionTest {
         // The light pulses while buffering (an infinite animation: only a controlled clock can capture it).
         val a = Fixtures.stage(Fixtures.track(SyntheticCover.SALT_WATER), MDPI)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.Theatre(a, PlayerStatus.BUFFERING) }
+        compose.setContent { Fixtures.Theater(a, PlayerStatus.BUFFERING) }
         for (i in 0..4) {
             compose.mainClock.advanceTimeBy(450)
             compose.onRoot().captureRoboImage("build/screenshots/transition/buffering_%02d.png".format(i))

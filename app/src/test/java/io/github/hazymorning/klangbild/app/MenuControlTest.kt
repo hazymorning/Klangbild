@@ -5,10 +5,10 @@ import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -60,8 +60,8 @@ class MenuControlTest {
         override fun requestSetup(show: Boolean) {
             setup++
         }
-        override fun showVista() = Unit
-        override fun hideVista() = false
+        override fun showLandscape() = Unit
+        override fun hideLandscape() = false
     }
 
     private val menu = MenuControl(host, SleepControl(host))

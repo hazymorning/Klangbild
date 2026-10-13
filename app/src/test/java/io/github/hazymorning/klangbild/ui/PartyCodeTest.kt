@@ -85,7 +85,7 @@ class PartyCodeTest {
         for (wall in Appearance.entries) for (colors in listOf(false, true)) {
             val name = "single_${wall.name.lowercase()}" + if (colors) "_colors" else ""
             val bmp = render(name) {
-                Fixtures.Theatre(
+                Fixtures.Theater(
                     Fixtures.stage(song, appearance = wall, coverField = colors),
                     PlayerStatus.PLAYING,
                     next = Fixtures.spiegel,
@@ -102,7 +102,7 @@ class PartyCodeTest {
     @Test
     fun `in a pause the code dims with the cover and still reads`() {
         val bmp = render("single_paused") {
-            Fixtures.Theatre(Fixtures.stage(song), PlayerStatus.PAUSED, next = Fixtures.spiegel, group = "Wohnzimmer", partyCode = LINK)
+            Fixtures.Theater(Fixtures.stage(song), PlayerStatus.PAUSED, next = Fixtures.spiegel, group = "Wohnzimmer", partyCode = LINK)
         }
         assertThat(scan(bmp, single)).isEqualTo(LINK)
     }
@@ -113,7 +113,7 @@ class PartyCodeTest {
         for (wall in Appearance.entries) {
             val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, view = StageView.FLOW) }.toMap()
             val name = "flow_${wall.name.lowercase()}"
-            val bmp = render(name) { Fixtures.FlowTheatreOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
+            val bmp = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
             assertWithMessage(name).that(scan(bmp, middle)).isEqualTo(LINK)
             assertWithMessage("$name: above the code").that(spread(bmp, intArrayOf(middle[0], middle[1], middle[2], middle[1] + 30))).isAtMost(2)
         }

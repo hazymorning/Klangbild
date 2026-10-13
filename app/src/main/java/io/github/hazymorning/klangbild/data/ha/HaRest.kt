@@ -1,6 +1,9 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.EntityState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -26,7 +29,7 @@ class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
         data object Failed : Fetched
     }
 
-    suspend fun state(entityId: String): Fetched = if (!ENTITY_ID.matches(entityId)) Fetched.Missing else try {
+    suspend fun state(entityId: String): Fetched = if (!EntityId.isValid(entityId)) Fetched.Missing else try {
         get("/api/states/$entityId") { code, text ->
             when (code) {
                 200 -> (Json.parseToJsonElement(text) as? JsonObject)?.let(EntityState::of)?.let { Fetched.Found(it) } ?: Fetched.Failed
@@ -48,7 +51,7 @@ class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
 
     private suspend fun all(path: String): String = get(path) { code, text ->
         if (code == 401 || code == 403) throw HaAuthRejectedException("HTTP $code")
-        if (code != 200) throw IOException("Home Assistant answered $code")
+        if (code != 200) throw HttpStatusException("Home Assistant", code)
         text
     }
 
@@ -80,9 +83,6 @@ class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
     }
 
     companion object {
-        /** What an entity id looks like (`domain.object_id`): nothing else goes into a path. */
-        private val ENTITY_ID = Regex("^[a-z0-9_]+\\.[a-z0-9_]+$")
-
         /** One request gets this long, reading included. */
         const val CALL_TIMEOUT_MS = 15_000L
 

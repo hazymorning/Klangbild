@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * A complete, static stage for one model, for stills. The app's stage ([StageTheatre])
+ * A complete, static stage for one model, for stills. The app's stage ([StageTheater])
  * composes the same layers with its transitions and pause dimming.
  */
 @Composable

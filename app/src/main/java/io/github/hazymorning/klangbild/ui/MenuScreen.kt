@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.ui
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -12,9 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.drawBehind
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -57,16 +56,13 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
-import io.github.hazymorning.klangbild.domain.TimeLine
-import io.github.hazymorning.klangbild.render.HaloLayout
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.text.texts
@@ -111,7 +107,7 @@ object MenuGrid {
     const val LABEL_GAP = 16f
 
     /** Opacity of a line at [distance] dp from the cursor's line. */
-    fun fade(distance: Float): Float = 1f - HaloLight.smoothstep(FADE_FROM, FADE_TO, abs(distance))
+    fun fade(distance: Float): Float = 1f - smoothstep(FADE_FROM, FADE_TO, abs(distance))
 }
 
 /**
@@ -158,11 +154,11 @@ private class MenuColors(
 ) {
     companion object {
         fun of(appearance: Appearance): MenuColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, HaloLight.LAMP_HUE).toArgb()))
+            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
             return if (appearance == Appearance.DARK) {
                 MenuColors(
                     wall = Color.Black,
-                    band = Color(HaloLight.lightTint(HaloLight.LAMP, MenuGrid.GLOW_PEAK)),
+                    band = Color(LampLight.lightTint(LampLight.LAMP, MenuGrid.GLOW_PEAK)),
                     heading = c(0.90f),
                     description = c(0.72f),
                     hint = c(0.60f),
@@ -215,12 +211,12 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
     ) {
         val density = LocalDensity.current.density
         val screen = ScreenSpec((maxWidth.value * density).roundToInt(), (maxHeight.value * density).roundToInt(), density)
-        val layout = HaloLayout(screen)
+        val layout = StageGrid(screen)
         val focusY = maxHeight.value / 2f
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
         val field = rememberOffMain(screen, colors) {
-            val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, SceneBuilder.ditherFor(colors.band.toArgb()))
+            val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
             Bitmap.createBitmap(px, GLOW_MAP_W, GLOW_MAP_H, Bitmap.Config.ARGB_8888).asImageBitmap()
         }
         if (field != null) Canvas(Modifier.fillMaxSize()) {
@@ -249,7 +245,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
 
 /** One level of the menu: its heading, the chosen line's explanation and hint on the left, its lines on the right. */
 @Composable
-private fun MenuLevel(menu: MenuState, layout: HaloLayout, focusY: Float, colors: MenuColors) {
+private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors: MenuColors) {
     val cursor = menu.cursor.coerceIn(0, menu.rows.size - 1)
     val row = menu.rows[cursor]
     val t = texts()
@@ -268,7 +264,7 @@ private fun MenuLevel(menu: MenuState, layout: HaloLayout, focusY: Float, colors
         animationSpec = tween(320, easing = Motion.Dimmer),
         label = "menu-description",
     ) { text ->
-        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTRE, width = layout.art - 24f) {
+        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
             BasicText(
                 text,
                 style = textType(18f, 420, colors.description, lineHeight = 26f).merge(
@@ -372,7 +368,7 @@ private const val LEVEL_OUT_MS = 140
 private const val LEVEL_IN_MS = 220
 
 /** From a line's center to its label's baseline (21 sp in a 40 dp line). */
-private const val LABEL_BASELINE_FROM_CENTRE = 7f
+private const val LABEL_BASELINE_FROM_CENTER = 7f
 
 private const val GLOW_MAP_W = 480
 private const val GLOW_MAP_H = 270
@@ -392,8 +388,8 @@ fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: 
         val py = (y + 0.5f) * sy
         val u = (px - cx) / MenuGrid.GLOW_SIGMA_X
         val v = (py - cy) / MenuGrid.GLOW_SIGMA_Y
-        val edges = HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
-            HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
+        val edges = smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
+            smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
         val value = exp(-0.5f * (u * u + v * v)) * edges
         val o = y * GLOW_MAP_W + x
         img.r[o] = value

@@ -37,12 +37,10 @@ import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.exp
@@ -132,11 +130,11 @@ private class QuickColors(
 ) {
     companion object {
         fun of(appearance: Appearance): QuickColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, HaloLight.LAMP_HUE).toArgb()))
+            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
             return if (appearance == Appearance.DARK) {
                 QuickColors(
                     veil = Color.Black,
-                    band = Color(HaloLight.lightTint(HaloLight.LAMP, GLOW_PEAK)),
+                    band = Color(LampLight.lightTint(LampLight.LAMP, GLOW_PEAK)),
                     label = c(0.56f),
                     labelFocus = c(0.74f),
                     value = c(0.66f),
@@ -182,7 +180,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     // The light glides to the chosen entry.
     val glowX by animateGlide(lefts[cursor] + widths[cursor] / 2f, ROW_GLIDE_MS)
     val glowSigma by animateGlide(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, ROW_GLIDE_MS)
-    val glow = rememberOffMain(colors.band) { glowBlob(SceneBuilder.ditherFor(colors.band.toArgb())) }
+    val glow = rememberOffMain(colors.band) { glowBlob(ImageOps.ditherFor(colors.band.toArgb())) }
 
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {

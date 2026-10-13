@@ -36,7 +36,7 @@ interface LanguageStore {
 /**
  * Android's per-app language: from API 33 the platform keeps the choice ([LocaleManager]; it also
  * shows in the system's app settings, and a change there reaches the app as a configuration
- * change). On API 31 and 32 the app keeps it in its own preferences.
+ * change). Below API 33 the app keeps it in its own preferences.
  */
 class PlatformLanguageStore(private val context: Context) : LanguageStore {
     override fun get(): AppLanguage =

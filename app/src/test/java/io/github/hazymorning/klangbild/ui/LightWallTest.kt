@@ -2,27 +2,28 @@ package io.github.hazymorning.klangbild.ui
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
-import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.config.SettingsMenu
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /** The light wall by day: covers from white to black, a pause, the rest, the menu and the setup. */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -45,7 +46,7 @@ class LightWallTest {
 
     @Test fun paused() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.TERRACOTTA), appearance = light)
-        shot("stage_paused") { Fixtures.Theatre(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
+        shot("stage_paused") { Fixtures.Theater(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
     }
 
     @Test fun rest() = shot("rest") {
@@ -58,7 +59,7 @@ class LightWallTest {
     }
 
     @Test fun setup() = shot("setup") {
-        val info = SetupInfo("http://192.168.1.23:8765", "482913", SetupServer.qrMatrix("http://192.168.1.23:8765/?code=482913"))
+        val info = SetupInfo("http://192.168.1.23:8765", "482913", QrCode.matrix("http://192.168.1.23:8765/?code=482913"))
         SetupScreen(SetupReason.FIRST_RUN, info, SetupArt.scene(info, ScreenSpec.TV_1080, light))
     }
 }

@@ -9,16 +9,10 @@ import kotlin.random.Random
 /** A color cluster of the cover in Oklab with its share of the image (0..1). */
 data class ColorCluster(val lab: Lab, val weight: Float)
 
-/** Rough character of a cover; drives the edge-case handling of the palette. */
-enum class CoverKind { DARK, LIGHT, MONOCHROME, VIVID, BALANCED }
-
+/** A cover's colors as clusters, and its mean lightness (Oklab). */
 data class CoverAnalysis(
     val clusters: List<ColorCluster>,
     val meanL: Float,
-    val meanChroma: Float,
-    /** 90th percentile of chroma: "how colorful are the colorful parts". */
-    val highChroma: Float,
-    val kind: CoverKind,
 )
 
 /**
@@ -37,9 +31,6 @@ data class ScenePalette(
     val inkMuted: Int,
     /** Everything else. */
     val inkQuiet: Int,
-    val kind: CoverKind,
-    /** The cover's leading color, or null for a neutral cover. */
-    val lead: Lab?,
     /**
      * The progress bar's fill: the artist's level on the plain wall. On the cover's colors
      * ([CoverPalette.derive] with `cover`) it takes the cover's leading hue, light enough to stand out.
@@ -51,9 +42,6 @@ object CoverPalette {
     private const val K = 6
     private const val ITERATIONS = 14
     private const val NEUTRAL_CHROMA = 0.035f
-
-    /** Default hue for neutral covers: a warm, amber "lamp light" hue. */
-    const val WARM_HUE = 72f
 
     /** Hue [a] moved toward [b] by [t] along the shorter arc (degrees). */
     private fun mixHue(a: Float, b: Float, t: Float): Float {
@@ -72,22 +60,9 @@ object CoverPalette {
             if ((p ushr 24) < 128) continue
             labs += Oklab.fromArgb(p)
         }
-        if (labs.isEmpty()) {
-            return CoverAnalysis(emptyList(), 0f, 0f, 0f, CoverKind.DARK)
-        }
+        if (labs.isEmpty()) return CoverAnalysis(emptyList(), 0f)
         val meanL = labs.sumOf { it.l.toDouble() }.toFloat() / labs.size
-        val chromas = labs.map { it.chroma }.sorted()
-        val meanChroma = chromas.average().toFloat()
-        val highChroma = chromas[((chromas.size - 1) * 0.9f).toInt()]
-        val clusters = kMeans(labs)
-        val kind = when {
-            meanL < 0.24f -> CoverKind.DARK
-            meanL > 0.84f && meanChroma < 0.06f -> CoverKind.LIGHT
-            highChroma < NEUTRAL_CHROMA -> CoverKind.MONOCHROME
-            highChroma > 0.2f -> CoverKind.VIVID
-            else -> CoverKind.BALANCED
-        }
-        return CoverAnalysis(clusters, meanL, meanChroma, highChroma, kind)
+        return CoverAnalysis(kMeans(labs), meanL)
     }
 
     private fun kMeans(points: List<Lab>): List<ColorCluster> {
@@ -170,7 +145,7 @@ object CoverPalette {
      * Significance of a cluster as a *color* of the cover. Area matters, but a small
      * vivid area (a red dot on cream) characterizes a cover more than a large gray one.
      */
-    private fun colourScore(c: ColorCluster): Float =
+    private fun colorScore(c: ColorCluster): Float =
         c.weight.toDouble().pow(0.55).toFloat() * (c.lab.chroma - 0.02f).coerceAtLeast(0f) *
             // very dark or very light clusters carry little color information
             (1f - (2f * c.lab.l - 1.1f).pow(2)).coerceAtLeast(0.15f)
@@ -188,9 +163,9 @@ object CoverPalette {
     ): ScenePalette {
         val chromatic = analysis.clusters
             .filter { it.lab.chroma >= NEUTRAL_CHROMA && it.weight >= 0.02f }
-            .sortedByDescending { colourScore(it) }
+            .sortedByDescending { colorScore(it) }
         val lead = chromatic.firstOrNull()?.lab
-        val hue = lead?.hue ?: WARM_HUE
+        val hue = lead?.hue ?: Lamp.HUE
         // Text is near-neutral: only a breath of the cover's hue so it belongs to the
         // picture, but never ivory. A neutral cover gets neutral text.
         val neutralChroma = if (lead == null) 0.003f else min(0.009f, lead.chroma * 0.08f + 0.002f)
@@ -214,7 +189,7 @@ object CoverPalette {
             // side, so a red cover gives peach, never pink. Paper stays paper: its hue stays within
             // the warm range, and a cool cover only gives it less color, never mint.
             val tint = (if (lead == null) 0.002f else min(0.007f, lead.chroma * 0.06f + 0.002f)) * wallTint.coerceIn(0f, 1.5f)
-            val pulled = mixHue(hue, WARM_HUE, 0.5f)
+            val pulled = mixHue(hue, Lamp.HUE, 0.5f)
             val paperHue = when {
                 pulled in PAPER_HUES -> pulled
                 hueDistance(pulled, PAPER_HUES.start) < hueDistance(pulled, PAPER_HUES.endInclusive) -> PAPER_HUES.start
@@ -253,8 +228,6 @@ object CoverPalette {
             ink = ink(0),
             inkMuted = muted,
             inkQuiet = ink(2),
-            kind = analysis.kind,
-            lead = lead,
             accent = accent,
         )
     }

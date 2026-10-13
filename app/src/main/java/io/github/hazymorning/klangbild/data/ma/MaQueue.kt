@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.domain.Chapter
 import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -205,5 +206,4 @@ object MaQueue {
     /** More chapters than any book has; a list longer than this is cut, never trusted to be small. */
     private const val MAX_CHAPTERS = 1_000
 
-    private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }

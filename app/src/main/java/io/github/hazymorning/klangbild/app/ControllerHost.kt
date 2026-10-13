@@ -9,8 +9,9 @@ import kotlinx.coroutines.CoroutineScope
 
 /**
  * What the parts of [NowPlayingController] (the menus, seeking, the sleep timer) need from it.
- * They all lock on [lock], the controller itself: keys arrive on the main thread, ticks and
- * Home Assistant's reports on background threads.
+ * Keys arrive on the main thread, ticks and Home Assistant's reports on background threads, so
+ * whatever changes together changes under [lock], the controller itself. A field another thread
+ * reads on its own (the main thread asking whether a menu is open) is also `@Volatile`.
  */
 internal interface ControllerHost {
     val lock: Any
@@ -48,8 +49,8 @@ internal interface ControllerHost {
 
     fun requestSetup(show: Boolean)
 
-    fun showVista()
+    fun showLandscape()
 
     /** Leaves the landscape; whether it was showing. */
-    fun hideVista(): Boolean
+    fun hideLandscape(): Boolean
 }

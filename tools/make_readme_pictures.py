@@ -79,8 +79,8 @@ def light_colors(name, vivid=1.0):
     out = []
     for l in data:
         rgb = xy_to_rgb(*l["xy"])
-        grey = rgb.mean()
-        rgb = np.maximum(grey + (rgb - grey) * vivid, 0.0)
+        gray = rgb.mean()
+        rgb = np.maximum(gray + (rgb - gray) * vivid, 0.0)
         out.append((rgb / rgb.max(), l["dim"]))
     return out
 
@@ -802,8 +802,8 @@ class Room:
         wb = kelvin(white)
         wb = (wb / (0.2126 * wb[0] + 0.7152 * wb[1] + 0.0722 * wb[2])).astype(np.float32)
         img = tonemap(canvas * exposure / wb)
-        grey = (0.2126 * img[..., 0] + 0.7152 * img[..., 1] + 0.0722 * img[..., 2])[..., None]
-        return to_srgb(grey + (img - grey) * 0.88), (light * paint).astype(np.float64) * exposure / wb
+        gray = (0.2126 * img[..., 0] + 0.7152 * img[..., 1] + 0.0722 * img[..., 2])[..., None]
+        return to_srgb(gray + (img - gray) * 0.88), (light * paint).astype(np.float64) * exposure / wb
 
 
 def views():

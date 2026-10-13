@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.setup
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.OwnValues
 import io.github.hazymorning.klangbild.config.QuickActions
+import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -26,6 +27,7 @@ object SetupPage {
             .replace("__MAX_NAME__", QuickActions.MAX_NAME.toString())
             .replace("__MAX_VALUES__", OwnValues.MAX.toString())
             .replace("__MAX_VALUE_NAME__", OwnValues.MAX_NAME.toString())
+            .replace("__MAX_SLEEP__", Settings.MAX_SLEEP_MINUTES.toString())
             .replace("__SCRIPT_TEXTS__", script)
         for ((key, value) in words) page = page.replace("{{$key}}", escape(value))
         return page
@@ -77,8 +79,8 @@ object SetupPage {
         "lightsHeading" to R.string.page_lights_heading,
         "lightsHint" to R.string.page_lights_hint,
         "lightsEmpty" to R.string.page_lights_empty,
-        "vistaHeading" to R.string.page_vista_heading,
-        "vistaHint" to R.string.page_vista_hint,
+        "landscapeHeading" to R.string.page_landscape_heading,
+        "landscapeHint" to R.string.page_landscape_hint,
         "weather" to R.string.page_weather,
         "weatherAuto" to R.string.page_weather_auto,
         "weatherNone" to R.string.page_weather_none,
@@ -117,12 +119,6 @@ object SetupPage {
         "actionName" to R.string.page_action_name,
         "actionWhat" to R.string.page_action_what,
         "actionRemove" to R.string.page_action_remove,
-        "groupScripts" to R.string.page_group_scripts,
-        "groupScenes" to R.string.page_group_scenes,
-        "groupAutomations" to R.string.page_group_automations,
-        "groupButtons" to R.string.page_group_buttons,
-        "groupSwitches" to R.string.page_group_switches,
-        "groupLights" to R.string.page_group_lights,
         "search" to R.string.page_search,
         "searchNone" to R.string.page_search_none,
         "searchMore" to R.string.page_search_more,
@@ -255,7 +251,7 @@ object SetupPage {
 
   <section>
     <h2>{{generalHeading}}</h2>
-    <div class="inline">{{sleepBefore}} <input id="sleep" type="number" min="1" max="720" value="10"> {{sleepAfter}}</div>
+    <div class="inline">{{sleepBefore}} <input id="sleep" type="number" min="1" max="__MAX_SLEEP__" value="10"> {{sleepAfter}}</div>
     <label class="row"><input type="radio" name="action" value="release" checked> {{release}}</label>
     <label class="row"><input type="radio" name="action" value="close"> {{close}}</label>
     <label class="row"><input id="clock" type="checkbox" checked> {{clock}}</label>
@@ -279,8 +275,8 @@ object SetupPage {
   </section>
 
   <section>
-    <h2>{{vistaHeading}}</h2>
-    <p class="hint">{{vistaHint}}</p>
+    <h2>{{landscapeHeading}}</h2>
+    <p class="hint">{{landscapeHint}}</p>
     <label for="weather">{{weather}}</label>
     <select id="weather"><option value="">{{weatherAuto}}</option><option value="none">{{weatherNone}}</option></select>
   </section>

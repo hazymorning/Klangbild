@@ -34,7 +34,7 @@ class Lyrics(val lines: List<LyricLine>, val breaks: List<Long> = emptyList()) {
 data class LyricPlace(val index: Int, val lit: Boolean)
 
 /** What is known of the words of the song with the key [key]: synced [lyrics], or null for none. */
-data class SongWords(val key: String, val lyrics: Lyrics?)
+data class SongLyrics(val key: String, val lyrics: Lyrics?)
 
 /**
  * Where the words stand as the song plays, a little early ([leadMs]) so that each line arrives

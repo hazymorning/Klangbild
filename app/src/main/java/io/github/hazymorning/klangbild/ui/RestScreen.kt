@@ -35,11 +35,11 @@ import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.RestReason
-import io.github.hazymorning.klangbild.domain.TimeLine
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.domain.TimeText
+import io.github.hazymorning.klangbild.math.smoothstep
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.text.texts
@@ -58,7 +58,7 @@ import kotlin.math.roundToInt
 data class QuietColors(val wall: Color, val primary: Color, val secondary: Color, val label: Color) {
     companion object {
         fun of(appearance: Appearance = Appearance.DARK): QuietColors {
-            fun lit(l: Float, ch: Float) = Lamp.apply(Lch(l, ch, HaloLight.LAMP_HUE).toLab())
+            fun lit(l: Float, ch: Float) = Lamp.apply(Lch(l, ch, Lamp.HUE).toLab())
             return if (appearance == Appearance.DARK) {
                 fun c(l: Float) = Color(lit(l, 0.004f).toArgb())
                 QuietColors(wall = Color.Black, primary = c(0.84f), secondary = c(0.68f), label = c(0.62f))
@@ -83,7 +83,7 @@ object RestTexts {
 
     fun lines(reason: RestReason, speaker: String?, entityId: String?, t: Texts): Lines = when (reason) {
         RestReason.IDLE -> Lines(speaker, null)
-        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[R.string.status_paused]).joinToString(TimeLine.SEPARATOR), null)
+        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR), null)
         RestReason.CONNECTING -> Lines(speaker, t[R.string.rest_connecting])
         RestReason.OFFLINE -> Lines(null, t[R.string.rest_offline])
         RestReason.UNAVAILABLE -> Lines(speaker ?: t[R.string.rest_speaker], t[R.string.rest_unavailable])
@@ -124,7 +124,7 @@ object RestLight {
             // Round all the way: an oval vignette keeps the screen edges black, too.
             val ex = (px - screen.widthDp / 2f) / (screen.widthDp / 2f - EDGE_DP)
             val ey = (py - screen.heightDp / 2f) / (screen.heightDp / 2f - EDGE_DP)
-            val vignette = HaloLight.smoothstep(1f, 0.2f, ex * ex + ey * ey)
+            val vignette = smoothstep(1f, 0.2f, ex * ex + ey * ey)
             val value = exp(-q * 1.4f) * reach * reach * vignette
             val o = y * MAP_W + x
             img.r[o] = value; img.g[o] = value; img.b[o] = value
@@ -150,22 +150,22 @@ fun RestScreen(
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     /** The lamp's strength from the settings (0 = off). */
-    lightFactor: Float = 1f,
+    intensity: Float = 1f,
     appearance: Appearance = Appearance.DARK,
 ) {
     val colors = remember(appearance) { QuietColors.of(appearance) }
     val t = texts()
     val lines = RestTexts.lines(reason, speaker, entityId, t)
     // A lamp only lights a dark wall.
-    val peak = (RestLight.PEAK * lightFactor).takeIf { it > 0f && appearance == Appearance.DARK }
-    val tint = remember(peak) { peak?.let { HaloLight.lightTint(HaloLight.LAMP, it) } }
+    val peak = (RestLight.PEAK * intensity).takeIf { it > 0f && appearance == Appearance.DARK }
+    val tint = remember(peak) { peak?.let { LampLight.lightTint(LampLight.LAMP, it) } }
     val screen = ScreenSpec(960, 540, 1f)
 
     Box(modifier.fillMaxSize()) {
         BaseWall(colors.wall)
         val field = rememberOffMain(tint) {
             tint?.let {
-                val px = RestLight.field(screen.widthDp / 2f, screen.heightDp / 2f, screen, SceneBuilder.ditherFor(it))
+                val px = RestLight.field(screen.widthDp / 2f, screen.heightDp / 2f, screen, ImageOps.ditherFor(it))
                 Bitmap.createBitmap(px, RestLight.MAP_W, RestLight.MAP_H, Bitmap.Config.ARGB_8888).asImageBitmap()
             }
         }

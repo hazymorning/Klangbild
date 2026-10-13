@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.MediaKind
 import kotlinx.coroutines.CoroutineScope
@@ -156,9 +156,9 @@ class HaSourceTest {
         ma: MaClient? = null,
         refreshMs: Long = 60_000L,
         partyMs: Long = HaSource.PARTY_MS,
-        detailsWaitMs: Long = HaSource.DETAILS_WAIT_MS,
-        queueSettleMs: Long = HaSource.QUEUE_SETTLE_MS,
-        maQueueMs: Long = HaSource.MA_QUEUE_MS,
+        detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
+        queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
+        maQueueMs: Long = QueueReader.MA_QUEUE_MS,
     ) = HaSource(
         http,
         scope,
@@ -767,10 +767,10 @@ class HaSourceTest {
         try {
             val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"))
             s.start()
-            val first = withTimeout(5_000) { s.state.first { it.words != null } }
-            val words = first.words!!
-            assertThat(words.key).isEqualTo(first.player!!.track!!.key)
-            assertThat(words.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
+            val first = withTimeout(5_000) { s.state.first { it.lyrics != null } }
+            val known = first.lyrics!!
+            assertThat(known.key).isEqualTo(first.player!!.track!!.key)
+            assertThat(known.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
             // Asked ahead for the song up next, and only for it.
             withTimeout(5_000) { while (asked.isEmpty()) delay(20) }
             assertThat(asked).containsExactly("library://track/2")
@@ -779,7 +779,7 @@ class HaSourceTest {
             queueAnswer = { queueOf(item("Zweites Lied", "zweites"), null) }
             report("media_title" to "Zweites Lied", "media_content_id" to "library://track/2")
             val second = withTimeout(5_000) { s.state.first { it.player?.track?.title == "Zweites Lied" } }
-            val next = second.words!!
+            val next = second.lyrics!!
             assertThat(next.key).isEqualTo(second.player!!.track!!.key)
             assertThat(next.lyrics!!.lines.first().text).isEqualTo("Noch eine Zeile")
             delay(300)
@@ -796,7 +796,7 @@ class HaSourceTest {
         val s = source()
         s.start()
         withTimeout(5_000) { s.state.first { it.queueKnown } }
-        assertThat(s.state.value.words).isNull()
+        assertThat(s.state.value.lyrics).isNull()
         s.stop()
     }
 
@@ -816,4 +816,12 @@ class HaSourceTest {
         s.stop()
     }
 
+
+    @Test
+    fun `a weather entity's wind is read in its own unit`() {
+        assertThat(kmh(10.0, null)).isEqualTo(10.0)
+        assertThat(kmh(10.0, "m/s")).isWithin(0.01).of(36.0)
+        assertThat(kmh(10.0, "mph")).isWithin(0.01).of(16.09)
+        assertThat(kmh(10.0, "furlongs")).isNull()
+    }
 }

@@ -27,7 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.VistaUi
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.VolumeDisplay
@@ -36,25 +36,25 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.StageView
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.texts
-import io.github.hazymorning.klangbild.ui.flow.FlowTheatre
+import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
-import io.github.hazymorning.klangbild.ui.stage.StageTheatre
+import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
-import io.github.hazymorning.klangbild.ui.vista.VistaAhead
-import io.github.hazymorning.klangbild.ui.vista.releaseBakedVista
-import io.github.hazymorning.klangbild.ui.vista.VistaScreen
-import io.github.hazymorning.klangbild.ui.vista.labelSide
-import io.github.hazymorning.klangbild.ui.vista.rememberVistaFeed
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeAhead
+import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.ui.landscape.labelSide
+import io.github.hazymorning.klangbild.ui.landscape.rememberLandscapeFeed
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import kotlinx.coroutines.delay
 
 /** A wall clock that ticks every [periodMs] (the UI needs minutes, the drift whole pixels). */
@@ -76,7 +76,7 @@ class RootHooks(
     /** The color field's time (seconds): it runs while music plays, at the motion setting's speed. */
     val fieldTime: () -> Double = { 0.0 },
     /** The moment the landscape's sky shows. */
-    val vistaClock: VistaClock = VistaClock(now),
+    val landscapeClock: LandscapeClock = LandscapeClock(now),
 )
 
 /**
@@ -118,12 +118,12 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             },
     ) {
         // The landscape's picture is baked while it is only on its way, so it comes at once.
-        ui.vistaAhead?.let { VistaAhead(rememberVistaFeed(ui, hooks.vistaClock, hooks.now), labelSide(it)) }
+        ui.landscapeAhead?.let { LandscapeAhead(rememberLandscapeFeed(ui, ui.landscape, hooks.landscapeClock, hooks.now), labelSide(it)) }
         // No longer coming: its picture is let go after a while, and baked anew the next time.
-        if (ui.vistaAhead == null && ui.vista == null && !LocalStill.current) {
+        if (ui.landscapeAhead == null && ui.landscape == null && !LocalStill.current) {
             LaunchedEffect(Unit) {
-                delay(VISTA_RELEASE_MS)
-                releaseBakedVista()
+                delay(LANDSCAPE_RELEASE_MS)
+                releaseBakedLandscape()
             }
         }
         // Animate between kinds of screens only (stage/rest/setup). The latest content
@@ -145,11 +145,11 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             label = "screen",
         ) { k ->
             when (val c = latest[k] ?: Content.Dark) {
-                is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    StageTheatre(stage = c.stage, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
+                is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                    StageTheater(stage = c.stage, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
-                is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, lightFactor, linkDown ->
-                    FlowTheatre(flow = c.flow, status = status, modelFor = modelFor, lightFactor = lightFactor, dimmed = linkDown, partyCode = ui.partyCode)
+                is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                    FlowTheater(flow = c.flow, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
                 is Content.RestContent -> RestScreen(
                     reason = c.reason,
@@ -157,10 +157,10 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     speaker = c.speaker?.let { name -> SpeakerLabel.group(ui.source.group, t).takeIf { ui.display.group } ?: name },
                     entityId = ui.entityId,
                     nowMs = wall.value,
-                    lightFactor = ui.display.light.factor,
+                    intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
-                is Content.VistaContent -> VistaScreen(ui, c.vista, hooks.vistaClock, hooks.positionNow, hooks.now)
+                is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionNow, hooks.now)
                 is Content.SetupContent -> {
                     val scene = rememberOffMain(ui.setup, screen, c.appearance) { SetupArt.scene(ui.setup, screen, c.appearance) }
                     if (scene != null) SetupScreen(c.reason, ui.setup, scene) else Box(Modifier.fillMaxSize())
@@ -170,7 +170,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         }
         // The quick settings rise from the bottom edge over whatever shows (over the landscape on
         // its dark ground); the settings menu lies over everything. Both come and go on their own.
-        QuickBarOverlay(ui.quick, if (content is Content.VistaContent) Appearance.DARK else ui.appearance)
+        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance)
         MenuOverlay(ui.menu, ui.appearance)
     }
 }
@@ -197,9 +197,9 @@ private sealed interface Content {
         override val key = "setup:$reason:$appearance"
     }
 
-    data class VistaContent(val vista: VistaUi) : Content {
+    data class LandscapeContent(val landscape: LandscapeUi) : Content {
         // The landscape changes its label and its light inside; it comes and goes through the dark.
-        override val key = "vista"
+        override val key = "landscape"
     }
 
     data object Dark : Content {
@@ -214,7 +214,7 @@ private const val HINT_AFTER_MS = 3_000L
 private const val HINT_MS = 12_000L
 
 /** The landscape's picture is kept this long after it stopped coming (a pause cut short, say). */
-private const val VISTA_RELEASE_MS = 10_000L
+private const val LANDSCAPE_RELEASE_MS = 10_000L
 
 /**
  * How far the whole screen drifts against burn-in (dp): enough to soften every edge on an
@@ -225,7 +225,7 @@ private const val DRIFT_DP = 6f
 /** A switch of screens is over after this long (900 ms out, then 1.3 s in after 900 ms), with room to spare. */
 private const val SCREEN_SWITCH_MS = 3_000L
 
-private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.vista != null) Content.VistaContent(ui.vista) else when (val s = ui.screen) {
+private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.landscape != null) Content.LandscapeContent(ui.landscape) else when (val s = ui.screen) {
     is Screen.Stage ->
         if (ui.view == StageView.FLOW) ui.flow?.let { Content.FlowContent(it) } ?: Content.Dark
         else ui.stage?.let { Content.StageContent(it) } ?: Content.Dark
@@ -236,19 +236,19 @@ private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.vista
 }
 
 /** A view's theater, given the player's status, how to build a model, the light setting and a lost link. */
-private typealias Theatre = @Composable (
+private typealias Theater = @Composable (
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,
-    lightFactor: () -> Float,
+    intensity: () -> Float,
     linkDown: Boolean,
 ) -> Unit
 
 /**
  * What both views share for the [stage] that plays: the status line's words, the models, the
- * light setting. Then [theatre] draws.
+ * light setting. Then [theater] draws.
  */
 @Composable
-private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wall: State<Long>, theatre: Theatre) {
+private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wall: State<Long>, theater: Theater) {
     val stageScreen = ui.screen as? Screen.Stage
     // While a new cover loads, the previous stage stays; status follows the live state.
     // A lost connection (after the grace period) or a muted speaker dims the stage.
@@ -287,7 +287,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     val volume = SpeakerLabel.volume(player?.volume, muted, t)
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = stageScreen?.track?.kind?.spoken == true
-    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeLine.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
+    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
     val lead = StageTexts.lead(status, muted, ui.volumeFlash, volume, group, volumeAlways = display.volume == VolumeDisplay.ALWAYS, t = t, pace = pace)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     val statusLine = StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
@@ -312,7 +312,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 durationMs = ch?.let { it.endMs - it.startMs } ?: s.track.durationMs,
                 positionMs = { if (s.track.key == stage.track.key) hooks.positionNow() else null },
                 year = s.track.year.takeIf { display.album },
-                progress = if (lyrics != null) peek else display.timeLine || peek,
+                progress = if (lyrics != null) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[R.string.hint_down]
@@ -334,8 +334,8 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
         }
     }
     // Changing the light's strength in the menu turns it like a dimmer.
-    val lightFactor by animateFloatAsState(
-        targetValue = display.light.factor,
+    val intensity by animateFloatAsState(
+        targetValue = display.intensity.factor,
         animationSpec = tween(1_200, easing = Motion.Dimmer),
         label = "light-setting",
     )
@@ -344,15 +344,15 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
     // The bar shows when its length is known and nothing stands in its place, by setting or for a
     // moment (beside the song's words only for a moment).
-    val words = stage.lyrics != null
-    val barShown = (if (words) peek else display.timeLine || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
+    val showsLyrics = stage.lyrics != null
+    val barShown = (if (showsLyrics) peek else display.progressBar || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
     // One tick for the bar, the colors and the words, so they are redrawn in the same frames. With
     // nothing to redraw, or with the settings covering the stage, it stops.
     val tick = rememberStageTick(
         fast = moving || status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
-        running = (moving || barShown || words) && ui.menu == null,
+        running = (moving || barShown || showsLyrics) && ui.menu == null,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
-        theatre(status, modelFor, { lightFactor }, linkDown)
+        theater(status, modelFor, { intensity }, linkDown)
     }
 }

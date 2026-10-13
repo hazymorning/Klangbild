@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -22,16 +19,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.hazymorning.klangbild.domain.TimeLine
-import io.github.hazymorning.klangbild.ui.LocalStageTick
-import io.github.hazymorning.klangbild.ui.LocalStill
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.rememberFrames
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -50,7 +44,7 @@ class ProgressColors(val track: Color, val fill: Color, val label: Color)
  * jumping. The labels recompose once a second. Paused, the fill dims and the bar is redrawn
  * only twice a second (a seek while paused still shows).
  *
- * The labels' cap height sits [labelGap] below the bar; the measured height ends at their
+ * The labels' cap height sits [BAR_LABEL_GAP] below the bar; the measured height ends at their
  * baseline, so a layout can align the block by it.
  *
  * In a book with chapters the bar spans the chapter: from [startMs] in the item's own time, for
@@ -65,21 +59,9 @@ fun ProgressBar(
     labelStyle: TextStyle,
     modifier: Modifier = Modifier,
     startMs: Long = 0L,
-    thickness: Dp = 4.dp,
-    labelGap: Dp = 10.dp,
 ) {
-    // The stage's one tick, shared with the color field. Alone (in a test), a loop of its own.
-    val shared = LocalStageTick.current
-    val own = remember { mutableLongStateOf(0L) }
-    if (shared == null && !LocalStill.current) {
-        LaunchedEffect(playing) {
-            while (true) {
-                withFrameNanos { own.longValue = it }
-                delay(if (playing) REFRESH_MS else PAUSED_REFRESH_MS)
-            }
-        }
-    }
-    val frame = shared?.frame ?: own
+    // The stage's one tick, shared with the color field.
+    val frame = rememberFrames(fast = playing)
     val fillLevel by animateFloatAsState(
         targetValue = if (playing) 1f else 0.6f,
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
@@ -96,12 +78,12 @@ fun ProgressBar(
     }
     val label = labelStyle.copy(color = colors.label)
     val figures = rememberFigures(labelStyle, Face.TITLE)
-    val length = remember(figures, durationMs) { figures.of(TimeLine.formatClock(durationMs)) }
+    val length = remember(figures, durationMs) { figures.of(TimeText.formatClock(durationMs)) }
     Layout(
         modifier = modifier.fillMaxWidth(),
         content = {
             // Its own layer: the refresh re-records only the bar, not the labels.
-            Canvas(Modifier.fillMaxWidth().height(thickness).graphicsLayer()) {
+            Canvas(Modifier.fillMaxWidth().height(BAR_THICKNESS.dp).graphicsLayer()) {
                 val now = frame.value // redraw on every refresh
                 val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
                 val f = glide.at(target, now, durationMs)
@@ -113,7 +95,7 @@ fun ProgressBar(
                     drawRoundRect(colors.fill.copy(alpha = colors.fill.alpha * fillLevel), Offset.Zero, Size(w, size.height), r)
                 }
             }
-            BasicText(figures.of(TimeLine.formatClock(second * 1000L)), style = label, maxLines = 1)
+            BasicText(figures.of(TimeText.formatClock(second * 1000L)), style = label, maxLines = 1)
             BasicText(length, style = label, maxLines = 1)
         },
     ) { measurables, constraints ->
@@ -121,9 +103,9 @@ fun ProgressBar(
         val loose = constraints.copy(minWidth = 0)
         val elapsed = measurables[1].measure(loose)
         val remaining = measurables[2].measure(loose)
-        // Cap height of the labels [labelGap] below the bar.
+        // Cap height of the labels [BAR_LABEL_GAP] below the bar.
         val cap = (labelStyle.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
-        val baseline = bar.height + labelGap.roundToPx() + cap
+        val baseline = bar.height + BAR_LABEL_GAP.dp.roundToPx() + cap
         val first = elapsed[FirstBaseline]
         layout(constraints.maxWidth, baseline) {
             bar.place(0, 0)
@@ -166,8 +148,9 @@ private class Glide {
     }
 }
 
-/** Refresh interval of a playing bar; frame-aligned, so about 30 per second. */
-private const val REFRESH_MS = 24L
-private const val PAUSED_REFRESH_MS = 500L
+/** The bar's thickness, and the room from it down to its labels' cap height (dp). */
+const val BAR_THICKNESS = 4f
+const val BAR_LABEL_GAP = 10f
+
 private const val JUMP_MS = 1_500f
 private const val GLIDE_MS = 350f

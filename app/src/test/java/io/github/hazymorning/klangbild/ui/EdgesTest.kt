@@ -9,19 +9,15 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertWithMessage
-import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.AppearanceMode
-import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.config.SettingsMenu
-import io.github.hazymorning.klangbild.data.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -53,7 +49,7 @@ class EdgesTest {
     private fun menu(s: Settings) = Fixtures.menu(MenuEntry.APPEARANCE, s)
 
     private fun quick(): QuickState {
-        val rows = QuickMenu.rows(Settings(), QuickContext(vista = false, pending = null, music = true, favorite = null, shuffle = false), Fixtures.texts)
+        val rows = QuickMenu.rows(Settings(), QuickContext(landscape = false, pending = null, music = true, favorite = null, shuffle = false), Fixtures.texts)
         return QuickState(rows, 0)
     }
 

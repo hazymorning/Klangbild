@@ -1,13 +1,15 @@
 package io.github.hazymorning.klangbild.data.ma
 
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,17 +18,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-
-/** How the optional link to Music Assistant stands, for the menu, never as raw errors. */
-enum class MaLink {
-    CONNECTED,
-
-    /** Music Assistant rejected the token (expired after a year, or deleted). */
-    AUTH_FAILED,
-
-    /** No answer, or not the answer of a Music Assistant server. */
-    UNREACHABLE,
-}
 
 /** Music Assistant rejected the token. */
 class MaAuthException : IOException("Music Assistant rejected the token")
@@ -112,7 +103,6 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
     }
 
     /** The text of a JSON string; null for anything else. */
-    private fun JsonElement?.string(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
     /** The same connections, with room for an answer that takes a while (the lyrics). */
     private val slowHttp: OkHttpClient by lazy { http.newBuilder().readTimeout(LYRICS_TIMEOUT_MS, TimeUnit.MILLISECONDS).build() }
@@ -138,7 +128,7 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
             if (response.code == 401 || response.code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
             if (response.code == 400 && response.peekBody(UNKNOWN_PEEK_BYTES).string().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
-            if (!response.isSuccessful) throw IOException("Music Assistant answered ${response.code}")
+            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", response.code)
             response.body.source().let { src ->
                 if (!src.request(MAX_ANSWER_BYTES)) src.readUtf8() else throw IOException("Answer too large")
             }

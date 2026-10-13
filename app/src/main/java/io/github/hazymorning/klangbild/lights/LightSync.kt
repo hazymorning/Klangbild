@@ -1,8 +1,9 @@
 package io.github.hazymorning.klangbild.lights
 
-import io.github.hazymorning.klangbild.config.RoomLightLevel
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
-import io.github.hazymorning.klangbild.data.ha.EntityState
+import io.github.hazymorning.klangbild.data.LightBridge
+import io.github.hazymorning.klangbild.domain.EntityState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,23 +28,11 @@ import kotlinx.serialization.json.putJsonArray
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.abs
 
-/** The lights as Home Assistant has them, and what is done with them: service calls. */
-interface LightBridge {
-    /** The states of the lights asked for with [follow]. */
-    val lights: StateFlow<Map<String, EntityState>>
-
-    /** Which lights to keep up with. */
-    fun follow(ids: Set<String>)
-
-    /** `<domain>.<service>` (for [entityId], if given); the call's context id, null when it failed. */
-    suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String?
-}
-
 /**
  * Any lights Home Assistant controls, in the colors of what the screen shows: each light a color
  * of its own ([LightColors]). These are the cover's most telling colors, kept apart and placed
- * as they sit in the cover (with motion on they move on from light to light), or in the window
- * view its sky, the sun's glow on its side and the campfire's light on the fire's. A light
+ * as they sit in the cover (with motion on they move on from light to light), or in the
+ * landscape its sky, the sun's glow on its side and the campfire's light on the fire's. A light
  * shows what it can: a color, a warmer or cooler white, a brightness, or just on.
  *
  * It is gentle on the lights' network and on whoever else uses the lights:
@@ -76,7 +65,7 @@ class LightSync(
     /** What the lights are to show now, set on every tick; null while nothing is on stage. */
     data class Target(
         val lights: RoomLights,
-        val level: RoomLightLevel,
+        val level: RoomLightBrightness,
         /** The colors for each light; a new one is faded to. */
         val colors: LightColors,
         /** The song (or the landscape): a new one changes the lights once it has played a moment. */
@@ -94,7 +83,7 @@ class LightSync(
          * The landscape shows: its light changes slowly, so the lights follow it in long fades
          * and seldom calls; a pause does not dim them (the picture is the show).
          */
-        val vista: Boolean = false,
+        val landscape: Boolean = false,
         /** Lights that are off are left alone; one switched on joins in, one switched off is let go. */
         val onlyOn: Boolean = false,
     )
@@ -203,7 +192,7 @@ class LightSync(
         val old = this.target
         this.target = target
         if (target != null) lastTarget = target
-        if (old?.lights != target?.lights || (old?.level == RoomLightLevel.OFF) != (target?.level == RoomLightLevel.OFF)) follow(bridge, target)
+        if (old?.lights != target?.lights || (old?.level == RoomLightBrightness.OFF) != (target?.level == RoomLightBrightness.OFF)) follow(bridge, target)
         // Nothing to do without lights, unless lights taken over are still to be given back.
         if (target != null || activeLights) ensureLoop()
         if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old == null || target == null) wake.trySend(Unit)
@@ -252,7 +241,7 @@ class LightSync(
         val b = bridge ?: return
         val tg = target
         val states = b.lights.value
-        if (tg == null || tg.level == RoomLightLevel.OFF || !tg.lights.isSet) {
+        if (tg == null || tg.level == RoomLightBrightness.OFF || !tg.lights.isSet) {
             if (activeFor == null) return
             // The option switched off, or the lights set up anew: given back at once; the music
             // ended: dimmed like a pause, and given back after a while.
@@ -281,7 +270,7 @@ class LightSync(
         adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
         if (tg.onlyOn) letGoSwitchedOff(states)
-        val paused = !tg.playing && !tg.vista
+        val paused = !tg.playing && !tg.landscape
         pausedSince = if (paused) (pausedSince ?: t) else null
         when {
             tg.song != shownSong -> {
@@ -299,13 +288,13 @@ class LightSync(
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
             // The landscape's light moves on in long fades, a call per light every while at most.
-            tg.colors !== shownColors && (!tg.vista || t - lastStepAt >= VISTA_GAP_MS) -> {
+            tg.colors !== shownColors && (!tg.landscape || t - lastStepAt >= LANDSCAPE_GAP_MS) -> {
                 shownColors = tg.colors
-                send(b, tg, t, if (tg.vista) VISTA_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
+                send(b, tg, t, if (tg.landscape) LANDSCAPE_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             }
             // A new level or a later hour (a pause is dimmed above, after its delay).
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
-            !paused && !tg.vista && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
+            !paused && !tg.landscape && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
         // Calls that had to wait (a light still busy, a failure to try again): those lights only.
         val due = lights.values.filter { !it.takenOver && !it.inFlight && it.retryAt in 1..t }.mapTo(HashSet()) { it.id }
@@ -656,7 +645,7 @@ class LightSync(
     }
 
     /** The lights to keep up with: the chosen ones, while they are to join in. */
-    private fun followed(t: Target?): Set<String> = if (t == null || t.level == RoomLightLevel.OFF) emptySet() else t.lights.ids.toSet()
+    private fun followed(t: Target?): Set<String> = if (t == null || t.level == RoomLightBrightness.OFF) emptySet() else t.lights.ids.toSet()
 
     companion object {
         /** Where each light stands: left, behind the middle (its light shows above the screen), right. */
@@ -693,8 +682,8 @@ class LightSync(
         const val DRIFT_TRANSITION_MS = 8_000L
 
         /** The landscape: its light at most this often (per light a call), in fades this long. */
-        const val VISTA_GAP_MS = 20_000L
-        const val VISTA_TRANSITION_MS = 15_000L
+        const val LANDSCAPE_GAP_MS = 20_000L
+        const val LANDSCAPE_TRANSITION_MS = 15_000L
         const val SOFT_TRANSITION_MS = 1_500L
         const val PAUSE_DELAY_MS = 2_000L
         const val PAUSE_TRANSITION_MS = 2_000L

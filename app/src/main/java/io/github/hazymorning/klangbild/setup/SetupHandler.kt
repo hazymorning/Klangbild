@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.setup
 
 import io.github.hazymorning.klangbild.R
-import io.github.hazymorning.klangbild.config.LaunchExtras
 import io.github.hazymorning.klangbild.config.OwnValues
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.RoomLights
@@ -10,7 +9,9 @@ import io.github.hazymorning.klangbild.config.SleepAction
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.data.ha.HaUrls
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -199,7 +200,7 @@ class SetupHandler(
         } catch (_: Exception) {
             return MiniHttp.Response.json(400, error(t[R.string.setup_error_request]))
         }
-        if (!codeMatches(body.str("code"))) {
+        if (!codeMatches(body.string("code"))) {
             delay(wrongCodeDelayMs)
             return MiniHttp.Response.json(403, error(t[R.string.setup_error_code]))
         }
@@ -240,7 +241,7 @@ class SetupHandler(
 
     /** Starts a sign-in: the address of Home Assistant's login page, for this request only. */
     private fun signInJson(body: JsonObject, t: Texts): MiniHttp.Response {
-        val url = body.str("url")?.let { HaUrls.normalizeBase(it) }
+        val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
         val client = clientId() ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_not_allowed]))
         val state = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(STATE_BYTES).also(random::nextBytes))
@@ -283,13 +284,13 @@ class SetupHandler(
      * else what is stored for that address.
      */
     private fun credentialsFor(url: String, body: JsonObject): HaCredentials? {
-        body.str("token")?.trim()?.takeIf { it.isNotEmpty() }?.let { return HaCredentials.LongLived(it) }
+        body.string("token")?.trim()?.takeIf { it.isNotEmpty() }?.let { return HaCredentials.LongLived(it) }
         signedIn?.takeIf { it.url == url }?.let { return HaCredentials.SignedIn(it.refreshToken, it.clientId) }
         return settings().takeIf { it.haUrl == url }?.haCredentials
     }
 
     private suspend fun discoverJson(body: JsonObject, t: Texts): MiniHttp.Response {
-        val url = body.str("url")?.let { HaUrls.normalizeBase(it) }
+        val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
         val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_credentials]))
         return when (val r = discover(url, credentials)) {
@@ -376,7 +377,7 @@ class SetupHandler(
 
     private suspend fun saveJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val current = settings()
-        val url = body.str("url")?.let { HaUrls.normalizeBase(it) }
+        val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
         val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_credentials]))
         val ha = current.withHa(url, credentials)
@@ -389,12 +390,12 @@ class SetupHandler(
                 MaLink.UNREACHABLE -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_unreachable]))
             }
         }
-        val entity = body.str("entity")?.trim()?.takeIf { LaunchExtras.isEntityId(it) }
+        val entity = body.string("entity")?.trim()?.takeIf { EntityId.isValid(it) }
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_speaker]))
-        val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.str("sleepMinutes")?.toIntOrNull()
+        val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
-        if (minutes !in 1..MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
-        val action = when (body.str("sleepAction")) {
+        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
+        val action = when (body.string("sleepAction")) {
             "close" -> SleepAction.CLOSE
             "release" -> SleepAction.RELEASE
             else -> current.sleepAction
@@ -404,16 +405,16 @@ class SetupHandler(
         val roomLights = if (lightKeys.none { it in body }) {
             current.roomLights
         } else {
-            val ids = lightKeys.map { k -> body.str(k)?.trim().orEmpty() }
-            if (ids.any { it.isNotEmpty() && !LaunchExtras.isLightId(it) }) return MiniHttp.Response.json(400, error(t[R.string.setup_error_lights]))
+            val ids = lightKeys.map { k -> body.string(k)?.trim().orEmpty() }
+            if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return MiniHttp.Response.json(400, error(t[R.string.setup_error_lights]))
             RoomLights(ids[0].ifEmpty { null }, ids[1].ifEmpty { null }, ids[2].ifEmpty { null })
         }
         // The landscape's weather: "" finds Home Assistant's own, "none" keeps the sky fair; absent stays as it was.
-        val weather = when (val w = body.str("weather")?.trim()) {
+        val weather = when (val w = body.string("weather")?.trim()) {
             null -> current.weatherEntity
             "" -> null
             Settings.NO_WEATHER -> Settings.NO_WEATHER
-            else -> w.takeIf { it.startsWith("weather.") && LaunchExtras.isEntityId(it) }
+            else -> w.takeIf { EntityId.isWeather(it) }
                 ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_weather]))
         }
         // The quick settings' own buttons only when the page showed them; an empty list removes them.
@@ -464,10 +465,10 @@ class SetupHandler(
 
     /** [s] with Music Assistant's address and token from the form; null for an address that is none. */
     private fun maSettings(s: Settings, body: JsonObject): Settings? {
-        val raw = body.str("maUrl")?.trim().orEmpty()
+        val raw = body.string("maUrl")?.trim().orEmpty()
         if (raw.isEmpty()) return s.withMa(null, null)
         val url = HaUrls.normalizeBase(raw) ?: return null
-        return s.withMa(url, body.str("maToken")?.trim()?.takeIf { it.isNotEmpty() })
+        return s.withMa(url, body.string("maToken")?.trim()?.takeIf { it.isNotEmpty() })
     }
 
     private fun redirect(location: String) = MiniHttp.Response(303, "text/plain; charset=utf-8", ByteArray(0), mapOf("Location" to location))
@@ -479,7 +480,6 @@ class SetupHandler(
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     private fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
 
     companion object {
@@ -500,9 +500,6 @@ class SetupHandler(
 
         /** The random state of a sign-in (bytes). */
         private const val STATE_BYTES = 32
-
-        /** The longest "turn off after" the page takes (minutes). */
-        private const val MAX_SLEEP_MINUTES = 720
 
         /** The redirect URI that belongs to [clientId]: the same host and port, as Home Assistant requires. */
         fun redirectUri(clientId: String): String = clientId.trimEnd('/') + CALLBACK_PATH

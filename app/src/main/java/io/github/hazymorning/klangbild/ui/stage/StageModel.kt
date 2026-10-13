@@ -2,13 +2,9 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.TimeLine
+import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
@@ -54,13 +50,7 @@ class StageModel(
      * and the progress bar shows only for a moment after a key ([progress]).
      */
     val lyrics: Lyrics? = null,
-) {
-    fun fraction(): Float? {
-        val d = durationMs ?: return null
-        val p = positionMs() ?: return null
-        return if (d > 0) ((p - rangeStartMs).toFloat() / d).coerceIn(0f, 1f) else null
-    }
-}
+)
 
 /**
  * The quiet line at the top of the column: [clock], the time, then the [values] of one's own
@@ -91,9 +81,9 @@ object StageTexts {
         pace: String? = null,
     ): String? = when {
         volumeFlash && !muted && volume != null -> t.format(R.string.status_volume, volume)
-        muted -> listOfNotNull(group, t[R.string.status_muted]).joinToString(TimeLine.SEPARATOR)
-        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeLine.SEPARATOR)
-        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeLine.SEPARATOR).ifEmpty { null }
+        muted -> listOfNotNull(group, t[R.string.status_muted]).joinToString(TimeText.SEPARATOR)
+        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR)
+        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
 
     /** "Pauses at 11:10 PM": when the sleep timer pauses the music. */
@@ -102,7 +92,7 @@ object StageTexts {
 
     /** "Spiegel im Spiegel · Arvo Pärt". */
     fun next(track: TrackInfo?, t: Texts): String? =
-        track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeLine.SEPARATOR) }
+        track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
 
     /** "Spiegel im Spiegel". */
     fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[R.string.artists_others]).title }
@@ -116,31 +106,3 @@ object StageTexts {
 }
 
 fun Int.asColor() = Color(this)
-
-/**
- * Color matrix for the artwork: the [Lamp]'s breath of warmth, [dim] (a pause) and a gentle
- * highlight compression, so even a white cover never glares on black. White becomes a soft paper
- * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
- * brightness limiter dim everything. On the light wall a white cover stays a little whiter
- * than the paper around it.
- */
-fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): ColorFilter {
-    val (r, g, b) = coverScale(dim, appearance)
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                r, 0f, 0f, 0f, 0f,
-                0f, g, 0f, 0f, 0f,
-                0f, 0f, b, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        ),
-    )
-}
-
-/** The per-channel scale of [coverFilter] (red, green, blue). */
-fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Triple<Float, Float, Float> {
-    val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
-    val w = Lamp.WARMTH
-    return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
-}

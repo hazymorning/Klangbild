@@ -5,8 +5,9 @@ import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertWithMessage
+import io.github.hazymorning.klangbild.KlangbildApp
 import io.github.hazymorning.klangbild.MainActivity
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.Screen
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,11 +20,12 @@ import org.robolectric.annotation.GraphicsMode
  * The very first start, with the connection in its extras (as Home Assistant or the CI sends
  * it): the app takes it at once, connects and stays connected; it never falls back to the
  * setup page. With `-Pklangbild.fakeHa=http://127.0.0.1:8123` (ci/fake_ha.py running) it talks
- * to the stand-in Home Assistant for a few minutes.
+ * to the stand-in Home Assistant for a few minutes. It runs on the oldest Android Klangbild
+ * supports and on a recent one.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
+@Config(sdk = [28, 34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class FirstLaunchTest {
     @Test
     fun theFirstStartTakesTheConnectionFromItsExtrasAndKeepsIt() {

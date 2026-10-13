@@ -1,59 +1,16 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.Condition
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-
-/**
- * A button of one's own in the quick settings, set up on the phone: its [name] and the Home
- * Assistant entity it works. What it does follows from the entity's kind ([ActionKind]): a
- * script runs (with [variables], and learns which speaker the TV follows), a scene is activated,
- * an automation runs its actions, a button is pressed, a switch is turned on or off. With a
- * [condition] it shows only while that holds.
- */
-data class QuickAction(
-    val name: String,
-    val entity: String,
-    val variables: JsonObject = NO_VARIABLES,
-    val condition: Condition? = null,
-) {
-    val kind: ActionKind? get() = ActionKind.of(entity)
-
-    companion object {
-        val NO_VARIABLES = JsonObject(emptyMap())
-    }
-}
-
-/** What a button does with its entity, by the entity's domain. */
-enum class ActionKind(val domains: List<String>) {
-    /** Runs a script, or an automation's actions. */
-    RUN(listOf("script", "automation")),
-
-    /** Activates a scene. */
-    ACTIVATE(listOf("scene")),
-
-    /** Presses a button. */
-    PRESS(listOf("button", "input_button")),
-
-    /** Switches something on or off, and shows which it is. */
-    TOGGLE(listOf("switch", "input_boolean", "light")),
-    ;
-
-    companion object {
-        /** The kind for [entity] (`script.ungroup`), null for an entity no button can work. */
-        fun of(entity: String): ActionKind? {
-            val domain = entity.substringBefore('.', "")
-            return entries.firstOrNull { domain in it.domains }
-        }
-
-        /** Every domain a button can work, in the order the setup page lists them. */
-        val DOMAINS: List<String> = entries.flatMap { it.domains }
-    }
-}
 
 /** The buttons as Klangbild keeps them: a small JSON list of names, entities, variables and conditions. */
 object QuickActions {
@@ -69,6 +26,8 @@ object QuickActions {
 
     /** A variable's name as Home Assistant's scripts take them. */
     private val VARIABLE = Regex("[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+    fun isVariableName(s: String): Boolean = VARIABLE.matches(s)
 
     /** [actions] as text to store. */
     fun encode(actions: List<QuickAction>): String = buildJsonArray {
@@ -93,8 +52,8 @@ object QuickActions {
     /** A button from what the phone sent or what is stored; null when it is none. */
     fun from(o: JsonObject?): QuickAction? {
         o ?: return null
-        val name = (o["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-        val entity = (o["entity"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        val name = o.string("name")
+        val entity = o.string("entity")
         val variables = when (val v = o["variables"]) {
             null -> QuickAction.NO_VARIABLES
             is JsonObject -> v
@@ -114,10 +73,10 @@ object QuickActions {
      * variables. Null when it is no button.
      */
     fun valid(name: String?, entity: String?, variables: JsonObject = QuickAction.NO_VARIABLES, condition: Condition? = null): QuickAction? {
-        val id = entity?.trim()?.takeIf { LaunchExtras.isEntityId(it) && ActionKind.of(it) != null } ?: return null
+        val id = entity?.trim()?.takeIf { EntityId.isValid(it) && ActionKind.of(it) != null } ?: return null
         val words = name?.trim()?.replace(Regex("\\s+"), " ")?.takeIf { it.isNotEmpty() } ?: nameOf(id)
         val script = id.startsWith("script.")
-        if (script && (variables.size > MAX_VARIABLES || variables.keys.any { !VARIABLE.matches(it) } || variables.toString().length > MAX_VARIABLES_TEXT)) return null
+        if (script && (variables.size > MAX_VARIABLES || variables.keys.any { !isVariableName(it) } || variables.toString().length > MAX_VARIABLES_TEXT)) return null
         return QuickAction(words.take(MAX_NAME).trimEnd(), id, if (script) variables else QuickAction.NO_VARIABLES, condition)
     }
 

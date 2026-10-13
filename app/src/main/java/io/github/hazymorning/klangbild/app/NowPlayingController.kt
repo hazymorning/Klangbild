@@ -16,13 +16,13 @@ import io.github.hazymorning.klangbild.config.SessionOptions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.config.SleepAction
-import io.github.hazymorning.klangbild.config.VistaRequest
+import io.github.hazymorning.klangbild.config.LandscapeRequest
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.data.ArtworkLoader
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaConfig
 import io.github.hazymorning.klangbild.data.ha.HaSource
@@ -40,14 +40,14 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.ScreenDecision
 import io.github.hazymorning.klangbild.domain.ScreenStateMachine
 import io.github.hazymorning.klangbild.domain.SmoothedPosition
-import io.github.hazymorning.klangbild.domain.SongWords
+import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.ValueText
-import io.github.hazymorning.klangbild.domain.VistaPolicy
-import io.github.hazymorning.klangbild.lights.LightBridge
+import io.github.hazymorning.klangbild.domain.LandscapePolicy
+import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -57,7 +57,10 @@ import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Texts
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
+import io.github.hazymorning.klangbild.landscape.Weather
+import io.github.hazymorning.klangbild.landscape.WeatherGlide
+import io.github.hazymorning.klangbild.landscape.WeatherMood
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,7 +76,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
-import java.util.Calendar
 import java.util.concurrent.atomic.AtomicInteger
 
 /** A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text column. */
@@ -140,9 +142,9 @@ data class UiState(
     /** When the sleep timer pauses the music (wall clock), while it is set. */
     val sleepAt: Long? = null,
     /** The landscape, while it has the screen. */
-    val vista: VistaUi? = null,
+    val landscape: LandscapeUi? = null,
     /** The landscape shows or is on its way: its picture is baked ahead, for its label on this side. */
-    val vistaAhead: MiniPlayer? = null,
+    val landscapeAhead: MiniPlayer? = null,
     /** The words in the language shown; null leaves them to the screen's own context. */
     val texts: Texts? = null,
     /** The values of one's own in words, as far as Home Assistant can tell them ("Outside 12 °C"). */
@@ -153,11 +155,12 @@ data class UiState(
     val downHint: Boolean = false,
 )
 
-/** The landscape while it shows: what plays (for the mini player) and where the label sits. */
-data class VistaUi(
+/** The landscape while it shows: what plays (for the mini player), where the label sits, and the weather it shows. */
+data class LandscapeUi(
     val track: TrackInfo?,
     val status: PlayerStatus?,
     val miniPlayer: MiniPlayer,
+    val weather: WeatherGlide = WeatherGlide.still(Weather.FAIR),
 )
 
 /**
@@ -184,7 +187,11 @@ class NowPlayingController(
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
 
-    private var source: NowPlayingSource? = null
+    /** The stored settings have been taken in: until then [settings] holds only the defaults. */
+    @Volatile private var loaded = false
+
+    /** Read from coroutines and the main thread as well; written under the lock. */
+    @Volatile private var source: NowPlayingSource? = null
     private var sourceKey: String? = null
     private var sourceJob: Job? = null
     private var ticker: Job? = null
@@ -193,9 +200,12 @@ class NowPlayingController(
     private val smooth = SmoothedPosition()
     private var lastReportKey: Any? = null
 
-    /** When the landscape takes the screen ([VistaPolicy]), and the time its sky shows. */
-    private val vistaPolicy = VistaPolicy()
-    val vistaClock = VistaClock(now)
+    /** When the landscape takes the screen ([LandscapePolicy]), and the time its sky shows. */
+    private val landscapePolicy = LandscapePolicy()
+    val landscapeClock = LandscapeClock(now)
+
+    /** The weather the landscape shows, while it does: the picture and the lights read the same. */
+    private var landscapeWeather: WeatherGlide? = null
 
     /** The next chapter's start on the wall clock, so the stage turns to it on time. */
     @Volatile private var chapterEndsAt: Long? = null
@@ -205,7 +215,7 @@ class NowPlayingController(
 
     /** The lights in the cover's colors (through Home Assistant). */
     private val lightSync = LightSync(scope, now)
-    private val lightTargets = LightTargets(fieldClock, vistaClock, now)
+    private val lightTargets = LightTargets(fieldClock, landscapeClock, now)
 
     private val host = object : ControllerHost {
         override val lock: Any get() = this@NowPlayingController
@@ -227,8 +237,8 @@ class NowPlayingController(
         override fun applySettings(updated: Settings) = this@NowPlayingController.applySettings(updated)
         override fun send(command: RemoteCommand) = this@NowPlayingController.send(command)
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
-        override fun showVista() = this@NowPlayingController.showVista()
-        override fun hideVista(): Boolean = this@NowPlayingController.hideVista()
+        override fun showLandscape() = this@NowPlayingController.showLandscape()
+        override fun hideLandscape(): Boolean = this@NowPlayingController.hideLandscape()
     }
     private val sleep = SleepControl(host)
     private val menu = MenuControl(host, sleep)
@@ -254,11 +264,10 @@ class NowPlayingController(
             withContext(Dispatchers.IO) { SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value) }
         },
         save = { updated ->
-            settingsStore.update({ updated }, settings.value)
             // Leaving setup: the new settings start a fresh connection.
             session.value = session.value.copy(showSetup = false)
-            machine.requestSetup(false)
-            take(updated, "setup page")
+            synchronized(this@NowPlayingController) { machine.requestSetup(false) }
+            takeAndWrite(updated, "setup page")
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
         clientId = { setupServer.origin?.let { "$it/" } },
@@ -302,6 +311,7 @@ class NowPlayingController(
                 // extras) never undoes a connection the store holds now.
                 if (!s.isConfigured && settings.value.isConfigured && settingsStore.settings.first().isConfigured) return@collect
                 onSettings(s)
+                loaded = true
             }
         }
         ticker = scope.launch {
@@ -346,6 +356,7 @@ class NowPlayingController(
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
         lastReportKey = null
         lastVolume = null
+        landscapeWeather = null
         _ui.value = _ui.value.copy(
             source = SourceState(LinkState.CONNECTING),
             screen = Screen.Rest(RestReason.CONNECTING),
@@ -372,28 +383,36 @@ class NowPlayingController(
     private fun tickDelay(): Long = chapterEndsAt?.let { (it - now() + 20).coerceIn(20, 1_000) } ?: 1_000
 
     /** Extras from `am start` (cold start or onNewIntent). */
+    @Synchronized
     fun applyLaunch(extras: Map<String, Any?>) {
         session.value = LaunchExtras.session(extras)
         machine.requestSetup(session.value.showSetup)
-        when (session.value.vista) {
-            VistaRequest.SHOW -> showVista()
-            VistaRequest.TIMELAPSE -> showVista(timelapse = true)
+        when (session.value.landscape) {
+            LandscapeRequest.SHOW -> showLandscape()
+            LandscapeRequest.TIMELAPSE -> showLandscape(timelapse = true)
             // Asked to go: like up on the remote, it goes, and its delays start again.
-            VistaRequest.HIDE -> hideVista()
+            LandscapeRequest.HIDE -> hideLandscape()
             null -> Unit
         }
         if (LaunchExtras.hasStoredExtras(extras)) {
             scope.launch {
-                val current = settingsStore.settings.first()
-                val updated = LaunchExtras.applyTo(current, extras)
-                settingsStore.update({ updated }, current)
-                take(updated, "extras")
+                // On a first start the stored settings may not be in yet: the extras go on top of
+                // them, never on top of the defaults.
+                if (!loaded) {
+                    val stored = settingsStore.settings.first()
+                    synchronized(this@NowPlayingController) {
+                        if (!loaded) onSettings(stored)
+                        loaded = true
+                    }
+                }
+                takeAndWrite(LaunchExtras.applyTo(settings.value, extras), "launch's extras")
             }
         }
         reconcileSource()
         recompute()
     }
 
+    @Synchronized
     fun requestSetup(show: Boolean) {
         machine.requestSetup(show)
         recompute()
@@ -408,8 +427,8 @@ class NowPlayingController(
      */
     @Synchronized
     fun interaction(): Boolean {
-        val was = _ui.value.vista != null
-        vistaPolicy.interaction(now())
+        val was = _ui.value.landscape != null
+        landscapePolicy.interaction(now())
         if (was) recompute()
         return was
     }
@@ -419,16 +438,16 @@ class NowPlayingController(
      * [timelapse] lets a day pass in two minutes (for measuring on the device).
      */
     @Synchronized
-    fun showVista(timelapse: Boolean = false) {
-        vistaPolicy.request(true)
-        vistaClock.timelapse(timelapse)
+    fun showLandscape(timelapse: Boolean = false) {
+        landscapePolicy.request(true)
+        landscapeClock.timelapse(timelapse)
         recompute()
     }
 
     /** Up on the remote: the landscape comes as if chosen (it stays whatever plays), or, showing, goes. */
     @Synchronized
-    fun toggleVista() {
-        if (_ui.value.vista != null || vistaPolicy.requested) hideVista() else showVista()
+    fun toggleLandscape() {
+        if (_ui.value.landscape != null || landscapePolicy.requested) hideLandscape() else showLandscape()
     }
 
     /**
@@ -436,10 +455,10 @@ class NowPlayingController(
      * returns to the real moment, and the delays start again. Returns whether it was showing.
      */
     @Synchronized
-    fun hideVista(): Boolean {
-        val was = _ui.value.vista != null || vistaPolicy.requested
-        vistaPolicy.leave(now())
-        vistaClock.timelapse(false)
+    fun hideLandscape(): Boolean {
+        val was = _ui.value.landscape != null || landscapePolicy.requested
+        landscapePolicy.leave(now())
+        landscapeClock.timelapse(false)
         recompute()
         return was
     }
@@ -509,11 +528,36 @@ class NowPlayingController(
         onSettings(updated)
         scope.launch {
             try {
-                // Always the newest state: quick presses may overtake each other.
-                persistLock.withLock { settingsStore.update({ settings.value }, settings.value) }
+                persist()
             } finally {
                 localEdits.decrementAndGet()
             }
+        }
+    }
+
+    /**
+     * Writes the settings as they are now. Always the newest state, one write at a time: quick
+     * presses overtake each other, and a change from the setup page or the launch's extras never
+     * comes back undone by a menu's write that was still on its way, or the other way round.
+     */
+    private suspend fun persist() {
+        persistLock.withLock { settingsStore.write(settings.value) }
+    }
+
+    /**
+     * Settings from the phone's setup page or the launch's extras ([from]): taken at once and
+     * written, waiting for the write. They never wait for the store's own echo, which has been
+     * seen to stay away on a first start (Android TV 14 emulator, right after installing) and
+     * left the app on the setup page.
+     */
+    private suspend fun takeAndWrite(updated: Settings, from: String) {
+        if (updated.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
+        localEdits.incrementAndGet()
+        try {
+            onSettings(updated)
+            persist()
+        } finally {
+            localEdits.decrementAndGet()
         }
     }
 
@@ -535,17 +579,6 @@ class NowPlayingController(
 
     /** OK on the entry under the cursor: its next value, or what it says. */
     fun quickChange() = quick.change()
-
-    /**
-     * Settings just written by the app itself (from the launch's extras, from the setup page),
-     * taken at once: the store's own echo of them has been seen to stay away on a first start
-     * (Android TV 14 emulator, right after installing), which left the app on the setup page.
-     */
-    private fun take(s: Settings, from: String) {
-        if (localEdits.get() != 0) return
-        if (s.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the $from: connection ${if (s.isConfigured) "set" else "not set"}")
-        onSettings(s)
-    }
 
     @Synchronized
     private fun onSettings(s: Settings) {
@@ -590,7 +623,7 @@ class NowPlayingController(
         stopSource(source)
         // Another speaker (or another server) has its own history.
         strip.clear()
-        lastWords = null
+        lastLyrics = null
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
@@ -667,7 +700,7 @@ class NowPlayingController(
     /** With the landscape on when paused, a paused cover waits for it instead of turning into the clock. */
     private fun timingFor(s: Settings) = Timing(
         sleepAfterMs = s.sleepAfterMinutes * 60_000L,
-        pauseToRestMs = if (s.vistaPauseSeconds > 0) Long.MAX_VALUE / 4 else Timing().pauseToRestMs,
+        pauseToRestMs = if (s.landscapePauseSeconds > 0) Long.MAX_VALUE / 4 else Timing().pauseToRestMs,
     )
 
     @Synchronized
@@ -683,7 +716,7 @@ class NowPlayingController(
         val party = quick.partyWanted(src.party)
         val decision: ScreenDecision = machine.decide(src, t, holdPause = party)
         val appearance = appearanceFor(s, src)
-        val look = Look(appearance, s.light.factor, coverField = s.background == BackgroundMode.COVER)
+        val look = Look(appearance, s.intensity.factor, coverField = s.background == BackgroundMode.COVER)
         val stage = decision.screen as? Screen.Stage
         val playing = stage?.status == PlayerStatus.PLAYING && !stage.linkDown
         val speed = src.player?.speed ?: 1f
@@ -702,17 +735,25 @@ class NowPlayingController(
         val previous = _ui.value
         val menuState = menu.state(s, appearance, stage?.track)
         // The landscape waits while the menu is open.
-        val quietLongEnough = vistaPolicy.shows(
+        val quietLongEnough = landscapePolicy.shows(
             decision.screen,
             t,
-            if (party) 0L else s.vistaPauseSeconds * 1000L,
-            if (party) 0L else s.vistaPlayingSeconds * 1000L,
+            if (party) 0L else s.landscapePauseSeconds * 1000L,
+            if (party) 0L else s.landscapePlayingSeconds * 1000L,
         )
         // While the quick settings are open, the landscape stays as it was (unless they change it).
-        val vistaOn = quick.vistaHeld ?: quietLongEnough
-        val vista = if (vistaOn && menuState == null) VistaUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer) else null
+        val landscapeOn = quick.landscapeHeld ?: quietLongEnough
+        val landscape = if (landscapeOn && menuState == null) {
+            // The weather outside as the landscape comes, then gliding toward every change.
+            val outside = WeatherMood.of(src.weather, src.cloudCoverage, src.windKmh) ?: Weather.FAIR
+            val weather = landscapeWeather?.toward(outside, t) ?: WeatherGlide.still(outside)
+            LandscapeUi(track = stage?.track, status = stage?.status, miniPlayer = s.miniPlayer, weather = weather)
+        } else {
+            null
+        }
+        landscapeWeather = landscape?.weather
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
-        val quickState = quick.state(decision.screen, vista != null)
+        val quickState = quick.state(decision.screen, landscape != null)
         _ui.value = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
@@ -727,19 +768,19 @@ class NowPlayingController(
             volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && t < volumeFlashUntil,
             chapter = chapter,
             sleepAt = sleep.shownPauseAt(previous.sleepAt),
-            vista = vista,
-            vistaAhead = s.miniPlayer.takeIf { vistaPolicy.onItsWay },
+            landscape = landscape,
+            landscapeAhead = s.miniPlayer.takeIf { landscapePolicy.onItsWay },
             texts = texts,
             values = s.ownValues.mapNotNull { v ->
                 val e = src.entities[v.entity]
                 ValueText.of(v, e?.state, e?.attributes, src.precision[v.entity], src.temperatureUnit, texts, t)
             },
             partyCode = quick.partyCode.takeIf { party },
-            downHint = !s.quickSeen && !s.volumeKeys && stage != null && menuState == null && quickState == null && vista == null,
+            downHint = !s.quickSeen && !s.volumeKeys && stage != null && menuState == null && quickState == null && landscape == null,
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)
-        lightSync.update(lightTargets.target(s, _ui.value, stage, playing, vista))
+        lightSync.update(lightTargets.target(s, _ui.value, stage, playing, landscape))
         if (stage != null) {
             if (s.view == StageView.FLOW) showFlow(stage, look, lyrics) else showStage(stage, look, lyrics)
         }
@@ -768,8 +809,7 @@ class NowPlayingController(
             AppearanceMode.LIGHT -> Appearance.LIGHT
             AppearanceMode.DARK -> Appearance.DARK
             AppearanceMode.AUTO -> {
-                val elevation = src.sunElevation ?: Calendar.getInstance().apply { timeInMillis = now() }
-                    .let { SunClock.elevation(it.get(Calendar.HOUR_OF_DAY), it.get(Calendar.MINUTE)) }
+                val elevation = src.sunElevation ?: SunClock.elevationAt(now())
                 Appearance.bySun(elevation, lastAppearance)
             }
         }
@@ -778,16 +818,16 @@ class NowPlayingController(
     }
 
     /** What was last known of the words of the song on stage: it stays while a moment between two songs says nothing. */
-    private var lastWords: SongWords? = null
+    private var lastLyrics: SongLyrics? = null
 
     /**
      * The words that take the text column for [track]: with Lyrics on, the synced words Music
      * Assistant has for a song whose position is known (the words follow it).
      */
     private fun lyricsFor(s: Settings, src: SourceState, track: TrackInfo): Lyrics? {
-        src.words?.let { lastWords = it }
+        src.lyrics?.let { lastLyrics = it }
         if (!s.lyrics || track.kind != MediaKind.MUSIC || track.durationMs == null) return null
-        return lastWords?.takeIf { it.key == track.key }?.lyrics
+        return lastLyrics?.takeIf { it.key == track.key }?.lyrics
     }
 
     /** The stage shows [stage]'s track as soon as its scene is ready (the next track's is made ahead). */

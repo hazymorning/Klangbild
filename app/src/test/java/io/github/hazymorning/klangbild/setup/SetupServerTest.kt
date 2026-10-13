@@ -3,13 +3,21 @@ package io.github.hazymorning.klangbild.setup
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,7 +54,7 @@ class SetupServerTest {
 
     @After
     fun tearDown() {
-        server.stop()
+        if (::server.isInitialized) server.stop()
         scope.cancel()
     }
 
@@ -75,13 +83,37 @@ class SetupServerTest {
     }
 
     /** Asks for [path] as a browser does; the whole answer. */
-    private fun get(at: URI, path: String): String = Socket(at.host, at.port).use { s ->
+    private fun get(at: URI, path: String): String = send(at, "GET $path HTTP/1.1\r\nHost: ${at.host}:${at.port}\r\n\r\n")
+
+    /** Sends [request] as it is; the whole answer. */
+    private fun send(at: URI, request: String): String = Socket(at.host, at.port).use { s ->
         s.soTimeout = 10_000
         s.getOutputStream().apply {
-            write("GET $path HTTP/1.1\r\nHost: ${at.host}:${at.port}\r\n\r\n".toByteArray())
+            write(request.toByteArray())
             flush()
         }
         String(s.getInputStream().readBytes())
+    }
+
+    @Test
+    fun `only the page itself is answered, at its own address and in JSON`() {
+        val at = start()
+        val own = "${at.host}:${at.port}"
+        val body = """{"code":"${handler.code}"}"""
+        fun call(host: String, origin: String?, type: String) = send(
+            at,
+            "POST /api/state HTTP/1.1\r\nHost: $host\r\n" + (origin?.let { "Origin: $it\r\n" } ?: "") +
+                "Content-Type: $type\r\nContent-Length: ${body.length}\r\n\r\n$body",
+        )
+        assertThat(call(own, "http://$own", "application/json")).startsWith("HTTP/1.1 200")
+        // Another name that leads to the TV (a page that rebinds its own name to the TV's address).
+        assertThat(call("tv.example.com:${at.port}", "http://$own", "application/json")).startsWith("HTTP/1.1 403")
+        assertThat(send(at, "GET / HTTP/1.1\r\nHost: tv.example.com:${at.port}\r\n\r\n")).startsWith("HTTP/1.1 403")
+        // Another page in the phone's browser.
+        assertThat(call(own, "http://example.com", "application/json")).startsWith("HTTP/1.1 403")
+        // A plain form, which any page may send without asking.
+        assertThat(call(own, "http://$own", "text/plain")).startsWith("HTTP/1.1 403")
+        assertThat(call(own, null, "application/x-www-form-urlencoded")).startsWith("HTTP/1.1 403")
     }
 
     @Test
@@ -162,5 +194,18 @@ class SetupServerTest {
         server.start()
         val at = URI(server.origin!!)
         assertThat(get(at, "/favicon.ico")).startsWith("HTTP/1.1 204")
+    }
+
+    @Test
+    fun `discovery tells which answer Home Assistant gave`(): Unit = runBlocking {
+        MockWebServer().use { ha ->
+            ha.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest) = MockResponse.Builder().code(502).build()
+            }
+            ha.start()
+            val t = TestTexts.english()
+            val found = SetupServer.discover(OkHttpClient(), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
+            assertThat((found as DiscoverResult.Failed).message).isEqualTo(t.format(R.string.discover_unexpected, 502))
+        }
     }
 }

@@ -2,14 +2,12 @@ package io.github.hazymorning.klangbild.ui
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
-import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.art.SyntheticCover
-import io.github.hazymorning.klangbild.config.LightLevel
+import io.github.hazymorning.klangbild.config.Intensity
 import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.config.SettingsMenu
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
@@ -17,6 +15,8 @@ import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
@@ -24,8 +24,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import io.github.hazymorning.klangbild.Pictures
+import org.junit.experimental.categories.Category
 
 /** The adjustable parts: the speaker group in the status line, volume, hidden lines, light, menu. */
+@Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -74,17 +77,17 @@ class OptionsTest {
 
     @Test fun lightStrong() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_strong") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.STRONG.factor) }
+        shot("light_strong") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.STRONG.factor) }
     }
 
     @Test fun lightSubtle() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_subtle") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.SUBTLE.factor) }
+        shot("light_subtle") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.SUBTLE.factor) }
     }
 
     @Test fun lightOff() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_off") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.OFF.factor) }
+        shot("light_off") { Fixtures.Theater(stage, PlayerStatus.PLAYING, intensity = Intensity.OFF.factor) }
     }
 
     @Test fun restGrouped() = shot("rest_group") {
@@ -104,13 +107,13 @@ class OptionsTest {
     @Test fun menuLyricsNeeds() = shot("menu_lyrics_needs") { MenuScreen(menu(MenuEntry.LYRICS)) }
 
     /** No lights chosen yet: both lines dimmed, the explanation says how to set them up. */
-    @Test fun menuLightsNeeded() = shot("menu_lights_set_up") { MenuScreen(menu(MenuEntry.LIGHTS)) }
+    @Test fun menuLightsNeeded() = shot("menu_lights_set_up") { MenuScreen(menu(MenuEntry.BRIGHTNESS)) }
 
     /** OK on "Information": the groups give way to its settings, the first one in the light. */
     @Test fun menuOpensAGroup() {
         var state by androidx.compose.runtime.mutableStateOf(Fixtures.menuGroups(cursor = 1))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_open_%02d.png".format(frame++))
@@ -122,24 +125,24 @@ class OptionsTest {
     @Test fun menuGroup() = shot("menu_group") { MenuScreen(menu(MenuEntry.GROUP)) }
 
     @Test fun menuLight() = shot("menu_light") {
-        MenuScreen(menu(MenuEntry.LIGHT, configured.copy(light = LightLevel.SUBTLE)))
+        MenuScreen(menu(MenuEntry.INTENSITY, configured.copy(intensity = Intensity.SUBTLE)))
     }
 
-    @Test fun menuBars() = shot("menu_bars") {
-        MenuScreen(menu(MenuEntry.LIGHTS, configured.copy(roomLights = io.github.hazymorning.klangbild.config.RoomLights(left = "light.l", right = "light.r"), roomLightLevel = io.github.hazymorning.klangbild.config.RoomLightLevel.P60)))
+    @Test fun menuLights() = shot("menu_bars") {
+        MenuScreen(menu(MenuEntry.BRIGHTNESS, configured.copy(roomLights = io.github.hazymorning.klangbild.config.RoomLights(left = "light.l", right = "light.r"), roomLightBrightness = io.github.hazymorning.klangbild.config.RoomLightBrightness.P60)))
     }
 
     @Test fun menuSleep() = shot("menu_sleep") { MenuScreen(menu(MenuEntry.SLEEP_AFTER)) }
 
-    @Test fun menuVista() = shot("menu_vista") {
-        MenuScreen(menu(MenuEntry.VISTA_PLAYING, configured.copy(vistaPlayingSeconds = 1800)))
+    @Test fun menuLandscape() = shot("menu_landscape") {
+        MenuScreen(menu(MenuEntry.LANDSCAPE_PLAYING, configured.copy(landscapePlayingSeconds = 1800)))
     }
 
     /** The list glides through the light when the cursor moves down by one line, then by three. */
     @Test fun menuGlide() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_glide_%02d.png".format(frame++))
@@ -157,7 +160,7 @@ class OptionsTest {
     @Test fun menuHeld() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.CLOCK))
         compose.mainClock.autoAdvance = false
-        compose.setContent { MenuScreen(state) }
+        compose.setContent { Frames { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_held_%02d.png".format(frame++))
@@ -178,4 +181,11 @@ class OptionsTest {
     @Test fun menuConnection() = shot("menu_connection") {
         MenuScreen(menu(MenuEntry.CONNECTION, Settings(), MenuContext(LinkState.UNCONFIGURED)))
     }
+
+    /**
+     * A sequence of frames on the test's own clock. The menu's light is made off the main thread on
+     * the real clock, so here it is made at once, as in a still: every run shows the same frames.
+     */
+    @Composable
+    private fun Frames(content: @Composable () -> Unit) = CompositionLocalProvider(LocalStill provides true, content = content)
 }

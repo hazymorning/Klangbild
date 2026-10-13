@@ -4,10 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.art.SyntheticCovers
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
@@ -15,10 +17,13 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.domain.StageView
+import io.github.hazymorning.klangbild.landscape.Weather
+import io.github.hazymorning.klangbild.landscape.WeatherGlide
+import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
-import io.github.hazymorning.klangbild.ui.stage.StageTheatre
+import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -26,7 +31,7 @@ import io.github.hazymorning.klangbild.text.Texts
 
 /** Test content: the test catalog plus helpers to turn it into scenes and models. */
 object Fixtures {
-    val tracks = Catalogue.tracks
+    val tracks = Catalog.tracks
 
     /** The words of most shots: German, as the catalog's music and rooms are. */
     val texts: Texts get() = TestTexts.german
@@ -40,7 +45,7 @@ object Fixtures {
     fun at(hour: Int, minute: Int, day: Int = 8): Long =
         java.time.ZonedDateTime.of(2026, 10, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
 
-    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalogue.SCHEME + cover.name }
+    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalog.SCHEME + cover.name }
 
     val radio: TrackInfo get() = tracks.first { it.artworkUrl == null }
 
@@ -48,10 +53,10 @@ object Fixtures {
     val spiegel = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
 
     /** An English song to the night drive's cover, for the English shots of the words. */
-    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalogue.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
+    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalog.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
 
     /** Synced words from LRC. */
-    fun words(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
+    fun lyrics(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
 
     fun scene(
         track: TrackInfo,
@@ -60,7 +65,7 @@ object Fixtures {
         view: StageView = StageView.SINGLE,
         coverField: Boolean = false,
     ): ArtworkScene {
-        val cover = track.artworkUrl?.removePrefix(Catalogue.SCHEME)?.let { SyntheticCover.valueOf(it) }
+        val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
         val bmp = cover?.let { SyntheticCovers.render(it) }
         return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, view = view, coverField = coverField)
     }
@@ -197,6 +202,10 @@ object Fixtures {
         coverField: Boolean = false,
     ) = StageData(track, scene(track, screen, appearance, coverField = coverField))
 
+    /** The landscape with [track]'s label on [side], showing the weather Home Assistant calls [weather] (none: a fair sky). */
+    fun landscape(track: TrackInfo?, status: PlayerStatus?, side: MiniPlayer, weather: String? = null) =
+        LandscapeUi(track, status, side, WeatherGlide.still(WeatherMood.of(weather, null) ?: Weather.FAIR))
+
     /** A cover flow of [scenes] (ids as given), the card with id [middle] in the middle. */
     fun flow(scenes: Map<Long, ArtworkScene>, ids: List<Long>, middle: Long): FlowData {
         val cards = ids.map { id ->
@@ -210,7 +219,7 @@ object Fixtures {
     fun menu(
         entry: io.github.hazymorning.klangbild.config.MenuEntry,
         settings: io.github.hazymorning.klangbild.config.Settings,
-        ctx: io.github.hazymorning.klangbild.config.MenuContext = io.github.hazymorning.klangbild.config.MenuContext(io.github.hazymorning.klangbild.data.LinkState.CONNECTED),
+        ctx: io.github.hazymorning.klangbild.config.MenuContext = io.github.hazymorning.klangbild.config.MenuContext(io.github.hazymorning.klangbild.domain.LinkState.CONNECTED),
         t: Texts = texts,
     ): io.github.hazymorning.klangbild.app.MenuState {
         val section = entry.section
@@ -224,10 +233,10 @@ object Fixtures {
 
     /** The animated cover flow for one strip; what comes next is the card to the right. */
     @Composable
-    fun FlowTheatreOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
+    fun FlowTheaterOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
         val next = flow.cards.getOrNull(flow.current + 1)?.track
-        io.github.hazymorning.klangbild.ui.flow.FlowTheatre(
+        io.github.hazymorning.klangbild.ui.flow.FlowTheater(
             flow = flow,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
@@ -237,22 +246,22 @@ object Fixtures {
 
     /** The animated stage (pause dimming, buffering pulse) for one stage, frozen in time. */
     @Composable
-    fun Theatre(
+    fun Theater(
         stage: StageData,
         status: PlayerStatus,
         next: TrackInfo? = null,
-        lightFactor: Float = 1f,
+        intensity: Float = 1f,
         group: String? = null,
         muted: Boolean = false,
         linkDown: Boolean = false,
         partyCode: String? = null,
     ) {
         val lead = StageTexts.lead(status, muted, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = texts)
-        StageTheatre(
+        StageTheater(
             stage = stage,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            lightFactor = { lightFactor },
+            intensity = { intensity },
             dimmed = linkDown,
             partyCode = partyCode,
         )

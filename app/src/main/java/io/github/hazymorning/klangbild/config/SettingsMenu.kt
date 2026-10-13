@@ -3,8 +3,8 @@ package io.github.hazymorning.klangbild.config
 import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.StageView
@@ -16,7 +16,7 @@ enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
     PICTURE(R.string.section_picture, R.string.about_section_picture),
     INFO(R.string.section_info, R.string.about_section_info),
     LIGHTS(R.string.section_lights, R.string.about_section_lights),
-    VISTA(R.string.section_vista, R.string.about_section_vista),
+    LANDSCAPE(R.string.section_landscape, R.string.about_section_landscape),
     REMOTE(R.string.section_remote, R.string.about_section_remote),
     TIMER(R.string.section_timer, R.string.about_section_timer),
     SYSTEM(R.string.section_system, R.string.about_section_system),
@@ -27,21 +27,21 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     VIEW(MenuSection.PICTURE, R.string.entry_view),
     APPEARANCE(MenuSection.PICTURE, R.string.entry_appearance),
     BACKGROUND(MenuSection.PICTURE, R.string.entry_background),
-    LIGHT(MenuSection.PICTURE, R.string.entry_intensity),
+    INTENSITY(MenuSection.PICTURE, R.string.entry_intensity),
     MOTION(MenuSection.PICTURE, R.string.entry_motion),
     CLOCK(MenuSection.INFO, R.string.entry_clock),
-    TIME_LINE(MenuSection.INFO, R.string.entry_progress),
+    PROGRESS_BAR(MenuSection.INFO, R.string.entry_progress),
     NEXT(MenuSection.INFO, R.string.entry_next),
     ALBUM(MenuSection.INFO, R.string.entry_album),
     GROUP(MenuSection.INFO, R.string.entry_group),
     VOLUME(MenuSection.INFO, R.string.entry_volume),
     VALUES(MenuSection.INFO, R.string.entry_values),
     LYRICS(MenuSection.INFO, R.string.entry_lyrics),
-    LIGHTS(MenuSection.LIGHTS, R.string.entry_brightness),
-    LIGHTS_ONLY_ON(MenuSection.LIGHTS, R.string.entry_off_lights),
-    VISTA_PAUSE(MenuSection.VISTA, R.string.entry_vista_pause),
-    VISTA_PLAYING(MenuSection.VISTA, R.string.entry_vista_playing),
-    MINI_PLAYER(MenuSection.VISTA, R.string.entry_mini_player),
+    BRIGHTNESS(MenuSection.LIGHTS, R.string.entry_brightness),
+    OFF_LIGHTS(MenuSection.LIGHTS, R.string.entry_off_lights),
+    LANDSCAPE_PAUSE(MenuSection.LANDSCAPE, R.string.entry_landscape_pause),
+    LANDSCAPE_PLAYING(MenuSection.LANDSCAPE, R.string.entry_landscape_playing),
+    MINI_PLAYER(MenuSection.LANDSCAPE, R.string.entry_mini_player),
     REMOTE(MenuSection.REMOTE, R.string.entry_remote),
     UP_DOWN(MenuSection.REMOTE, R.string.entry_up_down),
     SPOKEN(MenuSection.REMOTE, R.string.entry_spoken),
@@ -116,7 +116,7 @@ object SettingsMenu {
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
         MenuEntry.LYRICS -> !s.hasMusicAssistant
-        MenuEntry.LIGHTS, MenuEntry.LIGHTS_ONLY_ON -> !s.roomLights.isSet
+        MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         else -> false
     }
@@ -130,14 +130,14 @@ object SettingsMenu {
 
     /** Where a slider stands: the lights' brightness. */
     fun level(e: MenuEntry, s: Settings): Float? = when (e) {
-        MenuEntry.LIGHTS -> s.roomLightLevel.brightness.takeIf { s.roomLights.isSet }
+        MenuEntry.BRIGHTNESS -> s.roomLightBrightness.brightness.takeIf { s.roomLights.isSet }
         else -> null
     }
 
     fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
         MenuEntry.VIEW -> t[if (s.view == StageView.FLOW) R.string.view_flow else R.string.view_single]
         MenuEntry.CLOCK -> onOff(s.showClock, t)
-        MenuEntry.TIME_LINE -> onOff(s.showTimeLine, t)
+        MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
         MenuEntry.ALBUM -> onOff(s.showAlbum, t)
         MenuEntry.GROUP -> onOff(s.showGroup, t)
@@ -159,12 +159,12 @@ object SettingsMenu {
                 MotionLevel.LIVELY -> R.string.motion_fast
             },
         ]
-        MenuEntry.LIGHTS -> when {
+        MenuEntry.BRIGHTNESS -> when {
             !s.roomLights.isSet -> t[R.string.set_up]
-            s.roomLightLevel == RoomLightLevel.OFF -> t[R.string.off]
-            else -> t.percent(s.roomLightLevel.percent)
+            s.roomLightBrightness == RoomLightBrightness.OFF -> t[R.string.off]
+            else -> t.percent(s.roomLightBrightness.percent)
         }
-        MenuEntry.LIGHTS_ONLY_ON -> t[
+        MenuEntry.OFF_LIGHTS -> t[
             when {
                 !s.roomLights.isSet -> R.string.set_up
                 s.lightsOnlyOn -> R.string.off_lights_leave
@@ -178,16 +178,16 @@ object SettingsMenu {
                 AppearanceMode.DARK -> R.string.appearance_dark
             },
         ]
-        MenuEntry.LIGHT -> t[
-            when (s.light) {
-                LightLevel.STRONG -> R.string.intensity_strong
-                LightLevel.NORMAL -> R.string.intensity_normal
-                LightLevel.SUBTLE -> R.string.intensity_low
-                LightLevel.OFF -> R.string.off
+        MenuEntry.INTENSITY -> t[
+            when (s.intensity) {
+                Intensity.STRONG -> R.string.intensity_strong
+                Intensity.NORMAL -> R.string.intensity_normal
+                Intensity.SUBTLE -> R.string.intensity_low
+                Intensity.OFF -> R.string.off
             },
         ]
-        MenuEntry.VISTA_PAUSE -> delay(s.vistaPauseSeconds, t)
-        MenuEntry.VISTA_PLAYING -> delay(s.vistaPlayingSeconds, t)
+        MenuEntry.LANDSCAPE_PAUSE -> delay(s.landscapePauseSeconds, t)
+        MenuEntry.LANDSCAPE_PLAYING -> delay(s.landscapePlayingSeconds, t)
         MenuEntry.MINI_PLAYER -> t[
             when (s.miniPlayer) {
                 MiniPlayer.LEFT -> R.string.mini_player_left
@@ -196,7 +196,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.REMOTE -> onOff(s.remoteControl, t)
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.up_down_volume else R.string.up_down_vista]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.up_down_volume else R.string.up_down_landscape]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.spoken_jump else R.string.spoken_change]
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
@@ -231,7 +231,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.CLOCK -> t[R.string.about_clock]
-        MenuEntry.TIME_LINE -> t[R.string.about_progress]
+        MenuEntry.PROGRESS_BAR -> t[R.string.about_progress]
         MenuEntry.NEXT -> t[R.string.about_next]
         MenuEntry.ALBUM -> t[R.string.about_album]
         MenuEntry.GROUP -> t[R.string.about_group]
@@ -257,7 +257,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) R.string.about_background_cover else R.string.about_background_plain]
-        MenuEntry.LIGHT -> intensity(s, ctx, t)
+        MenuEntry.INTENSITY -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
             val what = when {
                 s.background == BackgroundMode.COVER && s.roomLights.isSet -> R.string.about_motion_both
@@ -272,26 +272,26 @@ object SettingsMenu {
             }
             sentences(t[what], t[how], t[R.string.about_motion_playing])
         }
-        MenuEntry.LIGHTS -> t[
+        MenuEntry.BRIGHTNESS -> t[
             when {
                 !s.roomLights.isSet -> R.string.about_lights_set_up
-                s.roomLightLevel == RoomLightLevel.OFF -> R.string.about_lights_off
+                s.roomLightBrightness == RoomLightBrightness.OFF -> R.string.about_lights_off
                 else -> R.string.about_lights_on
             },
         ]
-        MenuEntry.LIGHTS_ONLY_ON -> t[
+        MenuEntry.OFF_LIGHTS -> t[
             when {
                 !s.roomLights.isSet -> R.string.about_lights_set_up
                 s.lightsOnlyOn -> R.string.about_lights_only_on
                 else -> R.string.about_lights_switch_on
             },
         ]
-        MenuEntry.VISTA_PAUSE -> t[if (s.vistaPauseSeconds == 0) R.string.about_vista_pause_off else R.string.about_vista_pause]
-        MenuEntry.VISTA_PLAYING -> t[
+        MenuEntry.LANDSCAPE_PAUSE -> t[if (s.landscapePauseSeconds == 0) R.string.about_landscape_pause_off else R.string.about_landscape_pause]
+        MenuEntry.LANDSCAPE_PLAYING -> t[
             when {
-                s.vistaPlayingSeconds != 0 -> R.string.about_vista_playing
-                s.volumeKeys -> R.string.about_vista_playing_off_volume
-                else -> R.string.about_vista_playing_off
+                s.landscapePlayingSeconds != 0 -> R.string.about_landscape_playing
+                s.volumeKeys -> R.string.about_landscape_playing_off_volume
+                else -> R.string.about_landscape_playing_off
             },
         ]
         MenuEntry.MINI_PLAYER -> t[
@@ -302,7 +302,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.REMOTE -> t[if (s.remoteControl) R.string.about_remote_on else R.string.about_remote_off]
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.about_up_down_volume else R.string.about_up_down_vista]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.about_up_down_volume else R.string.about_up_down_landscape]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.about_spoken_jump else R.string.about_spoken_change]
         MenuEntry.SLEEP_TIMER -> when {
             ctx.sleep == SleepChoice.OFF -> t[R.string.about_sleep_timer_off]
@@ -319,23 +319,23 @@ object SettingsMenu {
     /** What "Intensity" does: with the cover's colors how strong they are, else how the cover lights the wall. */
     private fun intensity(s: Settings, ctx: MenuContext, t: Texts): String {
         val (what, how) = when {
-            s.background == BackgroundMode.COVER -> R.string.about_intensity_cover to when (s.light) {
-                LightLevel.STRONG -> R.string.about_intensity_cover_strong
-                LightLevel.NORMAL -> R.string.about_intensity_cover_normal
-                LightLevel.SUBTLE -> R.string.about_intensity_cover_low
-                LightLevel.OFF -> if (ctx.appearance == Appearance.LIGHT) R.string.about_intensity_cover_off_light else R.string.about_intensity_cover_off_dark
+            s.background == BackgroundMode.COVER -> R.string.about_intensity_cover to when (s.intensity) {
+                Intensity.STRONG -> R.string.about_intensity_cover_strong
+                Intensity.NORMAL -> R.string.about_intensity_cover_normal
+                Intensity.SUBTLE -> R.string.about_intensity_cover_low
+                Intensity.OFF -> if (ctx.appearance == Appearance.LIGHT) R.string.about_intensity_cover_off_light else R.string.about_intensity_cover_off_dark
             }
-            ctx.appearance == Appearance.LIGHT -> R.string.about_intensity_light to when (s.light) {
-                LightLevel.STRONG -> R.string.about_intensity_light_strong
-                LightLevel.NORMAL -> R.string.about_intensity_light_normal
-                LightLevel.SUBTLE -> R.string.about_intensity_light_low
-                LightLevel.OFF -> R.string.about_intensity_light_off
+            ctx.appearance == Appearance.LIGHT -> R.string.about_intensity_light to when (s.intensity) {
+                Intensity.STRONG -> R.string.about_intensity_light_strong
+                Intensity.NORMAL -> R.string.about_intensity_light_normal
+                Intensity.SUBTLE -> R.string.about_intensity_light_low
+                Intensity.OFF -> R.string.about_intensity_light_off
             }
-            else -> R.string.about_intensity_dark to when (s.light) {
-                LightLevel.STRONG -> R.string.about_intensity_dark_strong
-                LightLevel.NORMAL -> R.string.about_intensity_dark_normal
-                LightLevel.SUBTLE -> R.string.about_intensity_dark_low
-                LightLevel.OFF -> R.string.about_intensity_dark_off
+            else -> R.string.about_intensity_dark to when (s.intensity) {
+                Intensity.STRONG -> R.string.about_intensity_dark_strong
+                Intensity.NORMAL -> R.string.about_intensity_dark_normal
+                Intensity.SUBTLE -> R.string.about_intensity_dark_low
+                Intensity.OFF -> R.string.about_intensity_dark_off
             }
         }
         return sentences(t[what], t[how])
@@ -350,7 +350,7 @@ object SettingsMenu {
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.VIEW -> s.copy(view = if (s.view == StageView.FLOW) StageView.SINGLE else StageView.FLOW)
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
-        MenuEntry.TIME_LINE -> s.copy(showTimeLine = !s.showTimeLine)
+        MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
         MenuEntry.ALBUM -> s.copy(showAlbum = !s.showAlbum)
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
@@ -359,12 +359,12 @@ object SettingsMenu {
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
-        MenuEntry.LIGHTS -> if (s.roomLights.isSet) s.copy(roomLightLevel = move(LIGHTS_ORDER, s.roomLightLevel, direction, wrap)) else null
-        MenuEntry.LIGHTS_ONLY_ON -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
+        MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null
+        MenuEntry.OFF_LIGHTS -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
         MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
-        MenuEntry.LIGHT -> s.copy(light = move(LIGHT_ORDER, s.light, direction, wrap))
-        MenuEntry.VISTA_PAUSE -> s.copy(vistaPauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.vistaPauseSeconds), direction, wrap))
-        MenuEntry.VISTA_PLAYING -> s.copy(vistaPlayingSeconds = move(PLAYING_DELAYS, nearest(PLAYING_DELAYS, s.vistaPlayingSeconds), direction, wrap))
+        MenuEntry.INTENSITY -> s.copy(intensity = move(INTENSITY_ORDER, s.intensity, direction, wrap))
+        MenuEntry.LANDSCAPE_PAUSE -> s.copy(landscapePauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.landscapePauseSeconds), direction, wrap))
+        MenuEntry.LANDSCAPE_PLAYING -> s.copy(landscapePlayingSeconds = move(PLAYING_DELAYS, nearest(PLAYING_DELAYS, s.landscapePlayingSeconds), direction, wrap))
         MenuEntry.MINI_PLAYER -> s.copy(miniPlayer = move(MINI_ORDER, s.miniPlayer, direction, wrap))
         MenuEntry.REMOTE -> s.copy(remoteControl = !s.remoteControl)
         MenuEntry.UP_DOWN -> s.copy(volumeKeys = !s.volumeKeys)
@@ -440,10 +440,10 @@ object SettingsMenu {
 
     /** From quiet to present: left means less, right means more. */
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
-    private val LIGHT_ORDER = listOf(LightLevel.OFF, LightLevel.SUBTLE, LightLevel.NORMAL, LightLevel.STRONG)
+    private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)
     private val MOTION_ORDER = listOf(MotionLevel.OFF, MotionLevel.GENTLE, MotionLevel.MEDIUM, MotionLevel.LIVELY)
-    private val LIGHTS_ORDER = RoomLightLevel.entries
+    private val BRIGHTNESS_ORDER = RoomLightBrightness.entries
     private val MINI_ORDER = listOf(MiniPlayer.OFF, MiniPlayer.LEFT, MiniPlayer.RIGHT)
     private val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
 
