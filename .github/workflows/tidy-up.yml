@@ -1,14 +1,16 @@
 name: Tidy up
 
 # Run by hand from the Actions tab: keeps only the newest releases (the older ones go, and their
-# version tags with them) and deletes the branches that are fully merged into main.
+# version tags with them) and deletes the branches that are fully merged into main. Only versions
+# named by the calendar (v2026.11.0) are counted and go; the releases with the old numbers (up to
+# 6.4.0) stay for now, and so do their tags.
 on:
   workflow_dispatch:
     inputs:
       keep:
-        description: "How many of the newest releases to keep"
+        description: "How many of the newest releases to keep (those with the old numbers always stay)"
         required: true
-        default: "3"
+        default: "10"
 
 permissions:
   contents: write
@@ -39,24 +41,25 @@ jobs:
             exit 1
           fi
           gh api --paginate "repos/$REPO/releases?per_page=100" \
-            --jq '.[] | select(.draft | not) | [.published_at, .tag_name] | @tsv' |
+            --jq '.[] | select((.draft | not) and (.tag_name | test("^v[0-9]{4}\\."))) | [.published_at, .tag_name] | @tsv' |
             sort -r | tail -n +"$((KEEP + 1))" | cut -f2 |
             while read -r tag; do
               gh release delete "$tag" -R "$REPO" --yes --cleanup-tag
               echo "Deleted the release $tag and its tag." >> "$GITHUB_STEP_SUMMARY"
             done
-          echo "The newest $KEEP releases are kept." >> "$GITHUB_STEP_SUMMARY"
+          echo "The newest $KEEP releases are kept, and those with the old numbers too." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Delete the tags of releases that are gone
         # A release deleted on the website leaves its tag behind. A tag on a commit newer than the
-        # oldest release kept stays, since its release may still be on its way.
+        # oldest release kept stays, since its release may still be on its way. Only the calendar's
+        # versions count: a tag with the old numbers stays, like its release.
         run: |
           releases="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[].tag_name')"
-          oldest="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[] | select(.draft | not) | .published_at' | sort | sed -n 1p)"
+          oldest="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[] | select((.draft | not) and (.tag_name | test("^v[0-9]{4}\\."))) | .published_at' | sort | sed -n 1p)"
           [ -n "$oldest" ] || exit 0
           gh api --paginate "repos/$REPO/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' |
             while IFS=$'\t' read -r tag sha; do
-              [[ "$tag" == v* ]] || continue
+              [[ "$tag" =~ ^v[0-9]{4}\. ]] || continue
               grep -qxF "$tag" <<< "$releases" && continue
               made="$(gh api "repos/$REPO/commits/$sha" --jq .commit.committer.date)"
               if [ "$(date -d "$made" +%s)" -lt "$(date -d "$oldest" +%s)" ]; then

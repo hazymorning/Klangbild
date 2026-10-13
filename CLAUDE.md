@@ -122,9 +122,10 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   releases that month count up the last number (`v2026.11.1`). A pre-release carries a hyphen
   (`v2026.11.0-beta.1`). The old numbers ended with 6.4.0. Android decides about updates by
   `versionCode`, which only ever grows, so the new names cost installed copies nothing.
-- The "Tidy up" workflow (started by hand) keeps only the newest releases, three by default,
-  deletes the tags of the releases that go (and those left behind by a release deleted on the
-  website), and deletes branches merged into main. `docs/releases/` holds the notes of the
+- The "Tidy up" workflow (started by hand) keeps only the newest releases named by the calendar,
+  ten by default, deletes the tags of the releases that go (and those left behind by a release
+  deleted on the website), and deletes branches merged into main. The releases with the old
+  numbers (6.3.0 and 6.4.0) and their tags stay for now. `docs/releases/` holds the notes of the
   releases kept.
 - The app declares no signature permission of its own: the original key has no permission
   capability in the lineage, so an update that declares one is refused. The manifest removes
