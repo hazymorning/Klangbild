@@ -26,7 +26,7 @@ import io.github.hazymorning.klangbild.text.Texts
 
 /** Test content: the test catalog plus helpers to turn it into scenes and models. */
 object Fixtures {
-    val tracks = Catalogue.tracks
+    val tracks = Catalog.tracks
 
     /** The words of most shots: German, as the catalog's music and rooms are. */
     val texts: Texts get() = TestTexts.german
@@ -40,7 +40,7 @@ object Fixtures {
     fun at(hour: Int, minute: Int, day: Int = 8): Long =
         java.time.ZonedDateTime.of(2026, 10, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
 
-    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalogue.SCHEME + cover.name }
+    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalog.SCHEME + cover.name }
 
     val radio: TrackInfo get() = tracks.first { it.artworkUrl == null }
 
@@ -48,7 +48,7 @@ object Fixtures {
     val spiegel = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
 
     /** An English song to the night drive's cover, for the English shots of the words. */
-    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalogue.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
+    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalog.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
 
     /** Synced words from LRC. */
     fun lyrics(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
@@ -60,7 +60,7 @@ object Fixtures {
         view: StageView = StageView.SINGLE,
         coverField: Boolean = false,
     ): ArtworkScene {
-        val cover = track.artworkUrl?.removePrefix(Catalogue.SCHEME)?.let { SyntheticCover.valueOf(it) }
+        val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
         val bmp = cover?.let { SyntheticCovers.render(it) }
         return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, view = view, coverField = coverField)
     }

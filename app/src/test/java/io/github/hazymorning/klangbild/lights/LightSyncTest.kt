@@ -72,7 +72,7 @@ class LightSyncTest {
 
         /** How the next calls fail: null answers (an error), or a cancellation (a timeout). */
         var failing = false
-        var cancelling = 0
+        var canceling = 0
 
         /** Home Assistant restarted: its snapshot scenes are gone. */
         var scenesLost = false
@@ -100,8 +100,8 @@ class LightSyncTest {
         override suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String? {
             val t = scope.testScheduler.currentTime
             calls += Call(t, domain, service, entityId, data)
-            if (cancelling > 0 && domain == "light") {
-                cancelling--
+            if (canceling > 0 && domain == "light") {
+                canceling--
                 throw kotlinx.coroutines.CancellationException("no answer")
             }
             if (failing && domain == "light") return null
@@ -385,7 +385,7 @@ class LightSyncTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
         val s = sync()
         s.attach(ha)
-        ha.cancelling = 2
+        ha.canceling = 2
         s.update(target("a"))
         testScheduler.advanceTimeBy(3_000)
         // The next song reaches both lights again.

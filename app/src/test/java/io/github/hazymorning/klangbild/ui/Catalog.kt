@@ -9,7 +9,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
  * missing album, almost black and almost white covers. Covers are painted by
  * [io.github.hazymorning.klangbild.art.SyntheticCovers]; no real artwork lives in the repo.
  */
-object Catalogue {
+object Catalog {
     const val SCHEME = "test://cover/"
 
     private fun cover(c: SyntheticCover) = SCHEME + c.name

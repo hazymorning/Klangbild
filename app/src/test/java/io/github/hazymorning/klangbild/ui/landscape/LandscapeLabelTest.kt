@@ -17,7 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.ui.Catalogue
+import io.github.hazymorning.klangbild.ui.Catalog
 import io.github.hazymorning.klangbild.ui.Fixtures
 import io.github.hazymorning.klangbild.ui.composeRule
 import io.github.hazymorning.klangbild.landscape.LabelSide
@@ -43,13 +43,13 @@ class LandscapeLabelTest {
     val compose = composeRule()
 
     // Capitals with flat tops and feet: the ink's top is the cap height, its bottom the baseline.
-    private val art = Catalogue.SCHEME + SyntheticCover.BAUHAUS.name
+    private val art = Catalog.SCHEME + SyntheticCover.BAUHAUS.name
     private val song = TrackInfo("HEIMATLIED", listOf("EMIL THEN"), durationMs = 200_000, artworkUrl = art)
     private val station = TrackInfo("HEIMATLIED", listOf("EMIL THEN"), artworkUrl = art)
     private val titleOnly = TrackInfo("HEIMATLIED", emptyList(), artworkUrl = art)
 
     @Test
-    fun whatStandsBesideTheCoverIsCentredOnIt() {
+    fun whatStandsBesideTheCoverIsCenteredOnIt() {
         for (side in listOf(LabelSide.LEFT, LabelSide.RIGHT)) {
             for ((what, track) in listOf("song with bar" to song, "station without bar" to station, "title alone" to titleOnly)) {
                 val label = "$side, $what"

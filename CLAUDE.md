@@ -80,7 +80,7 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   change with the same script. Renders must be the same on every run: an animated sequence
   whose content is made off the main thread wraps it like a still (`LocalStill`).
 - Tests that need words use `TestTexts.german` or `TestTexts.english()` (Robolectric). Renders
-  default to German through `Fixtures.texts` (the catalogue's music and rooms are German);
+  default to German through `Fixtures.texts` (the catalog's music and rooms are German);
   `Fixtures.Still(t) { }` renders in other words.
 - The progress bar refreshes in a loop of its own, so a stage never goes idle: stills wrap
   their content in `Fixtures.Still { }` (provides `LocalStill`), animated sequences use
@@ -276,7 +276,7 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 light, fireflies every frame; LandscapeScreen + LandscapeLabel: the mini player on the
                 near bank, standing still while the camera moves)
 dream/          KlangbildDream (DreamService with ComposeView)
-test only       SyntheticCovers + Catalogue (generated test covers and tracks, test://cover/NAME, a
+test only       SyntheticCovers + Catalog (generated test covers and tracks, test://cover/NAME, a
                 book and an episode, invented words, the README's aurora), Fixtures, TestTexts, the static stages for stills
 ```
 
@@ -288,7 +288,7 @@ UI words are given in English with the German in parentheses where it matters.
   The artwork is the heaviest element and always the tallest: the text block beside it takes
   at most 62% of its height (`BLOCK_SHARE`, measured from the first cap height to the last
   baseline, never from text boxes).
-- **Centered, measured on what is seen** (the user checks this; `CentringTest` measures rendered
+- **Centered, measured on what is seen** (the user checks this; `CenteringTest` measures rendered
   pixels in both languages): the stage grid (960 × 540 dp, `StageGrid`) is artwork 368 dp at
   88 dp from the left, exactly centered vertically; 64 dp gap; text column 352 dp; 88 dp right
   margin, as much room left of the artwork as right of the progress bar. Text block centered on
@@ -416,7 +416,7 @@ UI words are given in English with the German in parentheses where it matters.
   under Information, remembered like the view; Music Assistant only, nothing else to set up): a
   view of the text column,
   not a screen. The line sung now stands centered on the artwork (first cap height to last
-  baseline, `CentringTest`) in the title's ink; the lines around it in the quiet ink, each
+  baseline, `CenteringTest`) in the title's ink; the lines around it in the quiet ink, each
   fading as a whole with the distance of its nearer edge (whole within 40 dp, like the settings
   list), gone before its far edge comes within 8 dp of the status line, the song or the bar.
   One size per song, no size or weight changes: Jost 30, 26 or 24 sp, the largest at which no

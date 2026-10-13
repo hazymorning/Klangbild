@@ -10,7 +10,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** What a sheet is made of: how strongly its clouds of pulp, its tooth and its fibers show. */
-enum class PaperKind(val clouds: Float, val tooth: Float, val fibres: Float) {
+enum class PaperKind(val clouds: Float, val tooth: Float, val fibers: Float) {
     /** The sky: watercolor paper under a soft wash. */
     WASH(0.035f, 0.004f, 0.04f),
 
@@ -34,17 +34,17 @@ enum class PaperKind(val clouds: Float, val tooth: Float, val fibres: Float) {
  */
 class PaperGrain(private val density: Float) {
     private val size = ceil(TILE_DP * density).toInt()
-    private val fibres = FloatArray(size * size)
+    private val fibers = FloatArray(size * size)
     private val tooth = FloatArray(size * size)
 
     init {
         val rnd = Rnd(0x5EED)
         // Fibers: thin curved strokes, slightly more of them lighter than the sheet than darker.
-        val count = (TILE_DP * TILE_DP / FIBRE_AREA_DP).toInt()
+        val count = (TILE_DP * TILE_DP / FIBER_AREA_DP).toInt()
         repeat(count) {
             val cx = rnd.next() * TILE_DP
             val cy = rnd.next() * TILE_DP
-            val length = FIBRE_MIN_DP + (FIBRE_MAX_DP - FIBRE_MIN_DP) * rnd.next()
+            val length = FIBER_MIN_DP + (FIBER_MAX_DP - FIBER_MIN_DP) * rnd.next()
             val angle = rnd.next() * PI.toFloat()
             val bend = rnd.normal() * 1.4f
             val width = 0.28f + 0.26f * rnd.next()
@@ -56,7 +56,7 @@ class PaperGrain(private val density: Float) {
             val my = cy + cos(angle) * bend * length * 0.12f
             stamp(Shapes.stroke(x0, y0, mx, my, x1, y1, width, width * 0.8f, samples = 8), value)
         }
-        blurWrap(fibres, max(1, (0.25f * density).toInt()))
+        blurWrap(fibers, max(1, (0.25f * density).toInt()))
         // Tooth: fine noise, softened to a fraction of a dp.
         for (i in tooth.indices) tooth[i] = rnd.next() + rnd.next() + rnd.next() - 1.5f
         blurWrap(tooth, max(1, (0.35f * density).toInt()))
@@ -80,7 +80,7 @@ class PaperGrain(private val density: Float) {
             if (k <= 0f) continue
             val tx = Math.floorMod(x0 + x, size)
             val ty = Math.floorMod(y0 + y, size)
-            fibres[ty * size + tx] += value * k
+            fibers[ty * size + tx] += value * k
         }
     }
 
@@ -158,7 +158,7 @@ class PaperGrain(private val density: Float) {
             val d = grid[(j + 1) * gw + i + 1]
             val clouds = a + (b - a) * fx + (c - a + (d - c - b + a) * fx) * fy
             val t = Math.floorMod(y + oy, size) * size + Math.floorMod(x + ox, size)
-            return 1f + clouds + kind.fibres * fibres[t] + kind.tooth * tooth[t]
+            return 1f + clouds + kind.fibers * fibers[t] + kind.tooth * tooth[t]
         }
     }
 
@@ -170,9 +170,9 @@ class PaperGrain(private val density: Float) {
         const val CELL_DP = 3f
 
         /** One fiber per this many dp² of paper, each this long (dp). */
-        private const val FIBRE_AREA_DP = 20f
-        private const val FIBRE_MIN_DP = 4f
-        private const val FIBRE_MAX_DP = 14f
+        private const val FIBER_AREA_DP = 20f
+        private const val FIBER_MIN_DP = 4f
+        private const val FIBER_MAX_DP = 14f
 
         /** The swell (the paper not lying flat) and the clouds of pulp: their sizes (dp) and strengths. */
         private val SCALES = floatArrayOf(240f, 110f, 44f, 17f, 7f)

@@ -268,7 +268,7 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         animationSpec = tween(320, easing = Motion.Dimmer),
         label = "menu-description",
     ) { text ->
-        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTRE, width = layout.art - 24f) {
+        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
             BasicText(
                 text,
                 style = textType(18f, 420, colors.description, lineHeight = 26f).merge(
@@ -372,7 +372,7 @@ private const val LEVEL_OUT_MS = 140
 private const val LEVEL_IN_MS = 220
 
 /** From a line's center to its label's baseline (21 sp in a 40 dp line). */
-private const val LABEL_BASELINE_FROM_CENTRE = 7f
+private const val LABEL_BASELINE_FROM_CENTER = 7f
 
 private const val GLOW_MAP_W = 480
 private const val GLOW_MAP_H = 270

@@ -40,8 +40,8 @@ import org.junit.experimental.categories.Category
 class LyricsStageTest {
     private val en = TestTexts.english()
     private val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
-    private val neonLyrics = Fixtures.lyrics(Catalogue.neonLyrics)
-    private val nightLyrics = Fixtures.lyrics(Catalogue.nightLyrics)
+    private val neonLyrics = Fixtures.lyrics(Catalog.neonLyrics)
+    private val nightLyrics = Fixtures.lyrics(Catalog.nightLyrics)
 
     private fun shot(name: String, model: StageModel, t: Texts = Fixtures.texts) =
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { Stage(model) } }
@@ -90,11 +90,11 @@ class LyricsStageTest {
     @Test fun linkDown() = shot("link_down", Fixtures.lyricsModel(neon, neonLyrics, linkDown = true))
 
     /** Long lines: the whole song a size smaller. */
-    @Test fun longLines() = shot("long_lines", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.MOSS), Fixtures.lyrics(Catalogue.longLyrics), position = { 17_000L }))
+    @Test fun longLines() = shot("long_lines", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.MOSS), Fixtures.lyrics(Catalog.longLyrics), position = { 17_000L }))
 
-    @Test fun japanese() = shot("japanese", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.NOCTURNE), Fixtures.lyrics(Catalogue.nightJapaneseLyrics), position = { 15_000L }))
+    @Test fun japanese() = shot("japanese", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.NOCTURNE), Fixtures.lyrics(Catalog.nightJapaneseLyrics), position = { 15_000L }))
 
-    @Test fun arabic() = shot("arabic", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.TERRACOTTA), Fixtures.lyrics(Catalogue.arabicLyrics), position = { 15_000L }))
+    @Test fun arabic() = shot("arabic", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.TERRACOTTA), Fixtures.lyrics(Catalog.arabicLyrics), position = { 15_000L }))
 
     /** The quick settings' Lyrics entry over the words, and its None for a song without them. */
     @Test

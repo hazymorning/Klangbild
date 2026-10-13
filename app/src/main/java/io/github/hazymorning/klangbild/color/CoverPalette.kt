@@ -170,7 +170,7 @@ object CoverPalette {
      * Significance of a cluster as a *color* of the cover. Area matters, but a small
      * vivid area (a red dot on cream) characterizes a cover more than a large gray one.
      */
-    private fun colourScore(c: ColorCluster): Float =
+    private fun colorScore(c: ColorCluster): Float =
         c.weight.toDouble().pow(0.55).toFloat() * (c.lab.chroma - 0.02f).coerceAtLeast(0f) *
             // very dark or very light clusters carry little color information
             (1f - (2f * c.lab.l - 1.1f).pow(2)).coerceAtLeast(0.15f)
@@ -188,7 +188,7 @@ object CoverPalette {
     ): ScenePalette {
         val chromatic = analysis.clusters
             .filter { it.lab.chroma >= NEUTRAL_CHROMA && it.weight >= 0.02f }
-            .sortedByDescending { colourScore(it) }
+            .sortedByDescending { colorScore(it) }
         val lead = chromatic.firstOrNull()?.lab
         val hue = lead?.hue ?: WARM_HUE
         // Text is near-neutral: only a breath of the cover's hue so it belongs to the

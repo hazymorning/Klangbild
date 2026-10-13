@@ -2,13 +2,13 @@ package io.github.hazymorning.klangbild.data
 
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.data.ha.HaSource
-import io.github.hazymorning.klangbild.ui.Catalogue
+import io.github.hazymorning.klangbild.ui.Catalog
 import org.junit.Test
 
 class MatchingTest {
     @Test
     fun `the test catalog covers the hard cases`() {
-        val t = Catalogue.tracks
+        val t = Catalog.tracks
         assertThat(t.any { it.artworkUrl == null && it.source != null }).isTrue() // radio without cover
         assertThat(t.any { it.title.contains(": ") && it.artists.size > 4 }).isTrue() // classical, many artists
         assertThat(t.any { it.album == null }).isTrue()

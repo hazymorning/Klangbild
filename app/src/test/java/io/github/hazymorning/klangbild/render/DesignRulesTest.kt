@@ -124,8 +124,8 @@ class DesignRulesTest {
             assertThat(ink.chroma).isAtMost(0.015f)
         }
         // a neutral cover gets neutral text
-        val grey = CoverPalette.derive(CoverPalette.analyze(thumb(0xFF808080.toInt())))
-        assertThat(Oklab.fromArgb(grey.ink).chroma).isAtMost(0.007f)
+        val gray = CoverPalette.derive(CoverPalette.analyze(thumb(0xFF808080.toInt())))
+        assertThat(Oklab.fromArgb(gray.ink).chroma).isAtMost(0.007f)
     }
 
     @Test

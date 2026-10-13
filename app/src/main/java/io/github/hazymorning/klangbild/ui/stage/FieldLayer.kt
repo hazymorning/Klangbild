@@ -168,8 +168,8 @@ private val UNIT_SIZE = Size(2f, 2f)
 
 /** A pool as a radial gradient on the unit circle: its color, its strength falling off at its [FieldBlob.stops]. */
 private fun brush(b: FieldBlob): Brush {
-    val colour = Color(b.colour)
-    val stops = Array(FieldBlob.STOPS + 1) { i -> i / FieldBlob.STOPS.toFloat() to colour.copy(alpha = b.alpha * b.stops[i]) }
+    val color = Color(b.color)
+    val stops = Array(FieldBlob.STOPS + 1) { i -> i / FieldBlob.STOPS.toFloat() to color.copy(alpha = b.alpha * b.stops[i]) }
     return Brush.radialGradient(*stops, center = Offset.Zero, radius = 1f)
 }
 

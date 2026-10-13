@@ -94,13 +94,13 @@ class FlowGeometry(val layout: StageGrid) {
      * Where the center of the card at [position] stands on screen, beside the middle (dp, from
      * [cx]; the mean of the upper corners).
      */
-    fun centre(position: Float): Float {
+    fun center(position: Float): Float {
         cornersOf(position, -side / 2f, -side / 2f, side / 2f, -side / 2f, probe)
         return (probe[0] + probe[2]) / 2f - cx
     }
 
     /** Card centers beside the middle for positions 0, 1/[TABLE_STEPS] and so on, up to [TABLE_END]. */
-    private val centres: FloatArray by lazy { FloatArray(TABLE_SIZE) { centre(it / TABLE_STEPS.toFloat()) } }
+    private val centers: FloatArray by lazy { FloatArray(TABLE_SIZE) { center(it / TABLE_STEPS.toFloat()) } }
 
     private val probe = FloatArray(8)
 
@@ -120,12 +120,12 @@ class FlowGeometry(val layout: StageGrid) {
     private fun at(position: Float): Float {
         val i = (position.coerceIn(0f, TABLE_END) * TABLE_STEPS)
         val k = i.toInt().coerceAtMost(TABLE_SIZE - 2)
-        return centres[k] + (centres[k + 1] - centres[k]) * (i - k)
+        return centers[k] + (centers[k + 1] - centers[k]) * (i - k)
     }
 
-    /** The position whose card center stands [x] dp beside the middle (the inverse of [centre]). */
+    /** The position whose card center stands [x] dp beside the middle (the inverse of [center]). */
     private fun positionAt(x: Float): Float {
-        val c = centres
+        val c = centers
         if (x <= c[0]) return 0f
         if (x >= c[TABLE_SIZE - 1]) return TABLE_END
         var lo = 0

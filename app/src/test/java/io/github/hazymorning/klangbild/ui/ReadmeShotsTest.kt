@@ -55,7 +55,7 @@ class ReadmeShotsTest {
 
     private val en = TestTexts.english()
 
-    private fun cover(c: SyntheticCover) = Catalogue.SCHEME + c.name
+    private fun cover(c: SyntheticCover) = Catalog.SCHEME + c.name
 
     private val polarNight = TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Lights", 2025, 258_000, artworkUrl = cover(SyntheticCover.AURORA))
     private val saltWater = TrackInfo("Salt Water", listOf("Northern Light Collective"), "Tides", 2023, 214_000, artworkUrl = cover(SyntheticCover.SALT_WATER))

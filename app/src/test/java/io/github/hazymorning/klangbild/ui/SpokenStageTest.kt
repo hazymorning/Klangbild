@@ -36,8 +36,8 @@ class SpokenStageTest {
     private fun shot(name: String, model: StageModel) =
         captureRoboImage("build/screenshots/spoken/$name.png") { Fixtures.Still { Stage(model) } }
 
-    private val book = Catalogue.book
-    private val episode = Catalogue.episode
+    private val book = Catalog.book
+    private val episode = Catalog.episode
 
     private fun spokenModel(track: TrackInfo, position: Long, lead: String?, appearance: Appearance = Appearance.DARK, view: StageView = StageView.SINGLE, next: TrackInfo? = null) =
         Fixtures.spokenModel(track, position, lead, appearance, view, next)
@@ -50,7 +50,7 @@ class SpokenStageTest {
 
     @Test fun audiobookPaper() = shot("audiobook_paper", spokenModel(book, 2_554_000L, lead(TimeText.speed(1.5f, Fixtures.texts)), appearance = Appearance.LIGHT))
 
-    @Test fun podcast() = shot("podcast", spokenModel(episode, 1_163_000L, lead(StageTexts.sleep(Fixtures.at(23, 10), Fixtures.texts, Fixtures.zone)), next = Catalogue.nextEpisode))
+    @Test fun podcast() = shot("podcast", spokenModel(episode, 1_163_000L, lead(StageTexts.sleep(Fixtures.at(23, 10), Fixtures.texts, Fixtures.zone)), next = Catalog.nextEpisode))
 
     @Test fun podcastFlow() = captureRoboImage("build/screenshots/spoken/podcast_flow.png") {
         val scenes = Fixtures.flowScenes(listOf(Fixtures.track(SyntheticCover.MOSS), episode, Fixtures.track(SyntheticCover.TERRACOTTA)))

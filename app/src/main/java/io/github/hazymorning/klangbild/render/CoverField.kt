@@ -27,7 +27,7 @@ import kotlin.math.sqrt
  */
 class FieldBlob(
     /** The color as the wall shows it (opaque ARGB). */
-    val colour: Int,
+    val color: Int,
     /** The cover's own color it stands for, in linear sRGB. This is what the lights show. */
     val light: FloatArray,
     /** How strongly it covers what lies behind (0..1). */
@@ -318,26 +318,26 @@ object CoverField {
         fun r(a: Float, b: Float) = rnd.r(a, b)
         fun turn(fast: Float, slow: Float) = (if (rnd.nextBoolean()) 1 else -1) * r(360f / slow, 360f / fast)
         val w = sqrt(src.weight.coerceIn(0.02f, 1f))
-        val colour = tone(src.lab, tier, s, dark)
+        val color = tone(src.lab, tier, s, dark)
         val light = linear(src.lab)
         val phase = FloatArray(5) { r(0f, 6.2832f) }
         return when (tier) {
             Tier.FAR -> FieldBlob(
-                colour, light, alpha = 0.92f,
+                color, light, alpha = 0.92f,
                 radius = 0.34f + 0.2f * w, aspect = r(0.6f, 0.85f), focus = 0f, glow = false, depth = 0,
                 homeX = home[0], homeY = home[1], wanderX = r(0.1f, 0.16f), wanderY = r(0.1f, 0.16f),
                 periodX = r(110f, 160f), periodY = r(120f, 170f), phase = phase,
                 turnStart = r(0f, 360f), turnSpeed = turn(200f, 300f), breath = 0.06f, breathPeriod = r(60f, 90f),
             )
             Tier.MIDDLE -> FieldBlob(
-                colour, light, alpha = 0.8f,
+                color, light, alpha = 0.8f,
                 radius = 0.19f + 0.1f * w, aspect = r(0.55f, 0.8f), focus = 0.3f, glow = false, depth = 1,
                 homeX = home[0], homeY = home[1], wanderX = r(0.12f, 0.18f), wanderY = r(0.12f, 0.2f),
                 periodX = r(80f, 110f), periodY = r(85f, 120f), phase = phase,
                 turnStart = r(0f, 360f), turnSpeed = turn(150f, 220f), breath = 0.07f, breathPeriod = r(45f, 70f),
             )
             else -> FieldBlob(
-                colour, light, alpha = if (dark) 0.5f else 0.6f,
+                color, light, alpha = if (dark) 0.5f else 0.6f,
                 radius = r(0.13f, 0.18f), aspect = r(0.5f, 0.72f), focus = 0.25f, glow = true, depth = 2,
                 homeX = home[0], homeY = home[1], wanderX = r(0.06f, 0.1f), wanderY = r(0.12f, 0.2f),
                 periodX = r(55f, 75f), periodY = r(60f, 85f), phase = phase,
@@ -439,7 +439,7 @@ object CoverField {
             for (i in 0..GRID_U) for (j in 0..GRID_V) {
                 val u = u0 + (u1 - u0) * i / GRID_U.toFloat()
                 val v = v0 + (v1 - v0) * j / GRID_V.toFloat()
-                FieldModel.colour(field, u, v, places, out)
+                FieldModel.color(field, u, v, places, out)
                 val y = 0.2126f * toLinear(out[0]) + 0.7152f * toLinear(out[1]) + 0.0722f * toLinear(out[2])
                 worst = if (field.dark) max(worst, y) else min(worst, y)
             }
@@ -527,10 +527,10 @@ object FieldModel {
     }
 
     /** The wall's color (sRGB 0..1, before the veil) at ([u], [v]), in shares of the screen, at time [t]. */
-    fun colour(field: FieldScene, u: Float, v: Float, t: Double, out: FloatArray) = colour(field, u, v, places(field, t), out)
+    fun color(field: FieldScene, u: Float, v: Float, t: Double, out: FloatArray) = color(field, u, v, places(field, t), out)
 
     /** The same with the shapes' [places] at hand. */
-    fun colour(field: FieldScene, u: Float, v: Float, places: FloatArray, out: FloatArray) {
+    fun color(field: FieldScene, u: Float, v: Float, places: FloatArray, out: FloatArray) {
         var r = ((field.base shr 16) and 0xFF) / 255f
         var g = ((field.base shr 8) and 0xFF) / 255f
         var b = (field.base and 0xFF) / 255f
@@ -538,9 +538,9 @@ object FieldModel {
             val blob = field.blobs[i]
             val a = blob.alpha * strength(blob, u, v, places, i * STRIDE)
             if (a <= 0f) continue
-            val sr = ((blob.colour shr 16) and 0xFF) / 255f
-            val sg = ((blob.colour shr 8) and 0xFF) / 255f
-            val sb = (blob.colour and 0xFF) / 255f
+            val sr = ((blob.color shr 16) and 0xFF) / 255f
+            val sg = ((blob.color shr 8) and 0xFF) / 255f
+            val sb = (blob.color and 0xFF) / 255f
             if (blob.glow) {
                 r += sr * a * (1f - r)
                 g += sg * a * (1f - g)

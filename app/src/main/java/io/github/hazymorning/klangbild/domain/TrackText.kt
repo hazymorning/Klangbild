@@ -48,7 +48,7 @@ data class TrackText(
     }
 
     companion object {
-        private val catalogue = Regex(
+        private val catalog = Regex(
             """(\b(BWV|Op\.|op\.|KV|K\.|L\.|Hob\.|D\.|RV|S\.|WoO|HWV|Sz\.|TrV|FP|BB|Nr\.|No\.|Nº)\s?[\dIVXLC]+)""",
         )
         private val movementStart = Regex("""^([IVXLC]+|\d{1,2})\.\s+\S""")
@@ -89,7 +89,7 @@ data class TrackText(
             if (colon > 0) {
                 val head = title.substring(0, colon).trim()
                 val tail = title.substring(colon + 2).trim()
-                if (tail.isNotEmpty() && (catalogue.containsMatchIn(head) || movementStart.containsMatchIn(tail))) {
+                if (tail.isNotEmpty() && (catalog.containsMatchIn(head) || movementStart.containsMatchIn(tail))) {
                     work = head
                     title = tail
                 }
@@ -116,12 +116,12 @@ data class TrackText(
         fun dashes(s: String): String = s.replace(spacedDash, " – ")
 
         private val dottedAbbreviation = Regex("""\b(Nr|No|Op|op|Hob|Bd|Vol|vol|Kap|Nº|L|K|D|S)\.\s+(?=\d|[IVXLC]+\b)""")
-        private val catalogueSpace = Regex("""\b(BWV|KV|RV|HWV|WoO|TrV|FP|BB|Sz)\s+(?=\d)""")
+        private val catalogSpace = Regex("""\b(BWV|KV|RV|HWV|WoO|TrV|FP|BB|Sz)\s+(?=\d)""")
 
         /** "No. 9" → "No. 9" (no break); "KV 331" → "KV 331" (no break). */
         fun abbreviations(s: String): String = s
             .replace(dottedAbbreviation) { it.groupValues[1] + ". " }
-            .replace(catalogueSpace) { it.groupValues[1] + " " }
+            .replace(catalogSpace) { it.groupValues[1] + " " }
 
         /** "A", "A & B", "A, B & C"; lists longer than [limit] characters end with [others]. */
         fun formatArtists(names: List<String>, others: String, limit: Int = MAX_ARTISTS_CHARS): String? {

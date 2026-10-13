@@ -70,19 +70,19 @@ class CoverPaletteTest {
         val red = CoverPalette.derive(CoverPalette.analyze(solid(0xFFB0412E.toInt())), Appearance.LIGHT)
         val blue = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT)
         val teal = CoverPalette.derive(CoverPalette.analyze(solid(0xFF1F7A78.toInt())), Appearance.LIGHT)
-        val grey = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
+        val gray = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
         assertThat(red.lead).isNotNull()
-        assertThat(grey.lead).isNull()
-        assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(grey.wall).chroma)
+        assertThat(gray.lead).isNull()
+        assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(gray.wall).chroma)
         // paper is never mint or blue: a cool cover gives it less color, not its hue
-        for (p in listOf(red, blue, teal, grey)) {
+        for (p in listOf(red, blue, teal, gray)) {
             assertThat(Oklab.fromArgb(p.wall).hue).isIn(com.google.common.collect.Range.closed(45f, 95f))
         }
         assertThat(Oklab.fromArgb(blue.wall).chroma).isAtMost(Oklab.fromArgb(red.wall).chroma)
-        assertThat(Oklab.fromArgb(grey.wall).hue).isWithin(20f).of(CoverPalette.WARM_HUE)
+        assertThat(Oklab.fromArgb(gray.wall).hue).isWithin(20f).of(CoverPalette.WARM_HUE)
         // the Intensity setting turned off leaves plain paper
         val plain = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT, wallTint = 0f)
-        assertThat(Oklab.fromArgb(plain.wall).chroma).isAtMost(Oklab.fromArgb(grey.wall).chroma)
+        assertThat(Oklab.fromArgb(plain.wall).chroma).isAtMost(Oklab.fromArgb(gray.wall).chroma)
     }
 
     @Test

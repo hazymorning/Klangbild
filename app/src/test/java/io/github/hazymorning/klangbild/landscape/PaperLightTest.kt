@@ -92,12 +92,12 @@ class PaperLightTest {
     @Test
     fun `overcast mutes the colors without darkening the picture`() {
         val clear = PaperLight.look(SkyState(30f, 200f))
-        val grey = PaperLight.look(SkyState(30f, 200f, cover = 1f))
+        val gray = PaperLight.look(SkyState(30f, 200f, cover = 1f))
         val c = Oklab.fromArgb(clear.inks(SheetId.MEADOW).base)
-        val g = Oklab.fromArgb(grey.inks(SheetId.MEADOW).base)
+        val g = Oklab.fromArgb(gray.inks(SheetId.MEADOW).base)
         assertThat(g.chroma).isLessThan(c.chroma * 0.6f)
         assertThat(abs(g.l - c.l)).isLessThan(0.08f)
-        assertThat(grey.discAlpha).isLessThan(0.05f)
+        assertThat(gray.discAlpha).isLessThan(0.05f)
     }
 
     @Test

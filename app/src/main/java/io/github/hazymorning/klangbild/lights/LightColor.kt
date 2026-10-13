@@ -25,10 +25,10 @@ data class Xy(val x: Float, val y: Float) {
  */
 object LightColor {
     /** Below this chroma (Oklab) a color is a gray and gets white light. */
-    const val GREY_CHROMA = 0.012f
+    const val GRAY_CHROMA = 0.012f
 
     /** From this chroma on a color is fully a color. */
-    const val COLOUR_CHROMA = 0.035f
+    const val COLOR_CHROMA = 0.035f
 
     /** How far from white toward the hue's purest color the light goes, at the least. */
     const val SATURATION_MIN = 0.42f
@@ -55,10 +55,10 @@ object LightColor {
         val pure = pureXy(lch.h) ?: return white
         // Very dark colors give their hue softly: no glowing navy from a black cover.
         val reach = min(SATURATION_MIN + lch.c * SATURATION_GAIN, if (lch.l < DARK_L) DARK_SATURATION else SATURATION_MAX)
-        val colour = Xy(white.x + (pure.x - white.x) * reach, white.y + (pure.y - white.y) * reach)
+        val color = Xy(white.x + (pure.x - white.x) * reach, white.y + (pure.y - white.y) * reach)
         // Grays become white, blended on the way to color.
-        val c = smoothstep(GREY_CHROMA, COLOUR_CHROMA, lch.c)
-        return Xy(white.x + (colour.x - white.x) * c, white.y + (colour.y - white.y) * c)
+        val c = smoothstep(GRAY_CHROMA, COLOR_CHROMA, lch.c)
+        return Xy(white.x + (color.x - white.x) * c, white.y + (color.y - white.y) * c)
     }
 
     /**

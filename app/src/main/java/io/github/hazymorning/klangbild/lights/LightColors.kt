@@ -61,7 +61,7 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
         private const val SAME = 0.09f
 
         /** A cover of one color: its neighbors this far round the hue circle (degrees). */
-        private const val NEIGHBOUR_HUE = 32f
+        private const val NEIGHBOR_HUE = 32f
 
         /** The cover's colors for the lights: the most telling ones, kept apart, ordered as they sit from left to right. */
         fun palette(field: FieldScene): List<FloatArray> {
@@ -85,11 +85,11 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
             // gray cover whites a little warmer and cooler.
             if (chosen.size < 3) {
                 val lead = chosen.firstOrNull()?.lab?.toLch() ?: Lch(0.7f, 0f, 0f)
-                val extra = if (lead.c < LightColor.GREY_CHROMA) {
+                val extra = if (lead.c < LightColor.GRAY_CHROMA) {
                     // Whites a breath warmer and cooler: just past what the light shows as gray.
                     listOf(Lch(lead.l, 0.018f, 70f), Lch(lead.l, 0.018f, 250f))
                 } else {
-                    listOf(Lch(lead.l, lead.c, lead.h - NEIGHBOUR_HUE), Lch(lead.l, lead.c, lead.h + NEIGHBOUR_HUE))
+                    listOf(Lch(lead.l, lead.c, lead.h - NEIGHBOR_HUE), Lch(lead.l, lead.c, lead.h + NEIGHBOR_HUE))
                 }
                 for ((n, lch) in extra.withIndex()) {
                     if (chosen.size >= 3) break

@@ -40,7 +40,7 @@ import kotlin.math.abs
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
-class CentringTest {
+class CenteringTest {
     @get:Rule
     val compose = composeRule()
 
@@ -66,10 +66,10 @@ class CentringTest {
             val lines = ink.lines()
             val clock = lines.first()
             val case = "$reason in ${t.locale}"
-            assertWithMessage("$case: the clock across").that(abs(clock.centreX - 960f)).isAtMost(1.5f)
+            assertWithMessage("$case: the clock across").that(abs(clock.centerX - 960f)).isAtMost(1.5f)
             assertWithMessage("$case: the clock up and down (figures' top to baseline)").that(abs((clock.top + clock.baseline) / 2f - 540f)).isAtMost(2f)
             for (line in lines.drop(1)) {
-                assertWithMessage("$case: a line under the clock, at ${line.top}").that(abs(line.centreX - 960f)).isAtMost(3f)
+                assertWithMessage("$case: a line under the clock, at ${line.top}").that(abs(line.centerX - 960f)).isAtMost(3f)
             }
         }
     }
@@ -148,7 +148,7 @@ class CentringTest {
 
     /** A line of text: its ink across, its top and its baseline (where most of its columns end). */
     private class Line(val left: Int, val right: Int, val top: Int, val baseline: Int) {
-        val centreX get() = (left + right + 1) / 2f
+        val centerX get() = (left + right + 1) / 2f
     }
 
     /** The bright pixels of a dark screen (text, artwork, the code). The lamp and the glow stay below. */

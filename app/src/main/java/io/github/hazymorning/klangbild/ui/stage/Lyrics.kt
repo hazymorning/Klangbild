@@ -114,10 +114,10 @@ internal class LyricsPlan(
     val indent: Int,
 ) {
     /** Each line's middle, from its first cap height to its last baseline (px). */
-    val centres = FloatArray(tops.size) { (tops[it] + bottoms[it]) / 2f }
+    val centers = FloatArray(tops.size) { (tops[it] + bottoms[it]) / 2f }
 
     /** Where the list stands with [place] in the middle (px). */
-    fun centre(place: LyricPlace): Float = centres[place.index.coerceIn(0, centres.size - 1)]
+    fun center(place: LyricPlace): Float = centers[place.index.coerceIn(0, centers.size - 1)]
 
     /** The first row whose baseline is at least [y] (px). */
     fun firstAt(y: Float): Int {
@@ -227,7 +227,7 @@ internal class LyricsView(val lyrics: Lyrics) {
         planKey = key
         plan = p
         shown = place
-        scroll = Animatable(p.centre(place))
+        scroll = Animatable(p.center(place))
         lit = Animatable(if (place.lit) 1f else 0f)
         return p
     }
@@ -239,7 +239,7 @@ internal class LyricsView(val lyrics: Lyrics) {
     suspend fun go(place: LyricPlace, plan: LyricsPlan, scope: CoroutineScope) {
         val last = shown ?: return
         shown = place
-        val target = plan.centre(place)
+        val target = plan.center(place)
         val s: Animatable<Float, AnimationVector1D> = scroll
         if (abs(place.index - last.index) <= 1) {
             if (s.targetValue != target) {
@@ -504,7 +504,7 @@ private fun lineAlpha(top: Float, bottom: Float, above: Float, below: Float): Fl
  * so the light goes along as the list glides.
  */
 private fun glowOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
-    val c = plan.centres
+    val c = plan.centers
     val off = c[line] - scroll
     val neighbor = if (off > 0f) c.getOrNull(line - 1) else c.getOrNull(line + 1)
     val step = neighbor?.let { abs(c[line] - it) } ?: (plan.cap * 3f)
