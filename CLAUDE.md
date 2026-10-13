@@ -203,11 +203,13 @@ json/           string(): a JSON string, or null for anything else
 render/         StageGrid (the grid, per view), ScreenSpec, RectDp, QrCode, PrintShape (the print's
                 outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
-                at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow (the artwork's light on the dark wall), LampLight (lamp tint for
-                rest and menu), SceneBuilder (per-track precompute: Lanczos cover at
-                exact px, wall, palette, flow card; relight), FlowGeometry (the shared
-                perspective; the balance with cards missing), FlowCards (baked card textures),
-                FlowLight (the pool of light above the cards), ImageOps (blur, dither, Lanczos)
+                at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow
+                (the artwork's light on the dark wall), LampLight (lamp tint for rest and menu),
+                SceneBuilder (per-track precompute: Lanczos cover at exact px, wall, palette, flow
+                card; relight), FlowGeometry (the shared perspective; the balance with cards
+                missing), FlowCards (baked card textures), FlowLight (the pool of light above the
+                cards), ImageOps (blur, dither, Lanczos; thumbnails keep transparency: what is clear
+                gives no color)
 art/            ChladniArt (missing-cover art), StableHash
 landscape/      The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
                 clearing, the near banks, standees, birches, tent, boulders and the fire per label
@@ -224,7 +226,9 @@ landscape/      The landscape, a paper diorama: PaperMotif (folded mountains, fo
                 reach, CameraPose per Depth), SkyMap (south view, elevations from the skyline,
                 stars by sidereal time), World (suncalc: sun, moon, phase; season by date),
                 Weather + WeatherMood (state, cloud coverage and wind in its wind_speed_unit →
-                cover, rain, snow, fog, storm, wind), CloudField (lanes, hashed, never repeats),
+                cover, rain, snow, fog, storm, wind) + WeatherGlide (the weather shown, gliding
+                toward the weather outside over minutes; kept in `LandscapeUi`, so the picture and
+                the lights read the same), CloudField (lanes, hashed, never repeats),
                 Weatherfall (snow and rain at three depths) + MistField, LandscapeClock (real time; a
                 day in two minutes only for measuring), Noise
 lights/         LightSync (any light behind the TV via Home Assistant: a color per light, or a
@@ -279,7 +283,7 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
                 held lines), DebugOverlay, landscape/ (Landscape: bake off the main thread and ahead of
-                time, 20 fps tick, season cross-fade, the weather glided in over minutes;
+                time, 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
                 LandscapeWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
                 range, clearing and near banks as layers redrawn only when the light moves on,
                 each only as tall as its paper, moved by the camera as a whole; stars, clouds,
@@ -570,7 +574,7 @@ UI words are given in English with the German in parentheses where it matters.
   third above the TV); one color gives itself and its neighbors ±32° round the hue circle, a
   gray cover three whites. With motion the colors move on from light to light (a step per 90 s
   of field time, resting 70% of it). In the landscape (`LandscapeLightColors`) its own palette:
-  above the TV its sky (the weather's too), on the side away from the fire the clearing's green
+  above the TV its sky (the weather's too, as the picture shows it), on the side away from the fire the clearing's green
   (by night the moonlit wood), on the fire's side the mountains' paper and at night the fire's
   light, the glow of dawn or dusk on the sun's side; worked out every 30 s of its sky's time,
   sent at most every 20 s in 15 s fades, no pause dimming while it shows. Each light shows
