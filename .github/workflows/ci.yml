@@ -385,7 +385,7 @@ jobs:
           disable-animations: false
           disk-size: 3G
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
-          script: bash ci/vista-measure-all.sh klangbild.apk "$MEASURE"
+          script: bash ci/landscape-measure-all.sh klangbild.apk "$MEASURE"
 
       - name: Upload the measurements
         if: always()

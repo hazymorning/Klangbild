@@ -4,8 +4,8 @@ import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
 import io.github.hazymorning.klangbild.render.FieldScene
-import io.github.hazymorning.klangbild.vista.PaperLook
-import io.github.hazymorning.klangbild.vista.SheetId
+import io.github.hazymorning.klangbild.landscape.PaperLook
+import io.github.hazymorning.klangbild.landscape.SheetId
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -118,7 +118,7 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
  * side takes the glow of dawn or dusk. The lights stand round the window as the picture's
  * colors stand in it.
  */
-class VistaLightColors(look: PaperLook, fireOnRight: Boolean) : LightColors {
+class LandscapeLightColors(look: PaperLook, fireOnRight: Boolean) : LightColors {
     private val left: FloatArray
     private val center: FloatArray
     private val right: FloatArray

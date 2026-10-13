@@ -13,7 +13,7 @@ import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
 import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.PlatformLanguageStore
-import io.github.hazymorning.klangbild.ui.vista.releaseBakedVista
+import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -77,7 +77,7 @@ class KlangbildApp : Application() {
         super.onTrimMemory(level)
         // Nothing shows in the background: the covers, the scenes and the landscape's picture
         // go, and are made again on return.
-        if (level >= TRIM_MEMORY_UI_HIDDEN && graph.controller.releaseMemory()) releaseBakedVista()
+        if (level >= TRIM_MEMORY_UI_HIDDEN && graph.controller.releaseMemory()) releaseBakedLandscape()
     }
 
     override fun onCreate() {

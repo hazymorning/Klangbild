@@ -77,8 +77,8 @@ object SetupPage {
         "lightsHeading" to R.string.page_lights_heading,
         "lightsHint" to R.string.page_lights_hint,
         "lightsEmpty" to R.string.page_lights_empty,
-        "vistaHeading" to R.string.page_vista_heading,
-        "vistaHint" to R.string.page_vista_hint,
+        "landscapeHeading" to R.string.page_landscape_heading,
+        "landscapeHint" to R.string.page_landscape_hint,
         "weather" to R.string.page_weather,
         "weatherAuto" to R.string.page_weather_auto,
         "weatherNone" to R.string.page_weather_none,
@@ -279,8 +279,8 @@ object SetupPage {
   </section>
 
   <section>
-    <h2>{{vistaHeading}}</h2>
-    <p class="hint">{{vistaHint}}</p>
+    <h2>{{landscapeHeading}}</h2>
+    <p class="hint">{{landscapeHint}}</p>
     <label for="weather">{{weather}}</label>
     <select id="weather"><option value="">{{weatherAuto}}</option><option value="none">{{weatherNone}}</option></select>
   </section>

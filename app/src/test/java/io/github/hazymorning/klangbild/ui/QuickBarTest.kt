@@ -7,7 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.VistaUi
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.ActionState
@@ -26,8 +26,8 @@ import io.github.hazymorning.klangbild.data.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import io.github.hazymorning.klangbild.ui.vista.VistaScreen
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -135,14 +135,14 @@ class QuickBarTest {
             screen = Screen.Stage(track, PlayerStatus.PLAYING, null),
             stage = Fixtures.stage(track),
             source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "partlycloudy"),
-            vista = VistaUi(track, PlayerStatus.PLAYING, MiniPlayer.LEFT),
+            landscape = LandscapeUi(track, PlayerStatus.PLAYING, MiniPlayer.LEFT),
         )
-        val clock = VistaClock(now = { t })
-        captureRoboImage("build/screenshots/quick/vista.png") {
+        val clock = LandscapeClock(now = { t })
+        captureRoboImage("build/screenshots/quick/landscape.png") {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
-                    VistaScreen(ui, ui.vista!!, clock, positionNow = { 60_000L }, now = { t }, modifier = Modifier.fillMaxSize())
-                    QuickBar(state(QuickItem.PICTURE, playing.copy(vista = true)), Appearance.DARK)
+                    LandscapeScreen(ui, ui.landscape!!, clock, positionNow = { 60_000L }, now = { t }, modifier = Modifier.fillMaxSize())
+                    QuickBar(state(QuickItem.PICTURE, playing.copy(landscape = true)), Appearance.DARK)
                 }
             }
         }

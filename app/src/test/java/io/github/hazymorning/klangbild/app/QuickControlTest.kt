@@ -103,7 +103,7 @@ class QuickControlTest {
     private var quickSeen = false
 
     /** How often the landscape was left, and the settings menu opened. */
-    private var vistaLeft = 0
+    private var landscapeLeft = 0
     private var menuOpened = 0
 
     private val host = object : ControllerHost {
@@ -126,16 +126,16 @@ class QuickControlTest {
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
-        override fun showVista() = Unit
-        override fun hideVista(): Boolean {
-            vistaLeft++
+        override fun showLandscape() = Unit
+        override fun hideLandscape(): Boolean {
+            landscapeLeft++
             return false
         }
     }
 
     private val quick = QuickControl(host)
 
-    private fun rows() = quick.state(ui.screen, vista = false)!!.rows
+    private fun rows() = quick.state(ui.screen, landscape = false)!!.rows
 
     private fun value(entity: String) = rows().first { it.item == QuickItem.ACTION && host.settings.quickActions[it.key.action].entity == entity }.value
 
@@ -143,7 +143,7 @@ class QuickControlTest {
     private fun choose(entity: String) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, vista = false)!!
+            val s = quick.state(ui.screen, landscape = false)!!
             val row = s.rows[s.cursor]
             if (row.item == QuickItem.ACTION && host.settings.quickActions[row.key.action].entity == entity) return
             quick.move(+1)
@@ -278,7 +278,7 @@ class QuickControlTest {
     private fun chooseEntry(item: QuickItem) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, vista = false)!!
+            val s = quick.state(ui.screen, landscape = false)!!
             if (s.rows[s.cursor].item == item) return
             quick.move(+1)
         }
@@ -303,7 +303,7 @@ class QuickControlTest {
         assertThat(quick.partyWanted(true)).isTrue()
         assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
         // It shows at once: the landscape makes way.
-        assertThat(vistaLeft).isEqualTo(1)
+        assertThat(landscapeLeft).isEqualTo(1)
         // The code expired: Music Assistant's new link comes with the next question.
         source.partyLink = "http://192.168.1.5:8095/?join=M2KD7RXA"
         test.advanceTimeBy(QuickControl.PARTY_URL_MS)

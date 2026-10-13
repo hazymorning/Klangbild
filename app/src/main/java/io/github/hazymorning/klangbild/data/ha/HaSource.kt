@@ -22,7 +22,7 @@ import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.lights.LightBridge
-import io.github.hazymorning.klangbild.vista.WeatherMood
+import io.github.hazymorning.klangbild.landscape.WeatherMood
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

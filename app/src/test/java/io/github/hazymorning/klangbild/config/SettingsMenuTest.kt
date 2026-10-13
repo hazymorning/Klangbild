@@ -122,14 +122,14 @@ class SettingsMenuTest {
     @Test
     fun `the landscape's delays step through the offered values, also from odd ones`() {
         val s = Settings()
-        assertThat(SettingsMenu.value(MenuEntry.VISTA_PAUSE, s, MenuContext(), de)).isEqualTo("Drei Minuten")
-        assertThat(SettingsMenu.value(MenuEntry.VISTA_PLAYING, s, MenuContext(), de)).isEqualTo("Aus")
-        assertThat(SettingsMenu.step(MenuEntry.VISTA_PAUSE, s, +1)!!.vistaPauseSeconds).isEqualTo(300)
-        assertThat(SettingsMenu.step(MenuEntry.VISTA_PAUSE, s.copy(vistaPauseSeconds = 0), -1)!!.vistaPauseSeconds).isEqualTo(0)
-        assertThat(SettingsMenu.step(MenuEntry.VISTA_PAUSE, s.copy(vistaPauseSeconds = 600), +1, wrap = true)!!.vistaPauseSeconds).isEqualTo(0)
+        assertThat(SettingsMenu.value(MenuEntry.LANDSCAPE_PAUSE, s, MenuContext(), de)).isEqualTo("Drei Minuten")
+        assertThat(SettingsMenu.value(MenuEntry.LANDSCAPE_PLAYING, s, MenuContext(), de)).isEqualTo("Aus")
+        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s, +1)!!.landscapePauseSeconds).isEqualTo(300)
+        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 0), -1)!!.landscapePauseSeconds).isEqualTo(0)
+        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 600), +1, wrap = true)!!.landscapePauseSeconds).isEqualTo(0)
         // Set by a link to 100 s: the nearest offered value is the start.
-        assertThat(SettingsMenu.step(MenuEntry.VISTA_PAUSE, s.copy(vistaPauseSeconds = 100), +1)!!.vistaPauseSeconds).isEqualTo(180)
-        assertThat(SettingsMenu.step(MenuEntry.VISTA_PLAYING, s, +1)!!.vistaPlayingSeconds).isEqualTo(60)
+        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 100), +1)!!.landscapePauseSeconds).isEqualTo(180)
+        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PLAYING, s, +1)!!.landscapePlayingSeconds).isEqualTo(60)
         assertThat(SettingsMenu.delay(15, de)).isEqualTo("15 Sekunden")
         assertThat(SettingsMenu.delay(60, de)).isEqualTo("Eine Minute")
         assertThat(SettingsMenu.delay(5, de)).isEqualTo("Fünf Sekunden")

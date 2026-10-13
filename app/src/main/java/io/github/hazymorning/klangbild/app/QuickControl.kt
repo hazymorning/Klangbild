@@ -71,7 +71,7 @@ internal class QuickControl(private val host: ControllerHost) {
             if (menuOpen || cursor != null) return
             cursor = QuickKey(QuickItem.PICTURE)
             touchedAt = host.now()
-            hold = host.ui.vista != null
+            hold = host.ui.landscape != null
             host.recompute()
         }
         host.settings.let { s -> if (!s.quickSeen) host.applySettings(s.copy(quickSeen = true)) }
@@ -156,12 +156,12 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
-    val vistaHeld: Boolean? get() = hold?.takeIf { cursor != null }
+    val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
     /** The quick settings as they show for [screen], null while they are closed (called under the lock). */
-    fun state(screen: Screen, vista: Boolean): QuickState? {
+    fun state(screen: Screen, landscape: Boolean): QuickState? {
         val c = cursor ?: return null
-        val rows = rows(context(screen, vista))
+        val rows = rows(context(screen, landscape))
         return QuickState(rows, indexOf(rows.map { it.key }, c))
     }
 
@@ -173,13 +173,13 @@ internal class QuickControl(private val host: ControllerHost) {
             pendingPicture.also { pendingPicture = null }
         } ?: return
         val s = host.settings
-        if (next == Picture.VISTA) {
+        if (next == Picture.LANDSCAPE) {
             if (hold != null) hold = true
-            host.showVista()
+            host.showLandscape()
             return
         }
         if (hold != null) hold = false
-        host.hideVista()
+        host.hideLandscape()
         val view = if (next == Picture.FLOW) StageView.FLOW else StageView.SINGLE
         if (view != s.view) host.applySettings(s.copy(view = view))
     }
@@ -262,7 +262,7 @@ internal class QuickControl(private val host: ControllerHost) {
         }
         if (on) {
             if (hold != null) hold = false
-            host.hideVista()
+            host.hideLandscape()
         } else {
             host.recompute()
         }
@@ -378,10 +378,10 @@ internal class QuickControl(private val host: ControllerHost) {
      * What the quick settings need to know: by default what the screen shows now, while working out
      * the screen what it is about to show.
      */
-    private fun context(screen: Screen = host.ui.screen, vista: Boolean = host.ui.vista != null): QuickContext {
+    private fun context(screen: Screen = host.ui.screen, landscape: Boolean = host.ui.landscape != null): QuickContext {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
-            vista = vista,
+            landscape = landscape,
             pending = pendingPicture,
             music = track != null,
             favorite = track?.takeIf { host.ui.source.favorites }?.let { favoriteState(it) },

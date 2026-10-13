@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
         val spec = screenSpec()
         view?.setContent {
             val ui by controller.ui.collectAsStateWithLifecycle()
-            val hooks = remember { RootHooks(positionNow = controller::positionNow, peekUntil = peekUntil, fieldTime = controller::fieldTime, vistaClock = controller.vistaClock) }
+            val hooks = remember { RootHooks(positionNow = controller::positionNow, peekUntil = peekUntil, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
             KlangbildRoot(ui, spec, hooks)
             if (ui.session.debugOverlay) {
                 // Frames are only counted while the overlay shows them.
@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                 } else if (event.repeatCount == 0 && quickKeys) {
                     // Down: the quick settings rise from the bottom edge. Up: the landscape comes,
                     // and up again (or back) leaves it.
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) controller.openQuick() else controller.toggleVista()
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) controller.openQuick() else controller.toggleLandscape()
                     peek()
                 }
                 return true
@@ -293,7 +293,7 @@ class MainActivity : ComponentActivity() {
             controller.menuOpen -> controller.menuBack()
             controller.quickOpen -> controller.closeQuick()
             // The landscape goes; the app stays.
-            controller.hideVista() -> Unit
+            controller.hideLandscape() -> Unit
             s is Screen.Setup && s.reason == SetupReason.REQUESTED -> controller.requestSetup(false)
             else -> finish()
         }

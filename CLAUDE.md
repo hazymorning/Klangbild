@@ -177,7 +177,7 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 one per picture, ids kept), Spoken (MediaKind, Chapter/Chapters/ChapterPlace:
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
-                sun by the local clock, without `sun.sun`), VistaPolicy (when the landscape takes
+                sun by the local clock, without `sun.sun`), LandscapePolicy (when the landscape takes
                 the screen), ValueText (a value of one's own in words: precision, unit, on and off,
                 a time of day), Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
                 lines with breaks; LyricsCursor: the line in the middle a little early, a small step
@@ -197,7 +197,7 @@ render/         HaloLayout (the grid, per view), CoverField (cover colors: groun
                 perspective; the balance with cards missing), FlowCards (baked card textures),
                 FlowLight (the pool of light above the cards), ImageOps
 art/            ChladniArt (missing-cover art), StableHash
-vista/          The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
+landscape/          The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
                 clearing, the near banks, standees, birches, tent, boulders and the fire per label
                 side, mirrored on the right), PaperBake* (sheets as two ink weights + the paper's
                 light + coverage in boxes of their own, cut front to back with the shade of what
@@ -208,18 +208,18 @@ vista/          The landscape, a paper diorama: PaperMotif (folded mountains, fo
                 Inks/InkRaster/Coverage/Shapes (color matrices, exact AA, outlines), PaperLight
                 (plates per hour: sky, key and fill light, folds, haze, fire, lantern; season
                 papers, moonlight, the weather's skies and veils, mist, smoke, fireflies, label
-                inks), VistaCamera (the journey: zoom and a wandering view within the paper's
+                inks), LandscapeCamera (the journey: zoom and a wandering view within the paper's
                 reach, CameraPose per Depth), SkyMap (south view, elevations from the skyline,
                 stars by sidereal time), World (suncalc: sun, moon, phase; season by date),
                 Weather + WeatherMood (state, cloud coverage and wind in its wind_speed_unit →
                 cover, rain, snow, fog, storm, wind), CloudField (lanes, hashed, never repeats),
-                Weatherfall (snow and rain at three depths) + MistField, VistaClock (real time; a
+                Weatherfall (snow and rain at three depths) + MistField, LandscapeClock (real time; a
                 day in two minutes only for measuring), Noise
 lights/         LightSync (any light behind the TV via Home Assistant: a color per light, or a
                 white, a brightness or just on, as the light can; saved with scene.create
                 snapshot_entities and given back with scene.turn_on, our own note as a fallback;
                 rate limits, takeover by others), LightColors (CoverLightColors: the cover's colors
-                kept apart, placed as in the cover, moving on with motion; VistaLightColors: the
+                kept apart, placed as in the cover, moving on with motion; LandscapeLightColors: the
                 landscape's own palette: sky, meadow or moonlit wood, mountains, sun glow, fire),
                 LightColor (xy of a color's hue at its purest, grays as white (neutral by day,
                 warmer at night), a color temperature for white-only lights, brightness floor)
@@ -266,13 +266,13 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
-                held lines), DebugOverlay, vista/ (Vista: bake off the main thread and ahead of
+                held lines), DebugOverlay, landscape/ (Landscape: bake off the main thread and ahead of
                 time, 20 fps tick, season cross-fade, the weather glided in over minutes;
-                VistaWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
+                LandscapeWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
                 range, clearing and near banks as layers redrawn only when the light moves on,
                 each only as tall as its paper, moved by the camera as a whole; stars, clouds,
                 mist, snow and rain, swaying cut-outs and firs, the fire, its smoke, sparks and
-                light, fireflies every frame; VistaScreen + VistaLabel: the mini player on the
+                light, fireflies every frame; LandscapeScreen + LandscapeLabel: the mini player on the
                 near bank, standing still while the camera moves)
 dream/          KlangbildDream (DreamService with ComposeView)
 test only       SyntheticCovers + Catalogue (generated test covers and tracks, test://cover/NAME, a
@@ -557,7 +557,7 @@ UI words are given in English with the German in parentheses where it matters.
   Oklab apart, placed as they sit in the cover (leftmost color left, rightmost right, the
   third above the TV); one color gives itself and its neighbors ±32° round the hue circle, a
   gray cover three whites. With motion the colors move on from light to light (a step per 90 s
-  of field time, resting 70% of it). In the landscape (`VistaLightColors`) its own palette:
+  of field time, resting 70% of it). In the landscape (`LandscapeLightColors`) its own palette:
   above the TV its sky (the weather's too), on the side away from the fire the clearing's green
   (by night the moonlit wood), on the fire's side the mountains' paper and at night the fire's
   light, the glow of dawn or dusk on the sun's side; worked out every 30 s of its sky's time,
@@ -629,7 +629,7 @@ UI words are given in English with the German in parentheses where it matters.
   figures) in the very middle of a dim pool of light (the user wants it centered; burn-in care
   is the ±6 dp drift, the changing figures and the screen ending after "Turn off after"); one
   plain sentence when something is wrong ("Home Assistant can't be reached.").
-- **Landscape** (Landschaft, `vista/`; the window view until 6.3): a diorama of real paper, not
+- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
   with its grain (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven
   hand, mountains folded from card (the faces toward the sun or moon lit, some light from the
@@ -658,14 +658,14 @@ UI words are given in English with the German in parentheses where it matters.
   the cut-outs sway 1.1° to 4° about their feet (leaning into the wind, gusts shared by the
   meadow), the tall firs on the near banks (sprites cut whole beyond the screen) a little less;
   never a loop, 20 fps; light recomputed every 10 s, each step below one level. The camera
-  (`VistaCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view wandering as
+  (`LandscapeCamera`) journeys: zoom 1.01 to 1.11 about the screen's middle, the view wandering as
   far as the paper reaches at that zoom (±6 dp drift on top), but never so far that the near
   bank would leave the label (`BANK_MARGIN`); a swing in about two minutes, sums of sines in the
   golden ratio; each layer follows by its `Depth` (sky 0.15, far range 0.35, clearing 0.65, near
   banks 1), so the parallax is plain to see. The label stands still: it is no part of the
   scenery (riding the bank's scale and pan, its text shimmered in 5.2); the camera keeps its
-  bank under it. No edge and no gap between layers ever shows (`VistaCameraTest` renders every
-  corner of the range, `VistaCameraJourneyTest` checks six hours of poses, the bank under the
+  bank under it. No edge and no gap between layers ever shows (`LandscapeCameraTest` renders every
+  corner of the range, `LandscapeCameraJourneyTest` checks six hours of poses, the bank under the
   label included); stills show it at rest. No preview in the menu (removed in 5.2: never build
   features nobody asked for); the time-lapse is only the `landscape=timelapse` extra for
   measuring. Comes after the pause delay (default 3 min; the rest clock first), during music
@@ -673,17 +673,17 @@ UI words are given in English with the German in parentheses where it matters.
   up on the remote or the quick settings (View) bring it whatever plays, until it is left (up
   again, back, or another view there). Every key starts the delays again; one that came by
   itself goes with any key, which still does its work. Baked ahead only while it shows or is on
-  its way (`VistaPolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
+  its way (`LandscapePolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
   app goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting
   (after 1 s), the far range's own skyline stands in the screen's middle as one thin line, drawn
   like the progress bar in the rest screen's quiet ink and traced from the left as the paper is
   cut (the bake's progress weighted by what each part takes, gliding, never going back, its head
   breathing); once the picture is ready it is drawn to its end and gone while the landscape
-  comes up (`VistaWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
+  comes up (`LandscapeWaiting`; a turning ring read as too plain in 6.1). The label (cover 56 dp,
   Jost 24 / DM Sans 17, bar) lies on the dark near bank (snow only along its edge), the fire on
   the other side; beside the cover one block exactly centered on it: the title's cap height to
   the bar's lower edge (filling the cover's height), or without a bar (a station) to the last
-  baseline (`VistaLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
+  baseline (`LandscapeLabelTest`). Its inks come from the bank and keep 4.5:1 on its lightest grain
   (`PaperLightTest`). Every sheet in its own box, baked only down to where nearer paper hides
   it, each piece cut in a box of its own; sky, far range, clearing and near banks stand as
   layers between light changes, each only as tall as its paper, moved by the camera as a whole;

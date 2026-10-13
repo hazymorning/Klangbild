@@ -60,8 +60,8 @@ class MenuControlTest {
         override fun requestSetup(show: Boolean) {
             setup++
         }
-        override fun showVista() = Unit
-        override fun hideVista() = false
+        override fun showLandscape() = Unit
+        override fun hideLandscape() = false
     }
 
     private val menu = MenuControl(host, SleepControl(host))

@@ -58,7 +58,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
                 setViewTreeSavedStateRegistryOwner(this@KlangbildDream)
                 setContent {
                     val ui by controller.ui.collectAsStateWithLifecycle()
-                    val hooks = remember { RootHooks(positionNow = controller::positionNow, fieldTime = controller::fieldTime, vistaClock = controller.vistaClock) }
+                    val hooks = remember { RootHooks(positionNow = controller::positionNow, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
                     // Any key ends the dream: it never tells which key opens the quick settings.
                     KlangbildRoot(ui.copy(downHint = false), spec, hooks)
                 }

@@ -6,7 +6,7 @@ import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.Texts
 
 /** What the screen shows: one of the two views of the music, or the landscape. */
-enum class Picture { SINGLE, FLOW, VISTA }
+enum class Picture { SINGLE, FLOW, LANDSCAPE }
 
 /** The song's words in the text column: on, off, or on while this song has no synced words. */
 enum class LyricsChoice { ON, OFF, NONE }
@@ -72,7 +72,7 @@ enum class ActionState {
 /** What the quick settings need to know besides the settings. */
 data class QuickContext(
     /** The screen shows the landscape. */
-    val vista: Boolean = false,
+    val landscape: Boolean = false,
     /** A view chosen with OK that is taken once the presses stop. */
     val pending: Picture? = null,
     /** Something plays (or is paused) on the stage. */
@@ -125,7 +125,7 @@ object QuickMenu {
 
     /** What the screen shows now. */
     fun picture(s: Settings, ctx: QuickContext): Picture = when {
-        ctx.vista -> Picture.VISTA
+        ctx.landscape -> Picture.LANDSCAPE
         s.view == StageView.FLOW -> Picture.FLOW
         else -> Picture.SINGLE
     }
@@ -134,7 +134,7 @@ object QuickMenu {
         when (p) {
             Picture.SINGLE -> R.string.view_single
             Picture.FLOW -> R.string.view_flow
-            Picture.VISTA -> R.string.view_vista
+            Picture.LANDSCAPE -> R.string.view_landscape
         },
     ]
 
@@ -190,7 +190,7 @@ object QuickMenu {
     }
 
     /** From the music's own picture outward: the cover, the strip of covers, the landscape. */
-    val PICTURES = listOf(Picture.SINGLE, Picture.FLOW, Picture.VISTA)
+    val PICTURES = listOf(Picture.SINGLE, Picture.FLOW, Picture.LANDSCAPE)
 
     /** The picture after one step from [p] (−1 or +1); [wrap] goes round. */
     fun step(p: Picture, direction: Int, wrap: Boolean): Picture {

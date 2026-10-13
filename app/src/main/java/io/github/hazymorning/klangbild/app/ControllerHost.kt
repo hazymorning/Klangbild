@@ -48,8 +48,8 @@ internal interface ControllerHost {
 
     fun requestSetup(show: Boolean)
 
-    fun showVista()
+    fun showLandscape()
 
     /** Leaves the landscape; whether it was showing. */
-    fun hideVista(): Boolean
+    fun hideLandscape(): Boolean
 }

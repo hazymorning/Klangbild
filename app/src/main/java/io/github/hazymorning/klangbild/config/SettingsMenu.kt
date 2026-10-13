@@ -16,7 +16,7 @@ enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
     PICTURE(R.string.section_picture, R.string.about_section_picture),
     INFO(R.string.section_info, R.string.about_section_info),
     LIGHTS(R.string.section_lights, R.string.about_section_lights),
-    VISTA(R.string.section_vista, R.string.about_section_vista),
+    LANDSCAPE(R.string.section_landscape, R.string.about_section_landscape),
     REMOTE(R.string.section_remote, R.string.about_section_remote),
     TIMER(R.string.section_timer, R.string.about_section_timer),
     SYSTEM(R.string.section_system, R.string.about_section_system),
@@ -39,9 +39,9 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     LYRICS(MenuSection.INFO, R.string.entry_lyrics),
     LIGHTS(MenuSection.LIGHTS, R.string.entry_brightness),
     LIGHTS_ONLY_ON(MenuSection.LIGHTS, R.string.entry_off_lights),
-    VISTA_PAUSE(MenuSection.VISTA, R.string.entry_vista_pause),
-    VISTA_PLAYING(MenuSection.VISTA, R.string.entry_vista_playing),
-    MINI_PLAYER(MenuSection.VISTA, R.string.entry_mini_player),
+    LANDSCAPE_PAUSE(MenuSection.LANDSCAPE, R.string.entry_landscape_pause),
+    LANDSCAPE_PLAYING(MenuSection.LANDSCAPE, R.string.entry_landscape_playing),
+    MINI_PLAYER(MenuSection.LANDSCAPE, R.string.entry_mini_player),
     REMOTE(MenuSection.REMOTE, R.string.entry_remote),
     UP_DOWN(MenuSection.REMOTE, R.string.entry_up_down),
     SPOKEN(MenuSection.REMOTE, R.string.entry_spoken),
@@ -186,8 +186,8 @@ object SettingsMenu {
                 LightLevel.OFF -> R.string.off
             },
         ]
-        MenuEntry.VISTA_PAUSE -> delay(s.vistaPauseSeconds, t)
-        MenuEntry.VISTA_PLAYING -> delay(s.vistaPlayingSeconds, t)
+        MenuEntry.LANDSCAPE_PAUSE -> delay(s.landscapePauseSeconds, t)
+        MenuEntry.LANDSCAPE_PLAYING -> delay(s.landscapePlayingSeconds, t)
         MenuEntry.MINI_PLAYER -> t[
             when (s.miniPlayer) {
                 MiniPlayer.LEFT -> R.string.mini_player_left
@@ -196,7 +196,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.REMOTE -> onOff(s.remoteControl, t)
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.up_down_volume else R.string.up_down_vista]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.up_down_volume else R.string.up_down_landscape]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.spoken_jump else R.string.spoken_change]
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
@@ -286,12 +286,12 @@ object SettingsMenu {
                 else -> R.string.about_lights_switch_on
             },
         ]
-        MenuEntry.VISTA_PAUSE -> t[if (s.vistaPauseSeconds == 0) R.string.about_vista_pause_off else R.string.about_vista_pause]
-        MenuEntry.VISTA_PLAYING -> t[
+        MenuEntry.LANDSCAPE_PAUSE -> t[if (s.landscapePauseSeconds == 0) R.string.about_landscape_pause_off else R.string.about_landscape_pause]
+        MenuEntry.LANDSCAPE_PLAYING -> t[
             when {
-                s.vistaPlayingSeconds != 0 -> R.string.about_vista_playing
-                s.volumeKeys -> R.string.about_vista_playing_off_volume
-                else -> R.string.about_vista_playing_off
+                s.landscapePlayingSeconds != 0 -> R.string.about_landscape_playing
+                s.volumeKeys -> R.string.about_landscape_playing_off_volume
+                else -> R.string.about_landscape_playing_off
             },
         ]
         MenuEntry.MINI_PLAYER -> t[
@@ -302,7 +302,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.REMOTE -> t[if (s.remoteControl) R.string.about_remote_on else R.string.about_remote_off]
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.about_up_down_volume else R.string.about_up_down_vista]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.about_up_down_volume else R.string.about_up_down_landscape]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.about_spoken_jump else R.string.about_spoken_change]
         MenuEntry.SLEEP_TIMER -> when {
             ctx.sleep == SleepChoice.OFF -> t[R.string.about_sleep_timer_off]
@@ -363,8 +363,8 @@ object SettingsMenu {
         MenuEntry.LIGHTS_ONLY_ON -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
         MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
         MenuEntry.LIGHT -> s.copy(light = move(LIGHT_ORDER, s.light, direction, wrap))
-        MenuEntry.VISTA_PAUSE -> s.copy(vistaPauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.vistaPauseSeconds), direction, wrap))
-        MenuEntry.VISTA_PLAYING -> s.copy(vistaPlayingSeconds = move(PLAYING_DELAYS, nearest(PLAYING_DELAYS, s.vistaPlayingSeconds), direction, wrap))
+        MenuEntry.LANDSCAPE_PAUSE -> s.copy(landscapePauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.landscapePauseSeconds), direction, wrap))
+        MenuEntry.LANDSCAPE_PLAYING -> s.copy(landscapePlayingSeconds = move(PLAYING_DELAYS, nearest(PLAYING_DELAYS, s.landscapePlayingSeconds), direction, wrap))
         MenuEntry.MINI_PLAYER -> s.copy(miniPlayer = move(MINI_ORDER, s.miniPlayer, direction, wrap))
         MenuEntry.REMOTE -> s.copy(remoteControl = !s.remoteControl)
         MenuEntry.UP_DOWN -> s.copy(volumeKeys = !s.volumeKeys)

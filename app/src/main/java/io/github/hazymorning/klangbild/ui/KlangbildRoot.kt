@@ -27,7 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.VistaUi
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.VolumeDisplay
@@ -49,12 +49,12 @@ import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheatre
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
-import io.github.hazymorning.klangbild.ui.vista.VistaAhead
-import io.github.hazymorning.klangbild.ui.vista.releaseBakedVista
-import io.github.hazymorning.klangbild.ui.vista.VistaScreen
-import io.github.hazymorning.klangbild.ui.vista.labelSide
-import io.github.hazymorning.klangbild.ui.vista.rememberVistaFeed
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeAhead
+import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.ui.landscape.labelSide
+import io.github.hazymorning.klangbild.ui.landscape.rememberLandscapeFeed
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import kotlinx.coroutines.delay
 
 /** A wall clock that ticks every [periodMs] (the UI needs minutes, the drift whole pixels). */
@@ -76,7 +76,7 @@ class RootHooks(
     /** The color field's time (seconds): it runs while music plays, at the motion setting's speed. */
     val fieldTime: () -> Double = { 0.0 },
     /** The moment the landscape's sky shows. */
-    val vistaClock: VistaClock = VistaClock(now),
+    val landscapeClock: LandscapeClock = LandscapeClock(now),
 )
 
 /**
@@ -118,12 +118,12 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             },
     ) {
         // The landscape's picture is baked while it is only on its way, so it comes at once.
-        ui.vistaAhead?.let { VistaAhead(rememberVistaFeed(ui, hooks.vistaClock, hooks.now), labelSide(it)) }
+        ui.landscapeAhead?.let { LandscapeAhead(rememberLandscapeFeed(ui, hooks.landscapeClock, hooks.now), labelSide(it)) }
         // No longer coming: its picture is let go after a while, and baked anew the next time.
-        if (ui.vistaAhead == null && ui.vista == null && !LocalStill.current) {
+        if (ui.landscapeAhead == null && ui.landscape == null && !LocalStill.current) {
             LaunchedEffect(Unit) {
-                delay(VISTA_RELEASE_MS)
-                releaseBakedVista()
+                delay(LANDSCAPE_RELEASE_MS)
+                releaseBakedLandscape()
             }
         }
         // Animate between kinds of screens only (stage/rest/setup). The latest content
@@ -160,7 +160,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     lightFactor = ui.display.light.factor,
                     appearance = c.appearance,
                 )
-                is Content.VistaContent -> VistaScreen(ui, c.vista, hooks.vistaClock, hooks.positionNow, hooks.now)
+                is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionNow, hooks.now)
                 is Content.SetupContent -> {
                     val scene = rememberOffMain(ui.setup, screen, c.appearance) { SetupArt.scene(ui.setup, screen, c.appearance) }
                     if (scene != null) SetupScreen(c.reason, ui.setup, scene) else Box(Modifier.fillMaxSize())
@@ -170,7 +170,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         }
         // The quick settings rise from the bottom edge over whatever shows (over the landscape on
         // its dark ground); the settings menu lies over everything. Both come and go on their own.
-        QuickBarOverlay(ui.quick, if (content is Content.VistaContent) Appearance.DARK else ui.appearance)
+        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance)
         MenuOverlay(ui.menu, ui.appearance)
     }
 }
@@ -197,9 +197,9 @@ private sealed interface Content {
         override val key = "setup:$reason:$appearance"
     }
 
-    data class VistaContent(val vista: VistaUi) : Content {
+    data class LandscapeContent(val landscape: LandscapeUi) : Content {
         // The landscape changes its label and its light inside; it comes and goes through the dark.
-        override val key = "vista"
+        override val key = "landscape"
     }
 
     data object Dark : Content {
@@ -214,7 +214,7 @@ private const val HINT_AFTER_MS = 3_000L
 private const val HINT_MS = 12_000L
 
 /** The landscape's picture is kept this long after it stopped coming (a pause cut short, say). */
-private const val VISTA_RELEASE_MS = 10_000L
+private const val LANDSCAPE_RELEASE_MS = 10_000L
 
 /**
  * How far the whole screen drifts against burn-in (dp): enough to soften every edge on an
@@ -225,7 +225,7 @@ private const val DRIFT_DP = 6f
 /** A switch of screens is over after this long (900 ms out, then 1.3 s in after 900 ms), with room to spare. */
 private const val SCREEN_SWITCH_MS = 3_000L
 
-private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.vista != null) Content.VistaContent(ui.vista) else when (val s = ui.screen) {
+private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.landscape != null) Content.LandscapeContent(ui.landscape) else when (val s = ui.screen) {
     is Screen.Stage ->
         if (ui.view == StageView.FLOW) ui.flow?.let { Content.FlowContent(it) } ?: Content.Dark
         else ui.stage?.let { Content.StageContent(it) } ?: Content.Dark

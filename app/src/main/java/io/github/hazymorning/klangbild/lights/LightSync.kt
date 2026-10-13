@@ -94,7 +94,7 @@ class LightSync(
          * The landscape shows: its light changes slowly, so the lights follow it in long fades
          * and seldom calls; a pause does not dim them (the picture is the show).
          */
-        val vista: Boolean = false,
+        val landscape: Boolean = false,
         /** Lights that are off are left alone; one switched on joins in, one switched off is let go. */
         val onlyOn: Boolean = false,
     )
@@ -281,7 +281,7 @@ class LightSync(
         adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
         if (tg.onlyOn) letGoSwitchedOff(states)
-        val paused = !tg.playing && !tg.vista
+        val paused = !tg.playing && !tg.landscape
         pausedSince = if (paused) (pausedSince ?: t) else null
         when {
             tg.song != shownSong -> {
@@ -299,13 +299,13 @@ class LightSync(
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
             // The landscape's light moves on in long fades, a call per light every while at most.
-            tg.colors !== shownColors && (!tg.vista || t - lastStepAt >= VISTA_GAP_MS) -> {
+            tg.colors !== shownColors && (!tg.landscape || t - lastStepAt >= LANDSCAPE_GAP_MS) -> {
                 shownColors = tg.colors
-                send(b, tg, t, if (tg.vista) VISTA_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
+                send(b, tg, t, if (tg.landscape) LANDSCAPE_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             }
             // A new level or a later hour (a pause is dimmed above, after its delay).
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
-            !paused && !tg.vista && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
+            !paused && !tg.landscape && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
         // Calls that had to wait (a light still busy, a failure to try again): those lights only.
         val due = lights.values.filter { !it.takenOver && !it.inFlight && it.retryAt in 1..t }.mapTo(HashSet()) { it.id }
@@ -693,8 +693,8 @@ class LightSync(
         const val DRIFT_TRANSITION_MS = 8_000L
 
         /** The landscape: its light at most this often (per light a call), in fades this long. */
-        const val VISTA_GAP_MS = 20_000L
-        const val VISTA_TRANSITION_MS = 15_000L
+        const val LANDSCAPE_GAP_MS = 20_000L
+        const val LANDSCAPE_TRANSITION_MS = 15_000L
         const val SOFT_TRANSITION_MS = 1_500L
         const val PAUSE_DELAY_MS = 2_000L
         const val PAUSE_TRANSITION_MS = 2_000L

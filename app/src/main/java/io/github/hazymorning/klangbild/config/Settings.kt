@@ -165,9 +165,9 @@ data class Settings(
     /** With an audiobook or a podcast, left and right jump back 15 and ahead 30 seconds. */
     val spokenSkip: Boolean = true,
     /** The landscape takes the screen after the music has been paused this long (s); 0 never. */
-    val vistaPauseSeconds: Int = 180,
+    val landscapePauseSeconds: Int = 180,
     /** The landscape also comes while music plays, after this long without a key pressed (s); 0 never. */
-    val vistaPlayingSeconds: Int = 0,
+    val landscapePlayingSeconds: Int = 0,
     /** Where the music's label sits in the landscape. */
     val miniPlayer: MiniPlayer = MiniPlayer.LEFT,
     /** The weather entity whose clouds set the landscape's sky; null finds Home Assistant's own, [NO_WEATHER] none. */
@@ -245,11 +245,11 @@ data class SessionOptions(
     val showSetup: Boolean = false,
     val debugOverlay: Boolean = false,
     /** The landscape shown at once (`landscape=on`), or with the day passing in two minutes (`timelapse`). */
-    val vista: VistaRequest? = null,
+    val landscape: LandscapeRequest? = null,
 )
 
 /** A landscape asked for from outside (a link, `am start`, Home Assistant). */
-enum class VistaRequest { SHOW, TIMELAPSE, HIDE }
+enum class LandscapeRequest { SHOW, TIMELAPSE, HIDE }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -285,8 +285,8 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val roomLightLevel = stringPreferencesKey("bar_level")
         val lightsOnlyOn = booleanPreferencesKey("lights_only_on")
         val spokenSkip = booleanPreferencesKey("spoken_skip")
-        val vistaPause = intPreferencesKey("vista_pause_s")
-        val vistaPlaying = intPreferencesKey("vista_playing_s")
+        val landscapePause = intPreferencesKey("vista_pause_s")
+        val landscapePlaying = intPreferencesKey("vista_playing_s")
         val miniPlayer = stringPreferencesKey("mini_player")
         val weather = stringPreferencesKey("weather_entity")
         val quickActions = stringPreferencesKey("quick_actions")
@@ -325,8 +325,8 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             roomLightLevel = p[Keys.roomLightLevel]?.let { RoomLightLevel.named(it) } ?: RoomLightLevel.DEFAULT,
             lightsOnlyOn = p[Keys.lightsOnlyOn] ?: false,
             spokenSkip = p[Keys.spokenSkip] ?: true,
-            vistaPauseSeconds = p[Keys.vistaPause] ?: 180,
-            vistaPlayingSeconds = p[Keys.vistaPlaying] ?: 0,
+            landscapePauseSeconds = p[Keys.landscapePause] ?: 180,
+            landscapePlayingSeconds = p[Keys.landscapePlaying] ?: 0,
             miniPlayer = p[Keys.miniPlayer]?.let { runCatching { MiniPlayer.valueOf(it) }.getOrNull() } ?: MiniPlayer.LEFT,
             weatherEntity = p[Keys.weather],
             quickActions = QuickActions.decode(p[Keys.quickActions]),
@@ -373,8 +373,8 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             p[Keys.roomLightLevel] = s.roomLightLevel.name
             p[Keys.lightsOnlyOn] = s.lightsOnlyOn
             p[Keys.spokenSkip] = s.spokenSkip
-            p[Keys.vistaPause] = s.vistaPauseSeconds
-            p[Keys.vistaPlaying] = s.vistaPlayingSeconds
+            p[Keys.landscapePause] = s.landscapePauseSeconds
+            p[Keys.landscapePlaying] = s.landscapePlayingSeconds
             p[Keys.miniPlayer] = s.miniPlayer.name
             putOrRemove(Keys.weather, s.weatherEntity)
             putOrRemove(Keys.quickActions, s.quickActions.takeIf { it.isNotEmpty() }?.let(QuickActions::encode))
@@ -569,8 +569,8 @@ object LaunchExtras {
         }
         boolOf(extras[SPOKEN_SKIP])?.let { out = out.copy(spokenSkip = it) }
         // The landscape's delays in seconds ("off" or 0 for never), within what the menu offers.
-        secondsOf(extras[LANDSCAPE_PAUSE])?.takeIf { it in 0..3_600 }?.let { out = out.copy(vistaPauseSeconds = it) }
-        secondsOf(extras[LANDSCAPE_PLAYING])?.takeIf { it in 0..7_200 }?.let { out = out.copy(vistaPlayingSeconds = it) }
+        secondsOf(extras[LANDSCAPE_PAUSE])?.takeIf { it in 0..3_600 }?.let { out = out.copy(landscapePauseSeconds = it) }
+        secondsOf(extras[LANDSCAPE_PLAYING])?.takeIf { it in 0..7_200 }?.let { out = out.copy(landscapePlayingSeconds = it) }
         (extras[MINI_PLAYER] as? String)?.let { v ->
             when (v.trim().lowercase()) {
                 "left", "bottom_left", "links", "unten_links" -> MiniPlayer.LEFT
@@ -596,14 +596,14 @@ object LaunchExtras {
 
     fun session(given: Map<String, Any?>): SessionOptions {
         val extras = canonical(given)
-        val vista = extras[LANDSCAPE]
+        val landscape = extras[LANDSCAPE]
         return SessionOptions(
             showSetup = boolOf(extras[SETUP]) ?: false,
             debugOverlay = boolOf(extras[DEBUG]) ?: false,
-            vista = when ((vista as? String)?.trim()?.lowercase() ?: (vista as? Boolean)?.toString()) {
-                "on", "true", "1", "yes", "show", "an", "ja", "zeigen" -> VistaRequest.SHOW
-                "timelapse", "zeitraffer" -> VistaRequest.TIMELAPSE
-                "off", "false", "0", "no", "aus", "nein" -> VistaRequest.HIDE
+            landscape = when ((landscape as? String)?.trim()?.lowercase() ?: (landscape as? Boolean)?.toString()) {
+                "on", "true", "1", "yes", "show", "an", "ja", "zeigen" -> LandscapeRequest.SHOW
+                "timelapse", "zeitraffer" -> LandscapeRequest.TIMELAPSE
+                "off", "false", "0", "no", "aus", "nein" -> LandscapeRequest.HIDE
                 else -> null
             },
         )

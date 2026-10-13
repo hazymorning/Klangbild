@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.VistaUi
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
@@ -25,8 +25,8 @@ import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import io.github.hazymorning.klangbild.ui.vista.VistaScreen
-import io.github.hazymorning.klangbild.vista.VistaClock
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -133,11 +133,11 @@ class ReadmeShotsTest {
             screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),
             stage = Fixtures.stage(polarNight),
             source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "clear-night"),
-            vista = VistaUi(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT),
+            landscape = LandscapeUi(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT),
         )
-        val vistaClock = VistaClock(now = { at })
+        val landscapeClock = LandscapeClock(now = { at })
         shot("landscape") {
-            VistaScreen(ui, ui.vista!!, vistaClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
+            LandscapeScreen(ui, ui.landscape!!, landscapeClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
         }
     }
 
