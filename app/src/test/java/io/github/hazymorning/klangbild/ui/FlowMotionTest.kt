@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.app.FlowData
+import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.StageView
@@ -163,6 +164,16 @@ class FlowMotionTest {
         // A step back to the first song: nothing stands to the left any more.
         val s = scenes()
         run("back_first", Fixtures.flow(s, listOf(2, 3, 4, 5), 3), Fixtures.flow(s, listOf(2, 3, 4), 2), frames = 13, stepMs = 100)
+    }
+
+    @Test
+    fun aBetterCoverComes() {
+        // The song stays, its picture gets better: the strip takes the new look in a quiet
+        // cross-fade, the middle card always in front of the cards beside it.
+        val s = scenes()
+        val start = Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2)
+        val better = FlowData(start.cards.map { if (it.id == 2L) FlowEntry(2L, it.track, s.getValue(5)) else it }, start.current)
+        run("better_cover", start, better, frames = 8, stepMs = 120)
     }
 
     @Test
