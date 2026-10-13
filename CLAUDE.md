@@ -88,7 +88,10 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 - Run Gradle with a UTF-8 locale (`export LC_ALL=C.UTF-8`): test names and data hold umlauts.
 - CI runs three jobs side by side: the release APK (the emulator smoke test and the key
   rotation checks start from it), the JVM tests (they upload the screenshots) and lint. A
-  release waits for all of them.
+  release waits for all of them. A push or pull request that changes only the texts and
+  pictures around the app (README, CLAUDE.md, LICENSE, `docs/`, `tools/`, `.claude/`, the issue
+  templates) runs nothing; tags and manual runs always run everything. The emulator jobs fetch
+  their system image with `ci/install-system-image.sh`, which tries a broken download again.
 
 ## Signing and releases
 

@@ -5,7 +5,26 @@ on:
     branches: [main]
     # A tag like v2026.11.0 publishes a release; one with a hyphen (v2026.11.0-beta.1) a pre-release.
     tags: ["v*"]
+    # A change to the texts and pictures around the app alone builds and tests nothing, since the
+    # app stays the same. GitHub never applies path filters to tags, so a release always runs
+    # everything, and so does a manual run.
+    paths-ignore:
+      - "README.md"
+      - "CLAUDE.md"
+      - "LICENSE"
+      - "docs/**"
+      - "tools/**"
+      - ".claude/**"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
+    paths-ignore:
+      - "README.md"
+      - "CLAUDE.md"
+      - "LICENSE"
+      - "docs/**"
+      - "tools/**"
+      - ".claude/**"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
     inputs:
       release:
@@ -178,6 +197,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Download the Android TV 14 image
+        run: bash ci/install-system-image.sh 34 android-tv x86
+
       - name: Klangbild with a stand-in Home Assistant on Android TV 14
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -220,6 +242,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Download the emulator image
+        run: bash ci/install-system-image.sh ${{ matrix.api }} google_apis x86_64
+
       - name: Install over a copy signed with the old key, refuse the old key afterwards
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -257,6 +282,9 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      - name: Download the Android TV 14 image
+        run: bash ci/install-system-image.sh 34 android-tv x86
 
       - name: Measure
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
