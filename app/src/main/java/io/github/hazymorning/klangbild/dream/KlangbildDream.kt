@@ -15,7 +15,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import io.github.hazymorning.klangbild.app.graph
+import io.github.hazymorning.klangbild.graph
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.KlangbildRoot
 import io.github.hazymorning.klangbild.ui.RootHooks

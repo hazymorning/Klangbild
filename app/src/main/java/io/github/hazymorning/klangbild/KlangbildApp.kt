@@ -1,4 +1,4 @@
-package io.github.hazymorning.klangbild.app
+package io.github.hazymorning.klangbild
 
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -9,6 +9,7 @@ import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
+import io.github.hazymorning.klangbild.app.NowPlayingController
 import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
 import io.github.hazymorning.klangbild.text.Localizer
