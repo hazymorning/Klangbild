@@ -3,13 +3,21 @@ package io.github.hazymorning.klangbild.setup
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,7 +54,7 @@ class SetupServerTest {
 
     @After
     fun tearDown() {
-        server.stop()
+        if (::server.isInitialized) server.stop()
         scope.cancel()
     }
 
@@ -186,5 +194,18 @@ class SetupServerTest {
         server.start()
         val at = URI(server.origin!!)
         assertThat(get(at, "/favicon.ico")).startsWith("HTTP/1.1 204")
+    }
+
+    @Test
+    fun `discovery tells which answer Home Assistant gave`(): Unit = runBlocking {
+        MockWebServer().use { ha ->
+            ha.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest) = MockResponse.Builder().code(502).build()
+            }
+            ha.start()
+            val t = TestTexts.english()
+            val found = SetupServer.discover(OkHttpClient(), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
+            assertThat((found as DiscoverResult.Failed).message).isEqualTo(t.format(R.string.discover_unexpected, 502))
+        }
     }
 }

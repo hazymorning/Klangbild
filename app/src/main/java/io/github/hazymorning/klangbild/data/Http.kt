@@ -9,6 +9,9 @@ import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+/** [server] answered with an HTTP status that is neither success nor a refused token. */
+class HttpStatusException(server: String, val code: Int) : IOException("$server answered $code")
+
 /**
  * Runs [request] and reads its answer with [read] (off the caller's thread). Cancelable:
  * canceling the coroutine cancels the request. A blocking `execute()` would carry on to its

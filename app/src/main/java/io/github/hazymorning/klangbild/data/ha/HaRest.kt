@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
@@ -50,7 +51,7 @@ class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
 
     private suspend fun all(path: String): String = get(path) { code, text ->
         if (code == 401 || code == 403) throw HaAuthRejectedException("HTTP $code")
-        if (code != 200) throw IOException("Home Assistant answered $code")
+        if (code != 200) throw HttpStatusException("Home Assistant", code)
         text
     }
 

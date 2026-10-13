@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.sync.Mutex
@@ -152,7 +153,7 @@ class HaAuth(
                     onRejected(reason)
                     throw HaAuthRejectedException(reason)
                 }
-                if (!response.isSuccessful) throw IOException("Home Assistant answered ${response.code}")
+                if (!response.isSuccessful) throw HttpStatusException("Home Assistant", response.code)
                 val o = json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
                 HaTokens(
                     accessToken = o.string("access_token") ?: throw IOException("No access token"),

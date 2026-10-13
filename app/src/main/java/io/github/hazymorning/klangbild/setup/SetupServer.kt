@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.setup
 
 import io.github.hazymorning.klangbild.R
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.data.ha.HaAuth
@@ -268,10 +269,9 @@ class SetupServer(
             } catch (_: HaAuthRejectedException) {
                 DiscoverResult.Failed(t[R.string.discover_rejected])
             } catch (e: IOException) {
-                val code = Regex("""answered (\d{3})""").find(e.message.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
-                when {
-                    code != null -> DiscoverResult.Failed(t.format(R.string.discover_unexpected, code))
-                    e is LocalNetwork.CleartextRefused -> DiscoverResult.Failed(t[R.string.discover_cleartext])
+                when (e) {
+                    is HttpStatusException -> DiscoverResult.Failed(t.format(R.string.discover_unexpected, e.code))
+                    is LocalNetwork.CleartextRefused -> DiscoverResult.Failed(t[R.string.discover_cleartext])
                     else -> DiscoverResult.Failed(t.format(R.string.discover_unreachable, url))
                 }
             } catch (_: IllegalArgumentException) {

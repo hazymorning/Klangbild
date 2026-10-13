@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ma
 
+import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
@@ -127,7 +128,7 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
             if (response.code == 401 || response.code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
             if (response.code == 400 && response.peekBody(UNKNOWN_PEEK_BYTES).string().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
-            if (!response.isSuccessful) throw IOException("Music Assistant answered ${response.code}")
+            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", response.code)
             response.body.source().let { src ->
                 if (!src.request(MAX_ANSWER_BYTES)) src.readUtf8() else throw IOException("Answer too large")
             }
