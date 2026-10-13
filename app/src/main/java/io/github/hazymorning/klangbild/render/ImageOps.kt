@@ -21,13 +21,15 @@ class LinearImage(val width: Int, val height: Int) {
     val b = FloatArray(width * height)
 
     companion object {
+        /** The light of ARGB [pixels]: where they are transparent, only as much as is seen. */
         fun fromArgb(pixels: IntArray, width: Int, height: Int): LinearImage {
             val img = LinearImage(width, height)
             for (i in pixels.indices) {
                 val p = pixels[i]
-                img.r[i] = Oklab.srgbToLinear(p shr 16)
-                img.g[i] = Oklab.srgbToLinear(p shr 8)
-                img.b[i] = Oklab.srgbToLinear(p)
+                val seen = (p ushr 24) / 255f
+                img.r[i] = Oklab.srgbToLinear(p shr 16) * seen
+                img.g[i] = Oklab.srgbToLinear(p shr 8) * seen
+                img.b[i] = Oklab.srgbToLinear(p) * seen
             }
             return img
         }
@@ -207,7 +209,11 @@ object ImageOps {
         return out
     }
 
-    /** Fast area-average downscale for analysis thumbnails. */
+    /**
+     * Fast area-average downscale for analysis thumbnails. Transparency carries over (a round
+     * plate stays clear in its corners), and the color is what is seen: a transparent pixel
+     * gives none of it.
+     */
     fun thumbnail(src: IntArray, sw: Int, sh: Int, size: Int): IntArray {
         val out = IntArray(size * size)
         for (ty in 0 until size) {
@@ -219,12 +225,14 @@ object ImageOps {
                 var r = 0L
                 var g = 0L
                 var b = 0L
+                var a = 0L
                 var n = 0L
                 for (y in y0 until y1) for (x in x0 until x1) {
                     val p = src[y * sw + x]
-                    r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF; n++
+                    val pa = (p ushr 24).toLong()
+                    r += ((p shr 16) and 0xFF) * pa; g += ((p shr 8) and 0xFF) * pa; b += (p and 0xFF) * pa; a += pa; n++
                 }
-                out[ty * size + tx] = (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
+                out[ty * size + tx] = if (a == 0L) 0 else ((a / n).toInt() shl 24) or ((r / a).toInt() shl 16) or ((g / a).toInt() shl 8) or (b / a).toInt()
             }
         }
         return out
