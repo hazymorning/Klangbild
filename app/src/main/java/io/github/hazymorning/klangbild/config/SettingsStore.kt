@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.config
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -9,7 +10,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -63,7 +63,21 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val showValues = booleanPreferencesKey("show_values")
     }
 
-    val settings: Flow<Settings> = context.dataStore.data.map { p ->
+    val settings: Flow<Settings> = context.dataStore.data.map(::read)
+
+    /** Stores [s], every setting of it. */
+    suspend fun write(s: Settings) {
+        context.dataStore.edit { p -> write(p, s) }
+    }
+
+    /** Seals tokens stored before secrets were sealed (written by an earlier version), in the same step that reads them. */
+    suspend fun sealStoredSecrets() {
+        context.dataStore.edit { p ->
+            if (listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }) write(p, read(p))
+        }
+    }
+
+    private fun read(p: Preferences): Settings =
         Settings(
             haUrl = p[Keys.url],
             haToken = p[Keys.token]?.let(secrets::open),
@@ -102,62 +116,50 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             quickSeen = p[Keys.quickSeen] ?: defaults.quickSeen,
             showValues = p[Keys.showValues] ?: defaults.showValues,
         )
-    }
 
-    suspend fun update(transform: (Settings) -> Settings, current: Settings) {
-        val s = transform(current)
-        context.dataStore.edit { p ->
-            fun putOrRemove(key: Preferences.Key<String>, value: String?) {
-                if (value.isNullOrBlank()) p.remove(key) else p[key] = value
-            }
-            fun putSecret(key: Preferences.Key<String>, value: String?) = putOrRemove(key, value?.takeIf { it.isNotBlank() }?.let(secrets::seal))
-            putOrRemove(Keys.url, s.haUrl)
-            putSecret(Keys.token, s.haToken)
-            putSecret(Keys.refreshToken, s.haRefreshToken)
-            putOrRemove(Keys.clientId, s.haClientId)
-            putOrRemove(Keys.entity, s.entityId)
-            p[Keys.sun] = s.sunEntity
-            p[Keys.sleepMinutes] = s.sleepAfterMinutes
-            p[Keys.sleepAction] = s.sleepAction.name
-            p[Keys.clock] = s.showClock
-            p[Keys.remote] = s.remoteControl
-            p[Keys.progressBar] = s.showProgressBar
-            p[Keys.next] = s.showNext
-            p[Keys.album] = s.showAlbum
-            p[Keys.group] = s.showGroup
-            p[Keys.volume] = s.volumeDisplay.name
-            p[Keys.intensity] = s.intensity.name
-            p[Keys.volumeKeys] = s.volumeKeys
-            p[Keys.appearance] = s.appearance.name
-            p[Keys.view] = s.view.name
-            p[Keys.lyrics] = s.lyrics
-            putOrRemove(Keys.maUrl, s.maUrl)
-            putSecret(Keys.maToken, s.maToken)
-            p[Keys.background] = s.background.name
-            p[Keys.motion] = s.motion.name
-            putOrRemove(Keys.lightsLeft, s.roomLights.left)
-            putOrRemove(Keys.lightsCenter, s.roomLights.center)
-            putOrRemove(Keys.lightsRight, s.roomLights.right)
-            p[Keys.roomLightBrightness] = s.roomLightBrightness.name
-            p[Keys.lightsOnlyOn] = s.lightsOnlyOn
-            p[Keys.spokenSkip] = s.spokenSkip
-            p[Keys.landscapePause] = s.landscapePauseSeconds
-            p[Keys.landscapePlaying] = s.landscapePlayingSeconds
-            p[Keys.miniPlayer] = s.miniPlayer.name
-            putOrRemove(Keys.weather, s.weatherEntity)
-            putOrRemove(Keys.quickActions, s.quickActions.takeIf { it.isNotEmpty() }?.let(QuickActions::encode))
-            putOrRemove(Keys.ownValues, s.ownValues.takeIf { it.isNotEmpty() }?.let(OwnValues::encode))
-            p[Keys.quickSeen] = s.quickSeen
-            p[Keys.showValues] = s.showValues
+    private fun write(p: MutablePreferences, s: Settings) {
+        fun putOrRemove(key: Preferences.Key<String>, value: String?) {
+            if (value.isNullOrBlank()) p.remove(key) else p[key] = value
         }
-    }
-
-    /** Seals tokens stored before secrets were sealed (written by an earlier version). */
-    suspend fun sealStoredSecrets() {
-        val plain = context.dataStore.data.first().let { p ->
-            listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }
-        }
-        if (plain) settings.first().let { update({ it }, it) }
+        fun putSecret(key: Preferences.Key<String>, value: String?) = putOrRemove(key, value?.takeIf { it.isNotBlank() }?.let(secrets::seal))
+        putOrRemove(Keys.url, s.haUrl)
+        putSecret(Keys.token, s.haToken)
+        putSecret(Keys.refreshToken, s.haRefreshToken)
+        putOrRemove(Keys.clientId, s.haClientId)
+        putOrRemove(Keys.entity, s.entityId)
+        p[Keys.sun] = s.sunEntity
+        p[Keys.sleepMinutes] = s.sleepAfterMinutes
+        p[Keys.sleepAction] = s.sleepAction.name
+        p[Keys.clock] = s.showClock
+        p[Keys.remote] = s.remoteControl
+        p[Keys.progressBar] = s.showProgressBar
+        p[Keys.next] = s.showNext
+        p[Keys.album] = s.showAlbum
+        p[Keys.group] = s.showGroup
+        p[Keys.volume] = s.volumeDisplay.name
+        p[Keys.intensity] = s.intensity.name
+        p[Keys.volumeKeys] = s.volumeKeys
+        p[Keys.appearance] = s.appearance.name
+        p[Keys.view] = s.view.name
+        p[Keys.lyrics] = s.lyrics
+        putOrRemove(Keys.maUrl, s.maUrl)
+        putSecret(Keys.maToken, s.maToken)
+        p[Keys.background] = s.background.name
+        p[Keys.motion] = s.motion.name
+        putOrRemove(Keys.lightsLeft, s.roomLights.left)
+        putOrRemove(Keys.lightsCenter, s.roomLights.center)
+        putOrRemove(Keys.lightsRight, s.roomLights.right)
+        p[Keys.roomLightBrightness] = s.roomLightBrightness.name
+        p[Keys.lightsOnlyOn] = s.lightsOnlyOn
+        p[Keys.spokenSkip] = s.spokenSkip
+        p[Keys.landscapePause] = s.landscapePauseSeconds
+        p[Keys.landscapePlaying] = s.landscapePlayingSeconds
+        p[Keys.miniPlayer] = s.miniPlayer.name
+        putOrRemove(Keys.weather, s.weatherEntity)
+        putOrRemove(Keys.quickActions, s.quickActions.takeIf { it.isNotEmpty() }?.let(QuickActions::encode))
+        putOrRemove(Keys.ownValues, s.ownValues.takeIf { it.isNotEmpty() }?.let(OwnValues::encode))
+        p[Keys.quickSeen] = s.quickSeen
+        p[Keys.showValues] = s.showValues
     }
 
     /** The constant named [name], or [default] for none or a name this version does not know. */

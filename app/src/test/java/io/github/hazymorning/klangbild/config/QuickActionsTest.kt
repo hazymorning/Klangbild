@@ -111,12 +111,12 @@ class QuickActionsTest {
             condition = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1"),
         )
         val values = listOf(OwnValue("Outside", "sensor.outside"), OwnValue("", "weather.home", "temperature"))
-        store.update({ it.copy(quickActions = listOf(grouped, party), ownValues = values, showValues = false) }, Settings())
+        store.write(Settings(quickActions = listOf(grouped, party), ownValues = values, showValues = false))
         val back = store.settings.first()
         assertThat(back.quickActions).containsExactly(grouped, party).inOrder()
         assertThat(back.ownValues).containsExactly(*values.toTypedArray()).inOrder()
         assertThat(back.showValues).isFalse()
-        store.update({ it.copy(quickActions = emptyList(), ownValues = emptyList()) }, back)
+        store.write(back.copy(quickActions = emptyList(), ownValues = emptyList()))
         assertThat(store.settings.first().quickActions).isEmpty()
         assertThat(store.settings.first().ownValues).isEmpty()
     }

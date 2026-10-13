@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
+import io.github.hazymorning.klangbild.domain.StageView
+import java.lang.reflect.Modifier
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -35,7 +38,7 @@ class SettingsStoreTest {
         val signedIn = Settings().withHa("http://192.168.1.5:8123", HaCredentials.SignedIn("refresh-secret", "http://192.168.1.23:8765/"))
             .withMa("http://192.168.1.5:8095", "ma-secret")
             .copy(entityId = "media_player.living_room")
-        store.update({ signedIn }, Settings())
+        store.write(signedIn)
         val back = store.settings.first()
         assertThat(back.haCredentials).isEqualTo(HaCredentials.SignedIn("refresh-secret", "http://192.168.1.23:8765/"))
         assertThat(back.maToken).isEqualTo("ma-secret")
@@ -45,31 +48,66 @@ class SettingsStoreTest {
         assertThat(box.stored.all { it.startsWith("sealed:") }).isTrue()
 
         // Another address without its credentials drops the old ones.
-        store.update({ it.withHa("http://10.0.0.9:8123", null) }, back)
+        store.write(back.withHa("http://10.0.0.9:8123", null))
         assertThat(store.settings.first().haCredentials).isNull()
     }
 
     @Test
-    fun `the song's words are remembered like the view`(): Unit = runBlocking {
+    fun `every setting is read back as it was stored`(): Unit = runBlocking {
+        val changed = Settings(
+            haUrl = "http://192.168.1.5:8123",
+            haToken = "long-lived",
+            haRefreshToken = "refresh",
+            haClientId = "http://192.168.1.23:8765/",
+            entityId = "media_player.kitchen",
+            sunEntity = "sun.home",
+            sleepAfterMinutes = 45,
+            sleepAction = SleepAction.CLOSE,
+            showClock = false,
+            remoteControl = false,
+            showProgressBar = false,
+            showNext = false,
+            showAlbum = false,
+            showGroup = false,
+            volumeDisplay = VolumeDisplay.ALWAYS,
+            showValues = false,
+            intensity = Intensity.STRONG,
+            volumeKeys = true,
+            appearance = AppearanceMode.DARK,
+            view = StageView.FLOW,
+            lyrics = true,
+            maUrl = "http://192.168.1.5:8095",
+            maToken = "ma-token",
+            background = BackgroundMode.COVER,
+            motion = MotionLevel.LIVELY,
+            roomLights = RoomLights("light.left", "light.top", "light.right"),
+            roomLightBrightness = RoomLightBrightness.P90,
+            lightsOnlyOn = true,
+            spokenSkip = false,
+            landscapePauseSeconds = 600,
+            landscapePlayingSeconds = 1_800,
+            miniPlayer = MiniPlayer.RIGHT,
+            weatherEntity = "weather.home",
+            quickActions = listOf(QuickAction("Ungroup", "script.ungroup", condition = Condition("media_player.kitchen", "group_members", Condition.Test.ABOVE, "1"))),
+            ownValues = listOf(OwnValue("Outside", "sensor.outside_temperature")),
+            quickSeen = true,
+        )
+        // A setting the store forgets would come back as its default, so every one differs from it here.
+        val defaults = Settings()
+        for (field in Settings::class.java.declaredFields.filter { !Modifier.isStatic(it.modifiers) }) {
+            field.isAccessible = true
+            assertWithMessage("${field.name} is set apart from its default").that(field.get(changed)).isNotEqualTo(field.get(defaults))
+        }
         val store = SettingsStore(context, FakeBox())
-        assertThat(store.settings.first().lyrics).isFalse()
-        store.update({ it.copy(lyrics = true) }, Settings())
-        assertThat(store.settings.first().lyrics).isTrue()
-    }
-
-    @Test
-    fun `whether lights that are off are left off is remembered`(): Unit = runBlocking {
-        val store = SettingsStore(context, FakeBox())
-        assertThat(store.settings.first().lightsOnlyOn).isFalse()
-        store.update({ it.copy(lightsOnlyOn = true) }, Settings())
-        assertThat(store.settings.first().lightsOnlyOn).isTrue()
+        store.write(changed)
+        assertThat(store.settings.first()).isEqualTo(changed)
     }
 
     @Test
     fun `tokens stored by an earlier version are sealed on the next start`(): Unit = runBlocking {
         // An earlier version wrote the token as it is.
         SettingsStore(context, FakeBox(sealing = false))
-            .update({ it.withHa("http://192.168.1.5:8123", HaCredentials.LongLived("long-lived-secret")) }, Settings())
+            .write(Settings().withHa("http://192.168.1.5:8123", HaCredentials.LongLived("long-lived-secret")))
 
         val box = FakeBox()
         val store = SettingsStore(context, box)

@@ -253,7 +253,7 @@ class NowPlayingController(
             withContext(Dispatchers.IO) { SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value) }
         },
         save = { updated ->
-            settingsStore.update({ updated }, settings.value)
+            settingsStore.write(updated)
             // Leaving setup: the new settings start a fresh connection.
             session.value = session.value.copy(showSetup = false)
             machine.requestSetup(false)
@@ -385,7 +385,7 @@ class NowPlayingController(
             scope.launch {
                 val current = settingsStore.settings.first()
                 val updated = LaunchExtras.applyTo(current, extras)
-                settingsStore.update({ updated }, current)
+                settingsStore.write(updated)
                 take(updated, "extras")
             }
         }
@@ -509,7 +509,7 @@ class NowPlayingController(
         scope.launch {
             try {
                 // Always the newest state: quick presses may overtake each other.
-                persistLock.withLock { settingsStore.update({ settings.value }, settings.value) }
+                persistLock.withLock { settingsStore.write(settings.value) }
             } finally {
                 localEdits.decrementAndGet()
             }
