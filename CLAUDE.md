@@ -125,6 +125,12 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 
 ## Architecture (data source → state model → UI)
 
+The packages build on each other in one direction, and `LayersTest` keeps it so: math, json,
+color, text and art below everything; domain (the app's model and rules) on them; data (Home
+Assistant and Music Assistant) on domain; config (the settings, their store and menus) on data;
+render, landscape and lights; app (the controller); ui on top. MainActivity and KlangbildApp
+(the wiring) stand in the root package and may use everything.
+
 ```
 data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client id → 30 minute access
                 tokens; a refused refresh is never tried again), HaRest (GET /api/states/<id>, all
@@ -163,11 +169,11 @@ data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a 
                 that plays and the one up next: from the queue item, else asked, one song at a
                 time, the one that plays first; kept by URI; a call for a song no longer playing
                 or next canceled, its answer dropped; a version without the call: none)
-data/           NowPlayingSource/SourceState/LinkState, ArtworkLoader (size limits; the token only
+data/           NowPlayingSource, LightBridge (what the lights need from Home Assistant), ArtworkLoader (size limits; the token only
                 to Home Assistant's host, through a client without redirects; a larger rendition
                 guessed from the address gets a short try and is not asked again for a while
                 when it fails; two loads at a time; covers cached on disk), Backoff,
-                Http (cancellable OkHttp fetch with a call timeout)
+                Http (cancellable OkHttp fetch with a call timeout; HttpStatusException)
 domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its picture too, kind,
                 chapters), PlayerSnapshot (+ SpeakerGroup, QueueInfo, speed, PlayerAbilities),
                 SpeakerLabel ("Living room + 5", "Everywhere", room names, "35%"), TrackText
@@ -178,8 +184,10 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
                 sun by the local clock, without `sun.sun`), LandscapePolicy (when the landscape takes
-                the screen), EntityId (what an entity id looks like), ValueText (a value of one's own in words: precision, unit, on and off,
-                a time of day), Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
+                the screen), EntityId (what an entity id looks like), ValueText (a value of one's
+                own in words: precision, unit, on and off, a time of day), SourceState (what a source
+                knows: LinkState, MaLink, EntityState), QuickAction (+ ActionKind) and Condition (a
+                button of one's own and when it shows), OwnValue, Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
                 lines with breaks; LyricsCursor: the line in the middle a little early, a small step
                 back held)
 text/           Texts (the words of one language: resources, plurals, numbers, percent, dates, the
@@ -191,7 +199,7 @@ color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, bo
                 (LIGHT / DARK, by the sun), Contrast (WCAG luminance and contrast ratio)
 math/           smoothstep, Rnd (a random source with a fixed seed), hash64 / hashUnit
 json/           string(): a JSON string, or null for anything else
-render/         StageGrid (the grid, per view), ScreenSpec, RectDp, PrintShape (the print's
+render/         StageGrid (the grid, per view), ScreenSpec, RectDp, QrCode, PrintShape (the print's
                 outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
                 at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow (the artwork's light on the dark wall), LampLight (lamp tint for
@@ -231,24 +239,23 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
-                KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
+                (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
                 MotionLevel, RoomLights, RoomLightBrightness), SettingsStore (DataStore, written whole
                 in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
                 QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
                 On / Off, Settings),
-                QuickActions (the own buttons: a name, an entity, what its kind does, a script's
-                variables) + Condition (when a button shows: a state or attribute is, is not, is
-                above or below a value; a list counts its entries), OwnValues (the values in the
-                status line: a name, an entity, an attribute),
+                QuickActions (the own buttons as stored: a name, an entity, a script's variables, the
+                condition: a state or attribute is, is not, is above or below a value; a list counts
+                its entries), OwnValues (the values in the status line as stored),
                 LaunchExtras (am start extras and klangbild:// links: English names and values, those
                 of earlier versions still taken, the German ones and `window_view`)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
                 fields), SetupPage (HTML in the language shown; entities chosen by searching),
-                SetupServer (+ QR, discovery; Host, Origin and content type checked, a few
+                SetupServer (+ discovery; Host, Origin and content type checked, a few
                 connections at a time, slow ones closed, only while the setup screen shows and
                 the TV has an address of its own, tried again until it has; a request that has
                 arrived is still answered when it stops, checked against the address it came to;
