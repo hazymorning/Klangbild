@@ -65,7 +65,7 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 ```
 
 - Local SDK: `local.properties` → `sdk.dir=/opt/android-sdk` (not committed). compileSdk 37,
-  targetSdk 36, minSdk 31.
+  targetSdk 36, minSdk 28 (Android 9: the release signature, scheme v3, needs it).
 - Kotlin warnings and lint warnings fail the build (`allWarningsAsErrors`, `warningsAsErrors`).
   A suppression always carries a one-line reason (`app/lint.xml`, `@Suppress` with a comment).
 - Maven Central rate-limits shared IPs (HTTP 429): Gradle and Robolectric use Google's
@@ -108,7 +108,7 @@ python3 tools/make_readme_pictures.py                          # README mockups 
   original key can no longer sign an update. The key, its password and the lineage exist only
   as repository secrets (`RELEASE_KEYSTORE`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_LINEAGE`);
   they were made once, after 6.0.0, and cannot be made again: a new key would be refused by
-  installed copies. `ci/rotation-check.sh` installs over an old-signed copy on API 31 to 36 in
+  installed copies. `ci/rotation-check.sh` installs over an old-signed copy on API 28 to 36 in
   CI, with throwaway keys.
 - Only a version publishes a release: a pushed tag (`v2026.11.0`), or a manual CI run on main with
   the version as `release` (the release creates the tag). Its text is `docs/releases/<tag>.md`.
@@ -184,7 +184,7 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 back held)
 text/           Texts (the words of one language: resources, plurals, numbers, percent, dates, the
                 clock in 12 or 24 hours), AppLanguage + PlatformLanguageStore (LocaleManager from
-                API 33, the app's own preference on 31 and 32), Localizer (StateFlow<Texts>,
+                API 33, the app's own preference below), Localizer (StateFlow<Texts>,
                 refreshed on configuration, locale and time changes), LocalTexts/texts()
 color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, both walls), Lamp (the
                 warm daylight every color is seen in), Appearance (LIGHT / DARK, by the sun)
@@ -522,7 +522,7 @@ UI words are given in English with the German in parentheses where it matters.
   the 352 dp column on one line in both languages (`LanguageTest` measures every value).
 - **Language:** English is the default, German in `values-de`. The menu's Language line uses
   Android's per-app language (`LocaleManager` from API 33, where the choice also shows in the
-  system's app settings; the app's own preference on API 31 and 32) and applies at once
+  system's app settings; the app's own preference below API 33) and applies at once
   everywhere, the phone's setup page included, without restarting the activity. Every text
   comes from `Texts` (resources, plurals, numbers, percent, dates); the time of day follows
   the system's 12 or 24 hour setting. A recreated activity never applies its launch extras

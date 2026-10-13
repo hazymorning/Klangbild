@@ -249,11 +249,20 @@ jobs:
           path: app/build/reports/lint-results-release.html
           if-no-files-found: warn
 
+  # On the oldest Android Klangbild supports and on a recent one.
   smoke:
-    name: Smoke test on an Android TV emulator
+    name: Smoke test on Android TV ${{ matrix.version }}
     needs: apk
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 28
+            version: 9
+          - api: 34
+            version: 14
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -275,13 +284,13 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Download the Android TV 14 image
-        run: bash ci/install-system-image.sh 34 android-tv x86
+      - name: Download the Android TV ${{ matrix.version }} image
+        run: bash ci/install-system-image.sh ${{ matrix.api }} android-tv x86
 
-      - name: Klangbild with a stand-in Home Assistant on Android TV 14
+      - name: Klangbild with a stand-in Home Assistant on Android TV ${{ matrix.version }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 34
+          api-level: ${{ matrix.api }}
           target: android-tv
           arch: x86
           profile: tv_1080p
@@ -294,7 +303,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: emulator-smoke
+          name: emulator-smoke-${{ matrix.api }}
           path: smoke/
           if-no-files-found: warn
 
@@ -306,7 +315,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [31, 32, 33, 34, 35, 36]
+        api: [28, 29, 30, 31, 32, 33, 34, 35, 36]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

@@ -36,7 +36,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.hazymorning.klangbild"
-        minSdk = 31
+        minSdk = 28
         targetSdk = 36
         versionCode = autoVersionCode
         versionName = autoVersionName

@@ -41,8 +41,8 @@ class LanguageSwitchTest {
     fun `from API 33 the platform keeps the choice`() = switchesAtOnce()
 
     @Test
-    @Config(sdk = [32])
-    fun `on API 31 and 32 the app keeps the choice itself`() = switchesAtOnce()
+    @Config(sdk = [28])
+    fun `below API 33 the app keeps the choice itself`() = switchesAtOnce()
 
     @Test
     @Config(sdk = [34])

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Signs an APK with the release key and its lineage, the way every release from 6.0.1 on is
-# signed: APK Signature Scheme v3 only (minSdk 31 always reads it), with the rotation applied
-# from API 28 so every supported Android version sees the new key and its lineage. Then it
-# checks the signature, and that the lineage starts with ORIGINAL_CERT_SHA256 when that is set:
-# the key every copy installed so far trusts.
+# signed: APK Signature Scheme v3 only (every Android from 9 on reads it, and minSdk is 28),
+# with the rotation applied from API 28 so every supported Android version sees the new key and
+# its lineage. Then it checks the signature, and that the lineage starts with
+# ORIGINAL_CERT_SHA256 when that is set: the key every copy installed so far trusts.
 #
 #   RELEASE_KEYSTORE_PASSWORD=... bash ci/sign-release.sh app.apk release.p12 lineage.bin
 #
