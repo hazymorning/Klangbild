@@ -187,6 +187,9 @@ class NowPlayingController(
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
 
+    /** The stored settings have been taken in: until then [settings] holds only the defaults. */
+    @Volatile private var loaded = false
+
     /** Read from coroutines and the main thread as well; written under the lock. */
     @Volatile private var source: NowPlayingSource? = null
     private var sourceKey: String? = null
@@ -264,14 +267,7 @@ class NowPlayingController(
             // Leaving setup: the new settings start a fresh connection.
             session.value = session.value.copy(showSetup = false)
             synchronized(this@NowPlayingController) { machine.requestSetup(false) }
-            if (updated.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the setup page: connection ${if (updated.isConfigured) "set" else "not set"}")
-            localEdits.incrementAndGet()
-            try {
-                onSettings(updated)
-                persist()
-            } finally {
-                localEdits.decrementAndGet()
-            }
+            takeAndWrite(updated, "setup page")
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
         clientId = { setupServer.origin?.let { "$it/" } },
@@ -315,6 +311,7 @@ class NowPlayingController(
                 // extras) never undoes a connection the store holds now.
                 if (!s.isConfigured && settings.value.isConfigured && settingsStore.settings.first().isConfigured) return@collect
                 onSettings(s)
+                loaded = true
             }
         }
         ticker = scope.launch {
@@ -399,10 +396,16 @@ class NowPlayingController(
         }
         if (LaunchExtras.hasStoredExtras(extras)) {
             scope.launch {
-                val current = settingsStore.settings.first()
-                val updated = LaunchExtras.applyTo(current, extras)
-                settingsStore.write(updated)
-                take(updated)
+                // On a first start the stored settings may not be in yet: the extras go on top of
+                // them, never on top of the defaults.
+                if (!loaded) {
+                    val stored = settingsStore.settings.first()
+                    synchronized(this@NowPlayingController) {
+                        if (!loaded) onSettings(stored)
+                        loaded = true
+                    }
+                }
+                takeAndWrite(LaunchExtras.applyTo(settings.value, extras), "launch's extras")
             }
         }
         reconcileSource()
@@ -534,11 +537,28 @@ class NowPlayingController(
 
     /**
      * Writes the settings as they are now. Always the newest state, one write at a time: quick
-     * presses overtake each other, and a save from the setup page never comes back undone by a
-     * menu's write that was still on its way.
+     * presses overtake each other, and a change from the setup page or the launch's extras never
+     * comes back undone by a menu's write that was still on its way, or the other way round.
      */
     private suspend fun persist() {
         persistLock.withLock { settingsStore.write(settings.value) }
+    }
+
+    /**
+     * Settings from the phone's setup page or the launch's extras ([from]): taken at once and
+     * written, waiting for the write. They never wait for the store's own echo, which has been
+     * seen to stay away on a first start (Android TV 14 emulator, right after installing) and
+     * left the app on the setup page.
+     */
+    private suspend fun takeAndWrite(updated: Settings, from: String) {
+        if (updated.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
+        localEdits.incrementAndGet()
+        try {
+            onSettings(updated)
+            persist()
+        } finally {
+            localEdits.decrementAndGet()
+        }
     }
 
     // --- quick settings ------------------------------------------------------------------
@@ -559,17 +579,6 @@ class NowPlayingController(
 
     /** OK on the entry under the cursor: its next value, or what it says. */
     fun quickChange() = quick.change()
-
-    /**
-     * Settings just written from the launch's extras, taken at once: the store's own echo of them
-     * has been seen to stay away on a first start (Android TV 14 emulator, right after
-     * installing), which left the app on the setup page.
-     */
-    private fun take(s: Settings) {
-        if (localEdits.get() != 0) return
-        if (s.isConfigured != settings.value.isConfigured) Log.i(TAG, "Settings from the launch's extras: connection ${if (s.isConfigured) "set" else "not set"}")
-        onSettings(s)
-    }
 
     @Synchronized
     private fun onSettings(s: Settings) {

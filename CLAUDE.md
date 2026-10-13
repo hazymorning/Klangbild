@@ -239,8 +239,9 @@ lights/         LightSync (any light behind the TV via Home Assistant: a color p
                 landscape's own palette: sky, meadow or moonlit wood, mountains, sun glow, fire),
                 LightColor (xy of a color's hue at its purest, grays as white (neutral by day,
                 warmer at night), a color temperature for white-only lights, brightness floor)
-app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts)
-                and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
+app/            NowPlayingController (single source of truth → StateFlow<UiState>, with the texts;
+                settings from the menus, the setup page and the launch's extras taken at once,
+                the newest written one at a time) and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
                 own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
