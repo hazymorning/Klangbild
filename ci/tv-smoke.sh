@@ -73,9 +73,10 @@ PID="$(adb shell pidof "$PKG" | tr -d '\r')"
 adb logcat -d > smoke/logcat.txt
 adb shell dumpsys gfxinfo "$PKG" > smoke/gfxinfo.txt || true
 
-if grep -q "FATAL EXCEPTION" smoke/logcat.txt; then
+# Only Klangbild's own crashes count: the Android TV 9 image's Live TV app crashes by itself.
+if grep -q "AndroidRuntime: Process: $PKG, " smoke/logcat.txt; then
   echo "The app crashed:"
-  grep -A 30 "FATAL EXCEPTION" smoke/logcat.txt | head -60
+  grep -B 1 -A 30 "AndroidRuntime: Process: $PKG, " smoke/logcat.txt | head -60
   exit 1
 fi
 if [ -z "$PID" ]; then
