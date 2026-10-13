@@ -282,8 +282,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
-                held lines), DebugOverlay, landscape/ (Landscape: bake off the main thread and ahead of
-                time, 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
+                held lines), DebugOverlay, landscape/ (Landscape: bake ahead of time on a thread of low
+                priority, the picture on screen on a thread of its own, never the shared ones; 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
                 LandscapeWaiting: the far range's skyline traced as the first bake goes; PaperView: sky, far
                 range, clearing and near banks as layers redrawn only when the light moves on,
                 each only as tall as its paper, moved by the camera as a whole; stars, clouds,

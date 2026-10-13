@@ -120,7 +120,7 @@ fun Landscape(
         } else {
             state.advance()
         }
-        val images = rememberOffMain(w, h, density, shapes, label) {
+        val images = rememberOffMain(w, h, density, shapes, label, on = SHOWN) {
             if (w > 0 && h > 0) PaperCache.get(w, h, density, shapes, label) else null
         }
         // A new season's bake fades in over the old one.
@@ -314,6 +314,14 @@ private val BAKER = Executors.newSingleThreadExecutor { r ->
         r.run()
     }, "landscape-bake")
 }.asCoroutineDispatcher()
+
+/**
+ * A thread of its own for the picture the screen waits for. A bake takes seconds, far longer on a
+ * slow device, and neither it nor a wait for one under way may hold the app's shared threads: on
+ * two cores that stalled everything else, the settings' writes included (45 s in the Android 9
+ * emulator).
+ */
+private val SHOWN = Executors.newSingleThreadExecutor { r -> Thread(r, "landscape-shown") }.asCoroutineDispatcher()
 
 /** Baking ahead waits this long after the app or the setting has settled, and looks at the season this often. */
 private const val AHEAD_DELAY_MS = 8_000L
