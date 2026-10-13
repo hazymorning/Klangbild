@@ -1,7 +1,5 @@
 package io.github.hazymorning.klangbild.domain
 
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.SourceState
 
 /** Why nothing is on stage. Each reason has its own quiet line of text. */
 enum class RestReason {

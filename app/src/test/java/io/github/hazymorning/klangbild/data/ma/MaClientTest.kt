@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.MaLink
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int

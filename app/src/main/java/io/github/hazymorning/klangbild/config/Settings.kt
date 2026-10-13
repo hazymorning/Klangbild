@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.config
 
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
+import io.github.hazymorning.klangbild.domain.OwnValue
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.roundToInt
 

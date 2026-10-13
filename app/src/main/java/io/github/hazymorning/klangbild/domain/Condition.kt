@@ -1,6 +1,5 @@
-package io.github.hazymorning.klangbild.config
+package io.github.hazymorning.klangbild.domain
 
-import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

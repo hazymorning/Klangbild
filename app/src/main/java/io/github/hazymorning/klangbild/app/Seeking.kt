@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Progress

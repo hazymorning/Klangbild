@@ -210,7 +210,7 @@ object Fixtures {
     fun menu(
         entry: io.github.hazymorning.klangbild.config.MenuEntry,
         settings: io.github.hazymorning.klangbild.config.Settings,
-        ctx: io.github.hazymorning.klangbild.config.MenuContext = io.github.hazymorning.klangbild.config.MenuContext(io.github.hazymorning.klangbild.data.LinkState.CONNECTED),
+        ctx: io.github.hazymorning.klangbild.config.MenuContext = io.github.hazymorning.klangbild.config.MenuContext(io.github.hazymorning.klangbild.domain.LinkState.CONNECTED),
         t: Texts = texts,
     ): io.github.hazymorning.klangbild.app.MenuState {
         val section = entry.section

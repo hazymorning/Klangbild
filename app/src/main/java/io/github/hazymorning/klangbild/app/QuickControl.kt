@@ -1,18 +1,18 @@
 package io.github.hazymorning.klangbild.app
 
-import io.github.hazymorning.klangbild.config.ActionKind
+import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.ViewChoice
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.StageView

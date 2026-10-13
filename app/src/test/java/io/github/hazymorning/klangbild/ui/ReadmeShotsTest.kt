@@ -10,8 +10,8 @@ import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo

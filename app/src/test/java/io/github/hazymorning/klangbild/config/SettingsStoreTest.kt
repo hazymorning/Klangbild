@@ -6,6 +6,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
+import io.github.hazymorning.klangbild.domain.Condition
+import io.github.hazymorning.klangbild.domain.OwnValue
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.StageView
 import java.lang.reflect.Modifier
 import kotlinx.coroutines.flow.first

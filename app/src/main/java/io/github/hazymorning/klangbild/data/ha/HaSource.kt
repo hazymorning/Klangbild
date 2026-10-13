@@ -1,14 +1,15 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import io.github.hazymorning.klangbild.config.ActionKind
-import io.github.hazymorning.klangbild.config.QuickAction
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.domain.EntityState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.data.ma.MaAuthException
 import io.github.hazymorning.klangbild.data.ma.MaClient
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
 import io.github.hazymorning.klangbild.data.ma.MaQueue
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException

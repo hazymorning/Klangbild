@@ -2,17 +2,17 @@ package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.Condition
+import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.LinkState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.data.SourceState
-import io.github.hazymorning.klangbild.data.ha.EntityState
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.SourceState
+import io.github.hazymorning.klangbild.domain.EntityState
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.Lrc
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus

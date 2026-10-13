@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.QuickAction
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.MediaKind
 import kotlinx.coroutines.CoroutineScope

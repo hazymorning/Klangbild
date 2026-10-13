@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.config
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.R
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.text.TestTexts
 import org.junit.Test
 import org.junit.runner.RunWith

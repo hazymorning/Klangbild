@@ -1,8 +1,6 @@
 package io.github.hazymorning.klangbild.domain
 
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.SourceState
 import org.junit.Test
 
 class ScreenStateMachineTest {

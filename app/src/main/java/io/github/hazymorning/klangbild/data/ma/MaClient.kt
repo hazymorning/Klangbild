@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,17 +17,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-
-/** How the optional link to Music Assistant stands, for the menu, never as raw errors. */
-enum class MaLink {
-    CONNECTED,
-
-    /** Music Assistant rejected the token (expired after a year, or deleted). */
-    AUTH_FAILED,
-
-    /** No answer, or not the answer of a Music Assistant server. */
-    UNREACHABLE,
-}
 
 /** Music Assistant rejected the token. */
 class MaAuthException : IOException("Music Assistant rejected the token")

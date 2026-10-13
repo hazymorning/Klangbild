@@ -2,9 +2,10 @@ package io.github.hazymorning.klangbild.config
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
+import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.text.TestTexts
 import org.junit.Test

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred

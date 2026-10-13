@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.domain
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.config.OwnValue
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject

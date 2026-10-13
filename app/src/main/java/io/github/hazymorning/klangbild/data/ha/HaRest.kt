@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.EntityState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

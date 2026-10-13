@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -8,13 +10,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-
-/**
- * A value of one's own in the status line, set up on the phone: the state of a Home Assistant
- * entity, or one of its attributes, after a [name] of one's own ("Outside 12 °C"); without a
- * name the value stands alone.
- */
-data class OwnValue(val name: String, val entity: String, val attribute: String? = null)
 
 /** The values as Klangbild keeps them: a small JSON list of names, entities and attributes. */
 object OwnValues {

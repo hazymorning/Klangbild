@@ -2,7 +2,7 @@ package io.github.hazymorning.klangbild.lights
 
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
-import io.github.hazymorning.klangbild.data.ha.EntityState
+import io.github.hazymorning.klangbild.domain.EntityState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

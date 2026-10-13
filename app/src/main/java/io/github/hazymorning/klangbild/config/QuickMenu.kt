@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.config
 
 import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.R
+import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.Texts
 

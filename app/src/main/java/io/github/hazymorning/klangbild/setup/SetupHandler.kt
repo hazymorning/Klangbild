@@ -9,7 +9,7 @@ import io.github.hazymorning.klangbild.config.SleepAction
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.data.ha.HaUrls
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.text.Texts

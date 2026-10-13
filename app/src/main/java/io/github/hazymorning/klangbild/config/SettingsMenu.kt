@@ -3,8 +3,8 @@ package io.github.hazymorning.klangbild.config
 import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.data.LinkState
-import io.github.hazymorning.klangbild.data.ma.MaLink
+import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.StageView

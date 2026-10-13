@@ -5,7 +5,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
-import io.github.hazymorning.klangbild.data.ha.EntityState
+import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.render.CoverField
 import io.github.hazymorning.klangbild.render.FieldScene
 import kotlinx.coroutines.ExperimentalCoroutinesApi

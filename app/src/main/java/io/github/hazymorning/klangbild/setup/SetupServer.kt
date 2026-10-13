@@ -5,7 +5,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.hazymorning.klangbild.R
-import io.github.hazymorning.klangbild.config.ActionKind
+import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException

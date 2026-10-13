@@ -4,6 +4,10 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.Condition
+import io.github.hazymorning.klangbild.domain.OwnValue
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
