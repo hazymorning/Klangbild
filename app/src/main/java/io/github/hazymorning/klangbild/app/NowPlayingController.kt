@@ -73,7 +73,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
-import java.util.Calendar
 import java.util.concurrent.atomic.AtomicInteger
 
 /** A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text column. */
@@ -768,8 +767,7 @@ class NowPlayingController(
             AppearanceMode.LIGHT -> Appearance.LIGHT
             AppearanceMode.DARK -> Appearance.DARK
             AppearanceMode.AUTO -> {
-                val elevation = src.sunElevation ?: Calendar.getInstance().apply { timeInMillis = now() }
-                    .let { SunClock.elevation(it.get(Calendar.HOUR_OF_DAY), it.get(Calendar.MINUTE)) }
+                val elevation = src.sunElevation ?: SunClock.elevationAt(now())
                 Appearance.bySun(elevation, lastAppearance)
             }
         }

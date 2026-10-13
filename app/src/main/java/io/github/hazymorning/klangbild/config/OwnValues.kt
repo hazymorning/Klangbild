@@ -1,9 +1,10 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -43,8 +44,8 @@ object OwnValues {
     /** A value from what the phone sent or what is stored: any entity, a name cut to [MAX_NAME]; null when it is none. */
     fun from(o: JsonObject?): OwnValue? {
         o ?: return null
-        fun str(key: String) = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()
-        val entity = str("entity")?.takeIf { LaunchExtras.isEntityId(it) } ?: return null
+        fun str(key: String) = o.string(key)?.trim()
+        val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
         val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
         if (attribute != null && !Condition.ATTRIBUTE.matches(attribute)) return null
         val name = str("name").orEmpty().replace(Regex("\\s+"), " ").take(MAX_NAME).trimEnd()

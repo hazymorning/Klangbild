@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -186,7 +187,7 @@ private fun planText(
         rest += Gaps.ARTIST * d + cap(normal.artist)
         if (t.album != null || model.year != null || model.chapter != null) rest += Gaps.ALBUM * d + cap(normal.album)
         if (model.line != null || (model.progress && model.durationMs != null)) {
-            rest += Gaps.BOTTOM * d + (4 + 10) * d + cap(normal.label)
+            rest += Gaps.BOTTOM * d + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(normal.label)
         }
         return layout.art * BLOCK_SHARE * d - rest
     }
@@ -382,4 +383,28 @@ internal fun nextText(text: String, styles: StageStyles, lead: String): Annotate
     // A no-break space widened to about 12 dp.
     withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(" ") }
     append(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
+}
+
+/**
+ * Large type has more room before its first stem than small type; left as it is, a title
+ * looks indented against the lines below it. Pulled left by the difference (dp).
+ */
+internal fun opticalIndent(size: Float): Float = -(0.065f * (size - 15f)).coerceAtLeast(0f)
+
+/**
+ * [text] on one line of [width] px: whole, or cut after its last whole word that leaves room
+ * for an ellipsis ("Conversation with Mrs. Grubach, then …"). A single word too long for the
+ * line is left to the line's own ellipsis.
+ */
+internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): String {
+    fun fits(s: String) = measurer.measure(AnnotatedString(s), style, maxLines = 1, softWrap = false).size.width <= width
+    if (fits(text)) return text
+    var end = text.length
+    while (true) {
+        end = text.lastIndexOfAny(charArrayOf(' ', ' '), end - 1)
+        if (end <= 0) return text
+        // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
+        val head = text.substring(0, end).trimEnd(' ', ' ', '–', '·', ',', ':', ';')
+        if (head.isNotEmpty() && fits("$head …")) return "$head …"
+    }
 }

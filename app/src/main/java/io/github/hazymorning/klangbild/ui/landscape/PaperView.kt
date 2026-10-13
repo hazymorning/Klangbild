@@ -44,12 +44,13 @@ import io.github.hazymorning.klangbild.landscape.PaperBaked
 import io.github.hazymorning.klangbild.landscape.PaperLook
 import io.github.hazymorning.klangbild.landscape.PaperMotif
 import io.github.hazymorning.klangbild.landscape.Sheet
-import io.github.hazymorning.klangbild.landscape.Shapes
 import io.github.hazymorning.klangbild.landscape.SheetId
 import io.github.hazymorning.klangbild.landscape.SkyPlaces
 import io.github.hazymorning.klangbild.landscape.LandscapeCamera
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.Weatherfall
+import io.github.hazymorning.klangbild.math.hashUnit
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.floor
@@ -453,15 +454,15 @@ private fun DrawScope.drawSmoke(images: PaperImages, l: PaperLook, m: PaperMotio
     val wind = m.weather.wind
     val tint = f.tint(l.smoke)
     for (j in 0 until SMOKE_PUFFS) {
-        val period = 6.0 + 2.2 * unit(j, 91)
-        val phase = period * unit(j, 92)
+        val period = 6.0 + 2.2 * hashUnit(j, 91)
+        val phase = period * hashUnit(j, 92)
         val age = ((t + phase) % period).toFloat()
         val life = age / period.toFloat()
         val rise = 24f * age.toDouble().pow(0.85).toFloat()
         val x = b.fireX / d + 4f * sin(age * 0.9f + j) - wind * (8f + 16f * age) * age * 0.5f
         val y = b.fireY / d - 30f - rise
         val r = 6f + 7.5f * age
-        val a = l.smokeAlpha * Shapes.smoothstep(0f, 0.12f, life) * (1f - life).pow(1.4f)
+        val a = l.smokeAlpha * smoothstep(0f, 0.12f, life) * (1f - life).pow(1.4f)
         if (a <= 0.004f) continue
         val w = 2f * r * d / 0.395f
         drawImage(
@@ -469,15 +470,6 @@ private fun DrawScope.drawSmoke(images: PaperImages, l: PaperLook, m: PaperMotio
             dstSize = IntSize(w.roundToInt(), w.roundToInt()), colorFilter = tint, alpha = a.coerceIn(0f, 1f), filterQuality = FilterQuality.Low,
         )
     }
-}
-
-/** A well-mixed hash of an item's number, 0..1. */
-private fun unit(i: Int, seed: Int): Float {
-    var x = i.toLong() * -0x61c8864680b583ebL + seed * 0x9E3779B97F4A7C15uL.toLong()
-    x = (x xor (x ushr 33)) * -0xae502812aa7333L
-    x = (x xor (x ushr 33)) * -0x3b314601e57a13adL
-    x = x xor (x ushr 33)
-    return ((x ushr 40) and 0xFFFFFF).toFloat() / 0xFFFFFF.toFloat()
 }
 
 /**
@@ -524,20 +516,20 @@ private fun DrawScope.drawSparks(m: PaperMotion, b: PaperBaked) {
     val t = m.time
     val wind = m.weather.wind
     for (j in 0 until SPARKS) {
-        val period = 1.9 + 1.8 * unit(j, 81)
-        val shifted = t + period * unit(j, 82)
+        val period = 1.9 + 1.8 * hashUnit(j, 81)
+        val shifted = t + period * hashUnit(j, 82)
         val cycle = floor(shifted / period).toInt()
         val age = (shifted - cycle * period).toFloat()
-        val life = 0.9f + 1.0f * unit(j * 977 + cycle, 83)
+        val life = 0.9f + 1.0f * hashUnit(j * 977 + cycle, 83)
         if (age > life) continue
-        val v0 = 30f + 26f * unit(j * 977 + cycle, 84)
+        val v0 = 30f + 26f * hashUnit(j * 977 + cycle, 84)
         val rise = v0 * age - 7f * age * age
-        val x = b.fireX / d + (unit(j * 977 + cycle, 85) - 0.5f) * 12f + 3.5f * sin(age * (5f + 3f * unit(j, 86)) + j) - wind * 34f * age
+        val x = b.fireX / d + (hashUnit(j * 977 + cycle, 85) - 0.5f) * 12f + 3.5f * sin(age * (5f + 3f * hashUnit(j, 86)) + j) - wind * 34f * age
         val y = b.fireY / d - 16f - rise
-        val fade = Shapes.smoothstep(0f, 0.08f, age) * (1f - age / life).pow(1.6f)
+        val fade = smoothstep(0f, 0.08f, age) * (1f - age / life).pow(1.6f)
         if (fade <= 0.01f) continue
         val color = if (age / life < 0.4f) SPARK_HOT else SPARK_COOL
-        drawCircle(color, radius = (0.75f + 0.55f * unit(j, 87)) * d, center = Offset(x * d, y * d), alpha = fade, blendMode = BlendMode.Plus)
+        drawCircle(color, radius = (0.75f + 0.55f * hashUnit(j, 87)) * d, center = Offset(x * d, y * d), alpha = fade, blendMode = BlendMode.Plus)
     }
 }
 
@@ -551,11 +543,11 @@ private fun DrawScope.drawFireflies(images: PaperImages, l: PaperLook, m: PaperM
     val t = m.time
     val tint = f.tint(FIREFLY)
     for (j in 0 until FIREFLIES) {
-        val bx = 130f + 720f * unit(j, 71)
-        val by = 392f + 58f * unit(j, 72)
-        val x = bx + 26f * Noise.wander(t, 8.0 + 3.0 * unit(j, 73), 900 + j).toFloat()
-        val y = by + 12f * Noise.wander(t, 6.5 + 2.0 * unit(j, 74), 950 + j).toFloat()
-        val pulse = Shapes.smoothstep(0.45f, 0.95f, sin(2 * PI * t / (3.2 + 2.4 * unit(j, 75)) + 6.2832 * unit(j, 76)).toFloat())
+        val bx = 130f + 720f * hashUnit(j, 71)
+        val by = 392f + 58f * hashUnit(j, 72)
+        val x = bx + 26f * Noise.wander(t, 8.0 + 3.0 * hashUnit(j, 73), 900 + j).toFloat()
+        val y = by + 12f * Noise.wander(t, 6.5 + 2.0 * hashUnit(j, 74), 950 + j).toFloat()
+        val pulse = smoothstep(0.45f, 0.95f, sin(2 * PI * t / (3.2 + 2.4 * hashUnit(j, 75)) + 6.2832 * hashUnit(j, 76)).toFloat())
         val a = l.fireflies * pulse
         if (a <= 0.01f) continue
         val w = FIREFLY_HALO_DP * d

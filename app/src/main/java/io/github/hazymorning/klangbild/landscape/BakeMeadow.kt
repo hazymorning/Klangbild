@@ -3,6 +3,8 @@ package io.github.hazymorning.klangbild.landscape
 import io.github.hazymorning.klangbild.landscape.PaperBake.MEADOW_BOTTOM
 import io.github.hazymorning.klangbild.landscape.PaperBake.TENT_HALF
 import io.github.hazymorning.klangbild.landscape.PaperBake.shadowBlurDp
+import io.github.hazymorning.klangbild.math.Rnd
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
@@ -138,7 +140,7 @@ internal fun Baker.standees(): List<Standee> {
                 val all = t.crown
                 val cb = build(SheetId.CROWNS, all.minOf { it.minX() } - 3f, all.minOf { it.minY() } - 3f, all.maxOf { it.maxX() } + 3f, all.maxOf { it.maxY() } + 3f)
                 for ((i, cl) in t.crown.withIndex()) {
-                    val tone = 1f + 0.06f * rnd.normal() - 0.12f * Shapes.smoothstep(t.top + h * 0.25f, t.top + h * 0.6f, cl.maxY())
+                    val tone = 1f + 0.06f * rnd.normal() - 0.12f * smoothstep(t.top + h * 0.25f, t.top + h * 0.6f, cl.maxY())
                     lay(cb, mask(listOf(cl)), c(if (i % 3 == 1) 1f else 0f), ZERO, c(tone), aoCast = 0.12f, aoSigma = 1.2f)
                 }
                 SheetId.CROWNS to finish(cb)
@@ -185,7 +187,7 @@ internal fun Baker.front(left: Boolean): Build? {
     val parts = listOf(bank)
     val b = build(if (left) SheetId.FRONT_LEFT else SheetId.FRONT_RIGHT, parts.minOf { it.minX() } - 4f, parts.minOf { it.minY() } - 4f, parts.maxOf { it.maxX() } + 4f, PaperMotif.BOTTOM)
     val band = if (shapes.snow > 0.05f) 3f + 7f * shapes.snow else 0f
-    lay(b, mask(listOf(bank)), c(0.5f), Weight { x, y -> if (band <= 0f) 0f else 0.9f * (1f - Shapes.smoothstep(band - 0.6f, band + 0.6f, y - line.yAt(x))) })
+    lay(b, mask(listOf(bank)), c(0.5f), Weight { x, y -> if (band <= 0f) 0f else 0.9f * (1f - smoothstep(band - 0.6f, band + 0.6f, y - line.yAt(x))) })
     val from = if (left) -20f else knots.last().x - 6f
     val to = if (left) knots.last().x + 6f else PaperMotif.WIDTH + 30f
     lay(b, mask(grass(line, from, to, rnd, 3f, 10f)), c(0.55f), c(0.5f * shapes.snow), c(1.06f))

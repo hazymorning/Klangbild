@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.landscape
 
 import io.github.hazymorning.klangbild.landscape.PaperBake.RANGE_BOTTOM
+import io.github.hazymorning.klangbild.math.Rnd
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
@@ -15,7 +17,7 @@ internal fun Baker.range(id: SheetId, mountains: List<Mountain>, foot: Float, se
     }
     // Winter: torn caps of snow on the near range too (its third ink is the snow's).
     if (id == SheetId.RANGE_NEAR) {
-        val reach = 34f * Shapes.smoothstep(0.6f, 1f, shapes.peaks) + 10f * shapes.snow
+        val reach = 34f * smoothstep(0.6f, 1f, shapes.peaks) + 10f * shapes.snow
         if (reach > 2f) for ((i, mt) in mountains.withIndex()) {
             val outline = cut(mt.knots, seed * 31 + i, amp = 0.6f)
             val cap = capOutline(outline, mt, mt.summitY + reach, foot, seed * 57 + i, tongues = 4f)

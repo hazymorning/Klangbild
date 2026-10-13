@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaUrls
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.StageView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -483,7 +484,7 @@ object LaunchExtras {
         val maToken = (extras[MA_TOKEN] as? String)?.trim()?.takeIf { it.isNotEmpty() }
         val maUrl = (extras[MA_URL] as? String)?.let { HaUrls.normalizeBase(it) }
         if (maUrl != null) out = out.withMa(maUrl, maToken) else if (maToken != null && out.maUrl != null) out = out.copy(maToken = maToken)
-        (extras[ENTITY] as? String)?.trim()?.takeIf { isEntityId(it) }?.let { out = out.copy(entityId = it) }
+        (extras[ENTITY] as? String)?.trim()?.takeIf { EntityId.isValid(it) }?.let { out = out.copy(entityId = it) }
         intOf(extras[SLEEP_MINUTES])?.takeIf { it in 1..720 }?.let { out = out.copy(sleepAfterMinutes = it) }
         (extras[SLEEP_ACTION] as? String)?.let { a ->
             when (a.lowercase()) {
@@ -562,7 +563,7 @@ object LaunchExtras {
         fun bar(key: String, current: String?): String? = when (val v = (extras[key] as? String)?.trim()) {
             null -> current
             "", "none", "keine" -> null
-            else -> v.takeIf { isLightId(it) } ?: current
+            else -> v.takeIf { EntityId.isLight(it) } ?: current
         }
         if (extras.keys.any { it == LIGHTS_LEFT || it == LIGHTS_CENTER || it == LIGHTS_RIGHT }) {
             out = out.copy(roomLights = RoomLights(bar(LIGHTS_LEFT, out.roomLights.left), bar(LIGHTS_CENTER, out.roomLights.center), bar(LIGHTS_RIGHT, out.roomLights.right)))
@@ -583,7 +584,7 @@ object LaunchExtras {
             when {
                 v.isEmpty() || v == "auto" -> out = out.copy(weatherEntity = null)
                 v == Settings.NO_WEATHER || v == "keine" -> out = out.copy(weatherEntity = Settings.NO_WEATHER)
-                v.startsWith("weather.") && isEntityId(v) -> out = out.copy(weatherEntity = v)
+                EntityId.isWeather(v) -> out = out.copy(weatherEntity = v)
             }
         }
         return out
@@ -641,11 +642,6 @@ object LaunchExtras {
     /** The query parameters of a `klangbild://` link as extras, unsafe keys dropped. */
     fun fromLink(params: Map<String, String?>): Map<String, Any?> =
         params.filterKeys { (formerNames[it] ?: it) in linkKeys }
-
-    fun isEntityId(s: String) = Regex("^[a-z_]+\\.[a-z0-9_]+$").matches(s)
-
-    /** A Home Assistant light (`light.living_room_left`). */
-    fun isLightId(s: String) = s.startsWith("light.") && isEntityId(s)
 
     private fun intOf(v: Any?): Int? = when (v) {
         is Int -> v

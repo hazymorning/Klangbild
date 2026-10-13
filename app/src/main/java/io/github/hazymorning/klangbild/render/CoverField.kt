@@ -3,11 +3,11 @@ package io.github.hazymorning.klangbild.render
 import android.graphics.Bitmap
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverAnalysis
-import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.color.relativeLuminance
 import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.PI
 import kotlin.math.cos
@@ -259,7 +259,7 @@ object CoverField {
         val lch = lab.toLch()
         // A neutral color takes on a slight trace of the lamp's warm hue.
         val neutral = lch.c < 0.025f
-        val hue = if (neutral) CoverPalette.WARM_HUE else lch.h
+        val hue = if (neutral) Lamp.HUE else lch.h
         val c0 = if (neutral) 0.014f else lch.c
         val own = lch.l.coerceIn(0f, 1f)
         val l: Float
@@ -471,9 +471,6 @@ object CoverField {
     private val linearTable = FloatArray(256) { Oklab.srgbToLinear(it / 255f) }
 
     private fun toLinear(v: Float): Float = linearTable[(v * 255f + 0.5f).toInt().coerceIn(0, 255)]
-
-    private fun relativeLuminance(argb: Int): Float =
-        0.2126f * Oklab.srgbToLinear(argb shr 16) + 0.7152f * Oklab.srgbToLinear(argb shr 8) + 0.0722f * Oklab.srgbToLinear(argb)
 }
 
 /**

@@ -2,10 +2,6 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
@@ -110,31 +106,3 @@ object StageTexts {
 }
 
 fun Int.asColor() = Color(this)
-
-/**
- * Color matrix for the artwork: the [Lamp]'s breath of warmth, [dim] (a pause) and a gentle
- * highlight compression, so even a white cover never glares on black. White becomes a soft paper
- * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
- * brightness limiter dim everything. On the light wall a white cover stays a little whiter
- * than the paper around it.
- */
-fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): ColorFilter {
-    val (r, g, b) = coverScale(dim, appearance)
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                r, 0f, 0f, 0f, 0f,
-                0f, g, 0f, 0f, 0f,
-                0f, 0f, b, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        ),
-    )
-}
-
-/** The per-channel scale of [coverFilter] (red, green, blue). */
-fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Triple<Float, Float, Float> {
-    val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
-    val w = Lamp.WARMTH
-    return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
-}

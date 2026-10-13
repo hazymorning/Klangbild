@@ -1,5 +1,7 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.hash64
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.ceil
 import kotlin.math.floor
 
@@ -48,7 +50,7 @@ object CloudField {
         val left = -PaperMotif.OVERSCAN - 900f
         val right = PaperMotif.WIDTH + PaperMotif.OVERSCAN + 20f
         // The deck closes only over an overcast sky.
-        val deck = Shapes.smoothstep(0.55f, 0.92f, density)
+        val deck = smoothstep(0.55f, 0.92f, density)
         for (lane in lanes) {
             if (lane.deck && deck <= 0.003f) continue
             // The lane's procession has moved this far to the left.
@@ -56,21 +58,21 @@ object CloudField {
             val first = floor((left + shift) / lane.spacing).toLong() - 1
             val last = ceil((right + shift) / lane.spacing).toLong()
             for (k in first..last) {
-                val h = hash(k, lane.seed)
+                val h = hash64(k, lane.seed).toInt()
                 val need = (h and 0xFFFF) / 65535f
                 // One cloud in four is a heap; heaps only come as the sky fills.
                 val heap = lane.deck || ((h ushr 30) and 3) == 0
                 val wanted = when {
                     lane.deck -> deck
-                    heap -> Shapes.smoothstep(0.25f, 0.75f, density) * density
+                    heap -> smoothstep(0.25f, 0.75f, density) * density
                     else -> density
                 }
-                val alpha = Shapes.smoothstep(need - 0.06f, need + 0.06f, wanted)
+                val alpha = smoothstep(need - 0.06f, need + 0.06f, wanted)
                 if (alpha <= 0.003f) continue
                 val pick = (h ushr 16) and 0xFF
                 val design = if (heap) PaperBake.CLOUD_STRIPS + pick % PaperBake.CLOUD_HEAPS else pick % PaperBake.CLOUD_STRIPS
                 val jitterX = (((h ushr 24) and 0x3F) / 63f - 0.5f) * lane.spacing * 0.5f
-                val hy = hash(k, lane.seed + 7)
+                val hy = hash64(k, lane.seed + 7).toInt()
                 val jitterY = ((hy and 0xFF) / 255f - 0.5f) * (if (lane.deck) 26f else 18f)
                 // The ceiling's heaps differ in size, so its edge is never a straight line.
                 val size = if (lane.deck) 0.82f + 0.36f * (((hy ushr 8) and 0xFF) / 255f) else if (heap) 0.9f else 1f
@@ -80,13 +82,5 @@ object CloudField {
             }
         }
         return out
-    }
-
-    /** A well-mixed hash of a cloud's number and its lane. */
-    private fun hash(k: Long, seed: Int): Int {
-        var x = k * -0x61c8864680b583ebL + seed * 0x9E3779B97F4A7C15uL.toLong()
-        x = (x xor (x ushr 33)) * -0xae502812aa7333L
-        x = (x xor (x ushr 33)) * -0x3b314601e57a13adL
-        return (x xor (x ushr 33)).toInt()
     }
 }

@@ -9,12 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -42,9 +39,8 @@ import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.render.ImageOps
-import io.github.hazymorning.klangbild.ui.LocalStageTick
-import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.rememberFrames
 import io.github.hazymorning.klangbild.ui.rememberOffMain
 import io.github.hazymorning.klangbild.ui.stage.fitWords
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -52,7 +48,6 @@ import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import io.github.hazymorning.klangbild.landscape.LabelSide
 import io.github.hazymorning.klangbild.landscape.PaperMotif
-import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /** What the label on the near bank says: what plays (or played last), its cover's scene once it is ready, and whether it plays. */
@@ -122,18 +117,8 @@ private fun MusicLabel(m: LabelText, side: LabelSide, inks: () -> IntArray, cove
     val fill by animateFloatAsState(if (m.playing) 1f else 0.55f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer), label = "label-bar")
     val duration = m.track.durationMs
     val bar = duration != null && duration > 0L
-    // The landscape's tick redraws the bar; alone (in a test), a loop of its own, and none without a bar.
-    val shared = LocalStageTick.current
-    val own = remember { mutableLongStateOf(0L) }
-    if (bar && shared == null && !LocalStill.current) {
-        LaunchedEffect(m.playing) {
-            while (true) {
-                withFrameNanos { own.longValue = it }
-                delay(if (m.playing) BAR_REFRESH_MS else BAR_PAUSED_MS)
-            }
-        }
-    }
-    val tick = shared?.frame ?: own
+    // The landscape's tick redraws the bar; none without a bar.
+    val tick = rememberFrames(fast = m.playing, running = bar, fastMs = LANDSCAPE_TICK_MS)
     Layout(
         modifier = Modifier.fillMaxSize(),
         content = {
@@ -212,5 +197,3 @@ private const val BAR_WIDTH_DP = 190f
  */
 private const val BAR_FROM_BASELINE_DP = 13.2f
 private const val CORNER_DP = 4f
-private const val BAR_REFRESH_MS = LANDSCAPE_TICK_MS
-private const val BAR_PAUSED_MS = 500L

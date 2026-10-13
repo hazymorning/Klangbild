@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.ui
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -12,9 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.drawBehind
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -57,16 +56,13 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
-import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.text.texts
@@ -111,7 +107,7 @@ object MenuGrid {
     const val LABEL_GAP = 16f
 
     /** Opacity of a line at [distance] dp from the cursor's line. */
-    fun fade(distance: Float): Float = 1f - LampLight.smoothstep(FADE_FROM, FADE_TO, abs(distance))
+    fun fade(distance: Float): Float = 1f - smoothstep(FADE_FROM, FADE_TO, abs(distance))
 }
 
 /**
@@ -158,7 +154,7 @@ private class MenuColors(
 ) {
     companion object {
         fun of(appearance: Appearance): MenuColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, LampLight.LAMP_HUE).toArgb()))
+            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
             return if (appearance == Appearance.DARK) {
                 MenuColors(
                     wall = Color.Black,
@@ -220,7 +216,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
         val field = rememberOffMain(screen, colors) {
-            val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, SceneBuilder.ditherFor(colors.band.toArgb()))
+            val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
             Bitmap.createBitmap(px, GLOW_MAP_W, GLOW_MAP_H, Bitmap.Config.ARGB_8888).asImageBitmap()
         }
         if (field != null) Canvas(Modifier.fillMaxSize()) {
@@ -392,8 +388,8 @@ fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: 
         val py = (y + 0.5f) * sy
         val u = (px - cx) / MenuGrid.GLOW_SIGMA_X
         val v = (py - cy) / MenuGrid.GLOW_SIGMA_Y
-        val edges = LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
-            LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
+        val edges = smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
+            smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
         val value = exp(-0.5f * (u * u + v * v)) * edges
         val o = y * GLOW_MAP_W + x
         img.r[o] = value

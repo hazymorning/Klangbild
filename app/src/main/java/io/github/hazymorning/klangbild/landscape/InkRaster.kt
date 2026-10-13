@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.Rnd
 import kotlin.math.roundToInt
 
 /**
@@ -13,14 +14,7 @@ import kotlin.math.roundToInt
  */
 class InkRaster(val width: Int, val height: Int, seed: Int = 1) {
     val pixels = IntArray(width * height)
-    private var s = seed * -0x61c88647 or 1
-
-    private fun rnd(): Float {
-        s = s xor (s shl 13)
-        s = s xor (s ushr 17)
-        s = s xor (s shl 5)
-        return (s ushr 8) / 16777216f
-    }
+    private val rnd = Rnd(seed)
 
     /** Lays weights ([wr], [wg], [wb]) over pixel ([x], [y]) with [coverage] 0..1. */
     fun over(x: Int, y: Int, wr: Float, wg: Float, wb: Float, coverage: Float, dither: Boolean = false) {
@@ -35,7 +29,7 @@ class InkRaster(val width: Int, val height: Int, seed: Int = 1) {
         val k1 = c / out
         val d = if (dither) 255f else 0f
         fun mix(old: Int, w: Float): Int {
-            val v = old * k0 + w * 255f * k1 + if (d > 0f) rnd() - rnd() else 0f
+            val v = old * k0 + w * 255f * k1 + if (d > 0f) rnd.next() - rnd.next() else 0f
             return v.roundToInt().coerceIn(0, 255)
         }
         val alpha = (out * 255f).roundToInt().coerceIn(0, 255)

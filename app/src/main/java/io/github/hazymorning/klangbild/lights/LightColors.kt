@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.lights
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
 import io.github.hazymorning.klangbild.landscape.PaperLook
 import io.github.hazymorning.klangbild.landscape.SheetId
@@ -182,9 +183,4 @@ private fun mixOklab(a: FloatArray, b: FloatArray, f: Float, out: FloatArray) {
             Oklab.toLinear(Lab(x.l + (y.l - x.l) * f, x.a + (y.a - x.a) * f, x.b + (y.b - x.b) * f)).copyInto(out)
         }
     }
-}
-
-private fun smoothstep(e0: Float, e1: Float, v: Float): Float {
-    val t = ((v - e0) / (e1 - e0)).coerceIn(0f, 1f)
-    return t * t * (3f - 2f * t)
 }

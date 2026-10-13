@@ -67,8 +67,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        controller.attach(screenSpec())
-        val spec = screenSpec()
+        val spec = ScreenSpec.of(resources.displayMetrics)
+        controller.attach(spec)
         view?.setContent {
             val ui by controller.ui.collectAsStateWithLifecycle()
             val hooks = remember { RootHooks(positionNow = controller::positionNow, peekUntil = peekUntil, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
@@ -96,13 +96,6 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         controller.applyLaunch(LaunchExtras.fromIntent(intent))
-    }
-
-    private fun screenSpec(): ScreenSpec {
-        val m = resources.displayMetrics
-        val w = maxOf(m.widthPixels, m.heightPixels)
-        val h = minOf(m.widthPixels, m.heightPixels)
-        return ScreenSpec(w, h, m.density)
     }
 
     private fun peek() {

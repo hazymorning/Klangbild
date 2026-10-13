@@ -1,5 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -62,8 +64,8 @@ data class Condition(val entity: String, val attribute: String?, val test: Test,
         /** A condition from what the phone sent or what is stored; null when it is none. */
         fun from(o: JsonObject?): Condition? {
             o ?: return null
-            fun str(key: String) = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()
-            val entity = str("entity")?.takeIf { LaunchExtras.isEntityId(it) } ?: return null
+            fun str(key: String) = o.string(key)?.trim()
+            val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
             val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
             if (attribute != null && !ATTRIBUTE.matches(attribute)) return null
             val test = Test.of(str("test")) ?: return null

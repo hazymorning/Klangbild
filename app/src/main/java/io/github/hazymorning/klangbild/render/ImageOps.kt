@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.render
 
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.Rnd
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -89,25 +90,28 @@ object ImageOps {
         blackBelow: Float = -1f,
     ): IntArray {
         val out = IntArray(img.width * img.height)
-        var state = seed * 0x9E3779B9.toInt() or 1
-        fun rnd(): Float { // xorshift32 → 0..1
-            state = state xor (state shl 13)
-            state = state xor (state ushr 17)
-            state = state xor (state shl 5)
-            return (state ushr 8) / 16777216f
-        }
+        val rnd = Rnd(seed)
         for (i in out.indices) {
             if (img.r[i] < blackBelow && img.g[i] < blackBelow && img.b[i] < blackBelow) {
                 out[i] = 0xFF shl 24 // true black stays black: no dither noise where there is no light
                 continue
             }
-            val d = (rnd() - rnd()) * ditherLsb // triangular in -1..1 (× amplitude)
+            val d = (rnd.next() - rnd.next()) * ditherLsb // triangular in -1..1 (× amplitude)
             val r = (Oklab.linearToSrgb(img.r[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val g = (Oklab.linearToSrgb(img.g[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             val b = (Oklab.linearToSrgb(img.b[i]) * 255f + d).roundToInt().coerceIn(0, 255)
             out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
         return out
+    }
+
+    /**
+     * Dither amplitude (gray levels) for a map that is drawn multiplied by [tint]: about one
+     * output level of noise, so even the darkest stretch of a glow never shows bands.
+     */
+    fun ditherFor(tint: Int): Float {
+        val maxC = maxOf((tint shr 16) and 0xFF, (tint shr 8) and 0xFF, tint and 0xFF).coerceAtLeast(16)
+        return (1.25f * 255f / maxC).coerceIn(1f, 6f)
     }
 
     // ---------------------------------------------------------------------------------

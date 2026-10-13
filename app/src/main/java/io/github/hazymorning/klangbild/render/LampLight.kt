@@ -11,10 +11,7 @@ import kotlin.math.roundToInt
  */
 object LampLight {
     /** Light for neutral surroundings: warm white, like a 2700 to 3000 K bulb. */
-    val LAMP = Lch(0.70f, 0.045f, 72f)
-
-    /** Hue of plain lamp light. */
-    const val LAMP_HUE = 72f
+    val LAMP = Lch(0.70f, 0.045f, Lamp.HUE)
 
     /** The sRGB tint for a pool of light: [color], a little warmed by the [Lamp], at [peak] luminance. */
     fun lightTint(color: Lch, peak: Float): Int =
@@ -27,10 +24,5 @@ object LampLight {
         val k = if (y > 0f) luminance / y else 0f
         fun ch(v: Float) = (Oklab.linearToSrgb((v * k).coerceIn(0f, 1f)) * 255f).roundToInt().coerceIn(0, 255)
         return (0xFF shl 24) or (ch(lin[0]) shl 16) or (ch(lin[1]) shl 8) or ch(lin[2])
-    }
-
-    fun smoothstep(e0: Float, e1: Float, x: Float): Float {
-        val t = ((x - e0) / (e1 - e0)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
     }
 }

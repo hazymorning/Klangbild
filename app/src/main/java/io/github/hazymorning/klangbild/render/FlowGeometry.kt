@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.render
 
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
@@ -147,7 +148,7 @@ class FlowGeometry(val layout: StageGrid) {
     }
 
     /** How present a card at [position] is: the third card on each side is already gone. */
-    fun presence(position: Float): Float = 1f - LampLight.smoothstep(MAX_SIDE, EDGE, abs(position))
+    fun presence(position: Float): Float = 1f - smoothstep(MAX_SIDE, EDGE, abs(position))
 
     /**
      * Where the composition stands when only some of the cards are there: [left] cards beside

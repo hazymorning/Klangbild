@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -164,6 +165,5 @@ class HaAuth(
         /** Home Assistant's access tokens last 30 minutes. */
         private const val DEFAULT_EXPIRY_S = 1_800
 
-        private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     }
 }

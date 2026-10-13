@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.domain
 
+import java.util.Calendar
 import kotlin.math.cos
 
 /**
@@ -13,4 +14,8 @@ object SunClock {
         val t = hour + minute / 60f
         return 50.0 * cos((t - 13.0) / 24.0 * 2.0 * Math.PI) - 8.0
     }
+
+    /** The elevation (°) at [epochMs], by the local clock. */
+    fun elevationAt(epochMs: Long): Double =
+        Calendar.getInstance().apply { timeInMillis = epochMs }.let { elevation(it.get(Calendar.HOUR_OF_DAY), it.get(Calendar.MINUTE)) }
 }

@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.landscape
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.color.contrastRatio
 import org.junit.Test
 import kotlin.math.abs
 
@@ -18,7 +19,7 @@ class PaperLightTest {
                 for (moon in listOf(0f, 1f)) {
                     val look = PaperLight.look(SkyState(el, az, moonElevation = 30f, moonAzimuth = 170f, moonFraction = moon, cover = cover, season = season))
                     val bank = lighter(look.bank, PaperLight.GRAIN_LIGHTEST)
-                    for (ink in look.label) worst = minOf(worst, PaperLight.contrast(ink, bank))
+                    for (ink in look.label) worst = minOf(worst, contrastRatio(ink, bank))
                 }
                 el += 0.5f
             }

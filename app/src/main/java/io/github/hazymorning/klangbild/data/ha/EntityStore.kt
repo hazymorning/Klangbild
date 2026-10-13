@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -24,7 +25,7 @@ data class EntityState(
     val contextUser: String? = null,
 ) {
     fun attr(name: String): JsonElement? = attributes[name]?.takeUnless { it is JsonNull }
-    fun string(name: String): String? = (attr(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
+    fun string(name: String): String? = attr(name).string()
     fun number(name: String): Double? = (attr(name) as? JsonPrimitive)?.doubleOrNull
 
     companion object {
@@ -34,18 +35,18 @@ data class EntityState(
          */
         fun of(o: JsonObject?): EntityState? {
             o ?: return null
-            val id = o.str("entity_id") ?: return null
-            val changed = seconds(o.str("last_changed")) ?: 0.0
+            val id = o.string("entity_id") ?: return null
+            val changed = seconds(o.string("last_changed")) ?: 0.0
             val context = o["context"] as? JsonObject
             return EntityState(
                 entityId = id,
-                state = o.str("state") ?: "unknown",
+                state = o.string("state") ?: "unknown",
                 attributes = o["attributes"] as? JsonObject ?: JsonObject(emptyMap()),
                 lastChanged = changed,
-                lastUpdated = seconds(o.str("last_updated")) ?: changed,
-                context = context?.str("id"),
-                contextParent = context?.str("parent_id"),
-                contextUser = context?.str("user_id"),
+                lastUpdated = seconds(o.string("last_updated")) ?: changed,
+                context = context?.string("id"),
+                contextParent = context?.string("parent_id"),
+                contextUser = context?.string("user_id"),
             )
         }
 
@@ -56,7 +57,6 @@ data class EntityState(
             null
         }
 
-        private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     }
 }
 

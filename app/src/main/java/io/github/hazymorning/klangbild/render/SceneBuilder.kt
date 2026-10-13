@@ -172,13 +172,4 @@ object SceneBuilder {
             coverField = coverField,
         )
     }
-
-    /**
-     * Dither amplitude (gray levels) for a map that is drawn multiplied by [tint]: about one
-     * output level of noise, so even the darkest stretch of a glow never shows bands.
-     */
-    fun ditherFor(tint: Int): Float {
-        val maxC = maxOf((tint shr 16) and 0xFF, (tint shr 8) and 0xFF, tint and 0xFF).coerceAtLeast(16)
-        return (1.25f * 255f / maxC).coerceIn(1f, 6f)
-    }
 }

@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.lights.LandscapeLightColors
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
 import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.Place
@@ -18,7 +19,6 @@ import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.landscape.World
 import java.time.ZoneId
-import java.util.Calendar
 
 /**
  * What the lights are to show: the landscape's light while it shows, else the colors of the
@@ -99,10 +99,8 @@ internal class LightTargets(
 
     /** 0 by day to 1 at night, by the sun (Home Assistant's elevation, else the local clock): how far the lights dim. */
     private fun night(src: SourceState): Float {
-        val elevation = src.sunElevation ?: Calendar.getInstance().apply { timeInMillis = now() }
-            .let { SunClock.elevation(it.get(Calendar.HOUR_OF_DAY), it.get(Calendar.MINUTE)) }
-        val t = ((DAY_ELEVATION - elevation.toFloat()) / (DAY_ELEVATION - NIGHT_ELEVATION)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
+        val elevation = src.sunElevation ?: SunClock.elevationAt(now())
+        return smoothstep(DAY_ELEVATION, NIGHT_ELEVATION, elevation.toFloat())
     }
 
     companion object {

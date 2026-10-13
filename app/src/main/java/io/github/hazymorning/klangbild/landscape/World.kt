@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.smoothstep
 import org.shredzone.commons.suncalc.MoonIllumination
 import org.shredzone.commons.suncalc.MoonPosition
 import org.shredzone.commons.suncalc.SunPosition
@@ -121,7 +122,7 @@ object World {
 
     /** Smoothly 0 before [a], rising to 1 at [b], 1 until [c], falling to 0 at [e]. */
     private fun window(x: Float, a: Float, b: Float, c: Float, e: Float): Float =
-        Shapes.smoothstep(a, b, x) * (1f - Shapes.smoothstep(c, e, x))
+        smoothstep(a, b, x) * (1f - smoothstep(c, e, x))
 
     private fun max(a: Float, b: Float) = if (a > b) a else b
 }

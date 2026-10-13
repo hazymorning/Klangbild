@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.landscape
 
 import io.github.hazymorning.klangbild.landscape.PaperBake.SKY_BOTTOM
+import io.github.hazymorning.klangbild.math.Rnd
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -11,8 +13,8 @@ internal fun Baker.sky(): Build {
     val b = build(SheetId.SKY, -o, -o, PaperMotif.WIDTH + o, SKY_BOTTOM)
     for (y in 0 until b.height) {
         val t = (dpY(b.top + y) / SKY_SPAN).coerceIn(0f, 1f)
-        val horizon = Shapes.smoothstep(0.38f, 1f, t)
-        val middle = Shapes.smoothstep(0f, 0.58f, t) * (1f - horizon)
+        val horizon = smoothstep(0.38f, 1f, t)
+        val middle = smoothstep(0f, 0.58f, t) * (1f - horizon)
         for (x in 0 until b.width) b.raster.over(x, y, middle, horizon, 1f / TONE_MAX, 1f, dither = true)
     }
     return b
@@ -34,7 +36,7 @@ internal fun Baker.cloud(i: Int): Sheet {
     val th = pieces[0][3]
     return sprite(m, px(ox), px(oy), PaperKind.WHITE, 950 + i, blurDp = 0.6f) { _, y, _ ->
         val local = y - oy - baseline
-        floatArrayOf(0.7f * Shapes.smoothstep(-th * 0.2f, th * 0.4f, local), 0f, 1f, CLOUD_ALPHA)
+        floatArrayOf(0.7f * smoothstep(-th * 0.2f, th * 0.4f, local), 0f, 1f, CLOUD_ALPHA)
     }
 }
 
@@ -73,7 +75,7 @@ internal fun Baker.glow(): Sheet {
         val u = (x + 0.5f) / side * 2 - 1
         val v = (y + 0.5f) / side * 2 - 1
         val r2 = u * u + v * v
-        val a = exp(-r2 * 3.2f) * (1f - Shapes.smoothstep(0.7f, 1f, sqrt(r2)))
+        val a = exp(-r2 * 3.2f) * (1f - smoothstep(0.7f, 1f, sqrt(r2)))
         px[y * side + x] = ((a * 255f + rnd.next() - 0.5f).roundToInt().coerceIn(0, 255) shl 24) or 0xFFFFFF
     }
     return Sheet(0, 0, side, side, px)

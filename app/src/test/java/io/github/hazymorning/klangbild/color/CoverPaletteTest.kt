@@ -65,7 +65,7 @@ class CoverPaletteTest {
             assertThat(Oklab.fromArgb(p.wall).hue).isIn(com.google.common.collect.Range.closed(45f, 95f))
         }
         assertThat(Oklab.fromArgb(blue.wall).chroma).isAtMost(Oklab.fromArgb(red.wall).chroma)
-        assertThat(Oklab.fromArgb(gray.wall).hue).isWithin(20f).of(CoverPalette.WARM_HUE)
+        assertThat(Oklab.fromArgb(gray.wall).hue).isWithin(20f).of(Lamp.HUE)
         // the Intensity setting turned off leaves plain paper
         val plain = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT, wallTint = 0f)
         assertThat(Oklab.fromArgb(plain.wall).chroma).isAtMost(Oklab.fromArgb(gray.wall).chroma)

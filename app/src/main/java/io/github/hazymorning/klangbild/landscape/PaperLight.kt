@@ -4,6 +4,8 @@ import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.color.relativeLuminance
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sin
@@ -279,14 +281,14 @@ object PaperLight {
 
         // Where the light comes from: the sun by day (its side of the sky stays the bright one
         // through the twilight), the moon by night (from −1 in the east, on the left, to 1 in the west).
-        val sunUp = smooth(-8f, 6f, s.sunElevation)
+        val sunUp = smoothstep(-8f, 6f, s.sunElevation)
         val sunSide = sin(Math.toRadians((s.sunAzimuth - 180f).toDouble())).toFloat()
         val moonSide = sin(Math.toRadians((s.moonAzimuth - 180f).toDouble())).toFloat()
         val raw = sunSide * sunUp + moonSide * (1f - sunUp) * moon
         // There is always some light from the upper right, so at noon (the sun in front) the folds still read.
         val side = (raw + 0.45f * (1f - abs(raw))).coerceIn(-1f, 1f)
         val contrast = p.contrast * (1f - 0.6f * cover) * (1f - 0.5f * fog)
-        val night = 1f - smooth(-8f, 2f, s.sunElevation)
+        val night = 1f - smoothstep(-8f, 2f, s.sunElevation)
         // Under clouds, the direct light gives way to the sky's light.
         val key = FloatArray(3) { p.key[it] + (p.fill[it] * 1.05f - p.key[it]) * 0.7f * cover }
         val fill = p.fill
@@ -357,7 +359,7 @@ object PaperLight {
 
         // Shadows fall away from the light, longer when it is low.
         val lightEl = if (sunUp > 0.5f) s.sunElevation else s.moonElevation
-        val low = 1f - smooth(8f, 50f, lightEl)
+        val low = 1f - smoothstep(8f, 50f, lightEl)
         val shadowAlpha = p.shadowAlpha * (1f - 0.8f * cover)
 
         val moonLit = mixOk(c(0xFFF6EED8), horizon, 0.06f + 0.4f * cover + 0.3f * fog)
@@ -367,7 +369,7 @@ object PaperLight {
         val front = sheets.getValue(SheetId.FRONT_LEFT)
         val label = labelInks(front.mix(0.5f, 0f), s.sunElevation)
         // Behind a thick sky the sun is only a brightness: its disc and its glow fade out, the moon's too.
-        val veil = maxOf(Shapes.smoothstep(0.55f, 0.95f, cover), fog)
+        val veil = maxOf(smoothstep(0.55f, 0.95f, cover), fog)
         // The clouds' tissue: white on a fair day, gray under a deck, slate in rain, dark in a storm.
         val gloom = (0.28f * cover + 0.42f * rain + 0.55f * storm - 0.3f * snow).coerceIn(0f, 0.85f)
         val slate = Oklab.fromArgb(sky[1]).let { Lab(it.l * (0.8f - 0.12f * storm), it.a * 0.6f, it.b * 0.6f).toArgb() }
@@ -384,13 +386,13 @@ object PaperLight {
         val snowInk = scaled(WHITE, FloatArray(3) { dusk * (0.93f + 0.07f * (1f - night)) * maxOf(0.42f, level) })
         val mist = mixOk(horizon, c(0xFFF2F2EE), 0.3f * (1f - night))
         // Mist lies in the valley in fog, a little in rain and snow, and a breath of it on calm mornings around sunrise.
-        val dawn = (1f - smooth(150f, 175f, s.sunAzimuth)) * smooth(-7f, -1.5f, s.sunElevation) * (1f - smooth(5f, 13f, s.sunElevation))
+        val dawn = (1f - smoothstep(150f, 175f, s.sunAzimuth)) * smoothstep(-7f, -1.5f, s.sunElevation) * (1f - smoothstep(5f, 13f, s.sunElevation))
         val mistAlpha = (0.85f * fog + 0.3f * rain + 0.15f * snow + 0.3f * dawn * (1f - 0.6f * cover) * (1f - storm)).coerceIn(0f, 1f)
         // The smoke: a pale gray by day, at night a faint gray warmed by the fire below it.
         val smoke = mixOk(mixOk(horizon, c(0xFF8E8C88), 0.45f), FIRE_GLOW, 0.18f * night)
         val smokeAlpha = (0.2f - 0.1f * night) * (1f - 0.7f * rain) * (1f - 0.5f * fog)
         // Fireflies: warm summer nights, no rain or snow.
-        val fireflies = smooth(0.35f, 0.85f, s.season.summer + 0.4f * s.season.spring) * smooth(0.55f, 0.95f, night) * (1f - rain) * (1f - snow) * (1f - 0.7f * storm)
+        val fireflies = smoothstep(0.35f, 0.85f, s.season.summer + 0.4f * s.season.spring) * smoothstep(0.55f, 0.95f, night) * (1f - rain) * (1f - snow) * (1f - 0.7f * storm)
         return PaperLook(
             sheets = sheets,
             cloud = Inks(muted(cloudLit), muted(cloudShade), muted(cloudRim)),
@@ -405,7 +407,7 @@ object PaperLight {
             rainInk = rainInk, snowInk = snowInk, mist = mist, mistAlpha = mistAlpha,
             smoke = smoke, smokeAlpha = smokeAlpha, fireflies = fireflies,
             fire = p.fire, fireGlow = FIRE_GLOW, fireReach = 46f + 70f * night,
-            lantern = smooth(0.15f, 0.8f, night),
+            lantern = smoothstep(0.15f, 0.8f, night),
             label = label,
             labelCover = 1f - 0.3f * night,
         )
@@ -428,7 +430,7 @@ object PaperLight {
         val h = FloatArray(3)
         for (i in 0..2) Oklab.fromArgb(plate[i]).toLch().let { l[i] = it.l; c[i] = it.c; h[i] = it.h }
         // A clear day is crisper overhead once the sun stands well up (dawn and dusk keep their own colors).
-        val clear = (1f - cover) * (1f - cover) * smooth(4f, 24f, s.sunElevation)
+        val clear = (1f - cover) * (1f - cover) * smoothstep(4f, 24f, s.sunElevation)
         c[0] *= 1f + 0.28f * clear
         c[1] *= 1f + 0.16f * clear
         l[0] -= 0.025f * clear
@@ -481,8 +483,8 @@ object PaperLight {
 
     /** How brightly the moon lights the land, 0..1: its phase, its height, and the night around it. */
     fun moonlight(s: SkyState): Float {
-        val up = smooth(-2f, 14f, s.moonElevation)
-        val dark = 1f - smooth(-9f, -3f, s.sunElevation)
+        val up = smoothstep(-2f, 14f, s.moonElevation)
+        val dark = 1f - smoothstep(-9f, -3f, s.sunElevation)
         return s.moonFraction.coerceIn(0f, 1f).pow(1.3f) * up * dark
     }
 
@@ -490,11 +492,11 @@ object PaperLight {
     fun plateFor(elevation: Float, azimuth: Float): Plate {
         val m = along(morning, elevation)
         val ev = along(evening, elevation)
-        return blend(m, ev, smooth(165f, 195f, azimuth))
+        return blend(m, ev, smoothstep(165f, 195f, azimuth))
     }
 
     /** The night's moonlit plate, used as far as the moon lights the land. */
-    private fun moonlitOf(p: Plate): Plate = if (p.elevation <= NIGHT.elevation) MOONLIT else blend(p, MOONLIT, 1f - smooth(-9f, -3f, p.elevation))
+    private fun moonlitOf(p: Plate): Plate = if (p.elevation <= NIGHT.elevation) MOONLIT else blend(p, MOONLIT, 1f - smoothstep(-9f, -3f, p.elevation))
 
     private fun along(series: List<Plate>, elevation: Float): Plate {
         if (elevation <= series.first().elevation) return series.first()
@@ -562,7 +564,7 @@ object PaperLight {
      */
     fun labelInks(ground: Int, sunElevation: Float): IntArray {
         val g = Oklab.fromArgb(ground).toLch()
-        val night = 1f - smooth(-8f, 0f, sunElevation)
+        val night = 1f - smoothstep(-8f, 0f, sunElevation)
         val t = 1f - 0.1f * night
         val levels = floatArrayOf(0.93f * t, 0.8f * t, 0.665f * t)
         val floor = darkestLightInkOn(scaled(ground, FloatArray(3) { GRAIN_LIGHTEST }))
@@ -580,17 +582,6 @@ object PaperLight {
     fun darkestLightInkOn(ground: Int): Float {
         val y = relativeLuminance(ground)
         return Math.cbrt((4.6 * (y + 0.05) - 0.05).coerceAtLeast(0.0)).toFloat()
-    }
-
-    /** WCAG relative luminance of an sRGB color. */
-    fun relativeLuminance(argb: Int): Float =
-        0.2126f * Oklab.srgbToLinear(argb shr 16) + 0.7152f * Oklab.srgbToLinear(argb shr 8) + 0.0722f * Oklab.srgbToLinear(argb)
-
-    /** WCAG contrast ratio of two colors. */
-    fun contrast(a: Int, b: Int): Float {
-        val la = relativeLuminance(a)
-        val lb = relativeLuminance(b)
-        return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
     }
 
     // --- color helpers --------------------------------------------------------------------
@@ -618,5 +609,4 @@ object PaperLight {
     /** Lighter (positive) or darker by [d] in Oklab lightness. */
     private fun shift(argb: Int, d: Float): Int = Oklab.fromArgb(argb).let { Lab((it.l + d).coerceIn(0f, 1f), it.a, it.b).toArgb() }
 
-    private fun smooth(e0: Float, e1: Float, x: Float): Float = Shapes.smoothstep(e0, e1, x)
 }

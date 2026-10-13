@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.AlignmentLine
@@ -29,22 +28,19 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.FlowLight
-import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -185,12 +181,34 @@ fun ArtworkLayer(
     }
 }
 
-
 /**
- * Large type has more room before its first stem than small type; left as it is, a title
- * looks indented against the lines below it. Pulled left by the difference (dp).
+ * Color matrix for the artwork: the [Lamp]'s breath of warmth, [dim] (a pause) and a gentle
+ * highlight compression, so even a white cover never glares on black. White becomes a soft paper
+ * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
+ * brightness limiter dim everything. On the light wall a white cover stays a little whiter
+ * than the paper around it.
  */
-internal fun opticalIndent(size: Float): Float = -(0.065f * (size - 15f)).coerceAtLeast(0f)
+fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): ColorFilter {
+    val (r, g, b) = coverScale(dim, appearance)
+    return ColorFilter.colorMatrix(
+        ColorMatrix(
+            floatArrayOf(
+                r, 0f, 0f, 0f, 0f,
+                0f, g, 0f, 0f, 0f,
+                0f, 0f, b, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f,
+            ),
+        ),
+    )
+}
+
+/** The per-channel scale of [coverFilter] (red, green, blue). */
+fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Triple<Float, Float, Float> {
+    val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
+    val w = Lamp.WARMTH
+    return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
+}
+
 
 /**
  * The text block beside the artwork, centered on it from the first line's cap height to the
@@ -358,23 +376,6 @@ fun TextLayer(
 
 private const val BAR = "\u0000bar"
 
-/**
- * [text] on one line of [width] px: whole, or cut after its last whole word that leaves room
- * for an ellipsis ("Conversation with Mrs. Grubach, then …"). A single word too long for the
- * line is left to the line's own ellipsis.
- */
-internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): String {
-    fun fits(s: String) = measurer.measure(AnnotatedString(s), style, maxLines = 1, softWrap = false).size.width <= width
-    if (fits(text)) return text
-    var end = text.length
-    while (true) {
-        end = text.lastIndexOfAny(charArrayOf(' ', ' '), end - 1)
-        if (end <= 0) return text
-        // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
-        val head = text.substring(0, end).trimEnd(' ', ' ', '–', '·', ',', ':', ';')
-        if (head.isNotEmpty() && fits("$head …")) return "$head …"
-    }
-}
 
 /**
  * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays

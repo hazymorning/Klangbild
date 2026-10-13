@@ -1,5 +1,7 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.hashUnit
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.sin
@@ -62,12 +64,12 @@ object Weatherfall {
         var n = 0
         for (i in 0 until band.count) {
             if ((n + 1) * STRIDE > out.size) break
-            val h1 = unit(i, band.seed)
-            val alpha = Shapes.smoothstep(h1 - 0.05f, h1 + 0.05f, strength)
+            val h1 = hashUnit(i, band.seed)
+            val alpha = smoothstep(h1 - 0.05f, h1 + 0.05f, strength)
             if (alpha <= 0.01f) continue
-            val h2 = unit(i, band.seed + 17)
-            val h3 = unit(i, band.seed + 31)
-            val h4 = unit(i, band.seed + 47)
+            val h2 = hashUnit(i, band.seed + 17)
+            val h3 = hashUnit(i, band.seed + 31)
+            val h4 = hashUnit(i, band.seed + 47)
             val fall = band.fallMin + (band.fallMax - band.fallMin) * h2
             val y = band.top + floorMod(h3 * span + fall * t, span)
             // The wind blows them to the left (west to east, looking south); some catch more of it.
@@ -76,7 +78,7 @@ object Weatherfall {
             if (snow) x += (5f + 7f * h3) * sin(2 * PI * t / (3.2 + 2.6 * h1) + 6.2832 * h4)
             x = left + floorMod(x, wrap.toDouble())
             // Near their ground they land: they fade over the last stretch.
-            val landing = 1f - Shapes.smoothstep(band.ground - 26f, band.ground - 4f, y.toFloat())
+            val landing = 1f - smoothstep(band.ground - 26f, band.ground - 4f, y.toFloat())
             val a = alpha * landing
             if (a <= 0.01f) continue
             val o = n * STRIDE
@@ -95,15 +97,6 @@ object Weatherfall {
     private fun floorMod(v: Float, m: Float): Double = floorMod(v.toDouble(), m.toDouble())
 
     private fun floorMod(v: Double, m: Float): Double = floorMod(v, m.toDouble())
-
-    /** A well-mixed hash of an item's number, 0..1. */
-    private fun unit(i: Int, seed: Int): Float {
-        var x = i.toLong() * -0x61c8864680b583ebL + seed * 0x9E3779B97F4A7C15uL.toLong()
-        x = (x xor (x ushr 33)) * -0xae502812aa7333L
-        x = (x xor (x ushr 33)) * -0x3b314601e57a13adL
-        x = x xor (x ushr 33)
-        return ((x ushr 40) and 0xFFFFFF).toFloat() / 0xFFFFFF.toFloat()
-    }
 }
 
 /**
@@ -137,7 +130,7 @@ object MistField {
                 val h = (k * 0x9E3779B1L + lane.seed * 0x85EBCA77L).let { it xor (it ushr 15) }.toInt()
                 val need = ((h ushr 4) and 0xFFF) / 4095f * 0.8f
                 // Thin tissue: a veil even in thick fog.
-                val alpha = Shapes.smoothstep(need - 0.08f, need + 0.08f, strength) * (0.12f + 0.26f * strength)
+                val alpha = smoothstep(need - 0.08f, need + 0.08f, strength) * (0.12f + 0.26f * strength)
                 if (alpha <= 0.01f) continue
                 val design = PaperBake.CLOUD_STRIPS + Math.floorMod(h ushr 18, PaperBake.CLOUD_HEAPS)
                 val x = (k * lane.spacing - shift).toFloat()

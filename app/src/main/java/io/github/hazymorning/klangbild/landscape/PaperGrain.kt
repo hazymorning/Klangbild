@@ -1,11 +1,11 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.Rnd
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -179,23 +179,4 @@ class PaperGrain(private val density: Float) {
         private val CLOUD_AMPS = floatArrayOf(0f, 1f, 0.55f, 0.36f, 0.22f)
         private const val SWELL = 0.05f
     }
-}
-
-/** A small fixed-seed random source for cutting paper the same way every time (xorshift). */
-class Rnd(seed: Int) {
-    private var s = seed * -0x61c88647 or 1
-
-    /** A number from 0 until 1. */
-    fun next(): Float {
-        s = s xor (s shl 13)
-        s = s xor (s ushr 17)
-        s = s xor (s shl 5)
-        return (s ushr 8) / 16777216f
-    }
-
-    /** Roughly normal, mean 0, standard deviation 1 (a sum of uniforms). */
-    fun normal(): Float = (next() + next() + next() + next() - 2f) * 1.732f
-
-    /** A whole number from 0 until [n]. */
-    fun int(n: Int): Int = min(n - 1, (next() * n).toInt())
 }

@@ -2,6 +2,8 @@ package io.github.hazymorning.klangbild.landscape
 
 import io.github.hazymorning.klangbild.landscape.PaperBake.WOOD_FAR_BOTTOM
 import io.github.hazymorning.klangbild.landscape.PaperBake.WOOD_NEAR_BOTTOM
+import io.github.hazymorning.klangbild.math.Rnd
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -263,10 +265,10 @@ internal fun Baker.capFir(b: Build, f: FirCut) {
 internal fun Baker.foldOf(f: FirCut) = Weight { x, y -> ((x - (f.axisX + f.lean * (y - f.top))) * d + 0.5f).coerceIn(0f, 1f) }
 
 /** The crown's light: its lower part in shade. */
-internal fun Baker.crownShade(t: RoundTree, tone: Float) = Weight { _, y -> tone * (1f - 0.18f * Shapes.smoothstep(t.cy - t.r * 0.2f, t.cy + t.r * 0.8f, y)) }
+internal fun Baker.crownShade(t: RoundTree, tone: Float) = Weight { _, y -> tone * (1f - 0.18f * smoothstep(t.cy - t.r * 0.2f, t.cy + t.r * 0.8f, y)) }
 
 /** How much snow the firs carry. */
-internal fun Baker.snowOnTrees(): Float = Shapes.smoothstep(0.25f, 0.8f, shapes.snow)
+internal fun Baker.snowOnTrees(): Float = smoothstep(0.25f, 0.8f, shapes.snow)
 
 /** A fir as cut: its tiers, the snow on them, its trunk, and its fold (the axis from its top, leaning). */
 internal class FirCut(val tiers: List<Outline>, val caps: List<Outline>, val trunk: Outline, val axisX: Float, val top: Float, val lean: Float)

@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.ceil
 
 /**
@@ -101,7 +102,7 @@ object PaperBake {
     }
 
     /** The leaves' strength for [leaves] (0 bare to 1 full): gone before the last ones fall, back with the first green. */
-    fun leafAlpha(leaves: Float): Float = Shapes.smoothstep(0.08f, 0.6f, leaves)
+    fun leafAlpha(leaves: Float): Float = smoothstep(0.08f, 0.6f, leaves)
 
     /** How soft a sheet's shadow is (dp) for its [depth]. */
     fun shadowBlurDp(depth: Float): Float = 1.4f + 2.8f * depth

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -341,7 +342,7 @@ class HaConnection(
             val auth = parseMessages(authAnswer.text).firstOrNull()
             when (auth?.type()) {
                 "auth_ok" -> Unit
-                "auth_invalid" -> return@coroutineScope SessionEnd.TokenRefused(token, auth.str("message"))
+                "auth_invalid" -> return@coroutineScope SessionEnd.TokenRefused(token, auth.string("message"))
                 else -> return@coroutineScope SessionEnd.Lost("unexpected auth answer")
             }
             session = s
@@ -494,7 +495,7 @@ class HaConnection(
                                                 waiter.complete(msg["result"])
                                             } else {
                                                 waiter.completeExceptionally(
-                                                    HaCommandException(error?.str("code") ?: "unknown", error?.str("message") ?: "error"),
+                                                    HaCommandException(error?.string("code") ?: "unknown", error?.string("message") ?: "error"),
                                                 )
                                             }
                                             id == mainSub && ok -> {
@@ -504,7 +505,7 @@ class HaConnection(
                                                 fetch(main)
                                             }
                                             // Not an administrator: every state change, the followed ones kept.
-                                            id == mainSub && feed == Feed.TRIGGER && error?.str("code") == "unauthorized" -> {
+                                            id == mainSub && feed == Feed.TRIGGER && error?.string("code") == "unauthorized" -> {
                                                 feed = Feed.EVENTS
                                                 mainSub = s.nextId()
                                                 s.send(buildJsonObject {
@@ -513,7 +514,7 @@ class HaConnection(
                                                     put("event_type", "state_changed")
                                                 })
                                             }
-                                            id == mainSub -> return@coroutineScope SessionEnd.Lost("subscribe failed: ${error?.str("code")}")
+                                            id == mainSub -> return@coroutineScope SessionEnd.Lost("subscribe failed: ${error?.string("code")}")
                                             id != null && id == extraSub && !ok -> extraSub = null
                                         }
                                     }
@@ -548,8 +549,8 @@ class HaConnection(
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
         val (entity, state) = when (feed) {
-            Feed.TRIGGER -> ((event["variables"] as? JsonObject)?.get("trigger") as? JsonObject)?.let { it.str("entity_id") to it["to_state"] }
-            Feed.EVENTS -> (event["data"] as? JsonObject)?.let { it.str("entity_id") to it["new_state"] }
+            Feed.TRIGGER -> ((event["variables"] as? JsonObject)?.get("trigger") as? JsonObject)?.let { it.string("entity_id") to it["to_state"] }
+            Feed.EVENTS -> (event["data"] as? JsonObject)?.let { it.string("entity_id") to it["new_state"] }
         } ?: return null
         return (entity ?: return null) to EntityState.of(state as? JsonObject)
     }
@@ -559,10 +560,10 @@ class HaConnection(
         return entities.mapNotNull { e ->
             val o = e as? JsonObject ?: return@mapNotNull null
             RegistryEntry(
-                entityId = o.str("ei") ?: return@mapNotNull null,
-                platform = o.str("pl") ?: return@mapNotNull null,
-                deviceId = o.str("di"),
-                translationKey = o.str("tk"),
+                entityId = o.string("ei") ?: return@mapNotNull null,
+                platform = o.string("pl") ?: return@mapNotNull null,
+                deviceId = o.string("di"),
+                translationKey = o.string("tk"),
                 // Home Assistant offers up to six decimals.
                 displayPrecision = (o["dp"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..6 },
             )
@@ -602,8 +603,7 @@ class HaConnection(
         emptyList()
     }
 
-    private fun JsonObject.type(): String? = str("type")
-    private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+    private fun JsonObject.type(): String? = string("type")
 }
 
 /**

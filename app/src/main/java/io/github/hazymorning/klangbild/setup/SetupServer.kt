@@ -6,11 +6,13 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.ActionKind
+import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaRest
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
+import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -346,7 +348,7 @@ class SetupServer(
                     else -> Unit
                 }
             }
-            val unit = (attrs?.get("unit_of_measurement") as? JsonPrimitive)?.takeIf { it.isString }?.content
+            val unit = attrs?.string("unit_of_measurement")
             return EntityOption(id, name, state.take(MAX_ATTRIBUTE_TEXT), unit, words, lists)
         }
 
@@ -381,8 +383,7 @@ class SetupServer(
         }
 
         private fun scriptField(key: String, f: JsonObject): ScriptField? {
-            if (!Regex("[A-Za-z_][A-Za-z0-9_]{0,63}").matches(key)) return null
-            fun str(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.takeIf { it.isString }?.content
+            if (!QuickActions.isVariableName(key)) return null
             val selector = f["selector"] as? JsonObject
             val (kind, config) = selector?.entries?.firstOrNull()?.let { it.key to (it.value as? JsonObject) } ?: ("text" to null)
             val multiple = (config?.get("multiple") as? JsonPrimitive)?.content == "true"
@@ -397,7 +398,7 @@ class SetupServer(
             val options = (config?.get("options") as? JsonArray).orEmpty().mapNotNull { o ->
                 when (o) {
                     is JsonPrimitive -> o.content to o.content
-                    is JsonObject -> str(o, "value")?.let { v -> v to (str(o, "label") ?: v) }
+                    is JsonObject -> o.string("value")?.let { v -> v to (o.string("label") ?: v) }
                     else -> null
                 }
             }
@@ -414,8 +415,8 @@ class SetupServer(
             }
             return ScriptField(
                 key = key,
-                name = str(f, "name") ?: key,
-                description = str(f, "description"),
+                name = f.string("name") ?: key,
+                description = f.string("description"),
                 required = (f["required"] as? JsonPrimitive)?.content == "true",
                 type = if (type == ScriptField.SELECT && options.isEmpty()) ScriptField.TEXT else type,
                 options = options,

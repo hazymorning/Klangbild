@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.lights
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -142,9 +143,4 @@ object LightColor {
 
     /** Where to look for a hue's most colorful color: blue peaks dark, yellow light. */
     private val CUSP_LIGHTNESS = floatArrayOf(0.45f, 0.55f, 0.65f, 0.75f, 0.85f, 0.95f)
-
-    private fun smoothstep(e0: Float, e1: Float, v: Float): Float {
-        val t = ((v - e0) / (e1 - e0)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
-    }
 }

@@ -2,6 +2,8 @@ package io.github.hazymorning.klangbild.landscape
 
 import io.github.hazymorning.klangbild.landscape.PaperBake.TENT_HALF
 import io.github.hazymorning.klangbild.landscape.PaperBake.TENT_HEIGHT
+import io.github.hazymorning.klangbild.math.Rnd
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -44,7 +46,7 @@ internal fun Baker.tent(): Build {
     val b = build(SheetId.TENT, cx - hw - 4f, ay - 7f, cx + hw * 1.45f + 4f, foot + 4f)
     // The side wall turns to the right; the front faces the viewer, so it stands halfway between the lights.
     lay(b, mask(listOf(side)), c(1f), ZERO, c(0.9f), aoCast = 0.2f, aoSigma = 2f)
-    lay(b, mask(listOf(face)), c(0.5f), ZERO, Weight { _, y -> 1.02f - 0.08f * Shapes.smoothstep(ay, foot, y) }, aoCast = 0.25f, aoSigma = 2f)
+    lay(b, mask(listOf(face)), c(0.5f), ZERO, Weight { _, y -> 1.02f - 0.08f * smoothstep(ay, foot, y) }, aoCast = 0.25f, aoSigma = 2f)
     lay(b, mask(listOf(door)), ZERO, c(1f))
     lay(b, mask(listOf(flap)), c(0.8f), ZERO, c(1.12f), aoCast = 0.2f, aoSigma = 1f)
     lay(b, mask(listOf(pole)), ZERO, ZERO, c(0.5f))
@@ -79,7 +81,7 @@ internal fun Baker.props(): Build? {
     for ((i, rock) in rocks.withIndex()) {
         val (outline, crease) = rock
         val r = fg.rocks[i]
-        lay(b, mask(listOf(outline)), Weight { x, y -> (((x - crease(y)) * d) + 0.5f).coerceIn(0f, 1f) }, ZERO, Weight { _, y -> 1.04f - 0.12f * Shapes.smoothstep(r.y - r.h, r.y, y) }, aoCast = 0.25f, aoSigma = 1.5f)
+        lay(b, mask(listOf(outline)), Weight { x, y -> (((x - crease(y)) * d) + 0.5f).coerceIn(0f, 1f) }, ZERO, Weight { _, y -> 1.04f - 0.12f * smoothstep(r.y - r.h, r.y, y) }, aoCast = 0.25f, aoSigma = 1.5f)
         if (snow > 0.05f) {
             val cap = Outline.of((0..16).map { k -> val t = k / 16f; (r.x - r.w * 0.6f + r.w * 1.2f * t) to (r.y - r.h * (0.72f - 0.35f * snow) + 1.2f * sin(t * 9f + i)) } + listOf((r.x + r.w) to (r.y - r.h * 2f), (r.x - r.w) to (r.y - r.h * 2f)))
             lay(b, intersect(mask(listOf(outline)), mask(listOf(cap))), ZERO, c(1f))
@@ -123,7 +125,7 @@ internal fun Baker.firewood(): Build {
     }.sortedBy { it.y }
     fun stone(s: Stone) = lay(
         b, mask(listOf(s.outline)), c(1f), ZERO,
-        Weight { x, y -> 1f + 0.16f * (1f - Shapes.smoothstep(s.y - s.r * 0.7f, s.y + s.r * 0.3f, y)) - 0.1f * Shapes.smoothstep(s.x - s.r, s.x + s.r * 1.2f, x) },
+        Weight { x, y -> 1f + 0.16f * (1f - smoothstep(s.y - s.r * 0.7f, s.y + s.r * 0.3f, y)) - 0.1f * smoothstep(s.x - s.r, s.x + s.r * 1.2f, x) },
         aoCast = 0.3f, aoSigma = 1.2f,
     )
     stones.take(6).forEach { stone(it) }
@@ -181,7 +183,7 @@ internal fun Baker.flames(): List<Flame> {
             val crumple = 0.86f + 0.22f * (1f - abs(Noise.at(x / 3.2 + k * 13.1, y / 3.2 - k * 7.7).toFloat()))
             // Tissue: a little translucent, more so at the torn edge.
             val edge = soft[i]
-            floatArrayOf(w1, w2, crumple * (1f + 0.3f * (1f - u)), 0.82f + 0.16f * Shapes.smoothstep(0.5f, 0.95f, edge))
+            floatArrayOf(w1, w2, crumple * (1f + 0.3f * (1f - u)), 0.82f + 0.16f * smoothstep(0.5f, 0.95f, edge))
         }
         Flame(sheet, footX, footY, k)
     }

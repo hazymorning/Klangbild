@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.flow
 
-import android.graphics.Bitmap
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
@@ -19,9 +18,9 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FlowCard
 import io.github.hazymorning.klangbild.render.FlowGeometry
-import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.stage.coverScale
@@ -114,7 +113,7 @@ fun FlowStrip(
             pos[i] = p
             val fade = c.fromAlpha + (c.toAlpha - c.fromAlpha) * Motion.Sine.transform(c.fade.of(t))
             // Beneath a sign, the cards passing the middle fade, their mirror images with them.
-            alphas[i] = fade * geometry.presence(p) * all * (1f - covered * (1f - LampLight.smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
+            alphas[i] = fade * geometry.presence(p) * all * (1f - covered * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
             order[i] = i
         }
         // Farthest first (insertion sort: a handful of cards, no allocation).
@@ -142,7 +141,7 @@ fun FlowStrip(
                 val filter = filters.getOrPut(step) { ColorMatrixColorFilter(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
                 // How much the card is squeezed sideways: far turned cards take the half-size texture.
                 val width = hypot(tools.dst[2] - tools.dst[0], tools.dst[3] - tools.dst[1]) / card.sidePx
-                val half = 1f - LampLight.smoothstep(HALF_FROM, HALF_TO, width)
+                val half = 1f - smoothstep(HALF_FROM, HALF_TO, width)
                 if (half < 1f) quad(native, card, false, a, filter, tools, snap = pos[i] == 0f)
                 if (half > 0f) quad(native, card, true, a * half, filter, tools, snap = false)
             }

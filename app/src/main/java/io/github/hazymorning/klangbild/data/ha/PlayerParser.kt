@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -133,7 +134,7 @@ object PlayerParser {
      */
     fun groupMembers(entity: EntityState): List<String> =
         (entity.attr("group_members") as? JsonArray)
-            ?.mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trim() }
+            ?.mapNotNull { it.string()?.trim() }
             ?.filter { it.isNotEmpty() && it != entity.entityId }
             ?.distinct()
             .orEmpty()
@@ -208,5 +209,4 @@ object PlayerParser {
         )
     }
 
-    private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }

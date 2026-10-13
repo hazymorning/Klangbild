@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.landscape
 
+import io.github.hazymorning.klangbild.math.smoothstep
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -174,7 +175,7 @@ internal class Baker(val cw: Int, val ch: Int, val d: Float, val shapes: SeasonS
     fun margin(m: Mask, marginDp: Float): Mask {
         val v = m.v.copyOf()
         blur(v, m.width, m.height, max(1, (marginDp * d * 0.55f).roundToInt()))
-        for (i in v.indices) v[i] = Shapes.smoothstep(0.04f, 0.22f, v[i])
+        for (i in v.indices) v[i] = smoothstep(0.04f, 0.22f, v[i])
         return Mask(m.left, m.top, m.width, m.height, v)
     }
 

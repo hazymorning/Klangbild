@@ -51,7 +51,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         window.decorView.setViewTreeLifecycleOwner(this)
         window.decorView.setViewTreeSavedStateRegistryOwner(this)
         val controller = graph.controller
-        val spec = screenSpec()
+        val spec = ScreenSpec.of(resources.displayMetrics)
         setContentView(
             ComposeView(this).apply {
                 setViewTreeLifecycleOwner(this@KlangbildDream)
@@ -68,7 +68,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
-        graph.controller.attach(screenSpec())
+        graph.controller.attach(ScreenSpec.of(resources.displayMetrics))
         registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         lifecycleScope.launch {
@@ -89,10 +89,5 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     override fun onDestroy() {
         registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
-    }
-
-    private fun screenSpec(): ScreenSpec {
-        val m = resources.displayMetrics
-        return ScreenSpec(maxOf(m.widthPixels, m.heightPixels), minOf(m.widthPixels, m.heightPixels), m.density)
     }
 }
