@@ -178,7 +178,7 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
                 sun by the local clock, without `sun.sun`), LandscapePolicy (when the landscape takes
-                the screen), ValueText (a value of one's own in words: precision, unit, on and off,
+                the screen), EntityId (what an entity id looks like), ValueText (a value of one's own in words: precision, unit, on and off,
                 a time of day), Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
                 lines with breaks; LyricsCursor: the line in the middle a little early, a small step
                 back held)
@@ -187,18 +187,20 @@ text/           Texts (the words of one language: resources, plurals, numbers, p
                 API 33, the app's own preference below), Localizer (StateFlow<Texts>,
                 refreshed on configuration, locale and time changes), LocalTexts/texts()
 color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, both walls), Lamp (the
-                warm daylight every color is seen in), Appearance (LIGHT / DARK, by the sun)
+                warm daylight every color is seen in, its hue, near-neutral colors), Appearance
+                (LIGHT / DARK, by the sun), Contrast (WCAG luminance and contrast ratio)
+math/           smoothstep, Rnd (a random source with a fixed seed), hash64 / hashUnit
+json/           string(): a JSON string, or null for anything else
 render/         StageGrid (the grid, per view), ScreenSpec, RectDp, PrintShape (the print's
                 outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
-                at a field time) + FieldModel (the field on the CPU: text shade, the lights'
-                colors), WallGlow (the artwork's light on the dark wall), LampLight (lamp tint for
+                at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow (the artwork's light on the dark wall), LampLight (lamp tint for
                 rest and menu), SceneBuilder (per-track precompute: Lanczos cover at
                 exact px, wall, palette, flow card; relight), FlowGeometry (the shared
                 perspective; the balance with cards missing), FlowCards (baked card textures),
-                FlowLight (the pool of light above the cards), ImageOps
+                FlowLight (the pool of light above the cards), ImageOps (blur, dither, Lanczos)
 art/            ChladniArt (missing-cover art), StableHash
-landscape/          The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
+landscape/      The landscape, a paper diorama: PaperMotif (folded mountains, forest lines, the
                 clearing, the near banks, standees, birches, tent, boulders and the fire per label
                 side, mirrored on the right), PaperBake* (sheets as two ink weights + the paper's
                 light + coverage in boxes of their own, cut front to back with the shade of what
@@ -231,8 +233,8 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 KlangbildApp/AppGraph (http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
-                MotionLevel, RoomLights, RoomLightBrightness) + SettingsStore (DataStore; tokens sealed by
-                SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
+                MotionLevel, RoomLights, RoomLightBrightness), SettingsStore (DataStore, written whole
+                in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
                 QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
                 On / Off, Settings),
@@ -259,8 +261,9 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
                 main thread, one canvas, LyricsViews keeping their places through a change;
                 PartyCode: the party's code where the cover stands, one picture per wall),
-                Motion (+ StageTick: one frame tick for bar, field and words; animateGlide:
-                a list's glide that carries on from its pace),
+                Motion (+ StageTick: one frame tick for bar, field and words; rememberFrames: that
+                tick, or a loop of its own for a part shown alone; animateGlide: a list's glide that
+                carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
                 flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheater:
                 keyed strip transitions),
