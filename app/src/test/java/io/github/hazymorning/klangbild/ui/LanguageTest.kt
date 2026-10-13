@@ -41,7 +41,7 @@ import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeLine
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.render.HaloLayout
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupPage
@@ -316,7 +316,7 @@ class LanguageTest {
     @Test
     fun everyMenuLineFitsTheColumnInBothLanguages() {
         measuring()
-        val column = HaloLayout(ScreenSpec.TV_1080).columnWidth
+        val column = StageGrid(ScreenSpec.TV_1080).columnWidth
         val label = textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
         val value = textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
         for (t in listOf(en, de)) {
@@ -337,7 +337,7 @@ class LanguageTest {
     @Test
     fun everyQuickSettingFitsTheScreenInBothLanguages() {
         measuring()
-        val layout = HaloLayout(ScreenSpec.TV_1080)
+        val layout = StageGrid(ScreenSpec.TV_1080)
         val right = ScreenSpec.TV_1080.widthDp - layout.margin
         val label = textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT)
         val value = textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)

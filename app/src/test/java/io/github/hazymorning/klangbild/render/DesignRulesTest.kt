@@ -17,7 +17,7 @@ import kotlin.random.Random
 /** Design principles as tests, so polishing never quietly breaks them. */
 class DesignRulesTest {
     private val screen = ScreenSpec.TV_1080
-    private val layout = HaloLayout(screen)
+    private val layout = StageGrid(screen)
     private val shape = PrintShape(layout.artRect, corner = layout.radius)
 
     /** A 48 × 48 thumbnail: the top [split] of the rows in [top], the rest in [bottom]. */

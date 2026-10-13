@@ -18,7 +18,7 @@ import org.junit.experimental.categories.Category
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
-class HaloStageTest {
+class StageTest {
     private fun shot(name: String, model: StageModel) =
         captureRoboImage("build/screenshots/stage/$name.png") { Fixtures.Still { Stage(model) } }
 

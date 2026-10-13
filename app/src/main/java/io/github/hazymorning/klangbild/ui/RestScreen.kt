@@ -36,7 +36,7 @@ import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.TimeLine
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.SceneBuilder
@@ -58,7 +58,7 @@ import kotlin.math.roundToInt
 data class QuietColors(val wall: Color, val primary: Color, val secondary: Color, val label: Color) {
     companion object {
         fun of(appearance: Appearance = Appearance.DARK): QuietColors {
-            fun lit(l: Float, ch: Float) = Lamp.apply(Lch(l, ch, HaloLight.LAMP_HUE).toLab())
+            fun lit(l: Float, ch: Float) = Lamp.apply(Lch(l, ch, LampLight.LAMP_HUE).toLab())
             return if (appearance == Appearance.DARK) {
                 fun c(l: Float) = Color(lit(l, 0.004f).toArgb())
                 QuietColors(wall = Color.Black, primary = c(0.84f), secondary = c(0.68f), label = c(0.62f))
@@ -124,7 +124,7 @@ object RestLight {
             // Round all the way: an oval vignette keeps the screen edges black, too.
             val ex = (px - screen.widthDp / 2f) / (screen.widthDp / 2f - EDGE_DP)
             val ey = (py - screen.heightDp / 2f) / (screen.heightDp / 2f - EDGE_DP)
-            val vignette = HaloLight.smoothstep(1f, 0.2f, ex * ex + ey * ey)
+            val vignette = LampLight.smoothstep(1f, 0.2f, ex * ex + ey * ey)
             val value = exp(-q * 1.4f) * reach * reach * vignette
             val o = y * MAP_W + x
             img.r[o] = value; img.g[o] = value; img.b[o] = value
@@ -158,7 +158,7 @@ fun RestScreen(
     val lines = RestTexts.lines(reason, speaker, entityId, t)
     // A lamp only lights a dark wall.
     val peak = (RestLight.PEAK * lightFactor).takeIf { it > 0f && appearance == Appearance.DARK }
-    val tint = remember(peak) { peak?.let { HaloLight.lightTint(HaloLight.LAMP, it) } }
+    val tint = remember(peak) { peak?.let { LampLight.lightTint(LampLight.LAMP, it) } }
     val screen = ScreenSpec(960, 540, 1f)
 
     Box(modifier.fillMaxSize()) {

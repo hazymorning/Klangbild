@@ -16,10 +16,10 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
-import io.github.hazymorning.klangbild.ui.flow.FlowTheatre
+import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
-import io.github.hazymorning.klangbild.ui.stage.StageTheatre
+import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,17 +69,17 @@ class LyricsMotionTest {
     }
 
     @Composable
-    private fun Theatre(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING) {
+    private fun Theater(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING) {
         val latest by rememberUpdatedState(stage)
         val models = remember { modelFor { latest } }
-        Fixtures.Still { StageTheatre(stage = stage, status = status, modelFor = models) }
+        Fixtures.Still { StageTheater(stage = stage, status = status, modelFor = models) }
     }
 
     @Composable
     private fun Flow(flow: FlowData) {
         val latest by rememberUpdatedState(flow.stage)
         val models = remember { modelFor { latest } }
-        Fixtures.Still { FlowTheatre(flow = flow, status = PlayerStatus.PLAYING, modelFor = models) }
+        Fixtures.Still { FlowTheater(flow = flow, status = PlayerStatus.PLAYING, modelFor = models) }
     }
 
     private fun stage(track: io.github.hazymorning.klangbild.domain.TrackInfo, words: io.github.hazymorning.klangbild.domain.Lyrics?) =
@@ -102,7 +102,7 @@ class LyricsMotionTest {
         position = 82_000L
         val s = stage(neon, neonWords)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("glide", frames = 12, stepMs = 50) { position = 83_550L }
     }
 
@@ -116,7 +116,7 @@ class LyricsMotionTest {
         position = 9_900L
         val s = stage(neon, quick)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         compose.mainClock.advanceTimeBy(100)
         for (i in 0..16) {
             compose.onRoot().captureRoboImage("build/screenshots/lyrics_motion/quick_%02d.png".format(i))
@@ -131,7 +131,7 @@ class LyricsMotionTest {
         val s = stage(neon, neonWords)
         var status by mutableStateOf(PlayerStatus.PLAYING)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s, status) }
+        compose.setContent { Theater(s, status) }
         frames("pause", frames = 6, stepMs = 120) { status = PlayerStatus.PAUSED }
     }
 
@@ -140,7 +140,7 @@ class LyricsMotionTest {
         position = 30_000L
         val s = stage(neon, neonWords)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("rest", frames = 8, stepMs = 100) { position = 31_700L }
     }
 
@@ -149,7 +149,7 @@ class LyricsMotionTest {
         position = 84_000L
         val s = stage(neon, neonWords)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("jump", frames = 6, stepMs = 100) { position = 130_000L }
     }
 
@@ -159,7 +159,7 @@ class LyricsMotionTest {
         var s by mutableStateOf(stage(neon, null))
         val on = s.copy(lyrics = neonWords)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("on", frames = 10, stepMs = 100) { s = on }
     }
 
@@ -169,7 +169,7 @@ class LyricsMotionTest {
         var s by mutableStateOf(stage(neon, neonWords))
         val off = s.copy(lyrics = null)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("off", frames = 10, stepMs = 100) { s = off }
     }
 
@@ -179,7 +179,7 @@ class LyricsMotionTest {
         var s by mutableStateOf(stage(neon, neonWords))
         val next = stage(salt, saltWords)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Theatre(s) }
+        compose.setContent { Theater(s) }
         frames("song", frames = 12, stepMs = 100) {
             position = 3_000L
             s = next

@@ -35,7 +35,7 @@ class StatesTest {
 
     @Test fun paused() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.TERRACOTTA))
-        shot("stage_paused") { Fixtures.Theatre(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
+        shot("stage_paused") { Fixtures.Theater(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
     }
 
     @Test fun everywhere() = stage("stage_everywhere", Fixtures.model(Fixtures.track(SyntheticCover.MOSS), next = spiegel, group = "Überall"))
@@ -47,7 +47,7 @@ class StatesTest {
 
     @Test fun muted() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.BAUHAUS))
-        shot("stage_muted") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, muted = true, group = "Küche") }
+        shot("stage_muted") { Fixtures.Theater(stage, PlayerStatus.PLAYING, muted = true, group = "Küche") }
     }
 
     /** Values of one's own after the time; with a long place, those that do not fit beside it are left out. */

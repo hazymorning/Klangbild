@@ -55,8 +55,8 @@ import io.github.hazymorning.klangbild.domain.LyricPlace
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.LyricsCursor
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.render.HaloLayout
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.ui.LocalStageTick
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
@@ -185,7 +185,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
 
 /**
  * The words of one song on the stage, kept while its text shows or leaves: how they are set, and
- * where the list stands. The theatre keeps one per song ([LyricsViews]), so the words that leave
+ * where the list stands. The theater keeps one per song ([LyricsViews]), so the words that leave
  * at a change go from where they stood.
  */
 @Stable
@@ -267,7 +267,7 @@ internal class LyricsView(val lyrics: Lyrics) {
     }
 }
 
-/** A theatre's songs' words on the stage: the one shown and the one leaving keep their places. */
+/** A theater's songs' words on the stage: the one shown and the one leaving keep their places. */
 internal class LyricsViews {
     private val views = HashMap<Lyrics, LyricsView>()
 
@@ -279,7 +279,7 @@ internal class LyricsViews {
     }
 }
 
-/** The theatre's songs' words; without one (a still), each column keeps its own. */
+/** The theater's songs' words; without one (a still), each column keeps its own. */
 internal val LocalLyricsViews = staticCompositionLocalOf<LyricsViews?> { null }
 
 /**
@@ -415,7 +415,7 @@ internal fun LyricsText(
  * still, else off the main thread (nothing until then).
  */
 @Composable
-private fun rememberLyricsPlan(view: LyricsView, layout: HaloLayout, place: () -> LyricPlace): LyricsPlan? {
+private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () -> LyricPlace): LyricsPlan? {
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val key = layout.columnWidth to density
@@ -435,7 +435,7 @@ private fun rememberLyricsPlan(view: LyricsView, layout: HaloLayout, place: () -
  * The room of the words above and below the middle (dp): to the status line's baseline, and to
  * the song's cap height, or to the bar's top while it shows.
  */
-private class LyricsRoom(layout: HaloLayout, styles: StageStyles) {
+private class LyricsRoom(layout: StageGrid, styles: StageStyles) {
     val above: Float = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
     private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
     private val bar = song - Gaps.BOTTOM - BAR_BLOCK
@@ -494,8 +494,8 @@ private fun lineAlpha(top: Float, bottom: Float, above: Float, below: Float): Fl
     val near = if (bottom <= 0f) -bottom else top
     val far = if (bottom <= 0f) -top else bottom
     val limit = (if (bottom <= 0f) above else below) - EDGE_GONE
-    val byDistance = 1f - HaloLight.smoothstep(FADE_FROM, limit.coerceAtLeast(FADE_FROM + 1f), near)
-    val byEdge = 1f - HaloLight.smoothstep(limit - EDGE_FADE, limit, far)
+    val byDistance = 1f - LampLight.smoothstep(FADE_FROM, limit.coerceAtLeast(FADE_FROM + 1f), near)
+    val byEdge = 1f - LampLight.smoothstep(limit - EDGE_FADE, limit, far)
     return byDistance * byEdge
 }
 

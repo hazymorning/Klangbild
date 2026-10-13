@@ -111,7 +111,7 @@ private class Plan(val motions: List<CardMotion>, val timeline: Timeline)
  * Every animated value is read inside draw/layer lambdas, so animations never recompose.
  */
 @Composable
-fun FlowTheatre(
+fun FlowTheater(
     flow: FlowData,
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,

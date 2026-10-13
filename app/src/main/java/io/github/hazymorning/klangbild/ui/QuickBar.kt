@@ -39,7 +39,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.SceneBuilder
@@ -132,11 +132,11 @@ private class QuickColors(
 ) {
     companion object {
         fun of(appearance: Appearance): QuickColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, HaloLight.LAMP_HUE).toArgb()))
+            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, LampLight.LAMP_HUE).toArgb()))
             return if (appearance == Appearance.DARK) {
                 QuickColors(
                     veil = Color.Black,
-                    band = Color(HaloLight.lightTint(HaloLight.LAMP, GLOW_PEAK)),
+                    band = Color(LampLight.lightTint(LampLight.LAMP, GLOW_PEAK)),
                     label = c(0.56f),
                     labelFocus = c(0.74f),
                     value = c(0.66f),

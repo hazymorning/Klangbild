@@ -50,7 +50,7 @@ class FlowMotionTest {
     private fun run(name: String, from: FlowData, then: Map<Int, FlowData>, frames: Int = 12, stepMs: Long = 100, partyCode: String? = null) {
         var flow by mutableStateOf(from)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.FlowTheatreOf(flow, partyCode = partyCode) }
+        compose.setContent { Fixtures.FlowTheaterOf(flow, partyCode = partyCode) }
         // A party's code is made off the main thread, then comes up.
         if (partyCode != null) repeat(20) {
             Thread.sleep(20)

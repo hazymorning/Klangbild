@@ -3,25 +3,6 @@ package io.github.hazymorning.klangbild.render
 import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.min
 
-/** Physical screen the scene is prepared for. */
-data class ScreenSpec(val widthPx: Int, val heightPx: Int, val density: Float) {
-    val widthDp: Float get() = widthPx / density
-    val heightDp: Float get() = heightPx / density
-
-    companion object {
-        val TV_1080 = ScreenSpec(1920, 1080, 2f)
-    }
-}
-
-/** A rectangle in dp. */
-data class RectDp(val left: Float, val top: Float, val width: Float, val height: Float) {
-    val right get() = left + width
-    val bottom get() = top + height
-    val centerX get() = left + width / 2f
-    val centerY get() = top + height / 2f
-
-}
-
 /**
  * The stage's grid on a 960 × 540 dp screen. The artwork is the heaviest element and sets
  * the composition's height: 368 dp, two thirds of the screen. The text block beside it is
@@ -54,7 +35,7 @@ data class RectDp(val left: Float, val top: Float, val width: Float, val height:
  * outer edge (255 dp beside it, see [FlowGeometry]) keeps 48 dp from the screen's edge. That is
  * as much as the column (from 598 dp) keeps on the right.
  */
-data class HaloLayout(val screen: ScreenSpec, val view: StageView = StageView.SINGLE) {
+data class StageGrid(val screen: ScreenSpec, val view: StageView = StageView.SINGLE) {
     private val sx = screen.widthDp / 960f
     private val sy = screen.heightDp / 540f
     private val grid = if (view == StageView.FLOW) FLOW else SINGLE

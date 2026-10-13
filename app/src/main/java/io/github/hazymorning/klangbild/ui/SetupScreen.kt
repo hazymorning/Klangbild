@@ -35,7 +35,7 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.render.HaloLayout
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
@@ -78,7 +78,7 @@ object SetupArt {
 
     fun scene(info: SetupInfo?, screen: ScreenSpec, appearance: Appearance = Appearance.DARK): ArtworkScene {
         // The code hangs where the artwork would.
-        val layout = HaloLayout(screen)
+        val layout = StageGrid(screen)
         val px = (layout.art * screen.density).toInt()
         val card = card(info?.qr, px, appearance)
         return SceneBuilder.build("setup|${info?.url}|${info?.code}", card, "setup", screen, appearance)

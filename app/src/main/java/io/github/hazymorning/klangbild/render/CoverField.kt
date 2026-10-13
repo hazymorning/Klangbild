@@ -129,7 +129,7 @@ object CoverField {
         analysis: CoverAnalysis,
         appearance: Appearance,
         strength: Float,
-        layout: HaloLayout?,
+        layout: StageGrid?,
         quietInk: Int? = null,
     ): FieldScene {
         val dark = appearance == Appearance.DARK
@@ -362,7 +362,7 @@ object CoverField {
      * shade under the text (on paper a brightening), as one color and opacity per point.
      * Nothing darkens the screen's edges: there the field meets the light behind the TV.
      */
-    private fun veil(field: FieldScene, layout: HaloLayout, quietInk: Int?): Bitmap {
+    private fun veil(field: FieldScene, layout: StageGrid, quietInk: Int?): Bitmap {
         val screen = layout.screen
         val dark = field.dark
         val scrim = textScrim(field, layout, quietInk)
@@ -411,7 +411,7 @@ object CoverField {
      * The farthest left the text column's edge can stand (dp): in Cover Flow it moves left when
      * cards are missing ([FlowGeometry.balance]), and the shade under it reaches every place.
      */
-    private fun textLeft(layout: HaloLayout): Float =
+    private fun textLeft(layout: StageGrid): Float =
         layout.columnLeft + if (layout.view == StageView.FLOW) FlowGeometry(layout).leftmostColumn else 0f
 
     /** How soft the text shade's edge is (σ, dp). */
@@ -422,7 +422,7 @@ object CoverField {
      * through time (its shapes drift), and the quietest text has to keep 4.5:1 (with a margin)
      * against the lightest color it ever stands on (on paper, the darkest).
      */
-    fun textScrim(field: FieldScene, layout: HaloLayout, quietInk: Int?): Float {
+    fun textScrim(field: FieldScene, layout: StageGrid, quietInk: Int?): Float {
         val ink = quietInk ?: return TEXT_SCRIM_MIN
         val inkY = relativeLuminance(ink)
         val screen = layout.screen

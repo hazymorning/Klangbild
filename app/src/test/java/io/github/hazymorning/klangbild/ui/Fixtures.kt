@@ -18,7 +18,7 @@ import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
-import io.github.hazymorning.klangbild.ui.stage.StageTheatre
+import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -224,10 +224,10 @@ object Fixtures {
 
     /** The animated cover flow for one strip; what comes next is the card to the right. */
     @Composable
-    fun FlowTheatreOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
+    fun FlowTheaterOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
         val next = flow.cards.getOrNull(flow.current + 1)?.track
-        io.github.hazymorning.klangbild.ui.flow.FlowTheatre(
+        io.github.hazymorning.klangbild.ui.flow.FlowTheater(
             flow = flow,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
@@ -237,7 +237,7 @@ object Fixtures {
 
     /** The animated stage (pause dimming, buffering pulse) for one stage, frozen in time. */
     @Composable
-    fun Theatre(
+    fun Theater(
         stage: StageData,
         status: PlayerStatus,
         next: TrackInfo? = null,
@@ -248,7 +248,7 @@ object Fixtures {
         partyCode: String? = null,
     ) {
         val lead = StageTexts.lead(status, muted, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = texts)
-        StageTheatre(
+        StageTheater(
             stage = stage,
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },

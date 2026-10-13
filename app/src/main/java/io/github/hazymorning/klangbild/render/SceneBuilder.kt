@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  */
 class ArtworkScene(
     val key: String,
-    val layout: HaloLayout,
+    val layout: StageGrid,
     /**
      * The print at its exact on-screen pixel size (drawn 1:1, no GPU scaling): every cover fills
      * the square, a small one enlarged once with Lanczos; a generated plate is round and
@@ -79,7 +79,7 @@ object SceneBuilder {
         view: StageView = StageView.SINGLE,
         coverField: Boolean = false,
     ): ArtworkScene {
-        val layout = HaloLayout(screen, view)
+        val layout = StageGrid(screen, view)
         val slotPx = (layout.art * screen.density).roundToInt()
         val slotRect = layout.coverRect(layout.art)
         val coverPixels: IntArray
@@ -124,7 +124,7 @@ object SceneBuilder {
 
     private fun assemble(
         key: String,
-        layout: HaloLayout,
+        layout: StageGrid,
         cover: Bitmap,
         shape: PrintShape,
         generated: Boolean,

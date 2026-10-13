@@ -49,14 +49,14 @@ class HurryTest {
     }
 
     /** Both theaters go from [first] to [change]; the second gets [more] 300 ms later. Returns both, 800 ms into the change. */
-    private fun <T> sideBySide(first: T, change: T, more: T, theatre: @Composable (T) -> Unit): Pair<Bitmap, Bitmap> {
+    private fun <T> sideBySide(first: T, change: T, more: T, theater: @Composable (T) -> Unit): Pair<Bitmap, Bitmap> {
         var a by mutableStateOf(first)
         var b by mutableStateOf(first)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             Row {
-                Box(Modifier.size(960.dp, 540.dp).testTag("a")) { theatre(a) }
-                Box(Modifier.size(960.dp, 540.dp).testTag("b")) { theatre(b) }
+                Box(Modifier.size(960.dp, 540.dp).testTag("a")) { theater(a) }
+                Box(Modifier.size(960.dp, 540.dp).testTag("b")) { theater(b) }
             }
         }
         compose.mainClock.advanceTimeBy(100)
@@ -91,7 +91,7 @@ class HurryTest {
             Fixtures.flow(strip, listOf(0, 1, 2, 3), 1),
             Fixtures.flow(strip, listOf(0, 1, 2, 3), 2),
             Fixtures.flow(strip, listOf(0, 1, 2, 3, 4), 2),
-        ) { Fixtures.FlowTheatreOf(it) }
+        ) { Fixtures.FlowTheaterOf(it) }
         assertAlike(pair)
     }
 
@@ -101,7 +101,7 @@ class HurryTest {
             Fixtures.flow(strip, listOf(0, 1, 2, 3), 1),
             Fixtures.flow(strip, listOf(0, 1, 2, 3), 2),
             Fixtures.flow(strip, listOf(0, 1, 2, 3, 4), 3),
-        ) { Fixtures.FlowTheatreOf(it) }
+        ) { Fixtures.FlowTheaterOf(it) }
         assertApart(pair)
     }
 
@@ -113,7 +113,7 @@ class HurryTest {
             Fixtures.stage(song, mdpi),
             // A better cover for the same song: a new scene, here its cover's colors as the wall.
             Fixtures.stage(song, mdpi, coverField = true),
-        ) { Fixtures.Theatre(it, PlayerStatus.PLAYING) }
+        ) { Fixtures.Theater(it, PlayerStatus.PLAYING) }
         assertAlike(pair)
     }
 
@@ -123,7 +123,7 @@ class HurryTest {
             Fixtures.stage(Fixtures.track(SyntheticCover.NIGHT_DRIVE), mdpi),
             Fixtures.stage(Fixtures.track(SyntheticCover.MIST), mdpi),
             Fixtures.stage(Fixtures.track(SyntheticCover.SALT_WATER), mdpi),
-        ) { Fixtures.Theatre(it, PlayerStatus.PLAYING) }
+        ) { Fixtures.Theater(it, PlayerStatus.PLAYING) }
         assertApart(pair)
     }
 }

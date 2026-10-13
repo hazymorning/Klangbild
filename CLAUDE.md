@@ -56,7 +56,7 @@ pictures: effort goes into the app, not into documents.
 ```bash
 ./gradlew :app:testDebugUnitTest                               # the checks (unit + Robolectric), not the picture tests
 ./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # everything, every picture to app/build/screenshots/
-./gradlew :app:testDebugUnitTest --tests '*HaloStageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
+./gradlew :app:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
 python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what looks different (Pillow)
 ./gradlew :app:lintRelease                                     # Android Lint: every warning fails
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
@@ -85,7 +85,7 @@ python3 tools/make_readme_pictures.py                          # README mockups 
 - The progress bar refreshes in a loop of its own, so a stage never goes idle: stills wrap
   their content in `Fixtures.Still { }` (provides `LocalStill`), animated sequences use
   `createComposeRule()` with `mainClock.autoAdvance = false`. The static stages for stills
-  (`Stage`, `FlowStage`) live in the test sources; the app only has its theatres.
+  (`Stage`, `FlowStage`) live in the test sources; the app only has its theaters.
 - Motion is judged as contact sheets: `FlowMotionTest`/`TransitionTest` render frames to
   `app/build/screenshots/...`; tile them with Pillow and look at them with the Read tool.
 - The emulator smoke test (CI) talks to a stand-in Home Assistant, `ci/fake_ha.py`, which
@@ -188,11 +188,12 @@ text/           Texts (the words of one language: resources, plurals, numbers, p
                 refreshed on configuration, locale and time changes), LocalTexts/texts()
 color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, both walls), Lamp (the
                 warm daylight every color is seen in), Appearance (LIGHT / DARK, by the sun)
-render/         HaloLayout (the grid, per view), CoverField (cover colors: ground + soft pools in
+render/         StageGrid (the grid, per view), ScreenSpec, RectDp, PrintShape (the print's
+                outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
                 at a field time) + FieldModel (the field on the CPU: text shade, the lights'
-                colors), WallGlow (the artwork's light on the dark wall), HaloLight (PrintShape;
-                lamp tint for rest and menu), SceneBuilder (per-track precompute: Lanczos cover at
+                colors), WallGlow (the artwork's light on the dark wall), LampLight (lamp tint for
+                rest and menu), SceneBuilder (per-track precompute: Lanczos cover at
                 exact px, wall, palette, flow card; relight), FlowGeometry (the shared
                 perspective; the balance with cards missing), FlowCards (baked card textures),
                 FlowLight (the pool of light above the cards), ImageOps
@@ -253,7 +254,7 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
                 blocked in accept(), which holds the socket open until it lets go)
 ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, the quick settings'
                 hint; provides LocalTexts),
-                stage/ (Stage layers, Typesetting, StageTheatre transitions, ProgressBar (a range:
+                stage/ (Stage layers, Typesetting, StageTheater transitions, ProgressBar (a range:
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
                 main thread, one canvas, LyricsViews keeping their places through a change;
@@ -261,7 +262,7 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 Motion (+ StageTick: one frame tick for bar, field and words; animateGlide:
                 a list's glide that carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
-                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheatre:
+                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheater:
                 keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
@@ -288,7 +289,7 @@ UI words are given in English with the German in parentheses where it matters.
   at most 62% of its height (`BLOCK_SHARE`, measured from the first cap height to the last
   baseline, never from text boxes).
 - **Centered, measured on what is seen** (the user checks this; `CentringTest` measures rendered
-  pixels in both languages): the stage grid (960 × 540 dp, `HaloLayout`) is artwork 368 dp at
+  pixels in both languages): the stage grid (960 × 540 dp, `StageGrid`) is artwork 368 dp at
   88 dp from the left, exactly centered vertically; 64 dp gap; text column 352 dp; 88 dp right
   margin, as much room left of the artwork as right of the progress bar. Text block centered on
   the artwork; the column stands within the artwork's straight edge, a corner radius in from its

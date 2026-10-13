@@ -79,17 +79,17 @@ class OptionsTest {
 
     @Test fun lightStrong() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_strong") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.STRONG.factor) }
+        shot("light_strong") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.STRONG.factor) }
     }
 
     @Test fun lightSubtle() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_subtle") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.SUBTLE.factor) }
+        shot("light_subtle") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.SUBTLE.factor) }
     }
 
     @Test fun lightOff() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI))
-        shot("light_off") { Fixtures.Theatre(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.OFF.factor) }
+        shot("light_off") { Fixtures.Theater(stage, PlayerStatus.PLAYING, lightFactor = LightLevel.OFF.factor) }
     }
 
     @Test fun restGrouped() = shot("rest_group") {

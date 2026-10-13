@@ -68,7 +68,7 @@ enum class Change {
  * @param lightFactor the light's strength from the settings (1 = as designed, 0 = off).
  */
 @Composable
-fun StageTheatre(
+fun StageTheater(
     stage: StageData,
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,

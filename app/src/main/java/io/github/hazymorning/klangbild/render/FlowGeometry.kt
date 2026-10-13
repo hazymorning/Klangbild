@@ -20,7 +20,7 @@ import kotlin.math.sign
  * Measured from the design (at 960 × 540 dp): the middle cover is 300 dp, and the outer edges
  * of the side cards stand 222.5 and 255 dp beside its center, at 92 % of its height.
  */
-class FlowGeometry(val layout: HaloLayout) {
+class FlowGeometry(val layout: StageGrid) {
     /** Side of a card (dp). */
     val side: Float get() = layout.art
 
@@ -147,7 +147,7 @@ class FlowGeometry(val layout: HaloLayout) {
     }
 
     /** How present a card at [position] is: the third card on each side is already gone. */
-    fun presence(position: Float): Float = 1f - HaloLight.smoothstep(MAX_SIDE, EDGE, abs(position))
+    fun presence(position: Float): Float = 1f - LampLight.smoothstep(MAX_SIDE, EDGE, abs(position))
 
     /**
      * Where the composition stands when only some of the cards are there: [left] cards beside
@@ -191,7 +191,7 @@ class FlowGeometry(val layout: HaloLayout) {
     private val stripGap: Float get() = layout.columnLeft - cx - reach(MAX_SIDE.toInt())
 
     /** From the middle card to the text column when nothing comes (dp): the single view's gap. */
-    private val heroGap: Float get() = HaloLayout.ART_TEXT_GAP * layout.screen.widthDp / HaloLayout.GRID_WIDTH
+    private val heroGap: Float get() = StageGrid.ART_TEXT_GAP * layout.screen.widthDp / StageGrid.GRID_WIDTH
 
     companion object {
 

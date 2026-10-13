@@ -6,7 +6,7 @@ import org.junit.Test
 
 /** The cover flow's geometry against the design's measurements (dp at 960 × 540). */
 class FlowGeometryTest {
-    private val layout = HaloLayout(ScreenSpec.TV_1080, StageView.FLOW)
+    private val layout = StageGrid(ScreenSpec.TV_1080, StageView.FLOW)
     private val g = FlowGeometry(layout)
     private val c = FloatArray(8)
 

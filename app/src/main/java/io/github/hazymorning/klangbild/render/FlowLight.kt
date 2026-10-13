@@ -55,13 +55,13 @@ object FlowLight {
         return mean((size / 16).coerceAtLeast(1)) ?: mean(size / 2) ?: 0xFF000000.toInt()
     }
 
-    fun field(edge: Int, layout: HaloLayout): IntArray {
+    fun field(edge: Int, layout: StageGrid): IntArray {
         val screen = layout.screen
         val lab = Oklab.fromArgb(edge)
-        val peak = PEAK * (DARK_SHARE + (1f - DARK_SHARE) * HaloLight.smoothstep(0.05f, 0.35f, lab.l))
+        val peak = PEAK * (DARK_SHARE + (1f - DARK_SHARE) * LampLight.smoothstep(0.05f, 0.35f, lab.l))
         // The edge's own hue, a little more colorful (it is light, not paint). A gray edge gives lamp light.
-        val color = if (lab.chroma < 0.02f) HaloLight.LAMP else Lch(0.62f, min(lab.chroma * 1.2f, 0.12f), lab.hue)
-        val tint = HaloLight.lightTint(color, peak)
+        val color = if (lab.chroma < 0.02f) LampLight.LAMP else Lch(0.62f, min(lab.chroma * 1.2f, 0.12f), lab.hue)
+        val tint = LampLight.lightTint(color, peak)
         val tr = Oklab.srgbToLinear(tint shr 16)
         val tg = Oklab.srgbToLinear(tint shr 8)
         val tb = Oklab.srgbToLinear(tint)
@@ -74,13 +74,13 @@ object FlowLight {
         for (y in 0 until MAP_H) {
             val py = (y + 0.5f) * sy
             // Gone by the floor line: the floor is dark glass.
-            val wall = HaloLight.smoothstep(floor, layout.artTop + 0.35f * layout.art, py)
+            val wall = LampLight.smoothstep(floor, layout.artTop + 0.35f * layout.art, py)
             for (x in 0 until MAP_W) {
                 val px = (x + 0.5f) * sx
                 val u = (px - cx) / SIGMA_X
                 val v = (py - cy) / SIGMA_Y
-                val fade = HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 120f, min(px, screen.widthDp - px)) *
-                    HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 60f, min(py, screen.heightDp - py))
+                val fade = LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 120f, min(px, screen.widthDp - px)) *
+                    LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 60f, min(py, screen.heightDp - py))
                 val value = exp(-0.5f * (u * u + v * v)) * fade * wall
                 val o = y * MAP_W + x
                 img.r[o] = tr * value
@@ -102,7 +102,7 @@ object FlowLight {
      * taken to the power [SHADE_POWER] (within a level of the exact curve).
      */
     fun shade(t: Float): Float {
-        val left = 1f - HaloLight.smoothstep(0f, 1f, t)
+        val left = 1f - LampLight.smoothstep(0f, 1f, t)
         return 1f - left.pow(SHADE_POWER)
     }
 

@@ -62,8 +62,8 @@ import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.domain.TimeLine
-import io.github.hazymorning.klangbild.render.HaloLayout
-import io.github.hazymorning.klangbild.render.HaloLight
+import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.SceneBuilder
@@ -111,7 +111,7 @@ object MenuGrid {
     const val LABEL_GAP = 16f
 
     /** Opacity of a line at [distance] dp from the cursor's line. */
-    fun fade(distance: Float): Float = 1f - HaloLight.smoothstep(FADE_FROM, FADE_TO, abs(distance))
+    fun fade(distance: Float): Float = 1f - LampLight.smoothstep(FADE_FROM, FADE_TO, abs(distance))
 }
 
 /**
@@ -158,11 +158,11 @@ private class MenuColors(
 ) {
     companion object {
         fun of(appearance: Appearance): MenuColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, HaloLight.LAMP_HUE).toArgb()))
+            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.applyArgb(Lch(l, chroma, LampLight.LAMP_HUE).toArgb()))
             return if (appearance == Appearance.DARK) {
                 MenuColors(
                     wall = Color.Black,
-                    band = Color(HaloLight.lightTint(HaloLight.LAMP, MenuGrid.GLOW_PEAK)),
+                    band = Color(LampLight.lightTint(LampLight.LAMP, MenuGrid.GLOW_PEAK)),
                     heading = c(0.90f),
                     description = c(0.72f),
                     hint = c(0.60f),
@@ -215,7 +215,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
     ) {
         val density = LocalDensity.current.density
         val screen = ScreenSpec((maxWidth.value * density).roundToInt(), (maxHeight.value * density).roundToInt(), density)
-        val layout = HaloLayout(screen)
+        val layout = StageGrid(screen)
         val focusY = maxHeight.value / 2f
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
@@ -249,7 +249,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
 
 /** One level of the menu: its heading, the chosen line's explanation and hint on the left, its lines on the right. */
 @Composable
-private fun MenuLevel(menu: MenuState, layout: HaloLayout, focusY: Float, colors: MenuColors) {
+private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors: MenuColors) {
     val cursor = menu.cursor.coerceIn(0, menu.rows.size - 1)
     val row = menu.rows[cursor]
     val t = texts()
@@ -392,8 +392,8 @@ fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: 
         val py = (y + 0.5f) * sy
         val u = (px - cx) / MenuGrid.GLOW_SIGMA_X
         val v = (py - cy) / MenuGrid.GLOW_SIGMA_Y
-        val edges = HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
-            HaloLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
+        val edges = LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
+            LampLight.smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
         val value = exp(-0.5f * (u * u + v * v)) * edges
         val o = y * GLOW_MAP_W + x
         img.r[o] = value

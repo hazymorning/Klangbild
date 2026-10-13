@@ -48,7 +48,7 @@ class LightWallTest {
 
     @Test fun paused() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.TERRACOTTA), appearance = light)
-        shot("stage_paused") { Fixtures.Theatre(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
+        shot("stage_paused") { Fixtures.Theater(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
     }
 
     @Test fun rest() = shot("rest") {
