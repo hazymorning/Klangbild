@@ -257,6 +257,7 @@
     <string name="rest_unavailable">Not available right now.</string>
     <string name="rest_entity_missing">Home Assistant doesn’t know “%s”.\nHold OK to set up.</string>
     <string name="rest_this_speaker">this speaker</string>
+    <string name="landscape_waiting">Preparing the landscape…</string>
 
     <!-- Setup on the TV -->
     <string name="setup_first_run">Set up with your phone</string>

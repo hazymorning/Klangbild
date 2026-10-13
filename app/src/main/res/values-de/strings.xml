@@ -237,6 +237,7 @@
     <string name="rest_unavailable">Gerade nicht erreichbar.</string>
     <string name="rest_entity_missing">Home Assistant kennt „%s“ nicht.\nZum Einrichten OK lange drücken.</string>
     <string name="rest_this_speaker">diesen Lautsprecher</string>
+    <string name="landscape_waiting">Landschaft wird erstellt …</string>
 
     <string name="setup_first_run">Einrichten mit dem Handy</string>
     <string name="setup_rejected">Home Assistant hat den Zugang abgelehnt.</string>

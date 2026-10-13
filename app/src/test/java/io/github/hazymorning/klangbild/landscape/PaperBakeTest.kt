@@ -5,8 +5,22 @@ import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 
 class PaperBakeTest {
-    private val summer = PaperBake.bake(960, 540, 1f, SeasonShapes(flowers = 0.6f))
+    private val reports = ArrayList<BakeProgress>()
+    private val summer = PaperBake.bake(960, 540, 1f, SeasonShapes(flowers = 0.6f)) { reports += it }
     private val winter = PaperBake.bake(960, 540, 1f, SeasonShapes(snow = 1f, peaks = 1f, leaves = 0f), LabelSide.RIGHT)
+
+    @Test
+    fun `each part tells where it ends before it starts, from nothing to the whole bake`() {
+        assertThat(reports.first()).isEqualTo(BakeProgress(0f, reports.first().upTo))
+        assertThat(reports.last()).isEqualTo(BakeProgress.DONE)
+        // A part ends where the next one starts, so a bar running on through a part never passes the bake.
+        for ((a, b) in reports.zipWithNext()) {
+            assertThat(b.done).isWithin(1e-6f).of(a.upTo)
+            assertThat(a.upTo).isAtLeast(a.done)
+        }
+        // No part is a large share of the whole.
+        assertThat(reports.maxOf { it.upTo - it.done }).isLessThan(0.16f)
+    }
 
     @Test
     fun `every sheet is cut, and nothing is left of the leaves in winter`() {
