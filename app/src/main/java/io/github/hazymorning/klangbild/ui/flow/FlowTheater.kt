@@ -57,7 +57,7 @@ private enum class FlowChange {
     /** Only cards beside the middle came or went (the queue changed). */
     SIDES,
 
-    /** Same track, new scene (a better cover): a quiet cross-fade. */
+    /** Same track, new scene (a better cover) or described anew: a quiet cross-fade. */
     SOFT,
 
     /** Same track on the other wall (light ↔ dark): the same, slower. */
@@ -280,6 +280,8 @@ private fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
         old.lyrics !== new.lyrics -> FlowChange.LYRICS
+        // The same song described anew (a year that came late): its text cross-fades, as on the single stage.
+        a.track != b.track -> FlowChange.SOFT
         else -> FlowChange.SIDES
     }
 }
