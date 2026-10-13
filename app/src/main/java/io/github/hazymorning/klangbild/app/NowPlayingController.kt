@@ -183,7 +183,8 @@ class NowPlayingController(
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
 
-    private var source: NowPlayingSource? = null
+    /** Read from coroutines and the main thread as well; written under the lock. */
+    @Volatile private var source: NowPlayingSource? = null
     private var sourceKey: String? = null
     private var sourceJob: Job? = null
     private var ticker: Job? = null
@@ -256,7 +257,7 @@ class NowPlayingController(
             settingsStore.write(updated)
             // Leaving setup: the new settings start a fresh connection.
             session.value = session.value.copy(showSetup = false)
-            machine.requestSetup(false)
+            synchronized(this@NowPlayingController) { machine.requestSetup(false) }
             take(updated, "setup page")
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
@@ -371,6 +372,7 @@ class NowPlayingController(
     private fun tickDelay(): Long = chapterEndsAt?.let { (it - now() + 20).coerceIn(20, 1_000) } ?: 1_000
 
     /** Extras from `am start` (cold start or onNewIntent). */
+    @Synchronized
     fun applyLaunch(extras: Map<String, Any?>) {
         session.value = LaunchExtras.session(extras)
         machine.requestSetup(session.value.showSetup)
@@ -393,6 +395,7 @@ class NowPlayingController(
         recompute()
     }
 
+    @Synchronized
     fun requestSetup(show: Boolean) {
         machine.requestSetup(show)
         recompute()
