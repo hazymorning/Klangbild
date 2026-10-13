@@ -338,7 +338,10 @@ UI words are given in English with the German in parentheses where it matters.
   17 sp; labels, times, status, next 15 sp/440, nothing smaller. Large lines are pulled left by
   their extra side bearing (`opticalIndent`). Times are set in Jost with `Figures`: digits in
   equal cells (DM Sans has no tabular figures and a narrow 1), colon raised 0.123 em; the
-  rest clock keeps natural figures and dissolves into each new minute. Neither face has
+  rest clock keeps natural figures, set by hand as outlines (`ClockFigures`): its colon raised
+  to the figures' middle as measured at its weight (on the baseline it sagged 18 dp below them
+  until 2026.10), each 1 drawn in by most of its wide side bearings (it stood apart), and it
+  dissolves into each new minute. Neither face has
   U+202F, U+2009 or U+2002: `Texts` turns the platform's narrow spaces into U+00A0.
   Titles ≤ 3 lines, prefer breaks after section dashes, no mid-word breaks
   (`breaksInsideWord`), a word of one to three letters stays with the next ("Spiegel / im

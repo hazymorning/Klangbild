@@ -148,8 +148,8 @@ fun rememberFigures(style: TextStyle, face: Face): Figures {
 
 /**
  * How far [text] in [style] has to move right so that what is seen (its ink, not its
- * advance box) stands centered where the box would be (px). A large "10:12" leans left by its
- * first figure's side bearing; a clock in the middle of the screen must not.
+ * advance box) stands centered where the box would be (px). A line leans toward the side
+ * whose first or last letter stands farther in; a line in the middle of the screen must not.
  */
 @Composable
 fun rememberInkShift(text: String, style: TextStyle): Float {
@@ -169,5 +169,68 @@ fun rememberInkShift(text: String, style: TextStyle): Float {
         val ink = android.graphics.RectF()
         outline.computeBounds(ink, true)
         paint.measureText(text) / 2f - (ink.left + ink.right) / 2f
+    }
+}
+
+/**
+ * The rest clock's figures as outlines, set by hand: by the font's own advances and kerning, the
+ * colon raised to the middle of the figures (set on the baseline it sags below them; how far
+ * depends on the weight, so it is measured on the outlines), and the one drawn in by most of its
+ * side bearings, which at this size leave it standing apart from its neighbors. As outlines the
+ * figures are known exactly where they are seen: [ink] is what centers them.
+ */
+class ClockFigures(time: String, typeface: android.graphics.Typeface, sizePx: Float, tracking: Float) {
+    /** The figures' outlines, the baseline starting at the origin. */
+    val outline = android.graphics.Path()
+
+    /** Where the ink is, around the same origin. */
+    val ink = android.graphics.RectF()
+
+    init {
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            this.typeface = typeface
+            textSize = sizePx
+        }
+        val glyph = android.graphics.Path()
+        val bounds = android.graphics.RectF()
+        fun middle(ch: String): Float {
+            paint.getTextPath(ch, 0, 1, 0f, 0f, glyph)
+            glyph.computeBounds(bounds, true)
+            return bounds.centerY()
+        }
+        val raise = middle(":") - middle("0")
+        var pulled = 0f
+        for (i in time.indices) {
+            val one = time[i] == '1'
+            if (one) pulled += ONE_LEFT * sizePx
+            // The pen where the font puts this figure, the kerning with the one before it included.
+            val x = paint.measureText(time, 0, i + 1) - paint.measureText(time, i, i + 1) + i * tracking * sizePx - pulled
+            paint.getTextPath(time, i, i + 1, x, if (time[i] == ':') -raise else 0f, glyph)
+            outline.addPath(glyph)
+            if (one) pulled += ONE_RIGHT * sizePx
+        }
+        outline.computeBounds(ink, true)
+    }
+
+    private companion object {
+        /**
+         * How much of the one's side bearings is taken in (em), on its left and on its right: Jost
+         * gives it 0.08 and 0.13, the other figures 0.02 to 0.06.
+         */
+        const val ONE_LEFT = 0.03f
+        const val ONE_RIGHT = 0.08f
+    }
+}
+
+/** [ClockFigures] for [time] in [style] (its tracking in em). */
+@Composable
+fun rememberClockFigures(time: String, style: TextStyle): ClockFigures {
+    val resolver = LocalFontFamilyResolver.current
+    val density = LocalDensity.current
+    return remember(time, style, resolver, density) {
+        val typeface = resolver.resolve(style.fontFamily, style.fontWeight ?: FontWeight.Normal).value as? android.graphics.Typeface
+            ?: android.graphics.Typeface.DEFAULT
+        val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
+        ClockFigures(time, typeface, with(density) { style.fontSize.toPx() }, tracking)
     }
 }
