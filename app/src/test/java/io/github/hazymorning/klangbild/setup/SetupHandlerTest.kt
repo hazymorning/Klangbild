@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.runBlocking
@@ -519,7 +520,7 @@ class SetupHandlerTest {
 
     @Test
     fun `qr code encodes the url`() {
-        val m = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=123456")
+        val m = QrCode.matrix("http://192.168.1.23:8765/?code=123456")
         assertThat(m.size).isAtLeast(21)
         assertThat(m.all { it.size == m.size }).isTrue()
         // finder pattern corner is dark

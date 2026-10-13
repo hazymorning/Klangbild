@@ -15,9 +15,9 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.stage.Stage
@@ -119,7 +119,7 @@ class CenteringTest {
 
     @Test
     fun theSetupCodeAndItsTextStandInTheMiddle() {
-        val info = SetupInfo(url = "http://192.168.1.23:8765", code = "482913", qr = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=482913"))
+        val info = SetupInfo(url = "http://192.168.1.23:8765", code = "482913", qr = QrCode.matrix("http://192.168.1.23:8765/?code=482913"))
         for (reason in SetupReason.entries) {
             val ink = render { Fixtures.Still { SetupScreen(reason, info, SetupArt.scene(info, tv)) } }
             val all = ink.box(0, 0, 1920, 1080)

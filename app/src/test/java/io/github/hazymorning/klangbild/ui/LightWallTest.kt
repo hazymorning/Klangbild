@@ -11,9 +11,9 @@ import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +59,7 @@ class LightWallTest {
     }
 
     @Test fun setup() = shot("setup") {
-        val info = SetupInfo("http://192.168.1.23:8765", "482913", SetupServer.qrMatrix("http://192.168.1.23:8765/?code=482913"))
+        val info = SetupInfo("http://192.168.1.23:8765", "482913", QrCode.matrix("http://192.168.1.23:8765/?code=482913"))
         SetupScreen(SetupReason.FIRST_RUN, info, SetupArt.scene(info, ScreenSpec.TV_1080, light))
     }
 }

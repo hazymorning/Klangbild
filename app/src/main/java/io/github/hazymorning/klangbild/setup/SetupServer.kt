@@ -1,9 +1,5 @@
 package io.github.hazymorning.klangbild.setup
 
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.QuickActions
@@ -13,6 +9,7 @@ import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaRest
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
 import io.github.hazymorning.klangbild.json.string
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -147,7 +144,7 @@ class SetupServer(
     }
 
     private fun publish(url: String) {
-        _info.value = SetupInfo(url, handler.code, qrMatrix("$url/?code=${handler.code}"))
+        _info.value = SetupInfo(url, handler.code, QrCode.matrix("$url/?code=${handler.code}"))
     }
 
     /** The listening socket, on the LAN address only: the first of [PORTS] that is free, else any. */
@@ -234,12 +231,6 @@ class SetupServer(
 
         /** How long a stop waits for the thread taking the connections to let go of the port. */
         private const val STOP_WAIT_MS = 2_000L
-
-        fun qrMatrix(text: String): Array<BooleanArray> {
-            val hints = mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M, EncodeHintType.MARGIN to 0)
-            val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, hints)
-            return Array(m.height) { y -> BooleanArray(m.width) { x -> m.get(x, y) } }
-        }
 
         /** First private IPv4 address of an up, non-loopback interface (Ethernet or Wi-Fi). */
         fun guessLanAddress(): InetAddress? = runCatching {

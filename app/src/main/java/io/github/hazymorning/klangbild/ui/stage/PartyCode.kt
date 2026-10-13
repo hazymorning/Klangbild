@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ShaderBrush
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.setup.SetupServer
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.SetupArt
@@ -83,7 +83,7 @@ fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, size: Any,
  * pixels on ivory (a whiter paper on the light wall). Null for a link no QR code can hold.
  */
 fun partyCard(url: String, sizePx: Int, wall: Appearance): Bitmap? =
-    runCatching { SetupServer.qrMatrix(url) }.getOrNull()?.let { SetupArt.card(it, sizePx, wall) }
+    runCatching { QrCode.matrix(url) }.getOrNull()?.let { SetupArt.card(it, sizePx, wall) }
 
 /**
  * The party's code ([card]) where the cover of [scene] stands, drawn 1:1 on whole pixels with the

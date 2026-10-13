@@ -6,9 +6,9 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
+import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import org.junit.Test
@@ -94,7 +94,7 @@ class StatesTest {
     private val setupInfo = SetupInfo(
         url = "http://192.168.1.23:8765",
         code = "482913",
-        qr = SetupServer.qrMatrix("http://192.168.1.23:8765/?code=482913"),
+        qr = QrCode.matrix("http://192.168.1.23:8765/?code=482913"),
     )
 
     @Test fun setupFirstRun() = shot("setup_first_run") {
