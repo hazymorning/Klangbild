@@ -1,21 +1,13 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -23,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import io.github.hazymorning.klangbild.app.StageData
-import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.ui.Motion
@@ -120,36 +111,7 @@ fun StageTheater(
         }
     }
 
-    val quiet = status == PlayerStatus.PAUSED || dimmed
-    val pausedLevel by animateFloatAsState(
-        targetValue = if (quiet) Motion.PAUSED_LIGHT else 1f,
-        animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
-        label = "pause-light",
-    )
-    val coverDim by animateFloatAsState(
-        targetValue = when {
-            !quiet -> 1f
-            stage.scene.appearance == Appearance.LIGHT -> Motion.PAUSED_COVER_ON_PAPER
-            else -> Motion.PAUSED_COVER
-        },
-        animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
-        label = "pause-cover",
-    )
-    val textDim by animateFloatAsState(
-        targetValue = if (quiet) Motion.PAUSED_TEXT else 1f,
-        animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
-        label = "pause-text",
-    )
-    val breathing: State<Float> = if (status == PlayerStatus.BUFFERING) {
-        rememberInfiniteTransition(label = "buffering").animateFloat(
-            initialValue = 1f,
-            targetValue = 0.7f,
-            animationSpec = infiniteRepeatable(tween(1_600, easing = Motion.Dimmer), RepeatMode.Reverse),
-            label = "breath",
-        )
-    } else {
-        remember { mutableFloatStateOf(1f) }
-    }
+    val dim = rememberStageDim(status, dimmed, stage.scene.appearance)
 
     val cur = current
     val prev = previous
@@ -165,7 +127,7 @@ fun StageTheater(
     val curPlan = rememberTextPlan(curModel)
     val prevPlan = prevModel?.let { rememberTextPlan(it) }
 
-    val level: () -> Float = { pausedLevel * breathing.value * intensity() }
+    val level: () -> Float = { dim.light * intensity() }
     val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.LYRICS
     // A new picture comes up over the old one; the old goes once it is covered (a picture of
     // another shape, such as a round plate, lets the old one's corners fade with it).
@@ -207,13 +169,13 @@ fun StageTheater(
             BaseWall(cur.scene.palette.wall.asColor(), alpha = newGlow, beyondOnly = true)
         }
         WallLayer(cur.scene, alpha = newGlow, level = level)
-        if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, dim = { coverDim })
-        ArtworkLayer(cur.scene, alpha = newPicture, dim = { coverDim })
+        if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, dim = { dim.picture })
+        ArtworkLayer(cur.scene, alpha = newPicture, dim = { dim.picture })
         // A party's code covers the picture and stays while the songs change beneath it; with the
         // wall it changes its paper.
         val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
-        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, dim = { coverDim })
-        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { coverDim })
+        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, dim = { dim.picture })
+        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { dim.picture })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             if (prevModel != null && prevPlan != null) {
                 TextLayer(
@@ -221,10 +183,10 @@ fun StageTheater(
                     plan = prevPlan,
                     alpha = { line -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
                     rise = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) },
-                    dim = { textDim },
+                    dim = { dim.text },
                 )
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { textDim })
+            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text })
         }
         // The status line belongs to the room, not to the track, so it stays.
         StatusLayer(curModel)

@@ -1,21 +1,13 @@
 package io.github.hazymorning.klangbild.ui.flow
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -45,6 +37,7 @@ import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import io.github.hazymorning.klangbild.ui.stage.partyCard
 import io.github.hazymorning.klangbild.ui.stage.rememberPartyCode
+import io.github.hazymorning.klangbild.ui.stage.rememberStageDim
 import io.github.hazymorning.klangbild.ui.stage.rememberTextPlan
 import io.github.hazymorning.klangbild.ui.stage.samePicture
 import kotlinx.coroutines.flow.conflate
@@ -169,28 +162,7 @@ fun FlowTheater(
 
     val middle = current.middle
     val appearance = middle.scene.appearance
-    val quiet = status == PlayerStatus.PAUSED || dimmed
-    val pausedLevel by animateFloatAsState(if (quiet) Motion.PAUSED_LIGHT else 1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer), label = "pause-light")
-    val cardDim by animateFloatAsState(
-        targetValue = when {
-            !quiet -> 1f
-            appearance == Appearance.LIGHT -> Motion.PAUSED_COVER_ON_PAPER
-            else -> Motion.PAUSED_COVER
-        },
-        animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
-        label = "pause-cards",
-    )
-    val textDim by animateFloatAsState(if (quiet) Motion.PAUSED_TEXT else 1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer), label = "pause-text")
-    val breathing: State<Float> = if (status == PlayerStatus.BUFFERING) {
-        rememberInfiniteTransition(label = "buffering").animateFloat(
-            initialValue = 1f,
-            targetValue = 0.7f,
-            animationSpec = infiniteRepeatable(tween(1_600, easing = Motion.Dimmer), RepeatMode.Reverse),
-            label = "breath",
-        )
-    } else {
-        remember { mutableFloatStateOf(1f) }
-    }
+    val dim = rememberStageDim(status, dimmed, appearance)
 
     val prev = previous
     val kind = change
@@ -214,7 +186,7 @@ fun FlowTheater(
     val newColumn: () -> Float = { if (prev != null && textMoves) rest.column else balance().column }
     val oldColumn: () -> Float = { if (textMoves) from.column else balance().column }
     val wall = middle.scene.palette.wall.asColor()
-    val level: () -> Float = { pausedLevel * breathing.value * intensity() }
+    val level: () -> Float = { dim.light * intensity() }
     // The text cross-fades with a new look of the same track; a new song's lines leave and rise.
     val softText = kind == FlowChange.SOFT || kind == FlowChange.WALL
     // The whole strip cross-fades when the same middle card takes a new look.
@@ -254,7 +226,7 @@ fun FlowTheater(
             // A new look of the same strip: the old cards stay underneath while the new ones come up.
             FlowStrip(
                 resting(prev), geometry, oldStrip.appearance, oldStrip.palette.wall.asColor(),
-                dim = { cardDim }, edges = !oldStrip.coverField, shift = { balance().cards },
+                dim = { dim.picture }, edges = !oldStrip.coverField, shift = { balance().cards },
                 sign = party.on(oldStrip.appearance), signAlpha = party.shown,
             )
         }
@@ -264,7 +236,7 @@ fun FlowTheater(
             appearance = appearance,
             wall = wall,
             time = { if (softText) 1f else t.value },
-            dim = { cardDim },
+            dim = { dim.picture },
             alpha = { if (restrip) p(0, total, Motion.Sine) else 1f },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
@@ -278,11 +250,11 @@ fun FlowTheater(
                     plan = prevPlan,
                     alpha = { row -> stood(row) * (if (softText) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
                     rise = { row -> 10f * (1f - stood(row)) - (if (softText) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) },
-                    dim = { textDim },
+                    dim = { dim.text },
                     shift = oldColumn,
                 )
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { textDim }, shift = newColumn)
+            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, shift = newColumn)
         }
         StatusLayer(curModel, shift = { balance().column })
     }

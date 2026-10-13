@@ -241,11 +241,7 @@ fun TextLayer(
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
     val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
 
-    fun line(which: TextLine): Modifier = Modifier.graphicsLayer {
-        this.alpha = alpha(which).coerceIn(0f, 1f)
-        translationY = (rise(which) * density).roundToInt().toFloat()
-    }
-    val showBar = model.line == null && model.progress && model.durationMs != null
+    fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
     val bottomLine = model.line
     val measurer = rememberTextMeasurer(cacheSize = 4)
 
@@ -282,29 +278,7 @@ fun TextLayer(
                 else -> Box(Modifier)
             }
             // 5: progress bar, station or notice; changes cross-fade
-            Crossfade(
-                targetState = when {
-                    bottomLine != null -> bottomLine
-                    showBar -> BAR
-                    else -> null
-                },
-                modifier = line(TextLine.BOTTOM),
-                animationSpec = tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
-                label = "bottom-line",
-            ) { content ->
-                when (content) {
-                    null -> Box(Modifier)
-                    BAR -> ProgressBar(
-                        durationMs = model.durationMs ?: 1L,
-                        positionMs = model.positionMs,
-                        startMs = model.rangeStartMs,
-                        playing = playing,
-                        colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
-                        labelStyle = styles.time,
-                    )
-                    else -> BasicText(content, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+            BottomLine(bottomOf(model), model, styles, playing, line(TextLine.BOTTOM), label = "bottom-line")
             // 6: what comes next, on the artwork's bottom edge
             NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT))
         },
@@ -373,8 +347,6 @@ fun TextLayer(
         }
     }
 }
-
-private const val BAR = "\u0000bar"
 
 
 /**
