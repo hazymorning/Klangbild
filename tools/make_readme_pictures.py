@@ -136,9 +136,10 @@ def font(name, size, weight, optical):
     return f
 
 
-def text_mask(text, face, size, weight, tracking=0.0, ss=4):
-    """The coverage of [text] set in [face] at [size] px, its cap height's top at the mask's top."""
-    f = font(face, size * ss, weight, optical=size)
+def text_mask(text, face, size, weight, tracking=0.0, ss=4, optical=None):
+    """The coverage of [text] set in [face] at [size] px, its cap height's top at the mask's top.
+    DM Sans takes the [optical] size the text is seen at (its own size if none is given)."""
+    f = font(face, size * ss, weight, optical=optical or size)
     ascent, descent = f.getmetrics()
     advance = sum(f.getlength(ch) for ch in text) + tracking * size * ss * (len(text) - 1)
     img = Image.new("L", (int(advance + size * ss), ascent + descent), 0)
@@ -278,31 +279,42 @@ def logo_tile(side, ss=4):
     return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
-def wordmark(img, cx, top, cap, color=(236, 239, 244)):
-    """ "Klangbild" centered on [cx] by its ink, its cap height from [top]."""
+TAGLINE = "Look what you\u2019re listening to."
+
+
+def title(img, cx, middle, cap, color=(236, 239, 244), quiet=(172, 178, 190)):
+    """ "Klangbild" over its tagline, both centered on [cx] by their ink and the two together on
+    [middle] (the name's cap height to the tagline's baseline). The tagline is set in the text face
+    at the optical size it is seen at on a page, in the quieter ink."""
     word = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
-    cols = np.nonzero(word.max(axis=0) > 0.02)[0]
-    paste(img, word, int(round(cx - (cols[0] + cols[-1] + 1) / 2)), int(top), color, 0.96)
+    small = 0.41 * cap
+    line = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 400, optical=14)
+    gap = 0.62 * cap
+    top = middle - (cap + gap + small) / 2
+    for mask, y, ink, alpha in ((word, top, color, 0.96), (line, top + cap + gap, quiet, 0.94)):
+        cols = np.nonzero(mask.max(axis=0) > 0.02)[0]
+        paste(img, mask, int(round(cx - (cols[0] + cols[-1] + 1) / 2)), int(round(y)), ink, alpha)
 
 
 def now_playing():
-    """The first picture: the song at night, the wall lit in its colors, the name above."""
+    """The first picture: the song at night, the wall lit in its colors, the name and its tagline above."""
     W, H = 2400, 1500
     tv = Tv(W / 2, 872, 1480, 9)
     img, light = dark_room(W, H, tv, light_colors("now-playing"), 1.15)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing.png"), light * 0.16)
-    wordmark(img, W / 2, 196, 54)
+    title(img, W / 2, 223, 68)
     save(img, "mockup-now-playing.jpg")
 
 
 def now_playing_light():
     """The first picture for a light page: the same song by day on the light wall, the room in
-    daylight and the lights behind the TV off, as they are by day; the name above in night blue."""
+    daylight and the lights behind the TV off, as they are by day; the name and its tagline above
+    in night blue."""
     W, H = 2400, 1500
     tv = Tv(W / 2, 872, 1480, 9)
     img, rim = daylight_room(W, H, tv)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
-    wordmark(img, W / 2, 196, 54, color=(22, 32, 58))
+    title(img, W / 2, 223, 68, color=(22, 32, 58), quiet=(84, 98, 128))
     save(img, "mockup-now-playing-light.jpg")
 
 
