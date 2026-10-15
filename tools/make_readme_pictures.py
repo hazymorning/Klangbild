@@ -287,7 +287,7 @@ def logo_tile(side, ss=4):
     return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
-TAGLINE = "Look what you\u2019re listening to."
+TAGLINE = "See what you\u2019re listening to."
 
 
 def ink_span(mask):

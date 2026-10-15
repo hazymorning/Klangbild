@@ -1,6 +1,6 @@
 # Klangbild
 
-Look what you're listening to.
+See what you're listening to.
 
 Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
@@ -9,7 +9,7 @@ Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
-  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="Klangbild, look what you're listening to: the album cover on a TV next to the song that plays">
+  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="Klangbild, see what you're listening to: the album cover on a TV next to the song that plays">
 </picture>
 
 When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.

@@ -5,7 +5,7 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): the
-tagline ("Look what you're listening to."), what Klangbild is and what it does, its views, setup
+tagline ("See what you're listening to."), what Klangbild is and what it does, its views, setup
 with an optional third step that lets Home Assistant open it, the remote (and that its buttons can
 be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
