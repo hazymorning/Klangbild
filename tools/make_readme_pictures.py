@@ -296,7 +296,7 @@ def ink_span(mask):
     return cols[-1] + 1 - cols[0]
 
 
-def title(img, cx, middle, cap, gap=0.53, color=(236, 239, 244), quiet=(188, 194, 206)):
+def title(img, cx, middle, cap, gap=0.53, color=(236, 239, 244), quiet=(196, 201, 212)):
     """ "Klangbild" over its tagline as one lockup: the tagline sized so it spans exactly the name's
     ink, measured as the eye does, from its L to the o of "to" with the period hanging past the d.
     Both stand centered on [cx], the two together on [middle] (the name's cap height to the
