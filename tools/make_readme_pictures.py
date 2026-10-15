@@ -296,22 +296,31 @@ def ink_span(mask):
     return cols[-1] + 1 - cols[0]
 
 
-def title(img, cx, middle, cap, gap=0.50, color=(236, 239, 244), quiet=(172, 178, 190)):
-    """ "Klangbild" over its tagline as one lockup: the tagline sized so its ink spans exactly the
-    name's, both centered on [cx] by their ink and the two together on [middle] (the name's cap
-    height to the tagline's baseline), [gap] times the name's cap height between the name's
-    baseline and the tagline's cap height. The tagline is set kerned in the text face at the
-    optical size it is seen at on a page, in the quieter ink."""
+def title(img, cx, middle, cap, gap=0.53, color=(236, 239, 244), quiet=(188, 194, 206)):
+    """ "Klangbild" over its tagline as one lockup: the tagline sized so it spans exactly the name's
+    ink, measured as the eye does, from its L to the o of "to" with the period hanging past the d.
+    Both stand centered on [cx], the two together on [middle] (the name's cap height to the
+    tagline's baseline), [gap] times the name's cap height from the name's baseline to the
+    tagline's cap height, clear of the g. The tagline is set kerned in the text face at the
+    optical size it is seen at on a page, at the weight of the app's small lines, in the second
+    ink."""
     word, word_cap = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
-    probe, _ = text_mask(TAGLINE, "dmsans.ttf", 40 / 0.70, 400, optical=14, kern=True)
-    small = 40 * ink_span(word) / ink_span(probe)
-    line, line_cap = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 400, optical=14, kern=True)
-    small *= ink_span(word) / ink_span(line)
-    line, line_cap = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 400, optical=14, kern=True)
+
+    def tagline(small):
+        line, line_cap = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
+        body, _ = text_mask(TAGLINE.rstrip("."), "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
+        return line, line_cap, body
+
+    small = 26.0
+    for _ in range(3):
+        line, line_cap, body = tagline(small)
+        small *= ink_span(word) / ink_span(body)
+    line, line_cap, body = tagline(small)
     top = middle - (cap + gap * cap + small) / 2
-    for mask, cap_row, y, ink, alpha in ((word, word_cap, top, color, 0.96), (line, line_cap, top + cap + gap * cap, quiet, 0.94)):
-        cols = np.nonzero(mask.max(axis=0) > 0.02)[0]
-        paste(img, mask, int(round(cx - (cols[0] + cols[-1] + 1) / 2)), int(round(y)) - cap_row, ink, alpha)
+    left = cx - ink_span(word) / 2
+    for mask, start, cap_row, y, ink in ((word, word, word_cap, top, color), (line, body, line_cap, top + cap + gap * cap, quiet)):
+        first = np.nonzero(start.max(axis=0) > 0.02)[0][0]
+        paste(img, mask, int(round(left - first)), int(round(y)) - cap_row, ink, 0.96)
 
 
 def now_playing():
@@ -332,7 +341,7 @@ def now_playing_light():
     tv = Tv(W / 2, 872, 1480, 9)
     img, rim = daylight_room(W, H, tv)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
-    title(img, W / 2, 223, 92, color=(22, 32, 58), quiet=(84, 98, 128))
+    title(img, W / 2, 223, 92, color=(22, 32, 58), quiet=(56, 66, 90))
     save(img, "mockup-now-playing-light.jpg")
 
 
