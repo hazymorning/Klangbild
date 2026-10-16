@@ -413,7 +413,9 @@ UI words are given in English with the German in parentheses where it matters.
   48 dp left of the outermost card and right of the column; every other rule holds. A card is
   one textured quad (print, corners and, on the dark gloss only, its reflection baked; a
   half-size copy against shimmer, since HWUI has no mipmaps). Side cards at 55% / 40%, and on
-  the dark wall a much lighter card steps back further beside a dark middle one. Dark: a soft
+  the dark wall a much lighter card steps back further beside a dark middle one, coming forward
+  with the turn, never before the strip moves (`FlowStepBackTest`; until 2026.10 it flashed
+  bright on the turn's first frame). Dark: a soft
   oval of light above the middle card in its top edge's color, ≤ L* 8 and following that
   edge's lightness (`FlowLight`); paper: no reflection, no shadow. The strip turns over in
   1.3 s (`Motion.Turn`, peak ≤ 2× average speed); leaving cards swing aside early so crossing
