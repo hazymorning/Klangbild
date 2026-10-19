@@ -252,7 +252,8 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 settings from the menus, the setup page and the launch's extras taken at once,
                 the newest written one at a time) and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
                 own buttons, the party code),
-                Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
+                Seeking (jumps with the remote), SleepControl, LightTargets, HeldStage (the stage
+                held from the song before, and when it goes); ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
@@ -282,7 +283,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
                 drawn small and scaled; Lyrics: the words in the column, set once per song off the
                 main thread, one canvas, LyricsViews keeping their places through a change;
-                PartyCode: the party's code where the cover stands, one picture per wall),
+                PartyCode: the party's code where the cover stands, one picture per wall;
+                PlayedLines: a song's own time, next and chapter once it no longer plays),
                 Motion (+ StageTick: one frame tick for bar, field and words; rememberFrames: that
                 tick, or a loop of its own for a part shown alone; animateGlide: a list's glide that
                 carries on from its pace),
@@ -401,7 +403,10 @@ UI words are given in English with the German in parentheses where it matters.
   Mute is only a word; a lost link dims like a pause. Nothing slides, nothing bounces.
   Screens switch by fading through dark; another view waits on the view before until its
   first scene is made, then the two cross at once (until 2026.10 the screen waited in the
-  dark, which read as stuck). **One change at a time:** what arrives during a
+  dark, which read as stuck). A song that comes after the clock, the setup page or the
+  landscape shows its own stage once its scene is made, never the stage left from the song
+  before, and the lights wait for it too (until 2026.10 the song before came up first and the
+  lights took its colors; `HeldStageTest`). **One change at a time:** what arrives during a
   change waits until it has landed, then the newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
   strip, a queue update or a better cover just wait. Lines on their way up stop where they
@@ -409,7 +414,9 @@ UI words are given in English with the German in parentheses where it matters.
   never come up; if the skip comes to nothing (back to the same song), they rise the rest of
   the way. A change that begins between composing a frame and drawing it is drawn as the stage
   stood until it is composed (until 2026.10 the lines blinked out for that frame;
-  `SongChangeBlinkTest`).
+  `SongChangeBlinkTest`). A stage still on screen after its song has ended (the next song's
+  scene still being made, or its lines leaving) keeps its own time, its own "Up next" and its
+  chapter (until 2026.10 they showed the new song's at once; `OwnLinesTest`).
 - **Cover Flow** (`StageView.FLOW`): middle cover 300 dp centered 303 dp from the left and
   vertically, two cards per side turned 60° in one shared perspective (outer edges 222.5/255 dp
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,

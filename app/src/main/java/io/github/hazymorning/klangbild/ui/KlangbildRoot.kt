@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +46,7 @@ import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
+import io.github.hazymorning.klangbild.ui.stage.PlayedLines
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
@@ -297,12 +299,20 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
     val chapter = ui.chapter
-    val modelFor: (StageData) -> StageModel = remember(stage, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
+    // A stage still on screen after its song has ended (the next scene still being made, or its
+    // lines leaving) keeps its own time, next and chapter; only the song that plays reads them live.
+    val playing = stageScreen?.track?.key
+    val playingNow by rememberUpdatedState(playing)
+    val played = remember { PlayedLines() }
+    val modelFor: (StageData) -> StageModel = remember(stage, playing, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
         { s: StageData ->
+            val key = s.track.key
+            val live = key == playing
             val text = TrackText.from(s.track, t[R.string.artists_others])
             // A book or an episode with chapters: the chapter in the album's place, the bar over
             // the chapter, the next chapter after it.
-            val ch = chapter?.takeIf { s.track.key == stage.track.key }
+            val ch = played.chapter(key, live, chapter)
+            val after = played.next(key, live, nextTrack)
             val nextChapter = ch?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
@@ -313,20 +323,20 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 text = if (display.album) text else text.copy(album = null),
                 status = status,
                 durationMs = ch?.let { it.endMs - it.startMs } ?: s.track.durationMs,
-                positionMs = { if (s.track.key == stage.track.key) hooks.positionNow() else null },
+                positionMs = { played.position(key, key == playingNow) { hooks.positionNow() } },
                 year = s.track.year.takeIf { display.album },
                 progress = if (lyrics != null) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[R.string.hint_down]
                     lyrics != null -> StageTexts.next(s.track, t)
-                    else -> nextChapter ?: StageTexts.next(nextTrack, t)
+                    else -> nextChapter ?: StageTexts.next(after, t)
                 },
                 nextTitle = when {
                     tip -> null
                     lyrics != null -> StageTexts.nextTitle(s.track, t)
                     nextChapter != null -> null
-                    else -> StageTexts.nextTitle(nextTrack, t)
+                    else -> StageTexts.nextTitle(after, t)
                 },
                 nextLead = if (tip) t[R.string.hint_down_key] else null,
                 statusLine = statusLine,

@@ -759,6 +759,8 @@ class NowPlayingController(
         landscapeWeather = landscape?.weather
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
         val quickState = quick.state(decision.screen, landscape != null)
+        // After the clock, the setup page or the landscape, another song waits for its own scene.
+        val stale = HeldStage.stale(previous, stage, landscape)
         _ui.value = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
@@ -782,6 +784,8 @@ class NowPlayingController(
             },
             partyCode = quick.partyCode.takeIf { party },
             downHint = !s.quickSeen && !s.volumeKeys && stage != null && menuState == null && quickState == null && landscape == null,
+            stage = previous.stage.takeUnless { stale },
+            flow = previous.flow.takeUnless { stale },
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)
