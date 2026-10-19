@@ -12,6 +12,7 @@ import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.QuickRow
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.SessionOptions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsStore
@@ -112,13 +113,19 @@ data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 
 /** Everything the UI renders. */
 data class UiState(
+    /**
+     * What shows. While a song that came after the clock or the landscape waits for its first
+     * scene, still that screen ([HeldStage]).
+     */
     val screen: Screen = Screen.Rest(RestReason.CONNECTING),
     val keepScreenOn: Boolean = true,
     val asleep: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**
      * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays
-     * through a switch to Cover Flow until the cards' first scene is made.
+     * through a switch to Cover Flow until the cards' first scene is made, and goes when another
+     * song (or the same one on a new wall, or in the other view) comes after the clock, the
+     * setup page or the landscape ([HeldStage]).
      */
     val stage: StageData? = null,
     /** How the stage shows what plays. */
@@ -257,6 +264,7 @@ class NowPlayingController(
     private val artwork = ArtworkLoader(http, tokenHttp, { auth })
     private val scenes = Scenes(scope, artwork)
     private val strip = CoverStrip()
+    private var heldStage = HeldStage()
 
     private var viewers = 0
 
@@ -357,6 +365,7 @@ class NowPlayingController(
         // sleep (or close it) before the music has been heard of.
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
+        heldStage = HeldStage()
         lastReportKey = null
         lastVolume = null
         landscapeWeather = null
@@ -607,10 +616,16 @@ class NowPlayingController(
         recompute()
     }
 
-    /** Smoothed playback position for the current track, for the UI's draw phase. */
-    fun positionNow(): Long? {
+    /**
+     * [key]'s smoothed position for the UI's draw phase, or null once the player reports another
+     * song (its report arrives a moment before the screen changes to it). The report is read
+     * once, so the position always belongs to the song it names.
+     */
+    fun positionOf(key: String): Long? {
+        val source = _ui.value.source
+        if (source.player?.track?.key != key) return null
         val t = now()
-        return smooth.display(seeking.position(t), t)
+        return smooth.display(key, seeking.position(t, source), t)
     }
 
     @Synchronized
@@ -759,9 +774,10 @@ class NowPlayingController(
         landscapeWeather = landscape?.weather
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
         val quickState = quick.state(decision.screen, landscape != null)
-        // After the clock, the setup page or the landscape, another song waits for its own scene.
-        val stale = HeldStage.stale(previous, stage, landscape)
-        _ui.value = previous.copy(
+        // After the clock, the setup page or the landscape, another song (or the same one on a new
+        // wall, or in the other view) waits for its own scene.
+        val stale = heldStage.stale(previous, s.view, look::fits, stage, landscape != null)
+        val decided = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
             asleep = decision.asleep && menuState == null && quickState == null,
@@ -789,10 +805,19 @@ class NowPlayingController(
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)
-        lightSync.update(lightTargets.target(s, _ui.value, stage, playing, landscape))
-        if (stage != null) {
-            if (s.view == StageView.FLOW) showFlow(stage, look, lyrics) else showStage(stage, look, lyrics)
+        val ready = when {
+            stage == null -> decided
+            s.view == StageView.FLOW -> showFlow(decided, stage, look, lyrics)
+            else -> showStage(decided, stage, look, lyrics)
         }
+        // Meanwhile the clock or the landscape stays, never the dark, and the keys and the lights
+        // act on what shows; the quick settings' View still names the view chosen. One state is
+        // published, never one with nothing to show in between.
+        val shown = heldStage.shown(previous, ready, stale)
+        _ui.value = if (shown !== ready) shown.copy(quick = quick.state(shown.screen, landscape != null)) else ready
+        // The lights follow what shows, a scene that is ready at once included.
+        val chosen = s.roomLights.isSet && s.roomLightBrightness != RoomLightBrightness.OFF
+        lightSync.update(lightTargets.target(s, _ui.value, stage, playing, _ui.value.landscape), chosen)
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()
     }
@@ -839,31 +864,33 @@ class NowPlayingController(
         return lastLyrics?.takeIf { it.key == track.key }?.lyrics
     }
 
-    /** The stage shows [stage]'s track as soon as its scene is ready (the next track's is made ahead). */
-    private fun showStage(stage: Screen.Stage, look: Look, lyrics: Lyrics?) {
+    /**
+     * [ui] with the stage showing [stage]'s track as soon as its scene is ready (the next track's
+     * is made ahead).
+     */
+    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?): UiState {
         scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
         val scene = scenes.ready(stage.track, look)
         if (scene == null) {
             scenes.prepare(stage.track, look) { recompute() }
-            return
-        }
-        val shown = _ui.value.stage
-        if (shown?.track != stage.track || shown.scene !== scene || shown.lyrics !== lyrics || _ui.value.flow != null) {
-            // The view before (a cover flow) goes now.
-            _ui.value = _ui.value.copy(stage = StageData(stage.track, scene, lyrics), flow = null)
+            return ui
         }
         stage.next?.let { scenes.prepare(it, look) }
+        val shown = ui.stage
+        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && ui.flow == null) return ui
+        // The view before (a cover flow) goes now.
+        return ui.copy(stage = StageData(stage.track, scene, lyrics), flow = null)
     }
 
     /**
-     * Cover Flow: the strip around [stage]'s track. Every card's scene is made (the middle one
-     * first, then what comes, then what was), and the strip is shown once the middle one is
-     * ready; cards still on their way join it as they come. A card whose scene is being lit
-     * again keeps the one it has meanwhile. When the wall changes (light to dark), the whole
+     * Cover Flow: [ui] with the strip around [stage]'s track. Every card's scene is made (the
+     * middle one first, then what comes, then what was), and the strip is shown once the middle
+     * one is ready; cards still on their way join it as they come. A card whose scene is being
+     * lit again keeps the one it has meanwhile. When the wall changes (light to dark), the whole
      * strip changes at once, as soon as every card it shows is ready.
      */
-    private fun showFlow(stage: Screen.Stage, look: Look, lyrics: Lyrics?) {
-        val src = _ui.value.source
+    private fun showFlow(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?): UiState {
+        val src = ui.source
         // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
         val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
         val s = strip.update(stage.track, coming, before = src.played)
@@ -873,17 +900,18 @@ class NowPlayingController(
             val track = s.cards[i].track
             if (scenes.ready(track, look) == null) scenes.prepare(track, look) { recompute() }
         }
-        val middle = scenes.ready(s.middle.track, look) ?: return
-        val shown = _ui.value.flow?.cards.orEmpty().associateBy { it.id }
+        val middle = scenes.ready(s.middle.track, look) ?: return ui
+        val shown = ui.flow?.cards.orEmpty().associateBy { it.id }
         val newWall = shown.values.any { it.scene.appearance != look.appearance }
-        if (newWall && s.cards.any { it.id in shown && scenes.ready(it.track, look) == null && scenes.pending(it.track) }) return
+        if (newWall && s.cards.any { it.id in shown && scenes.ready(it.track, look) == null && scenes.pending(it.track) }) return ui
         val entries = s.cards.mapNotNull { c ->
             val scene = scenes.ready(c.track, look) ?: shown[c.id]?.scene?.takeIf { !newWall && it.layout == middle.layout }
             scene?.let { FlowEntry(c.id, c.track, it) }
         }
         val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics)
+        if (flow == ui.flow && ui.stage == null) return ui
         // The view before (a single cover) goes now.
-        if (flow != _ui.value.flow || _ui.value.stage != null) _ui.value = _ui.value.copy(flow = flow, stage = null)
+        return ui.copy(flow = flow, stage = null)
     }
 
     companion object {

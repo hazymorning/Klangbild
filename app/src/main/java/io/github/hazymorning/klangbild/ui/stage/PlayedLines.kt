@@ -6,7 +6,8 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 /**
  * What each song's lines showed while it played, so that a stage still on screen after its song
  * has ended (the next song's scene still being made, or its lines leaving in the change) keeps
- * its own time, its own next and its own chapter. Until 2026.10 it took the new song's at once.
+ * its own time, its own next and its own chapter. Until 2026.10 a stage left waiting showed the
+ * new song's, and lines leaving showed the new song's next and lost their own time and chapter.
  */
 internal class PlayedLines {
     private class Played {
@@ -22,24 +23,27 @@ internal class PlayedLines {
 
     private fun of(key: String) = songs.getOrPut(key) { Played() }
 
-    /** The song after [key]: [live] while it plays (and kept), else the one it had. */
-    fun next(key: String, playing: Boolean, live: TrackInfo?): TrackInfo? {
+    /** The song after [key]: [now] while it [plays] (and kept), else the one it had. */
+    fun next(key: String, plays: Boolean, now: TrackInfo?): TrackInfo? {
         val p = of(key)
-        if (playing) p.next = live
+        if (plays) p.next = now
         return p.next
     }
 
-    /** The chapter [key] stands in: [live] while it plays (and kept), else the last one. */
-    fun chapter(key: String, playing: Boolean, live: ChapterPlace?): ChapterPlace? {
+    /** The chapter [key] stands in: [now] while it [plays] (and kept), else the last one. */
+    fun chapter(key: String, plays: Boolean, now: ChapterPlace?): ChapterPlace? {
         val p = of(key)
-        if (playing) p.chapter = live
+        if (plays) p.chapter = now
         return p.chapter
     }
 
-    /** Where [key] stands: [live] while it plays (and kept), else where it stood last. */
-    fun position(key: String, playing: Boolean, live: () -> Long?): Long? {
+    /**
+     * Where [key] stands: read [now] while it [plays] and kept, else where it stood last. A read
+     * that knows nothing (another song is reported already, or none) keeps the last place.
+     */
+    fun position(key: String, plays: Boolean, now: () -> Long?): Long? {
         val p = of(key)
-        if (playing) p.position = live()
+        if (plays) now()?.let { p.position = it }
         return p.position
     }
 

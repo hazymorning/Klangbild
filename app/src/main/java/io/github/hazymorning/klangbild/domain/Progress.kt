@@ -45,8 +45,11 @@ class SmoothedPosition(
     /** Call whenever a new snapshot arrives, with the raw position for "now". */
     @Synchronized
     fun onReport(trackKey: String?, rawNowMs: Long?, nowMs: Long) {
+        // Another song: what was shown belonged to the one before, and its next report must not
+        // glide from there.
+        if (trackKey != lastKey) lastShown = null
         val shown = lastShown
-        if (rawNowMs == null || shown == null || trackKey != lastKey) {
+        if (rawNowMs == null || shown == null) {
             correction = 0.0
         } else {
             val diff = shown - rawNowMs
@@ -56,9 +59,11 @@ class SmoothedPosition(
         lastKey = trackKey
     }
 
-    /** Position to display now (called from the draw phase). */
+    /** Position to display now for [trackKey] (called from the draw phase). */
     @Synchronized
-    fun display(rawNowMs: Long?, nowMs: Long): Long? {
+    fun display(trackKey: String?, rawNowMs: Long?, nowMs: Long): Long? {
+        // A song not reported last is shown as it is, and leaves the smoothing alone.
+        if (trackKey != lastKey) return rawNowMs
         if (rawNowMs == null) {
             lastShown = null
             return null

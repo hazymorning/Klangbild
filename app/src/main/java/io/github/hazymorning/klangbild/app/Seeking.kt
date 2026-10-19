@@ -46,10 +46,9 @@ internal class Seeking(private val host: ControllerHost) {
         if (at != null) seekTo(track, at, t) else host.send(if (direction < 0) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
     }
 
-    /** Where the item plays now in its own time: a jump not yet confirmed, else the reported position. */
-    fun position(t: Long): Long? {
+    /** Where the item plays now in its own time: a jump not yet confirmed, else the position [s] reports. */
+    fun position(t: Long, s: SourceState = host.ui.source): Long? {
         pending?.let { return it.at(t) }
-        val s = host.ui.source
         return s.player?.let { Progress.positionAt(it, t, s.skewMs, s.receivedAtMs) }
     }
 

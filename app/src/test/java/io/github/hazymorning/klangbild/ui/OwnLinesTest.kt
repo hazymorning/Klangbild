@@ -27,7 +27,8 @@ import kotlin.math.abs
 /**
  * A stage still on screen after its song has ended keeps its own lines: while the next song's
  * scene is still being made, its time and its "Up next" stay its own (until 2026.10 they showed
- * the new song's at once, and so did the lines leaving in the change).
+ * the new song's at once), also when the player reports the next song a moment before the
+ * screen changes to it.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -44,43 +45,55 @@ class OwnLinesTest {
     @Test
     fun singleCoverKeepsItsTimeAndNext() {
         val stage = Fixtures.stage(a, mdpi)
-        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), stage = stage), column = 520 until 872)
+        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), stage = stage))
     }
 
     @Test
     fun coverFlowKeepsItsTimeAndNext() {
         val scene = Fixtures.scene(a, mdpi, view = StageView.FLOW)
         val flow = FlowData(listOf(FlowEntry(0L, a, scene)), 0)
-        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), view = StageView.FLOW, flow = flow), column = 598 until 912)
+        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), view = StageView.FLOW, flow = flow))
     }
 
-    /** A plays at 1:05 with B up next; then B plays from its start with C up next, its scene not made yet. */
-    private fun keepsItsLines(start: UiState, column: IntRange) {
+    /**
+     * A plays at 1:05 with B up next; then the player reports B from its start, and a few ticks
+     * later the screen shows B with C up next, its scene not made yet.
+     */
+    private fun keepsItsLines(start: UiState) {
+        var reported = a.key
         var position = 65_000L
         var ui by mutableStateOf(start)
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionNow = { position }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { key -> position.takeIf { key == reported } }, now = { 0L })) }
         compose.mainClock.advanceTimeBy(3_000)
         val before = capture()
+        reported = b.key
         position = 2_000L
+        compose.mainClock.advanceTimeBy(100)
+        // Drawn meanwhile, as every frame is on the TV.
+        capture()
         ui = ui.copy(screen = Screen.Stage(b, PlayerStatus.PLAYING, c))
         compose.mainClock.advanceTimeBy(1_000)
         val after = capture()
-        assertThat(difference(before, after, column)).isLessThan(0.05f)
+        assertThat(changed(before, after)).isEqualTo(0)
     }
 
     private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 
-    /** The mean difference (0 to 255) between two frames over the text column. */
-    private fun difference(p: Bitmap, q: Bitmap, column: IntRange): Float {
-        var sum = 0L
+    /** How many pixels two frames show visibly apart (the column stands elsewhere with one card). */
+    private fun changed(p: Bitmap, q: Bitmap): Int {
         var n = 0
-        for (y in 0 until p.height) for (x in column) {
+        for (y in 0 until p.height) for (x in 0 until p.width) {
             val u = p.getPixel(x, y)
             val v = q.getPixel(x, y)
-            sum += abs((u shr 16 and 0xFF) - (v shr 16 and 0xFF)) + abs((u shr 8 and 0xFF) - (v shr 8 and 0xFF)) + abs((u and 0xFF) - (v and 0xFF))
-            n += 3
+            val d = abs((u shr 16 and 0xFF) - (v shr 16 and 0xFF)) + abs((u shr 8 and 0xFF) - (v shr 8 and 0xFF)) + abs((u and 0xFF) - (v and 0xFF))
+            if (d > VISIBLE) n++
         }
-        return sum.toFloat() / n
+        return n
+    }
+
+    private companion object {
+        /** A difference (summed over the channels) anyone would see. */
+        const val VISIBLE = 24
     }
 }

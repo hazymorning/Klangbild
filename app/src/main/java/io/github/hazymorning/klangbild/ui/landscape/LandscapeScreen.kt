@@ -15,6 +15,7 @@ import io.github.hazymorning.klangbild.landscape.LabelSide
 import io.github.hazymorning.klangbild.landscape.Place
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.World
+import io.github.hazymorning.klangbild.ui.stage.PlayedLines
 import java.time.ZoneId
 
 /**
@@ -23,12 +24,19 @@ import java.time.ZoneId
  * near bank.
  */
 @Composable
-fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, positionNow: () -> Long?, now: () -> Long, modifier: Modifier = Modifier) {
+fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, positionOf: (String) -> Long?, now: () -> Long, modifier: Modifier = Modifier) {
     val feed = rememberLandscapeFeed(ui, landscape, clock, now)
     val side = labelSide(landscape.miniPlayer)
+    // A label keeps its own cover and time while it leaves, once the stage has let its scene go
+    // and the player reports the next song.
+    val cover = remember { LabelCover() }
+    val played = remember { PlayedLines() }
     Landscape(feed, modifier, label = side) { look ->
         val text = landscape.track?.takeIf { side != LabelSide.NONE }?.let { track ->
-            LabelText(track, artworkFor(ui, track), landscape.status == PlayerStatus.PLAYING, positionNow)
+            val key = track.key
+            LabelText(track, cover.of(track, artworkFor(ui, track)), landscape.status == PlayerStatus.PLAYING) {
+                played.position(key, plays = true) { positionOf(key) }
+            }
         }
         if (text != null) LandscapeLabel(text, side, inks = { look().label }, coverLight = { look().labelCover })
     }
@@ -57,6 +65,20 @@ fun labelSide(miniPlayer: MiniPlayer): LabelSide = when (miniPlayer) {
     MiniPlayer.LEFT -> LabelSide.LEFT
     MiniPlayer.RIGHT -> LabelSide.RIGHT
     MiniPlayer.OFF -> LabelSide.NONE
+}
+
+/** The cover the label showed last, kept for its song while the stage no longer has it. */
+private class LabelCover {
+    private var key: String? = null
+    private var scene: ArtworkScene? = null
+
+    fun of(track: TrackInfo, now: ArtworkScene?): ArtworkScene? {
+        if (now != null) {
+            key = track.key
+            scene = now
+        }
+        return scene.takeIf { key == track.key }
+    }
 }
 
 /**

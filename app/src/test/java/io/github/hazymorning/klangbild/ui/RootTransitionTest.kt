@@ -42,7 +42,7 @@ class RootTransitionTest {
             UiState(screen = Screen.Stage(s.track, PlayerStatus.PLAYING, null), stage = s)
         var ui by mutableStateOf(stageUi(a))
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionNow = { 60_000L }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L })) }
         compose.mainClock.advanceTimeBy(2_500) // entrance fade
         compose.onRoot().captureRoboImage("build/screenshots/root/00_a.png")
         ui = stageUi(b)

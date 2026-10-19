@@ -253,7 +253,8 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 the newest written one at a time) and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
                 own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets, HeldStage (the stage
-                held from the song before, and when it goes); ControllerHost
+                kept from before the clock and when it goes; the clock or the landscape held while
+                a song's first scene is made); ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
@@ -280,9 +281,10 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
 ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, the quick settings'
                 hint; provides LocalTexts),
                 stage/ (Stage layers, Typesetting, StageTheater transitions, ProgressBar (a range:
-                the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
-                drawn small and scaled; Lyrics: the words in the column, set once per song off the
-                main thread, one canvas, LyricsViews keeping their places through a change;
+                the chapter; another song, a bar of its own), StageModel + StageTexts, FieldLayer:
+                the pools as gradient quads, drawn small and scaled; Lyrics: the words in the
+                column, set once per song off the main thread, one canvas, LyricsViews keeping
+                their places through a change;
                 PartyCode: the party's code where the cover stands, one picture per wall;
                 PlayedLines: a song's own time, next and chapter once it no longer plays),
                 Motion (+ StageTick: one frame tick for bar, field and words; rememberFrames: that
@@ -405,9 +407,13 @@ UI words are given in English with the German in parentheses where it matters.
   first scene is made, then the two cross at once (until 2026.10 the screen waited in the
   dark, which read as stuck). A song that comes after the clock, the setup page or the
   landscape shows its own stage once its scene is made, never the stage left from the song
-  before, and the lights wait for it too (until 2026.10 the song before came up first and the
-  lights took its colors; `HeldStageTest`). **One change at a time:** what arrives during a
-  change waits until it has landed, then the newest goes next (`snapshotFlow … conflate()`).
+  before, nor the same song's from a wall or a view that has changed meanwhile. The clock or
+  the landscape stays until then (its words a moment longer), never the dark, and the keys,
+  the quick settings and the lights act on what shows; a screen that says something is wrong,
+  and the setup page, go through the dark, since what they said no longer holds (until
+  2026.10 the song before came up first and the lights took its colors; `HeldStageTest`).
+  **One change at a time:** what arrives during a change waits until it has landed, then the
+  newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
   strip, a queue update or a better cover just wait. Lines on their way up stop where they
   are when a change hurries and leave from there (`RisingText`): the skipped song's lines
@@ -416,7 +422,11 @@ UI words are given in English with the German in parentheses where it matters.
   stood until it is composed (until 2026.10 the lines blinked out for that frame;
   `SongChangeBlinkTest`). A stage still on screen after its song has ended (the next song's
   scene still being made, or its lines leaving) keeps its own time, its own "Up next" and its
-  chapter (until 2026.10 they showed the new song's at once; `OwnLinesTest`).
+  chapter, its time read for that song by name, since the player reports the next song a
+  moment before the screen shows it (until 2026.10 a stage left waiting showed the new song's
+  time, "Up next" and chapter, and lines leaving showed its "Up next" and lost their own time
+  and chapter; `OwnLinesTest`).
+  The landscape's label keeps its own cover and time the same way while it leaves.
 - **Cover Flow** (`StageView.FLOW`): middle cover 300 dp centered 303 dp from the left and
   vertically, two cards per side turned 60° in one shared perspective (outer edges 222.5/255 dp
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,
@@ -619,15 +629,19 @@ UI words are given in English with the German in parentheses where it matters.
   when the app closes (lights that were off: dimmed, then their scene without a fade), and
   the scenes are deleted. At most one call per light a second, none for invisible changes, a
   new song after 1.5 s (quick skips cost nothing) in a 2.5 s fade, drift every 10 s in 8 s
-  fades. A light someone else switches off, sets to white or changes a lot is theirs until the
-  next session. The lights' states arrive a moment after they are followed: taking over waits
-  for them (≤ 10 s) and a light that appears later joins in; a failed call is retried once,
-  for that light only. "Lights that are off" (Lichter, die aus sind): Turn on (the default, as
-  above) or Leave off: then a light that is off is never switched on and not saved; one switched
-  on during the music is saved and joins in, one switched off is let go and joins in again when
-  switched on, and after the music each is as it was before it first joined. Leave off chosen
-  while they glow: the lights that were off go back off, the others keep their colors; one that
-  Home Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
+  fades. A light someone else switches off, sets to white or changes a lot, during the music or
+  after it, is theirs until the next session. The lights' states arrive a moment after they are
+  followed: taking over waits for them (≤ 10 s) and a light that appears later joins in; a light
+  taken over stays followed until it is given back, so the dim and the fades reach it (until
+  2026.10 the lights were let go as the music ended, and went back without a fade); lights no
+  longer chosen, or switched off, go back at once, over the clock too; a failed call is retried
+  once, for that light only. "Lights that are off" (Lichter, die aus sind): Turn on (the
+  default, as above) or Leave off: then a light that is off is never switched on and not saved;
+  one switched on during the music is saved and joins in, one switched off is let go and joins
+  in again when switched on, and after the music each is as it was before it first joined. Leave
+  off chosen while they glow: the lights that were off go back off, the others keep their
+  colors; one that Home Assistant still reports on (a slow light reports late) is not taken up
+  again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
 - **A song arrives whole** (`QueueReader.awaitsDetails`): Home Assistant reports a Music Assistant

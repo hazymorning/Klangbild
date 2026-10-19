@@ -42,7 +42,7 @@ class QuickHintTest {
             UiState(screen = Screen.Stage(stage.track, PlayerStatus.PLAYING, Fixtures.spiegel), stage = stage, texts = Fixtures.texts, downHint = true),
         )
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionNow = { 60_000L }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L })) }
         compose.mainClock.advanceTimeBy(2_500)
         assertWithMessage("while the stage comes").that(says("Schnelleinstellungen")).isFalse()
         compose.mainClock.advanceTimeBy(2_000)

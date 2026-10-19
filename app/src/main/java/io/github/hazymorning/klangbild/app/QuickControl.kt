@@ -179,9 +179,11 @@ internal class QuickControl(private val host: ControllerHost) {
             return
         }
         if (hold != null) hold = false
-        host.hideLandscape()
+        // The view first: the landscape stays until that view's first scene is made, and the
+        // other view never shows in between.
         val view = if (next == ViewChoice.FLOW) StageView.FLOW else StageView.SINGLE
         if (view != s.view) host.applySettings(s.copy(view = view))
+        host.hideLandscape()
     }
 
     /** Adds what plays to Music Assistant's favorites; the quick settings say how it went. */
