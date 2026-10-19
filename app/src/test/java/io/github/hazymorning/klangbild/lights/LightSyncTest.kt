@@ -90,6 +90,9 @@ class LightSyncTest {
         /** Home Assistant restarted: its snapshot scenes are gone. */
         var scenesLost = false
 
+        /** How long a snapshot (`scene.create`) takes to be answered. */
+        var createMs = 0L
+
         /** Slow lights: what the calls change is reported only on [deliver]. */
         var holding = false
         private val held = ArrayList<() -> Unit>()
@@ -126,6 +129,7 @@ class LightSyncTest {
             val ctx = "ours-${n++}"
             when ("$domain.$service") {
                 "scene.create" -> {
+                    delay(createMs)
                     val id = data!!["snapshot_entities"]!!.jsonArray.single().jsonPrimitive.content
                     scenes["scene." + data["scene_id"]!!.jsonPrimitive.content] = states.value.getValue(id)
                 }
@@ -621,12 +625,82 @@ class LightSyncTest {
         s.update(null)
         testScheduler.advanceTimeBy(1_000)
         // Over the clock the lights are switched off (or cleared) in the menu: no waiting five minutes.
-        s.update(null, chosen = false)
+        s.update(null, chosen = emptySet())
         testScheduler.advanceTimeBy(5_000)
         assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
         assertThat(ha.followed).isEmpty()
+    }
+
+    @Test
+    fun `lights swapped for others over the clock go back at once`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        s.update(null)
+        testScheduler.advanceTimeBy(1_000)
+        s.update(null, chosen = setOf("light.shelf", "light.window"))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
+        assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
+    }
+
+    @Test
+    fun `what a person changes counts at once, even while a fade settles`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(1_500)
+        assertThat(ha.to(left)).hasSize(1)
+        // Someone makes the left light green while the first fade is still settling.
+        ha.byHand(left, "on", buildJsonObject {
+            putJsonArray("xy_color") { add(0.17); add(0.7) }
+            put("color_mode", "xy")
+        })
+        val before = ha.to(left).size
+        s.update(target("b"))
+        testScheduler.advanceTimeBy(5_000)
+        // The next song's colors go to the other light only: the green one is theirs.
+        assertThat(ha.to(left)).hasSize(before)
+        assertThat(ha.to(right).size).isAtLeast(2)
+    }
+
+    @Test
+    fun `lights are followed from the moment they are taken over`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = false)))
+        ha.createMs = 2_000
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(500)
+        // The stage goes while their snapshots are still being made.
+        s.update(null)
+        testScheduler.advanceTimeBy(6_000)
+        assertThat(ha.followed).containsExactly(left, right)
+    }
+
+    @Test
+    fun `a light someone else had is saved anew when it is taken over again`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        ha.byHand(left, "off")
+        testScheduler.advanceTimeBy(2_000)
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(5_000)
+        // Someone switches it on again, and the lights are switched on within the minute.
+        ha.byHand(left, "on")
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // What it is now is saved, so it goes back to that, not to what it was before the music.
+        assertThat(ha.named("scene.create").count { it.data.toString().contains("klangbild_tv_left") }).isEqualTo(2)
     }
 
     @Test

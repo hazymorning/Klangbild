@@ -195,10 +195,11 @@ class LightSync(
     }
 
     /**
-     * What the lights are to show now ([target], null while nothing shows), and whether any are
-     * [chosen] and switched on: lights no longer chosen, or switched off, are given back at once.
+     * What the lights are to show now ([target], null while nothing shows), and which lights are
+     * [chosen] and switched on (null: as the target says): lights no longer chosen, or switched
+     * off, are given back at once, also while nothing shows.
      */
-    fun update(target: Target?, chosen: Boolean = true) {
+    fun update(target: Target?, chosen: Set<String>? = null) {
         val old = this.target
         this.target = target
         this.chosen = chosen
@@ -212,8 +213,8 @@ class LightSync(
     /** Whether lights are taken over (read off the loop's thread; a stale answer only delays the loop by a tick). */
     @Volatile private var activeLights = false
 
-    /** Lights are chosen and switched on, as the last [update] said. */
-    @Volatile private var chosen = true
+    /** The lights chosen and switched on, as the last [update] said; null: as the target says. */
+    @Volatile private var chosen: Set<String>? = null
 
     /**
      * Gives the lights back as they were, through the link they were taken over with (the app
@@ -256,10 +257,10 @@ class LightSync(
         val tg = target
         val states = b.lights.value
         if (tg == null || tg.level == RoomLightBrightness.OFF || !tg.lights.isSet) {
-            if (activeFor == null) return
+            val active = activeFor ?: return
             // The option switched off, or the lights set up anew: given back at once; the music
             // ended: dimmed like a pause, and given back after a while.
-            if (tg != null || !chosen) return restore(b)
+            if (tg != null || chosen?.containsAll(active) == false) return restore(b)
             // Meanwhile a light someone else switches off or changes is theirs.
             watchForOthers(states, t)
             if (lastTarget?.onlyOn == true) letGoSwitchedOff(states)
@@ -359,6 +360,8 @@ class LightSync(
         lights.clear()
         givenBack.clear()
         activeFor = wanted.keys.toSet()
+        // Followed from now on until they are given back, whatever the target does meanwhile.
+        follow()
         takenOnlyOn = onlyOn
         activeLights = true
         for ((id, s) in taken) lights[id] = Light(id, wanted.getValue(id)).also { it.checkedUpdate = s.lastUpdated }
@@ -482,10 +485,11 @@ class LightSync(
                 light.takenOver = true
                 continue
             }
-            // Brightness and color are judged once the light has settled (a fade reports steps on the way).
-            if (light.inFlight || t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS) continue
-            light.checkedUpdate = s.lastUpdated
+            // Brightness and color are judged once the light has settled (a fade reports steps on
+            // the way); what a person or an automation did counts at once.
             val byPerson = s.contextUser != null || s.contextParent != null
+            if (!byPerson && (light.inFlight || t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS)) continue
+            light.checkedUpdate = s.lastUpdated
             val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
             val sentBri = when (shown) {
                 is Shown.Color -> shown.brightness
@@ -511,6 +515,8 @@ class LightSync(
         val notes = saved
         val scenes = snapshots
         val toRestore = lights.values.filter { !it.takenOver }
+        // A light someone else has is saved anew if it is taken over again: its note no longer holds.
+        saved = saved - lights.values.filter { it.takenOver }.map { it.id }.toSet()
         lights.values.removeAll { it.takenOver }
         givenBack.clear()
         shownSong = null

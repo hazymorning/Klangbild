@@ -158,8 +158,16 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
     val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
+    /**
+     * Whether the landscape is chosen to show, as the last [state] had it: the view entry names
+     * and steps from that (a landscape kept a moment longer while a song's first scene is made
+     * does not count).
+     */
+    private var landscapeChosen = false
+
     /** The quick settings as they show for [screen], null while they are closed (called under the lock). */
     fun state(screen: Screen, landscape: Boolean): QuickState? {
+        landscapeChosen = landscape
         val c = cursor ?: return null
         val rows = rows(context(screen, landscape))
         return QuickState(rows, indexOf(rows.map { it.key }, c))
@@ -380,7 +388,7 @@ internal class QuickControl(private val host: ControllerHost) {
      * What the quick settings need to know: by default what the screen shows now, while working out
      * the screen what it is about to show.
      */
-    private fun context(screen: Screen = host.ui.screen, landscape: Boolean = host.ui.landscape != null): QuickContext {
+    private fun context(screen: Screen = host.ui.screen, landscape: Boolean = landscapeChosen): QuickContext {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
             landscape = landscape,

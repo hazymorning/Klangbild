@@ -38,6 +38,17 @@ class PlayedLinesTest {
     }
 
     @Test
+    fun aSongThatPlaysAgainStartsAfresh() {
+        val lines = PlayedLines()
+        assertThat(lines.position("a", plays = true) { 120_000L }).isEqualTo(120_000L)
+        assertThat(lines.position("a", plays = false) { null }).isEqualTo(120_000L)
+        // Back to A (previous, or a short playlist going round): until it reports where it is,
+        // it shows nothing of its own, never its old 2:00.
+        assertThat(lines.position("a", plays = true) { null }).isNull()
+        assertThat(lines.position("a", plays = true) { 1_000L }).isEqualTo(1_000L)
+    }
+
+    @Test
     fun aSongThatNoLongerPlaysKeepsItsChapter() {
         val lines = PlayedLines()
         val seven = ChapterPlace(6, 12, "Chapter 7", 600_000L, 900_000L, "Chapter 8")

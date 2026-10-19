@@ -14,6 +14,9 @@ internal class PlayedLines {
         var position: Long? = null
         var next: TrackInfo? = null
         var chapter: ChapterPlace? = null
+
+        /** It played at the last read of its place. */
+        var plays = false
     }
 
     /** The songs of the last few changes, the one used last at the end. */
@@ -39,10 +42,13 @@ internal class PlayedLines {
 
     /**
      * Where [key] stands: read [now] while it [plays] and kept, else where it stood last. A read
-     * that knows nothing (another song is reported already, or none) keeps the last place.
+     * that knows nothing (another song is reported already, or none) keeps the last place; a
+     * song that plays again after another starts afresh.
      */
     fun position(key: String, plays: Boolean, now: () -> Long?): Long? {
         val p = of(key)
+        if (plays && !p.plays) p.position = null
+        p.plays = plays
         if (plays) now()?.let { p.position = it }
         return p.position
     }

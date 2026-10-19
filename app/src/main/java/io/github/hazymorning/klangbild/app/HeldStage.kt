@@ -6,13 +6,10 @@ import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ArtworkScene
 
 /**
- * The stage kept from before the clock, the setup page or the landscape, and what shows while
- * the song after them waits for its first scene. Called under the controller's lock.
+ * The stage kept from before the clock, the setup page or the landscape, and what shows while a
+ * song waits for its first scene.
  */
-internal class HeldStage {
-    /** A song waits for its first scene behind the quiet screen before it. */
-    private var waiting = false
-
+internal object HeldStage {
     /**
      * Whether the stage kept from [before] must not come back for [stage]: after the clock, the
      * setup page or the landscape, a song other than the one kept waits for its own scene, and so
@@ -32,16 +29,17 @@ internal class HeldStage {
     }
 
     /**
-     * What shows: [now], or, while its song waits for its first scene after the clock or a
-     * landscape ([stale] stage dropped), that screen as [before] showed it, so the screen never
-     * waits in the dark and the keys, the quick settings and the lights act on what shows. A
-     * screen that says something is wrong, or the setup page, goes through the dark instead:
-     * what it said is no longer so.
+     * What shows: [now], or, while its song has nothing to show yet (its first scene is being
+     * made) after the clock or a landscape, that screen as [before] showed it. So the screen
+     * never waits in the dark, and the keys, the quick settings and the lights act on what
+     * shows; over a landscape the song keys act on what plays, as always, so only the landscape
+     * is kept. A screen that says something is wrong, or the setup page, goes through the dark
+     * instead: what it said is no longer so.
      */
-    fun shown(before: UiState, now: UiState, stale: Boolean): UiState {
-        if (stale) waiting = true
-        waiting = waiting && quiet(before) && now.screen is Screen.Stage && now.landscape == null && now.stage == null && now.flow == null
-        return if (waiting) now.copy(screen = before.screen, landscape = before.landscape, downHint = false) else now
+    fun shown(before: UiState, now: UiState): UiState {
+        if (!quiet(before) || now.screen !is Screen.Stage || now.landscape != null || now.stage != null || now.flow != null) return now
+        if (before.landscape != null) return now.copy(landscape = before.landscape, downHint = false)
+        return now.copy(screen = before.screen, downHint = false)
     }
 
     /** The clock (paused, or nothing plays) or a landscape. */

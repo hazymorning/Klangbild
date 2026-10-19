@@ -6,6 +6,8 @@ import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickItem
+import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
@@ -361,6 +363,18 @@ class QuickControlTest {
         quick.change()
         assertThat(quick.isOpen).isFalse()
         assertThat(menuOpened).isEqualTo(1)
+    }
+
+    @Test
+    fun `the view steps on from the one it names while the landscape is still kept`() {
+        quick.open(menuOpen = false)
+        // Single cover was chosen over the landscape; its first scene is still being made, so the
+        // landscape stays a moment longer, and the row names the view chosen.
+        ui = ui.copy(landscape = Fixtures.landscape(null, null, MiniPlayer.LEFT))
+        assertThat(rows().first { it.item == QuickItem.VIEW }.value).isEqualTo("Single cover")
+        // OK goes on from there, not from the landscape kept on screen (the press would seem lost).
+        quick.change()
+        assertThat(rows().first { it.item == QuickItem.VIEW }.value).isEqualTo("Cover Flow")
     }
 
     @Test

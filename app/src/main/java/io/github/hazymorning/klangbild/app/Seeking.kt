@@ -46,9 +46,12 @@ internal class Seeking(private val host: ControllerHost) {
         if (at != null) seekTo(track, at, t) else host.send(if (direction < 0) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
     }
 
-    /** Where the item plays now in its own time: a jump not yet confirmed, else the position [s] reports. */
+    /**
+     * Where the item plays now in its own time: a jump not yet confirmed for the item [s]
+     * reports, else the position it reports.
+     */
     fun position(t: Long, s: SourceState = host.ui.source): Long? {
-        pending?.let { return it.at(t) }
+        pending?.takeIf { it.key == s.player?.track?.key }?.let { return it.at(t) }
         return s.player?.let { Progress.positionAt(it, t, s.skewMs, s.receivedAtMs) }
     }
 
@@ -79,6 +82,8 @@ internal class Seeking(private val host: ControllerHost) {
         // Presses close together make one jump: it is sent once they stop.
         job = host.scope.launch {
             delay(SETTLE_MS)
+            // Another item plays meanwhile: the jump went with the one it was for.
+            if (pending !== o || host.ui.source.player?.track?.key != o.key) return@launch
             pending = o.copy(sentAt = host.now())
             host.source?.seek(o.at(host.now()))
             // Home Assistant answers within moments; if not, the reported position takes over again.

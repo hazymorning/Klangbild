@@ -408,10 +408,11 @@ UI words are given in English with the German in parentheses where it matters.
   dark, which read as stuck). A song that comes after the clock, the setup page or the
   landscape shows its own stage once its scene is made, never the stage left from the song
   before, nor the same song's from a wall or a view that has changed meanwhile. The clock or
-  the landscape stays until then (its words a moment longer), never the dark, and the keys,
-  the quick settings and the lights act on what shows; a screen that says something is wrong,
-  and the setup page, go through the dark, since what they said no longer holds (until
-  2026.10 the song before came up first and the lights took its colors; `HeldStageTest`).
+  the landscape stays until then (the clock's words a moment longer), never the dark, also
+  when no stage was kept; the keys, the quick settings and the lights act on what shows, and
+  over the landscape the song keys act on what plays, as always. A screen that says something
+  is wrong, and the setup page, go through the dark, since what they said no longer holds
+  (until 2026.10 the song before came up first and the lights took its colors; `HeldStageTest`).
   **One change at a time:** what arrives during a change waits until it has landed, then the
   newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
@@ -627,21 +628,21 @@ UI words are given in English with the German in parentheses where it matters.
   (`snapshot_entities`, one scene per light, our own note as a fallback); it is given back
   with `scene.turn_on` after the music has ended for 5 minutes, when the option goes off and
   when the app closes (lights that were off: dimmed, then their scene without a fade), and
-  the scenes are deleted. At most one call per light a second, none for invisible changes, a
-  new song after 1.5 s (quick skips cost nothing) in a 2.5 s fade, drift every 10 s in 8 s
-  fades. A light someone else switches off, sets to white or changes a lot, during the music or
-  after it, is theirs until the next session. The lights' states arrive a moment after they are
-  followed: taking over waits for them (≤ 10 s) and a light that appears later joins in; a light
-  taken over stays followed until it is given back, so the dim and the fades reach it (until
-  2026.10 the lights were let go as the music ended, and went back without a fade); lights no
-  longer chosen, or switched off, go back at once, over the clock too; a failed call is retried
-  once, for that light only. "Lights that are off" (Lichter, die aus sind): Turn on (the
-  default, as above) or Leave off: then a light that is off is never switched on and not saved;
-  one switched on during the music is saved and joins in, one switched off is let go and joins
-  in again when switched on, and after the music each is as it was before it first joined. Leave
-  off chosen while they glow: the lights that were off go back off, the others keep their
-  colors; one that Home Assistant still reports on (a slow light reports late) is not taken up
-  again for 10 s.
+  the scenes are deleted. At most one call per light a second, none for invisible changes, a new
+  song after 1.5 s (quick skips cost nothing) in a 2.5 s fade, drift every 10 s in 8 s fades. A
+  light someone else switches off, sets to white or changes a lot, during the music or after it,
+  is theirs until the next session; what a person or an automation does counts at once, even
+  while a fade settles. The lights' states arrive a moment after they are followed: taking over
+  waits for them (≤ 10 s) and a light that appears later joins in; a light taken over stays
+  followed until it is given back, so the dim and the fades reach it (until 2026.10 the lights
+  were let go as the music ended, and went back without a fade); lights no longer chosen, or
+  switched off, go back at once, over the clock too; a failed call is retried once, for that
+  light only. "Lights that are off" (Lichter, die aus sind): Turn on (the default, as above) or
+  Leave off: then a light that is off is never switched on and not saved; one switched on during
+  the music is saved and joins in, one switched off is let go and joins in again when switched
+  on, and after the music each is as it was before it first joined. Leave off chosen while they
+  glow: the lights that were off go back off, the others keep their colors; one that Home
+  Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
 - **A song arrives whole** (`QueueReader.awaitsDetails`): Home Assistant reports a Music Assistant

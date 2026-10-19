@@ -114,8 +114,8 @@ data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 /** Everything the UI renders. */
 data class UiState(
     /**
-     * What shows. While a song that came after the clock or the landscape waits for its first
-     * scene, still that screen ([HeldStage]).
+     * What shows. While a song that came after the clock waits for its first scene, still the
+     * clock; a landscape is kept the same way in [landscape] ([HeldStage]).
      */
     val screen: Screen = Screen.Rest(RestReason.CONNECTING),
     val keepScreenOn: Boolean = true,
@@ -264,7 +264,6 @@ class NowPlayingController(
     private val artwork = ArtworkLoader(http, tokenHttp, { auth })
     private val scenes = Scenes(scope, artwork)
     private val strip = CoverStrip()
-    private var heldStage = HeldStage()
 
     private var viewers = 0
 
@@ -365,7 +364,6 @@ class NowPlayingController(
         // sleep (or close it) before the music has been heard of.
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
-        heldStage = HeldStage()
         lastReportKey = null
         lastVolume = null
         landscapeWeather = null
@@ -771,12 +769,11 @@ class NowPlayingController(
         } else {
             null
         }
-        landscapeWeather = landscape?.weather
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
         val quickState = quick.state(decision.screen, landscape != null)
         // After the clock, the setup page or the landscape, another song (or the same one on a new
         // wall, or in the other view) waits for its own scene.
-        val stale = heldStage.stale(previous, s.view, look::fits, stage, landscape != null)
+        val stale = HeldStage.stale(previous, s.view, look::fits, stage, landscape != null)
         val decided = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
@@ -813,10 +810,13 @@ class NowPlayingController(
         // Meanwhile the clock or the landscape stays, never the dark, and the keys and the lights
         // act on what shows; the quick settings' View still names the view chosen. One state is
         // published, never one with nothing to show in between.
-        val shown = heldStage.shown(previous, ready, stale)
+        val shown = HeldStage.shown(previous, ready)
         _ui.value = if (shown !== ready) shown.copy(quick = quick.state(shown.screen, landscape != null)) else ready
-        // The lights follow what shows, a scene that is ready at once included.
-        val chosen = s.roomLights.isSet && s.roomLightBrightness != RoomLightBrightness.OFF
+        // A landscape kept meanwhile goes on gliding toward the weather outside if it comes back.
+        landscapeWeather = _ui.value.landscape?.weather
+        // The lights follow what shows, a scene that is ready at once included; lights no longer
+        // chosen, or switched off, go back at once.
+        val chosen = if (s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
         lightSync.update(lightTargets.target(s, _ui.value, stage, playing, _ui.value.landscape), chosen)
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()

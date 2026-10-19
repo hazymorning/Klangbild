@@ -31,11 +31,12 @@ fun LandscapeScreen(ui: UiState, landscape: LandscapeUi, clock: LandscapeClock, 
     // and the player reports the next song.
     val cover = remember { LabelCover() }
     val played = remember { PlayedLines() }
+    val current by rememberUpdatedState(landscape.track?.key)
     Landscape(feed, modifier, label = side) { look ->
         val text = landscape.track?.takeIf { side != LabelSide.NONE }?.let { track ->
             val key = track.key
             LabelText(track, cover.of(track, artworkFor(ui, track)), landscape.status == PlayerStatus.PLAYING) {
-                played.position(key, plays = true) { positionOf(key) }
+                played.position(key, plays = key == current) { positionOf(key) }
             }
         }
         if (text != null) LandscapeLabel(text, side, inks = { look().label }, coverLight = { look().labelCover })

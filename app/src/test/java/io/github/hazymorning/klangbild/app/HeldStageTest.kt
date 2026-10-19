@@ -23,7 +23,8 @@ import org.robolectric.annotation.GraphicsMode
  * waits for its own scene, and so does the same song when the wall or the view has changed
  * meanwhile: the stage left from before never comes up for it (until 2026.10 the song before
  * came up first and the lights took its colors). Meanwhile the clock or the landscape stays,
- * never the dark; a screen that says something is wrong and the setup page go through the dark.
+ * never the dark; over the landscape the song keys act on what plays. A screen that says
+ * something is wrong and the setup page go through the dark.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -40,7 +41,7 @@ class HeldStageTest {
     private fun playing(t: TrackInfo) = Screen.Stage(t, PlayerStatus.PLAYING, null)
 
     private fun stale(before: UiState, stage: Screen.Stage?, view: StageView = StageView.SINGLE, look: Look = dark, landscape: Boolean = false) =
-        HeldStage().stale(before, view, look::fits, stage, landscape)
+        HeldStage.stale(before, view, look::fits, stage, landscape)
 
     @Test
     fun aNewSongAfterTheClockNeverShowsTheStageBefore() {
@@ -90,46 +91,52 @@ class HeldStageTest {
 
     @Test
     fun theClockStaysWhileTheNewSongsSceneIsMade() {
-        val held = HeldStage()
         val waiting = UiState(screen = playing(b))
-        val first = held.shown(clock, waiting, stale = true)
+        val first = HeldStage.shown(clock, waiting)
         assertThat(first.screen).isEqualTo(clock.screen)
         // Later passes see the clock as it shows, and keep it until the scene is there.
-        assertThat(held.shown(first, waiting, stale = false).screen).isEqualTo(clock.screen)
+        assertThat(HeldStage.shown(first, waiting).screen).isEqualTo(clock.screen)
         val ready = waiting.copy(stage = Fixtures.stage(b, mdpi))
-        assertThat(held.shown(first, ready, stale = false)).isSameInstanceAs(ready)
+        assertThat(HeldStage.shown(first, ready)).isSameInstanceAs(ready)
         // Once the stage has come, nothing is held any more.
-        assertThat(held.shown(ready, waiting, stale = false)).isSameInstanceAs(waiting)
+        assertThat(HeldStage.shown(ready, waiting)).isSameInstanceAs(waiting)
     }
 
     @Test
-    fun theLandscapeStaysTooAndAChosenOneEndsTheWait() {
-        val held = HeldStage()
+    fun aSongAfterTheClockWaitsBehindItWithNothingKeptToo() {
+        // Klangbild came up while nothing played: no stage was ever kept.
+        val idle = UiState(screen = Screen.Rest(RestReason.IDLE, "Wohnzimmer"))
         val waiting = UiState(screen = playing(b))
-        val first = held.shown(landscape, waiting, stale = true)
+        assertThat(HeldStage.shown(idle, waiting).screen).isEqualTo(idle.screen)
+    }
+
+    @Test
+    fun theLandscapeStaysTooAndTheSongKeysActOnWhatPlays() {
+        val waiting = UiState(screen = playing(b))
+        val first = HeldStage.shown(landscape, waiting)
         assertThat(first.landscape).isEqualTo(landscape.landscape)
-        assertThat(first.screen).isEqualTo(landscape.screen)
+        assertThat(first.screen).isEqualTo(waiting.screen)
+        assertThat(HeldStage.shown(first, waiting).landscape).isEqualTo(landscape.landscape)
+        // A landscape chosen meanwhile ends the wait: it shows as it is.
         val chosen = waiting.copy(landscape = Fixtures.landscape(b, PlayerStatus.PLAYING, MiniPlayer.LEFT))
-        assertThat(held.shown(first, chosen, stale = false)).isSameInstanceAs(chosen)
+        assertThat(HeldStage.shown(first, chosen)).isSameInstanceAs(chosen)
     }
 
     @Test
     fun troubleAndTheSetupPageGoThroughTheDark() {
         val waiting = UiState(screen = playing(b))
         val offline = onStage.copy(screen = Screen.Rest(RestReason.OFFLINE))
-        assertThat(HeldStage().shown(offline, waiting, stale = true)).isSameInstanceAs(waiting)
+        assertThat(HeldStage.shown(offline, waiting)).isSameInstanceAs(waiting)
         val setup = onStage.copy(screen = Screen.Setup(SetupReason.REQUESTED))
-        assertThat(HeldStage().shown(setup, waiting, stale = true)).isSameInstanceAs(waiting)
+        assertThat(HeldStage.shown(setup, waiting)).isSameInstanceAs(waiting)
     }
 
     @Test
-    fun theWaitEndsWhenTheMusicStopsAgain() {
-        val held = HeldStage()
-        val first = held.shown(clock, UiState(screen = playing(b)), stale = true)
+    fun theClockComesBackWhenTheMusicStopsAgain() {
+        val first = HeldStage.shown(clock, UiState(screen = playing(b)))
         val rest = UiState(screen = Screen.Rest(RestReason.PAUSED, "Wohnzimmer"))
-        assertThat(held.shown(first, rest, stale = false)).isSameInstanceAs(rest)
-        // Without a stage dropped anew, a song with its scene still to come waits in the dark.
-        val waiting = UiState(screen = playing(b))
-        assertThat(held.shown(rest, waiting, stale = false)).isSameInstanceAs(waiting)
+        assertThat(HeldStage.shown(first, rest)).isSameInstanceAs(rest)
+        // The next song waits behind it as well.
+        assertThat(HeldStage.shown(rest, UiState(screen = playing(b))).screen).isEqualTo(rest.screen)
     }
 }
