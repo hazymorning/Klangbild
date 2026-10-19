@@ -479,6 +479,9 @@ class LightSync(
                 light.checkedUpdate = s.lastUpdated
                 continue
             }
+            // A call of ours on its way: Home Assistant may report what it did before answering,
+            // while its context is not known here yet (and it carries our user too).
+            if (light.inFlight) continue
             // Klangbild never switches a light off, nor a color light to white: whoever did, it is theirs.
             val shown = light.shown
             if (s.state == "off" || (shown is Shown.Color && s.string("color_mode") == "color_temp")) {
@@ -488,7 +491,7 @@ class LightSync(
             // Brightness and color are judged once the light has settled (a fade reports steps on
             // the way); what a person or an automation did counts at once.
             val byPerson = s.contextUser != null || s.contextParent != null
-            if (!byPerson && (light.inFlight || t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS)) continue
+            if (!byPerson && t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS) continue
             light.checkedUpdate = s.lastUpdated
             val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
             val sentBri = when (shown) {

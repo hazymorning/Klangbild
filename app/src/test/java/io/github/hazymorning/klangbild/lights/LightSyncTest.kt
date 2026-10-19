@@ -93,6 +93,13 @@ class LightSyncTest {
         /** How long a snapshot (`scene.create`) takes to be answered. */
         var createMs = 0L
 
+        /**
+         * How long a light call takes to be answered: Home Assistant reports what a call did
+         * before it answers, under the user the token belongs to ([callUser]).
+         */
+        var answerMs = 0L
+        var callUser: String? = null
+
         /** Slow lights: what the calls change is reported only on [deliver]. */
         var holding = false
         private val held = ArrayList<() -> Unit>()
@@ -148,6 +155,7 @@ class LightSyncTest {
                         data?.get("color_temp_kelvin")?.let { put("color_temp_kelvin", it); put("color_mode", "color_temp") }
                     }
                     set(entityId, if (service == "turn_off") "off" else "on", attrs, t, ctx)
+                    delay(answerMs)
                 }
             }
             return ctx
@@ -156,7 +164,7 @@ class LightSyncTest {
         private fun set(id: String, state: String, attrs: JsonObject, t: Long, ctx: String) {
             val report = {
                 val old = states.value.getValue(id)
-                states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx))
+                states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx, contextParent = null, contextUser = callUser))
             }
             if (holding) held += report else report()
         }
@@ -668,6 +676,24 @@ class LightSyncTest {
         // The next song's colors go to the other light only: the green one is theirs.
         assertThat(ha.to(left)).hasSize(before)
         assertThat(ha.to(right).size).isAtLeast(2)
+    }
+
+    @Test
+    fun `a light stays Klangbild's while its own call is still being answered`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = false)))
+        // Home Assistant reports the dark first step of the right light (it was off) before it
+        // answers, under the user of Klangbild's token, while a tick looks at the lights.
+        ha.callUser = "klangbild"
+        ha.answerMs = 1_500
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a", level = RoomLightBrightness.P100))
+        testScheduler.advanceTimeBy(8_000)
+        val before = ha.to(right).size
+        s.update(target("b", level = RoomLightBrightness.P100))
+        testScheduler.advanceTimeBy(8_000)
+        // The next song still reaches it: its own first step was never taken for someone else's.
+        assertThat(ha.to(right).size).isGreaterThan(before)
     }
 
     @Test
