@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -121,6 +122,7 @@ fun FlowTheater(
     var change by remember { mutableStateOf(FlowChange.MOVE) }
     var motions by remember { mutableStateOf(resting(flow)) }
     var timeline by remember { mutableStateOf(Timeline(0, Motion.FLOW_TURN_MS, Motion.FLOW_TURN_MS)) }
+    var began by remember { mutableIntStateOf(0) }
     val t = remember { Animatable(1f) }
     val text = remember { RisingText(t) }
     val latest by rememberUpdatedState(flow)
@@ -142,6 +144,7 @@ fun FlowTheater(
                 motions = plan.motions
                 return@collect
             }
+            began++
             t.snapTo(0f)
             val line = plan.timeline
             when (kind) {
@@ -169,8 +172,12 @@ fun FlowTheater(
     val kind = change
     val line = timeline
     val total = line.totalMs
+    // A change can begin between composing a frame and drawing it. Until it is composed, the frame
+    // shows the stage as the change before left it, its lines where they stood.
+    val seen = began
+    val at: () -> Float = { if (began == seen) t.value else 1f }
     fun p(startMs: Int, endMs: Int, easing: androidx.compose.animation.core.Easing = Motion.Dimmer) =
-        Motion.phaseMs(t.value, startMs, endMs, total, easing)
+        Motion.phaseMs(at(), startMs, endMs, total, easing)
 
     val curStage = current.stage
     val prevStage = prev?.stage
@@ -181,7 +188,7 @@ fun FlowTheater(
     val geometry = remember(middle.scene.layout) { FlowGeometry(middle.scene.layout) }
     val rest = remember(current, geometry) { balanceOf(current, geometry) }
     val from = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: rest }
-    val balance: () -> Balance = { if (prev == null) rest else from.towards(rest, Motion.Turn.transform(line.settle.of(t.value))) }
+    val balance: () -> Balance = { if (prev == null) rest else from.towards(rest, Motion.Turn.transform(line.settle.of(at()))) }
     // Lines that leave and rise anew keep to their own places; lines that stay move along.
     val textMoves = kind == FlowChange.MOVE || kind == FlowChange.TEXT || kind == FlowChange.LYRICS
     val newColumn: () -> Float = { if (prev != null && textMoves) rest.column else balance().column }
@@ -208,10 +215,19 @@ fun FlowTheater(
         }
     }
     val textIn: (TextLine) -> Float = { row ->
-        val level = text.level(row)
-        if (prev != null && softText) level * p(0, total, Motion.Sine) else level
+        when {
+            began != seen -> text.before(row)
+            prev != null && softText -> text.level(row) * p(0, total, Motion.Sine)
+            else -> text.level(row)
+        }
     }
-    val textRise: (TextLine) -> Float = { row -> if (text.rising) 10f * (1f - text.level(row)) else 0f }
+    val textRise: (TextLine) -> Float = { row ->
+        when {
+            began != seen -> 10f * (1f - text.before(row))
+            text.rising -> 10f * (1f - text.level(row))
+            else -> 0f
+        }
+    }
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
     val stood: (TextLine) -> Float = { row -> if (softText) text.level(row) else text.leaving(row) }
 
@@ -244,7 +260,7 @@ fun FlowTheater(
             // A new look comes up over the old strip as one picture, so its cards beside the middle
             // never show through the middle card while it fades in.
             modifier = Modifier.graphicsLayer { alpha = if (restrip) p(0, total, Motion.Sine) else 1f },
-            time = { if (softText) 1f else t.value },
+            time = { if (softText) 1f else at() },
             dim = { dim.picture },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
@@ -264,7 +280,13 @@ fun FlowTheater(
             }
             TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, shift = newColumn)
         }
-        StatusLayer(curModel, shift = { balance().column })
+        // On the other wall the status line's inks cross-fade with the stage.
+        if (prevModel != null && kind == FlowChange.WALL) {
+            StatusLayer(prevModel, shift = { balance().column }, alpha = { 1f - p(0, total, Motion.Sine) })
+            StatusLayer(curModel, shift = { balance().column }, alpha = { p(0, total, Motion.Sine) })
+        } else {
+            StatusLayer(curModel, shift = { balance().column })
+        }
     }
 }
 

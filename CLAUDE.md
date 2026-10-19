@@ -366,9 +366,10 @@ UI words are given in English with the German in parentheses where it matters.
   kept within hues 50° to 90° (a cool cover gives less color, never mint), never white.
   **Nothing frames a cover**: no shadow, no hairline, no mat, on either wall and in Cover
   Flow; every soft shadow under the artwork read as an uneven, broken frame (v5.1;
-  `NoFrameTest` checks rendered pixels). A wall change cross-fades the stage in 2.4 s; every
-  ground reaches beyond the screen's edges (`BEYOND_EDGES_DP`), so no strip of the old wall
-  ever shows at a side (`EdgesTest`).
+  `NoFrameTest` checks rendered pixels). A wall change cross-fades the stage in 2.4 s, its
+  lines and the status line with it (until 2026.10 the new inks stood at once, a pale ghost on
+  the old paper; `WallChangeTest`); every ground reaches beyond the screen's edges
+  (`BEYOND_EDGES_DP`), so no strip of the old wall ever shows at a side (`EdgesTest`).
 - **Light (`WallGlow`):** a tight halo in the colors of the artwork's own edges, the same on
   every side: each wall point takes the nearest edge color, averaged over a stretch that
   grows with distance (diffuse, no streaks); at most L* ≈ 17 at the edge and never more than
@@ -406,7 +407,9 @@ UI words are given in English with the German in parentheses where it matters.
   strip, a queue update or a better cover just wait. Lines on their way up stop where they
   are when a change hurries and leave from there (`RisingText`): the skipped song's lines
   never come up; if the skip comes to nothing (back to the same song), they rise the rest of
-  the way.
+  the way. A change that begins between composing a frame and drawing it is drawn as the stage
+  stood until it is composed (until 2026.10 the lines blinked out for that frame;
+  `SongChangeBlinkTest`).
 - **Cover Flow** (`StageView.FLOW`): middle cover 300 dp centered 303 dp from the left and
   vertically, two cards per side turned 60° in one shared perspective (outer edges 222.5/255 dp
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,

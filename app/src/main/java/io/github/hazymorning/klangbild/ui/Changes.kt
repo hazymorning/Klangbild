@@ -68,7 +68,9 @@ class TextRise(private val startMs: Int, val totalMs: Int) {
  */
 @Stable
 class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
-    private class Stood(val rise: TextRise, val at: Float)
+    private class Stood(val rise: TextRise?, val at: Float) {
+        fun level(line: TextLine): Float = rise?.level(at, line) ?: 1f
+    }
 
     private var rise by mutableStateOf<TextRise?>(null)
     private var held by mutableStateOf<Float?>(null)
@@ -81,11 +83,17 @@ class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
     fun level(line: TextLine): Float = rise?.level(held ?: t.value, line) ?: 1f
 
     /** How far [line] of the text that leaves had risen when the change began. */
-    fun leaving(line: TextLine): Float = left?.let { it.rise.level(it.at, line) } ?: 1f
+    fun leaving(line: TextLine): Float = left?.level(line) ?: 1f
+
+    /**
+     * How far [line] stood before the change now running began: the text that leaves, or the text
+     * that stays. A frame composed before the change began still shows its lines so.
+     */
+    fun before(line: TextLine): Float = left?.level(line) ?: level(line)
 
     /** A change brings new text that rises as [next] says; the text so far leaves from where it stands. */
     fun begin(next: TextRise) {
-        left = rise?.let { Stood(it, held ?: 1f) }
+        left = Stood(rise, held ?: 1f)
         rise = next
         held = null
     }
