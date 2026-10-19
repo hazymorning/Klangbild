@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -73,6 +74,7 @@ fun StageTheater(
     var current by remember { mutableStateOf(stage) }
     var previous by remember { mutableStateOf<StageData?>(null) }
     var change by remember { mutableStateOf(Change.FULL) }
+    var began by remember { mutableIntStateOf(0) }
     val t = remember { Animatable(1f) }
     val text = remember { RisingText(t) }
     val latest by rememberUpdatedState(stage)
@@ -95,6 +97,7 @@ fun StageTheater(
                 samePicture(old.scene, target.scene) -> Change.TEXT
                 else -> Change.FULL
             }
+            began++
             t.snapTo(0f)
             when (kind) {
                 Change.FULL -> text.begin(TextRise(Motion.TEXT_IN_MS, durationOf(kind)))
@@ -117,8 +120,12 @@ fun StageTheater(
     val prev = previous
     val kind = change
     val total = durationOf(kind)
+    // A change can begin between composing a frame and drawing it. Until it is composed, the frame
+    // shows the stage as the change before left it, its lines where they stood.
+    val seen = began
+    val at: () -> Float = { if (began == seen) t.value else 1f }
     fun p(startMs: Int, endMs: Int, easing: androidx.compose.animation.core.Easing = Motion.Dimmer) =
-        Motion.phaseMs(t.value, startMs, endMs, total, easing)
+        Motion.phaseMs(at(), startMs, endMs, total, easing)
 
     val curModel = remember(cur, modelFor) { modelFor(cur) }
     val prevModel = remember(prev, modelFor) { prev?.let(modelFor) }
@@ -150,9 +157,22 @@ fun StageTheater(
         }
     }
     // The text: the old block leaves first (from where it stood), the new lines follow one after
-    // another; a new look of the same song cross-fades in place.
-    val textIn: (TextLine) -> Float = { line -> text.level(line) }
-    val textRise: (TextLine) -> Float = { line -> if (text.rising) 10f * (1f - text.level(line)) else 0f }
+    // another; a new look of the same song cross-fades in place. On the other wall the new lines
+    // come up with the wall (their inks would otherwise stand at once, pale on the old paper).
+    val textIn: (TextLine) -> Float = { line ->
+        when {
+            began != seen -> text.before(line)
+            prev != null && kind == Change.WALL -> text.level(line) * p(0, total, Motion.Sine)
+            else -> text.level(line)
+        }
+    }
+    val textRise: (TextLine) -> Float = { line ->
+        when {
+            began != seen -> 10f * (1f - text.before(line))
+            text.rising -> 10f * (1f - text.level(line))
+            else -> 0f
+        }
+    }
     val stood: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
 
     // The words of the song shown and of the one leaving keep their places through a change.
@@ -188,8 +208,14 @@ fun StageTheater(
             }
             TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text })
         }
-        // The status line belongs to the room, not to the track, so it stays.
-        StatusLayer(curModel)
+        // The status line belongs to the room, not to the track, so it stays; on the other wall
+        // its inks cross-fade with the stage.
+        if (prevModel != null && kind == Change.WALL) {
+            StatusLayer(prevModel, alpha = { 1f - p(0, total, Motion.Sine) })
+            StatusLayer(curModel, alpha = { p(0, total, Motion.Sine) })
+        } else {
+            StatusLayer(curModel)
+        }
     }
 }
 

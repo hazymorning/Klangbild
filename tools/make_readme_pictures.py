@@ -136,21 +136,30 @@ def font(name, size, weight, optical):
     return f
 
 
-def text_mask(text, face, size, weight, tracking=0.0, ss=4):
-    """The coverage of [text] set in [face] at [size] px, its cap height's top at the mask's top."""
-    f = font(face, size * ss, weight, optical=size)
+def text_mask(text, face, size, weight, tracking=0.0, ss=4, optical=None, kern=False):
+    """The coverage of [text] set in [face] at [size] px, and the row its cap height's top falls on.
+    Whatever rises above the cap height stays in the picture (Jost's ascenders reach 0.78 em, its
+    capitals 0.70, so cutting the words off at the cap height flattened every l, b and d). DM Sans
+    takes the [optical] size the text is seen at (its own size if none is given). With [kern] each
+    letter stands where the shaped line puts it, so the face's kerning counts."""
+    f = font(face, size * ss, weight, optical=optical or size)
     ascent, descent = f.getmetrics()
     advance = sum(f.getlength(ch) for ch in text) + tracking * size * ss * (len(text) - 1)
-    img = Image.new("L", (int(advance + size * ss), ascent + descent), 0)
+    cap_top = ascent - int(0.70 * size * ss)
+    rows_above = -(-cap_top // ss)
+    lift = rows_above * ss - cap_top  # so the cap height falls on the edge between two rows
+    img = Image.new("L", (int(advance + size * ss), ascent + descent + lift), 0)
     d = ImageDraw.Draw(img)
     x = 0.0
-    for ch in text:
-        d.text((x, 0), ch, font=f, fill=255)
+    for i, ch in enumerate(text):
+        if kern:
+            x = f.getlength(text[: i + 1]) - f.getlength(ch) + tracking * size * ss * i
+        d.text((x, lift), ch, font=f, fill=255)
         x += f.getlength(ch) + tracking * size * ss
-    cap_top = ascent - int(0.70 * size * ss)
-    img = img.crop((0, cap_top, int(x), ascent + descent))
-    img = img.resize((max(1, round(img.width / ss)), max(1, round(img.height / ss))), Image.LANCZOS)
-    return np.asarray(img, dtype=np.float64) / 255.0
+    w = -(-int(x) // ss) * ss
+    h = -(-(ascent + descent + lift) // ss) * ss
+    img = img.crop((0, 0, w, h)).resize((w // ss, h // ss), Image.LANCZOS)
+    return np.asarray(img, dtype=np.float64) / 255.0, rows_above
 
 
 def paste(canvas, mask, x, y, color, alpha=1.0):
@@ -278,31 +287,61 @@ def logo_tile(side, ss=4):
     return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
-def wordmark(img, cx, top, cap, color=(236, 239, 244)):
-    """ "Klangbild" centered on [cx] by its ink, its cap height from [top]."""
-    word = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
-    cols = np.nonzero(word.max(axis=0) > 0.02)[0]
-    paste(img, word, int(round(cx - (cols[0] + cols[-1] + 1) / 2)), int(top), color, 0.96)
+TAGLINE = "See what you\u2019re listening to."
+
+
+def ink_span(mask):
+    """How wide a text mask's ink is, from its first inked column to its last."""
+    cols = np.nonzero(mask.max(axis=0) > 0.02)[0]
+    return cols[-1] + 1 - cols[0]
+
+
+def title(img, cx, middle, cap, gap=0.50, color=(236, 239, 244), quiet=(196, 201, 212)):
+    """ "Klangbild" over its tagline as one lockup: the tagline sized so it spans exactly the name's
+    ink, measured as the eye does, from its L to the o of "to" with the period hanging past the d.
+    Both stand centered on [cx], the two together on [middle] (the name's cap height to the
+    tagline's baseline), [gap] times the name's cap height from the name's baseline to the
+    tagline's cap height, clear of the g. The tagline is set kerned in the text face at the
+    optical size it is seen at on a page, at the weight of the app's small lines, in the second
+    ink."""
+    word, word_cap = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
+
+    def tagline(small):
+        line, line_cap = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
+        body, _ = text_mask(TAGLINE.rstrip("."), "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
+        return line, line_cap, body
+
+    small = 26.0
+    for _ in range(3):
+        line, line_cap, body = tagline(small)
+        small *= ink_span(word) / ink_span(body)
+    line, line_cap, body = tagline(small)
+    top = middle - (cap + gap * cap + small) / 2
+    left = cx - ink_span(word) / 2
+    for mask, start, cap_row, y, ink in ((word, word, word_cap, top, color), (line, body, line_cap, top + cap + gap * cap, quiet)):
+        first = np.nonzero(start.max(axis=0) > 0.02)[0][0]
+        paste(img, mask, int(round(left - first)), int(round(y)) - cap_row, ink, 0.96)
 
 
 def now_playing():
-    """The first picture: the song at night, the wall lit in its colors, the name above."""
+    """The first picture: the song at night, the wall lit in its colors, the name and its tagline above."""
     W, H = 2400, 1500
     tv = Tv(W / 2, 872, 1480, 9)
     img, light = dark_room(W, H, tv, light_colors("now-playing"), 1.15)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing.png"), light * 0.16)
-    wordmark(img, W / 2, 196, 54)
+    title(img, W / 2, 223, 92)
     save(img, "mockup-now-playing.jpg")
 
 
 def now_playing_light():
     """The first picture for a light page: the same song by day on the light wall, the room in
-    daylight and the lights behind the TV off, as they are by day; the name above in night blue."""
+    daylight and the lights behind the TV off, as they are by day; the name and its tagline above
+    in night blue."""
     W, H = 2400, 1500
     tv = Tv(W / 2, 872, 1480, 9)
     img, rim = daylight_room(W, H, tv)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
-    wordmark(img, W / 2, 196, 54, color=(22, 32, 58))
+    title(img, W / 2, 223, 92, color=(22, 32, 58), quiet=(56, 66, 90))
     save(img, "mockup-now-playing-light.jpg")
 
 
@@ -542,8 +581,12 @@ class Room:
         dx, yy = b.xx - ax, b.yy
         arc = yb + w * sb * np.sqrt(np.clip(1 - (dx / w) ** 2, 0, 1))
         body = np.clip(w - np.abs(dx) + 0.5, 0, 1) * np.clip(arc - yy + 0.5, 0, 1) * np.clip(yy - yt + 0.5, 0, 1)
-        top = np.clip(1.0 - np.sqrt((dx / w) ** 2 + ((yy - yt) / (w * st)) ** 2), 0, None)
-        top_a = np.clip(top * w * st + 0.5, 0, 1) * (np.abs(dx) < w + 1) * (np.abs(yy - yt) < w * st + 1)
+        # The top is an ellipse, covered by the distance to its edge in pixels; a radius clipped to
+        # zero once filled its whole bounding box, so the tops read as flat lids.
+        r = np.sqrt((dx / w) ** 2 + ((yy - yt) / (w * st)) ** 2)
+        grad = np.sqrt((dx / w ** 2) ** 2 + ((yy - yt) / (w * st) ** 2) ** 2) / np.maximum(r, 1e-6)
+        top = np.clip(1.0 - r, 0, None)
+        top_a = np.clip((1.0 - r) / np.maximum(grad, 1e-6) + 0.5, 0, 1)
         alpha = np.maximum(body, top_a)
         s = np.clip(dx / w, -1, 1)
         c = np.sqrt(1 - s * s)
@@ -873,8 +916,8 @@ def download_button(scale=4, light=False):
     side = int(round(h * 0.60))                  # the logo
     pad = (h - side) // 2                        # the same space left of it as above and below
     gap = int(round(h * 0.17))
-    small = text_mask("Download for", "dmsans.ttf", 10.5 * scale, 450)
-    large = text_mask("Android TV", "jost.ttf", 21.5 * scale, 430, tracking=-0.005)
+    small, small_cap = text_mask("Download for", "dmsans.ttf", 10.5 * scale, 450)
+    large, large_cap = text_mask("Android TV", "jost.ttf", 21.5 * scale, 430, tracking=-0.005)
     words = max(ink_width(small), ink_width(large))
     w = pad + side + gap + words + pad
     r = int(round(h * 0.22))
@@ -901,8 +944,8 @@ def download_button(scale=4, light=False):
     line_gap = 6.5 * scale
     y0 = h / 2 - (cap_small + line_gap + cap_large) / 2
     tx = pad + side + gap
-    paste(img, small, tx, int(round(y0)), (84, 98, 128) if light else (186, 202, 226))
-    paste(img, large, tx, int(round(y0 + cap_small + line_gap)), (12, 24, 52) if light else (242, 246, 252))
+    paste(img, small, tx, int(round(y0)) - small_cap, (84, 98, 128) if light else (186, 202, 226))
+    paste(img, large, tx, int(round(y0 + cap_small + line_gap)) - large_cap, (12, 24, 52) if light else (242, 246, 252))
     rgba = np.dstack([np.clip(img, 0, 255), shape * 255]).astype(np.uint8)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, "download-light.png" if light else "download.png")

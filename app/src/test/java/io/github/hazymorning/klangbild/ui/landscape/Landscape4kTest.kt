@@ -45,7 +45,7 @@ class Landscape4kTest {
         )
         val clock = LandscapeClock(now = { t })
         captureRoboImage("build/screenshots/landscape/4k/autumn_afternoon.png") {
-            Fixtures.Still { LandscapeScreen(ui, ui.landscape!!, clock, positionNow = { 100_000L }, now = { t }, modifier = Modifier.fillMaxSize()) }
+            Fixtures.Still { LandscapeScreen(ui, ui.landscape!!, clock, positionOf = { 100_000L }, now = { t }, modifier = Modifier.fillMaxSize()) }
         }
     }
 }

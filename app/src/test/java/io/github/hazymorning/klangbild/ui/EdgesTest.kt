@@ -71,7 +71,7 @@ class EdgesTest {
         var ui by mutableStateOf(UiState(screen = Screen.Stage(track, PlayerStatus.PAUSED, null), stage = light, appearance = Appearance.LIGHT))
         compose.mainClock.autoAdvance = false
         // Nine minutes into the hour the drift stands at its right end; the stage paused, so it rests.
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionNow = { 60_000L }, now = { 9 * 60_000L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 9 * 60_000L })) }
         compose.mainClock.advanceTimeBy(2_500)
         assertWithMessage("paper").that(stripe(frame())).isAtMost(4)
         ui = ui.copy(menu = menu(Settings()))

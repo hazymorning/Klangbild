@@ -42,18 +42,34 @@ class ProgressTest {
     fun `small corrections glide, seeks jump`() {
         val smooth = SmoothedPosition(glideLimitMs = 2_500, tauMs = 700.0)
         smooth.onReport("a", rawNowMs = 10_000, nowMs = 0)
-        assertThat(smooth.display(10_000, 0)).isEqualTo(10_000)
+        assertThat(smooth.display("a", 10_000, 0)).isEqualTo(10_000)
         // Server says we are 1 s behind what is shown: glide, do not jump.
         smooth.onReport("a", rawNowMs = 9_000, nowMs = 0)
-        assertThat(smooth.display(9_000, 0)).isEqualTo(10_000)
-        assertThat(smooth.display(9_700, 700)).isIn(9_700L..10_100L)
-        assertThat(smooth.display(13_000, 4_000)).isIn(13_000L..13_010L)
+        assertThat(smooth.display("a", 9_000, 0)).isEqualTo(10_000)
+        assertThat(smooth.display("a", 9_700, 700)).isIn(9_700L..10_100L)
+        assertThat(smooth.display("a", 13_000, 4_000)).isIn(13_000L..13_010L)
         // A seek of 60 s is shown immediately.
         smooth.onReport("a", rawNowMs = 73_000, nowMs = 4_000)
-        assertThat(smooth.display(73_000, 4_000)).isEqualTo(73_000)
+        assertThat(smooth.display("a", 73_000, 4_000)).isEqualTo(73_000)
         // A new track never glides.
         smooth.onReport("b", rawNowMs = 0, nowMs = 5_000)
-        assertThat(smooth.display(0, 5_000)).isEqualTo(0)
+        assertThat(smooth.display("b", 0, 5_000)).isEqualTo(0)
+    }
+
+    @Test
+    fun `a new song never glides from the time of the song before`() {
+        val smooth = SmoothedPosition(glideLimitMs = 2_500, tauMs = 700.0)
+        smooth.onReport("a", rawNowMs = 2_600, nowMs = 0)
+        assertThat(smooth.display("a", 2_600, 0)).isEqualTo(2_600)
+        // B is reported twice before anything shows its time: the second report has nothing of
+        // its own to glide from, and never takes A's 0:02.6 for it (B's time would run backwards).
+        smooth.onReport("b", rawNowMs = 0, nowMs = 100)
+        smooth.onReport("b", rawNowMs = 400, nowMs = 500)
+        assertThat(smooth.display("b", 400, 500)).isEqualTo(400)
+        // A read for A meanwhile (its stage still on screen) leaves B's smoothing alone.
+        assertThat(smooth.display("a", 2_700, 500)).isEqualTo(2_700)
+        smooth.onReport("b", rawNowMs = 400, nowMs = 500)
+        assertThat(smooth.display("b", 400, 500)).isEqualTo(400)
     }
 
     @Test

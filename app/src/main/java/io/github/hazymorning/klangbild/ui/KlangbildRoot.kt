@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,11 +41,13 @@ import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
+import io.github.hazymorning.klangbild.ui.stage.PlayedLines
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
@@ -69,7 +72,8 @@ fun rememberWallClock(periodMs: Long = 5_000, now: () -> Long = System::currentT
 
 /** What the root needs from the outside world. */
 class RootHooks(
-    val positionNow: () -> Long?,
+    /** The position of the song with this key, or null once the player reports another. */
+    val positionOf: (String) -> Long?,
     /** Local time until which hidden parts (time, place, progress) show again after a key press. */
     val peekUntil: State<Long> = mutableLongStateOf(0L),
     val now: () -> Long = System::currentTimeMillis,
@@ -160,10 +164,10 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
-                is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionNow, hooks.now)
+                is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionOf, hooks.now)
                 is Content.SetupContent -> {
-                    val scene = rememberOffMain(ui.setup, screen, c.appearance) { SetupArt.scene(ui.setup, screen, c.appearance) }
-                    if (scene != null) SetupScreen(c.reason, ui.setup, scene) else Box(Modifier.fillMaxSize())
+                    val scene = rememberOffMain(c.info, screen, c.appearance) { SetupArt.scene(c.info, screen, c.appearance) }
+                    if (scene != null) SetupScreen(c.reason, c.info, scene) else Box(Modifier.fillMaxSize())
                 }
                 Content.Dark -> Box(Modifier.fillMaxSize())
             }
@@ -193,7 +197,9 @@ private sealed interface Content {
         override val key = "rest:$reason:$appearance"
     }
 
-    data class SetupContent(val reason: io.github.hazymorning.klangbild.domain.SetupReason, val appearance: Appearance) : Content {
+    data class SetupContent(val reason: io.github.hazymorning.klangbild.domain.SetupReason, val appearance: Appearance, val info: SetupInfo?) : Content {
+        // Leaving, the page keeps its code and address: the server has stopped by then (until
+        // 2026.10 they blanked while it faded).
         override val key = "setup:$reason:$appearance"
     }
 
@@ -235,7 +241,7 @@ private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.lands
     is Screen.Rest ->
         if (quietStart && s.reason == io.github.hazymorning.klangbild.domain.RestReason.CONNECTING) Content.Dark
         else Content.RestContent(s.reason, s.speaker, ui.appearance)
-    is Screen.Setup -> Content.SetupContent(s.reason, ui.appearance)
+    is Screen.Setup -> Content.SetupContent(s.reason, ui.appearance, ui.setup)
 }
 
 /** A view's theater, given the player's status, how to build a model, the light setting and a lost link. */
@@ -247,7 +253,7 @@ private typealias Theater = @Composable (
 ) -> Unit
 
 /**
- * What both views share for the [stage] that plays: the status line's words, the models, the
+ * What both views share for the [stage] on screen: the status line's words, the models, the
  * light setting. Then [theater] draws.
  */
 @Composable
@@ -297,12 +303,20 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
     val chapter = ui.chapter
-    val modelFor: (StageData) -> StageModel = remember(stage, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
+    // A stage still on screen after its song has ended (the next scene still being made, or its
+    // lines leaving) keeps its own time, next and chapter; only the song that plays reads them live.
+    val playingKey = stageScreen?.track?.key
+    val playingNow by rememberUpdatedState(playingKey)
+    val played = remember { PlayedLines() }
+    val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
         { s: StageData ->
+            val key = s.track.key
+            val plays = key == playingKey
             val text = TrackText.from(s.track, t[R.string.artists_others])
             // A book or an episode with chapters: the chapter in the album's place, the bar over
             // the chapter, the next chapter after it.
-            val ch = chapter?.takeIf { s.track.key == stage.track.key }
+            val ch = played.chapter(key, plays, chapter)
+            val after = played.next(key, plays, nextTrack)
             val nextChapter = ch?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
@@ -313,20 +327,21 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 text = if (display.album) text else text.copy(album = null),
                 status = status,
                 durationMs = ch?.let { it.endMs - it.startMs } ?: s.track.durationMs,
-                positionMs = { if (s.track.key == stage.track.key) hooks.positionNow() else null },
+                // Read for this song by name: the player reports the next a moment before the screen shows it.
+                positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
                 year = s.track.year.takeIf { display.album },
                 progress = if (lyrics != null) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[R.string.hint_down]
                     lyrics != null -> StageTexts.next(s.track, t)
-                    else -> nextChapter ?: StageTexts.next(nextTrack, t)
+                    else -> nextChapter ?: StageTexts.next(after, t)
                 },
                 nextTitle = when {
                     tip -> null
                     lyrics != null -> StageTexts.nextTitle(s.track, t)
                     nextChapter != null -> null
-                    else -> StageTexts.nextTitle(nextTrack, t)
+                    else -> StageTexts.nextTitle(after, t)
                 },
                 nextLead = if (tip) t[R.string.hint_down_key] else null,
                 statusLine = statusLine,

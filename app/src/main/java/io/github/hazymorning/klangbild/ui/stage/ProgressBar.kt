@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -48,7 +49,7 @@ class ProgressColors(val track: Color, val fill: Color, val label: Color)
  * baseline, so a layout can align the block by it.
  *
  * In a book with chapters the bar spans the chapter: from [startMs] in the item's own time, for
- * [durationMs]; a new chapter starts a new bar, without gliding back.
+ * [durationMs]; a new chapter starts a new bar, without gliding back, and so does another [item].
  */
 @Composable
 fun ProgressBar(
@@ -59,6 +60,7 @@ fun ProgressBar(
     labelStyle: TextStyle,
     modifier: Modifier = Modifier,
     startMs: Long = 0L,
+    item: Any? = null,
 ) {
     // The stage's one tick, shared with the color field.
     val frame = rememberFrames(fast = playing)
@@ -67,10 +69,12 @@ fun ProgressBar(
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "progress-pause",
     )
-    val glide = remember(startMs, durationMs) { Glide() }
-    val elapsed: () -> Long = { ((positionMs() ?: startMs) - startMs).coerceIn(0L, durationMs) }
+    val glide = remember(item, startMs, durationMs) { Glide() }
+    // Always the newest reading, also for the labels' state, which outlives the first one.
+    val position by rememberUpdatedState(positionMs)
+    val elapsed: () -> Long = { ((position() ?: startMs) - startMs).coerceIn(0L, durationMs) }
     // The labels only change when the displayed second does.
-    val second by remember(startMs, durationMs) {
+    val second by remember(item, startMs, durationMs) {
         derivedStateOf {
             frame.value // re-read every refresh
             elapsed() / 1000L

@@ -4,20 +4,20 @@ Android TV "now playing" screen for Home Assistant and Music Assistant. Built fo
 TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
-parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, its views, setup with an optional third step that lets Home
-Assistant open it, the remote (and that its buttons can be changed), an open invitation to
-contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+parts folded away in `<details>`) and is written like everything else (see the writing rules): the
+tagline ("See what you're listening to."), what Klangbild is and what it does, its views, setup
+with an optional third step that lets Home Assistant open it, the remote (and that its buttons can
+be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
 button under the first paragraph, which downloads the newest APK at once
 (`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). The
-first picture and the button come in a light and a dark version, switched by the reader's theme
-(`<picture>` with `prefers-color-scheme`): by day the light wall in daylight with the lights behind
-the TV off, as they are by day; at night the dark wall with the lights in the cover's colors. The
-mockups stay calm and real, as a photograph of a room would be: the lights' colors soft on a matte
-wall, no colorful backgrounds; the three views, one after
+first picture (the name over its tagline above the TV) and the button come in a light and a dark
+version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
+wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
+the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
+be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
 another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
 on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
 light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
@@ -252,7 +252,9 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 settings from the menus, the setup page and the launch's extras taken at once,
                 the newest written one at a time) and its parts: MenuControl (the groups, then a group's settings), QuickControl (+ the
                 own buttons, the party code),
-                Seeking (jumps with the remote), SleepControl, LightTargets; ControllerHost
+                Seeking (jumps with the remote), SleepControl, LightTargets, HeldStage (the stage
+                kept from before the clock and when it goes; the clock or the landscape held while
+                a song's first scene is made); ControllerHost
                 (what the parts need), Scenes (scene cache + builds off the main thread),
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
 config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
@@ -279,10 +281,12 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
 ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, the quick settings'
                 hint; provides LocalTexts),
                 stage/ (Stage layers, Typesetting, StageTheater transitions, ProgressBar (a range:
-                the chapter), StageModel + StageTexts, FieldLayer: the pools as gradient quads,
-                drawn small and scaled; Lyrics: the words in the column, set once per song off the
-                main thread, one canvas, LyricsViews keeping their places through a change;
-                PartyCode: the party's code where the cover stands, one picture per wall),
+                the chapter; another song, a bar of its own), StageModel + StageTexts, FieldLayer:
+                the pools as gradient quads, drawn small and scaled; Lyrics: the words in the
+                column, set once per song off the main thread, one canvas, LyricsViews keeping
+                their places through a change;
+                PartyCode: the party's code where the cover stands, one picture per wall;
+                PlayedLines: a song's own time, next and chapter once it no longer plays),
                 Motion (+ StageTick: one frame tick for bar, field and words; rememberFrames: that
                 tick, or a loop of its own for a part shown alone; animateGlide: a list's glide that
                 carries on from its pace),
@@ -366,9 +370,10 @@ UI words are given in English with the German in parentheses where it matters.
   kept within hues 50° to 90° (a cool cover gives less color, never mint), never white.
   **Nothing frames a cover**: no shadow, no hairline, no mat, on either wall and in Cover
   Flow; every soft shadow under the artwork read as an uneven, broken frame (v5.1;
-  `NoFrameTest` checks rendered pixels). A wall change cross-fades the stage in 2.4 s; every
-  ground reaches beyond the screen's edges (`BEYOND_EDGES_DP`), so no strip of the old wall
-  ever shows at a side (`EdgesTest`).
+  `NoFrameTest` checks rendered pixels). A wall change cross-fades the stage in 2.4 s, its
+  lines and the status line with it (until 2026.10 the new inks stood at once, a pale ghost on
+  the old paper; `WallChangeTest`); every ground reaches beyond the screen's edges
+  (`BEYOND_EDGES_DP`), so no strip of the old wall ever shows at a side (`EdgesTest`).
 - **Light (`WallGlow`):** a tight halo in the colors of the artwork's own edges, the same on
   every side: each wall point takes the nearest edge color, averaged over a stretch that
   grows with distance (diffuse, no streaks); at most L* ≈ 17 at the edge and never more than
@@ -400,20 +405,38 @@ UI words are given in English with the German in parentheses where it matters.
   Mute is only a word; a lost link dims like a pause. Nothing slides, nothing bounces.
   Screens switch by fading through dark; another view waits on the view before until its
   first scene is made, then the two cross at once (until 2026.10 the screen waited in the
-  dark, which read as stuck). **One change at a time:** what arrives during a
-  change waits until it has landed, then the newest goes next (`snapshotFlow … conflate()`).
+  dark, which read as stuck). A song that comes after the clock, the setup page or the
+  landscape shows its own stage once its scene is made, never the stage left from the song
+  before, nor the same song's from a wall or a view that has changed meanwhile. The clock or
+  the landscape stays until then (the clock's words a moment longer), never the dark, also
+  when no stage was kept; the keys, the quick settings and the lights act on what shows, and
+  over the landscape the song keys act on what plays, as always. A screen that says something
+  is wrong, and the setup page, go through the dark, since what they said no longer holds
+  (until 2026.10 the song before came up first and the lights took its colors; `HeldStageTest`).
+  **One change at a time:** what arrives during a change waits until it has landed, then the
+  newest goes next (`snapshotFlow … conflate()`).
   Only another *song* hurries the running change (`playChange`, ≤ 350 ms); a card joining the
   strip, a queue update or a better cover just wait. Lines on their way up stop where they
   are when a change hurries and leave from there (`RisingText`): the skipped song's lines
   never come up; if the skip comes to nothing (back to the same song), they rise the rest of
-  the way.
+  the way. A change that begins between composing a frame and drawing it is drawn as the stage
+  stood until it is composed (until 2026.10 the lines blinked out for that frame;
+  `SongChangeBlinkTest`). A stage still on screen after its song has ended (the next song's
+  scene still being made, or its lines leaving) keeps its own time, its own "Up next" and its
+  chapter, its time read for that song by name, since the player reports the next song a
+  moment before the screen shows it (until 2026.10 a stage left waiting showed the new song's
+  time, "Up next" and chapter, and lines leaving showed its "Up next" and lost their own time
+  and chapter; `OwnLinesTest`).
+  The landscape's label keeps its own cover and time the same way while it leaves.
 - **Cover Flow** (`StageView.FLOW`): middle cover 300 dp centered 303 dp from the left and
   vertically, two cards per side turned 60° in one shared perspective (outer edges 222.5/255 dp
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,
   48 dp left of the outermost card and right of the column; every other rule holds. A card is
   one textured quad (print, corners and, on the dark gloss only, its reflection baked; a
   half-size copy against shimmer, since HWUI has no mipmaps). Side cards at 55% / 40%, and on
-  the dark wall a much lighter card steps back further beside a dark middle one. Dark: a soft
+  the dark wall a much lighter card steps back further beside a dark middle one, coming forward
+  with the turn, never before the strip moves (`FlowStepBackTest`; until 2026.10 it flashed
+  bright on the turn's first frame). Dark: a soft
   oval of light above the middle card in its top edge's color, ≤ L* 8 and following that
   edge's lightness (`FlowLight`); paper: no reflection, no shadow. The strip turns over in
   1.3 s (`Motion.Turn`, peak ≤ 2× average speed); leaving cards swing aside early so crossing
@@ -605,17 +628,21 @@ UI words are given in English with the German in parentheses where it matters.
   (`snapshot_entities`, one scene per light, our own note as a fallback); it is given back
   with `scene.turn_on` after the music has ended for 5 minutes, when the option goes off and
   when the app closes (lights that were off: dimmed, then their scene without a fade), and
-  the scenes are deleted. At most one call per light a second, none for invisible changes, a
-  new song after 1.5 s (quick skips cost nothing) in a 2.5 s fade, drift every 10 s in 8 s
-  fades. A light someone else switches off, sets to white or changes a lot is theirs until the
-  next session. The lights' states arrive a moment after they are followed: taking over waits
-  for them (≤ 10 s) and a light that appears later joins in; a failed call is retried once,
-  for that light only. "Lights that are off" (Lichter, die aus sind): Turn on (the default, as
-  above) or Leave off: then a light that is off is never switched on and not saved; one switched
-  on during the music is saved and joins in, one switched off is let go and joins in again when
-  switched on, and after the music each is as it was before it first joined. Leave off chosen
-  while they glow: the lights that were off go back off, the others keep their colors; one that
-  Home Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
+  the scenes are deleted. At most one call per light a second, none for invisible changes, a new
+  song after 1.5 s (quick skips cost nothing) in a 2.5 s fade, drift every 10 s in 8 s fades. A
+  light someone else switches off, sets to white or changes a lot, during the music or after it,
+  is theirs until the next session; what a person or an automation does counts at once, even
+  while a fade settles. The lights' states arrive a moment after they are followed: taking over
+  waits for them (≤ 10 s) and a light that appears later joins in; a light taken over stays
+  followed until it is given back, so the dim and the fades reach it (until 2026.10 the lights
+  were let go as the music ended, and went back without a fade); lights no longer chosen, or
+  switched off, go back at once, over the clock too; a failed call is retried once, for that
+  light only. "Lights that are off" (Lichter, die aus sind): Turn on (the default, as above) or
+  Leave off: then a light that is off is never switched on and not saved; one switched on during
+  the music is saved and joins in, one switched off is let go and joins in again when switched
+  on, and after the music each is as it was before it first joined. Leave off chosen while they
+  glow: the lights that were off go back off, the others keep their colors; one that Home
+  Assistant still reports on (a slow light reports late) is not taken up again for 10 s.
 - **Skip flicker** (`FlipGuard`): a return to an item left within 5 s is held 2 s and shown
   only if it is still what plays; new items pass at once, and so does the remote's "previous".
 - **A song arrives whole** (`QueueReader.awaitsDetails`): Home Assistant reports a Music Assistant

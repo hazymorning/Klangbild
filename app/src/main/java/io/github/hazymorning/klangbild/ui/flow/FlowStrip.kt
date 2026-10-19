@@ -94,8 +94,13 @@ fun FlowStrip(
     val pos = remember(cards) { FloatArray(n) }
     val alphas = remember(cards) { FloatArray(n) }
     val order = remember(cards) { IntArray(n) }
-    // The card the strip turns to: the others never outshine it.
-    val middleLightness = remember(cards) { cards.firstOrNull { it.to == 0f && it.toAlpha > 0f }?.card?.lightness ?: 0.5f }
+    // The card the strip turns to: the others never outshine it. While the strip turns, the
+    // measure goes from the card leaving the middle to the one arriving, as it arrives, so a
+    // light card beside a dark middle one never brightens before the strip has moved.
+    val arriving = remember(cards) { cards.firstOrNull { it.to == 0f && it.toAlpha > 0f } }
+    val leaving = remember(cards) { cards.firstOrNull { it.from == 0f && it.fromAlpha > 0f } }
+    val arrivingLightness = arriving?.card?.lightness ?: 0.5f
+    val leavingLightness = leaving?.card?.lightness ?: arrivingLightness
     val tools = remember { DrawTools() }
     val filters = remember(appearance, wall) { HashMap<Int, ColorMatrixColorFilter>() }
     val paper = wall.toArgb()
@@ -103,6 +108,8 @@ fun FlowStrip(
         val t = time().coerceIn(0f, 1f)
         val d = dim().coerceIn(0f, 1f)
         val covered = signAlpha().coerceIn(0f, 1f)
+        val arrived = arriving?.let { Motion.Turn.transform(it.move.of(t)) } ?: 1f
+        val middleLightness = leavingLightness + (arrivingLightness - leavingLightness) * arrived
         for (i in 0 until n) {
             val c = cards[i]
             val s = Motion.Turn.transform(c.move.of(t))

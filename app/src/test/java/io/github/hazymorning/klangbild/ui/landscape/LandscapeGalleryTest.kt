@@ -51,7 +51,7 @@ class LandscapeGalleryTest {
         val clock = LandscapeClock(now = { t })
         captureRoboImage("build/screenshots/landscape/gallery/$name.png") {
             Fixtures.Still {
-                LandscapeScreen(ui, ui.landscape!!, clock, positionNow = { (track.durationMs ?: 0L) / 3 }, now = { t }, modifier = Modifier.fillMaxSize())
+                LandscapeScreen(ui, ui.landscape!!, clock, positionOf = { (track.durationMs ?: 0L) / 3 }, now = { t }, modifier = Modifier.fillMaxSize())
             }
         }
     }

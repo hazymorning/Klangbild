@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asImageBitmap
@@ -378,6 +379,8 @@ fun StatusLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
     shift: () -> Float = { 0f },
+    /** How strongly it shows: the status line of the other wall cross-fades with the stage. */
+    alpha: (() -> Float)? = null,
 ) {
     val status = model.statusLine
     if (status == null || status.isEmpty) return
@@ -405,8 +408,13 @@ fun StatusLayer(
         fit
     }
     val leadAfter = clockText != null || values.isNotEmpty()
+    val faded = if (alpha == null) modifier else modifier.graphicsLayer {
+        this.alpha = alpha().coerceIn(0f, 1f)
+        // Faded draw by draw: its parts never overlap, and no layer of the screen's size is needed.
+        compositingStrategy = CompositingStrategy.ModulateAlpha
+    }
     Layout(
-        modifier = modifier.fillMaxSize(),
+        modifier = faded.fillMaxSize(),
         content = {
             if (clockText != null) BasicText(figures.of(clockText), style = styles.time.copy(color = styles.muted), maxLines = 1) else Box(Modifier)
             values.forEachIndexed { i, v ->

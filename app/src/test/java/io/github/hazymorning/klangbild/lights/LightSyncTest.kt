@@ -56,13 +56,25 @@ class LightSyncTest {
         val name get() = "$domain.$service"
     }
 
+    /** The lights' states as Home Assistant holds them; a change is sent on with [onChange]. */
+    private class Server(initial: Map<String, EntityState>, private val onChange: () -> Unit) {
+        var value: Map<String, EntityState> = initial
+            set(v) {
+                field = v
+                onChange()
+            }
+    }
+
     /**
      * Home Assistant as far as the lights go: it applies light calls to the states with the
      * call's context, keeps snapshot scenes (`scene.create`) and restores them (`scene.turn_on`).
+     * Like the app's link, it sends only the states of the lights followed: one no longer
+     * followed drops out of [lights] at once.
      */
     private inner class FakeHa(val scope: TestScope, initial: Map<String, EntityState>) : LightBridge {
-        val states = MutableStateFlow(initial)
-        override val lights = states
+        /** Every light's state in Home Assistant. */
+        val states = Server(initial) { publish() }
+        override val lights = MutableStateFlow<Map<String, EntityState>>(emptyMap())
         val calls = mutableListOf<Call>()
         var followed: Set<String> = emptySet()
         private var n = 0
@@ -78,6 +90,16 @@ class LightSyncTest {
         /** Home Assistant restarted: its snapshot scenes are gone. */
         var scenesLost = false
 
+        /** How long a snapshot (`scene.create`) takes to be answered. */
+        var createMs = 0L
+
+        /**
+         * How long a light call takes to be answered: Home Assistant reports what a call did
+         * before it answers, under the user the token belongs to ([callUser]).
+         */
+        var answerMs = 0L
+        var callUser: String? = null
+
         /** Slow lights: what the calls change is reported only on [deliver]. */
         var holding = false
         private val held = ArrayList<() -> Unit>()
@@ -88,8 +110,13 @@ class LightSyncTest {
             held.clear()
         }
 
+        private fun publish() {
+            lights.value = states.value.filterKeys { it in followed }
+        }
+
         override fun follow(ids: Set<String>) {
             followed = ids
+            publish()
             onFollow?.let { later ->
                 scope.backgroundScope.launch {
                     delay(400)
@@ -109,6 +136,7 @@ class LightSyncTest {
             val ctx = "ours-${n++}"
             when ("$domain.$service") {
                 "scene.create" -> {
+                    delay(createMs)
                     val id = data!!["snapshot_entities"]!!.jsonArray.single().jsonPrimitive.content
                     scenes["scene." + data["scene_id"]!!.jsonPrimitive.content] = states.value.getValue(id)
                 }
@@ -127,6 +155,7 @@ class LightSyncTest {
                         data?.get("color_temp_kelvin")?.let { put("color_temp_kelvin", it); put("color_mode", "color_temp") }
                     }
                     set(entityId, if (service == "turn_off") "off" else "on", attrs, t, ctx)
+                    delay(answerMs)
                 }
             }
             return ctx
@@ -135,7 +164,7 @@ class LightSyncTest {
         private fun set(id: String, state: String, attrs: JsonObject, t: Long, ctx: String) {
             val report = {
                 val old = states.value.getValue(id)
-                states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx))
+                states.value = states.value + (id to old.copy(state = state, attributes = attrs, lastUpdated = t / 1000.0 + 0.001, context = ctx, contextParent = null, contextUser = callUser))
             }
             if (holding) held += report else report()
         }
@@ -565,6 +594,159 @@ class LightSyncTest {
         assertThat(off.at - dim.at).isEqualTo(LightSync.OFF_FADE_MS + LightSync.OFF_SETTLE_MS)
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
         assertThat(ha.followed).isEmpty()
+    }
+
+    @Test
+    fun `when the music ends the lights stay followed, dim like a pause and go back gently`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val before = ha.calls.size
+        // Nothing on stage any more: until 2026.10 the lights were let go at once, so the dim
+        // never reached them and they went back without a fade.
+        s.update(null)
+        testScheduler.advanceTimeBy(LightSync.PAUSE_DELAY_MS + 2_000)
+        assertThat(ha.followed).containsExactly(left, right)
+        val dim = ha.calls.drop(before).filter { it.domain == "light" }
+        assertThat(dim.map { it.id }).containsExactly(left, right)
+        assertThat(dim.map { it.transition }.toSet()).containsExactly(LightSync.PAUSE_TRANSITION_MS / 1000.0)
+        // After a while they go back as they were, in a fade, the one that was off dimmed first;
+        // then they are let go.
+        testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
+        val back = ha.calls.drop(before + dim.size)
+        assertThat(back.single { it.id == "scene.klangbild_tv_left" && it.service == "turn_on" }.transition).isEqualTo(LightSync.RESTORE_TRANSITION_MS / 1000.0)
+        assertThat(back.single { it.id == right }.brightness).isEqualTo(LightSync.DARKEST)
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+        assertThat(ha.followed).isEmpty()
+    }
+
+    @Test
+    fun `lights no longer chosen go back at once, with nothing on stage too`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        s.update(null)
+        testScheduler.advanceTimeBy(1_000)
+        // Over the clock the lights are switched off (or cleared) in the menu: no waiting five minutes.
+        s.update(null, chosen = emptySet())
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+        assertThat(ha.followed).isEmpty()
+    }
+
+    @Test
+    fun `lights swapped for others over the clock go back at once`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        s.update(null)
+        testScheduler.advanceTimeBy(1_000)
+        s.update(null, chosen = setOf("light.shelf", "light.window"))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
+        assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
+    }
+
+    @Test
+    fun `what a person changes counts at once, even while a fade settles`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(1_500)
+        assertThat(ha.to(left)).hasSize(1)
+        // Someone makes the left light green while the first fade is still settling.
+        ha.byHand(left, "on", buildJsonObject {
+            putJsonArray("xy_color") { add(0.17); add(0.7) }
+            put("color_mode", "xy")
+        })
+        val before = ha.to(left).size
+        s.update(target("b"))
+        testScheduler.advanceTimeBy(5_000)
+        // The next song's colors go to the other light only: the green one is theirs.
+        assertThat(ha.to(left)).hasSize(before)
+        assertThat(ha.to(right).size).isAtLeast(2)
+    }
+
+    @Test
+    fun `a light stays Klangbild's while its own call is still being answered`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = false)))
+        // Home Assistant reports the dark first step of the right light (it was off) before it
+        // answers, under the user of Klangbild's token, while a tick looks at the lights.
+        ha.callUser = "klangbild"
+        ha.answerMs = 1_500
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a", level = RoomLightBrightness.P100))
+        testScheduler.advanceTimeBy(8_000)
+        val before = ha.to(right).size
+        s.update(target("b", level = RoomLightBrightness.P100))
+        testScheduler.advanceTimeBy(8_000)
+        // The next song still reaches it: its own first step was never taken for someone else's.
+        assertThat(ha.to(right).size).isGreaterThan(before)
+    }
+
+    @Test
+    fun `lights are followed from the moment they are taken over`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = false)))
+        ha.createMs = 2_000
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(500)
+        // The stage goes while their snapshots are still being made.
+        s.update(null)
+        testScheduler.advanceTimeBy(6_000)
+        assertThat(ha.followed).containsExactly(left, right)
+    }
+
+    @Test
+    fun `a light someone else had is saved anew when it is taken over again`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        ha.byHand(left, "off")
+        testScheduler.advanceTimeBy(2_000)
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(5_000)
+        // Someone switches it on again, and the lights are switched on within the minute.
+        ha.byHand(left, "on")
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // What it is now is saved, so it goes back to that, not to what it was before the music.
+        assertThat(ha.named("scene.create").count { it.data.toString().contains("klangbild_tv_left") }).isEqualTo(2)
+    }
+
+    @Test
+    fun `a light switched off after the music stays off`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val before = ha.calls.size
+        // The music ends and someone switches the right light off before the lights dim.
+        s.update(null)
+        testScheduler.advanceTimeBy(500)
+        ha.byHand(right, "off")
+        testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
+        // It is theirs: neither the dim nor the give-back switches it on again.
+        assertThat(ha.calls.drop(before).filter { it.id == right || it.id == "scene.klangbild_tv_right" && it.service == "turn_on" }).isEmpty()
+        assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
+        // The other one is given back as it was.
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
     }
 
     @Test

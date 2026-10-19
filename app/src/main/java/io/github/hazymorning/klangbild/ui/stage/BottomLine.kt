@@ -34,6 +34,7 @@ internal fun BottomLine(content: String?, model: StageModel, styles: StageStyles
                 durationMs = model.durationMs ?: 1L,
                 positionMs = model.positionMs,
                 startMs = model.rangeStartMs,
+                item = model.scene.key,
                 playing = playing,
                 colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
                 labelStyle = styles.time,

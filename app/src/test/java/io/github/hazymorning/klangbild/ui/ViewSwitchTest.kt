@@ -47,7 +47,7 @@ class ViewSwitchTest {
     fun theViewBeforeStaysUntilTheNewOneIsReady() {
         var ui by mutableStateOf(UiState(screen = Screen.Stage(track, PlayerStatus.PLAYING, null), stage = Fixtures.stage(track, mdpi)))
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionNow = { 60_000L }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L })) }
         compose.mainClock.advanceTimeBy(2_500)
         val single = capture()
         // Cover Flow is chosen; its cards are still being made: the single cover stays as it is.

@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
         controller.attach(spec)
         view?.setContent {
             val ui by controller.ui.collectAsStateWithLifecycle()
-            val hooks = remember { RootHooks(positionNow = controller::positionNow, peekUntil = peekUntil, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
+            val hooks = remember { RootHooks(positionOf = controller::positionOf, peekUntil = peekUntil, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
             KlangbildRoot(ui, spec, hooks)
             if (ui.session.debugOverlay) {
                 // Frames are only counted while the overlay shows them.

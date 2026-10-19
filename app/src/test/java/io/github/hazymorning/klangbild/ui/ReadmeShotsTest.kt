@@ -136,7 +136,7 @@ class ReadmeShotsTest {
         )
         val landscapeClock = LandscapeClock(now = { at })
         shot("landscape") {
-            LandscapeScreen(ui, ui.landscape!!, landscapeClock, positionNow = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
+            LandscapeScreen(ui, ui.landscape!!, landscapeClock, positionOf = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
         }
     }
 

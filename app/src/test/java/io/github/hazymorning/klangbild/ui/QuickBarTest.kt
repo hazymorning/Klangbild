@@ -140,7 +140,7 @@ class QuickBarTest {
         captureRoboImage("build/screenshots/quick/landscape.png") {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
-                    LandscapeScreen(ui, ui.landscape!!, clock, positionNow = { 60_000L }, now = { t }, modifier = Modifier.fillMaxSize())
+                    LandscapeScreen(ui, ui.landscape!!, clock, positionOf = { 60_000L }, now = { t }, modifier = Modifier.fillMaxSize())
                     QuickBar(state(QuickItem.VIEW, playing.copy(landscape = true)), Appearance.DARK)
                 }
             }
