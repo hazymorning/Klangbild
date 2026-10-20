@@ -5,17 +5,18 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, its views, the devices it runs on (Android TV 9 or later; on a
-streaming stick's own system, the Android it is built on decides, and one not built on Android
-can't install it), setup with an optional third step that lets Home Assistant open it, the remote
-(and that its buttons can be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+Klangbild is and what it does, its views, the devices it runs on (Android TV 9 or later; folded
+away, streaming sticks with a system of their own, where the Android it is built on most likely
+decides, said without more certainty than there is), setup with an optional third step that lets
+Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
 button under the first paragraph, which downloads the newest APK at once
 (`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). No
-mockup carries text of its own. The first picture (the TV alone in the middle of its wall) and the
-button come in a light and a dark version, switched by the reader's theme (`<picture>` with
+mockup carries text of its own. The first picture (the TV alone in the middle of its wall, the promo
+film's song on it: "Klangbild" by hazymorning over the tagline, "Essential Mix, Vol. 1" up next)
+and the button come in a light and a dark version, switched by the reader's theme (`<picture>` with
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
 they are by day; at night the dark wall with
 the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would

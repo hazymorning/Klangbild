@@ -55,9 +55,15 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 ## Devices
 
-Klangbild runs on TVs and boxes with Android TV 9 or later, Google TV included. Versions 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
+Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
 
-On Fire OS, the system of many streaming sticks, Klangbild should work from version 7 on, which is built on Android 9, but it hasn't been tried there yet. Fire OS 6 and older are built on older versions of Android, so the installation fails with a message that the package can't be parsed. The newest sticks run Vega OS, which isn't built on Android and can't install Android apps at all. You'll find your version in the settings, under About.
+<details>
+<summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
+<br>
+
+Fire OS, the system on many streaming sticks, is built on Android, and the Android version underneath is most likely what decides whether Klangbild can be installed. Fire OS 7 and later are built on Android 9 or newer, so it should work there, though it hasn't been tried on one yet. Fire OS 6 and older are built on older versions, which is probably why the installation fails there with a message that the package can't be parsed. The newest sticks run Vega OS, which isn't built on Android, so Android apps most likely can't be installed on them at all. You'll find your version in the settings, under About.
+
+</details>
 
 ## Setup
 
