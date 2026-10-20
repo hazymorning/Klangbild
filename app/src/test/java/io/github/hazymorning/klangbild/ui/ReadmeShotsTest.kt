@@ -62,6 +62,11 @@ class ReadmeShotsTest {
     private val neonHighway = TrackInfo("Neon Highway", listOf("Lumen Drive"), "Night Drive", 2024, 251_000, artworkUrl = cover(SyntheticCover.NIGHT_DRIVE))
     private val morningFog = TrackInfo("Morning Fog", listOf("Theo Lind"), "Low Hills", 2022, 236_000, artworkUrl = cover(SyntheticCover.MOSS))
 
+    // The first picture's song is the one the promo film opens and ends with: the app's own name
+    // by its maker over its tagline, and the film's middle song up next.
+    private val klangbild = TrackInfo("Klangbild", listOf("hazymorning"), "See what you\u2019re listening to.", null, 302_000, artworkUrl = cover(SyntheticCover.AURORA))
+    private val essentialMix = TrackInfo("Essential Mix, Vol. 1", listOf("Klangbild"), "Essential Mix", 2026, 198_000)
+
     private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) =
         captureRoboImage("build/screenshots/readme/$name.png") { Fixtures.Still(en, content) }
 
@@ -81,9 +86,9 @@ class ReadmeShotsTest {
     /** The first picture: a song at night on the dark wall, the room lit in its colors. */
     @Test
     fun nowPlaying() {
-        val scene = Fixtures.scene(polarNight)
+        val scene = Fixtures.scene(klangbild)
         shot("now-playing") {
-            Stage(Fixtures.model(polarNight, next = saltWater, positionMs = 94_000L, clock = en.clock(Fixtures.at(21, 47), Fixtures.zone), group = "Living room", scene = scene, t = en))
+            Stage(Fixtures.model(klangbild, next = essentialMix, positionMs = 95_000L, clock = en.clock(Fixtures.at(21, 47), Fixtures.zone), group = "Living room", scene = scene, t = en))
         }
         coverLights("now-playing", scene, warmth = 1f)
     }
@@ -91,15 +96,15 @@ class ReadmeShotsTest {
     /** The first picture for a light page: the same song by day on the light wall (the lights are off by day). */
     @Test
     fun nowPlayingLight() {
-        val scene = Fixtures.scene(polarNight, appearance = Appearance.LIGHT)
+        val scene = Fixtures.scene(klangbild, appearance = Appearance.LIGHT)
         shot("now-playing-light") {
-            Stage(Fixtures.model(polarNight, next = saltWater, positionMs = 94_000L, clock = en.clock(Fixtures.at(14, 47), Fixtures.zone), group = "Living room", scene = scene, t = en, appearance = Appearance.LIGHT))
+            Stage(Fixtures.model(klangbild, next = essentialMix, positionMs = 95_000L, clock = en.clock(Fixtures.at(14, 47), Fixtures.zone), group = "Living room", scene = scene, t = en, appearance = Appearance.LIGHT))
         }
     }
 
     /**
-     * The views, one after another on the same evening: Salt Water follows the first picture's
-     * song, on its own colors (the background "Cover colors").
+     * The views, one after another on the same evening: first Salt Water, on its own colors (the
+     * background "Cover colors").
      */
     @Test
     fun singleCover() {
