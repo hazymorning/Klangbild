@@ -4,7 +4,7 @@
 Usage: python3 tools/make_readme_pictures.py   (needs Pillow and numpy)
 
 Render the screens first:
-    ./gradlew :app:testDebugUnitTest --tests '*ReadmeShotsTest*' -Proborazzi.test.record=true
+    ./gradlew :app:testDebugUnitTest --tests '*ReadmeShotsTest*' -Pklangbild.pictures -Proborazzi.test.record=true
 They land in app/build/screenshots/readme/, each with the colors the lights behind the TV would
 show (a JSON file beside it). The pictures go to docs/screenshots/.
 
@@ -287,61 +287,23 @@ def logo_tile(side, ss=4):
     return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
-TAGLINE = "See what you\u2019re listening to."
-
-
-def ink_span(mask):
-    """How wide a text mask's ink is, from its first inked column to its last."""
-    cols = np.nonzero(mask.max(axis=0) > 0.02)[0]
-    return cols[-1] + 1 - cols[0]
-
-
-def title(img, cx, middle, cap, gap=0.50, color=(236, 239, 244), quiet=(196, 201, 212)):
-    """ "Klangbild" over its tagline as one lockup: the tagline sized so it spans exactly the name's
-    ink, measured as the eye does, from its L to the o of "to" with the period hanging past the d.
-    Both stand centered on [cx], the two together on [middle] (the name's cap height to the
-    tagline's baseline), [gap] times the name's cap height from the name's baseline to the
-    tagline's cap height, clear of the g. The tagline is set kerned in the text face at the
-    optical size it is seen at on a page, at the weight of the app's small lines, in the second
-    ink."""
-    word, word_cap = text_mask("Klangbild", "jost.ttf", cap / 0.70, 400, tracking=-0.005)
-
-    def tagline(small):
-        line, line_cap = text_mask(TAGLINE, "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
-        body, _ = text_mask(TAGLINE.rstrip("."), "dmsans.ttf", small / 0.70, 440, optical=14, kern=True)
-        return line, line_cap, body
-
-    small = 26.0
-    for _ in range(3):
-        line, line_cap, body = tagline(small)
-        small *= ink_span(word) / ink_span(body)
-    line, line_cap, body = tagline(small)
-    top = middle - (cap + gap * cap + small) / 2
-    left = cx - ink_span(word) / 2
-    for mask, start, cap_row, y, ink in ((word, word, word_cap, top, color), (line, body, line_cap, top + cap + gap * cap, quiet)):
-        first = np.nonzero(start.max(axis=0) > 0.02)[0][0]
-        paste(img, mask, int(round(left - first)), int(round(y)) - cap_row, ink, 0.96)
-
-
 def now_playing():
-    """The first picture: the song at night, the wall lit in its colors, the name and its tagline above."""
-    W, H = 2400, 1500
-    tv = Tv(W / 2, 872, 1480, 9)
+    """The first picture: the song at night, the wall lit in its colors, the TV in the middle and no
+    text of its own."""
+    W, H = 2400, 1350
+    tv = Tv(W / 2, H / 2, 1480, 9)
     img, light = dark_room(W, H, tv, light_colors("now-playing"), 1.15)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing.png"), light * 0.16)
-    title(img, W / 2, 223, 92)
     save(img, "mockup-now-playing.jpg")
 
 
 def now_playing_light():
     """The first picture for a light page: the same song by day on the light wall, the room in
-    daylight and the lights behind the TV off, as they are by day; the name and its tagline above
-    in night blue."""
-    W, H = 2400, 1500
-    tv = Tv(W / 2, 872, 1480, 9)
+    daylight and the lights behind the TV off, as they are by day."""
+    W, H = 2400, 1350
+    tv = Tv(W / 2, H / 2, 1480, 9)
     img, rim = daylight_room(W, H, tv)
     tv_frame(img, tv, os.path.join(RENDERS, "now-playing-light.png"), rim, sheen=0.03, window=0.10)
-    title(img, W / 2, 223, 92, color=(22, 32, 58), quiet=(56, 66, 90))
     save(img, "mockup-now-playing-light.jpg")
 
 
@@ -890,9 +852,10 @@ def daylight_room(W, H, tv, seed=21):
 
 
 def day_and_night():
-    """One song twice: on the light wall by day, on the dark wall at night, side by side."""
-    W, H = 1200, 1000
-    tv = Tv(W / 2, H / 2 + 8, 1010, 5)
+    """One song twice: on the light wall by day, on the dark wall at night, side by side. Each TV
+    has as much wall above and below it as beside it: 90 px around its frame."""
+    W, H = 1200, 758
+    tv = Tv(W / 2, H / 2, 1010, 5)
     day, rim = daylight_room(W, H, tv)
     tv_frame(day, tv, os.path.join(RENDERS, "day.png"), rim, sheen=0.03, window=0.10)
     night, light = dark_room(W, H, tv, light_colors("night"), 0.5)

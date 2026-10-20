@@ -4,24 +4,26 @@ Android TV "now playing" screen for Home Assistant and Music Assistant. Built fo
 TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
-parts folded away in `<details>`) and is written like everything else (see the writing rules): the
-tagline ("See what you're listening to."), what Klangbild is and what it does, its views, setup
-with an optional third step that lets Home Assistant open it, the remote (and that its buttons can
-be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+parts folded away in `<details>`) and is written like everything else (see the writing rules): what
+Klangbild is and what it does, its views, the devices it runs on (Android TV 9 or later; on a
+streaming stick's own system, the Android it is built on decides, and one not built on Android
+can't install it), setup with an optional third step that lets Home Assistant open it, the remote
+(and that its buttons can be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
 button under the first paragraph, which downloads the newest APK at once
-(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). The
-first picture (the name over its tagline above the TV) and the button come in a light and a dark
-version, switched by the reader's theme (`<picture>` with `prefers-color-scheme`): by day the light
-wall in daylight with the lights behind the TV off, as they are by day; at night the dark wall with
+(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). No
+mockup carries text of its own. The first picture (the TV alone in the middle of its wall) and the
+button come in a light and a dark version, switched by the reader's theme (`<picture>` with
+`prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
+they are by day; at night the dark wall with
 the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
 be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
 another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
 on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
 light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
-by day and at night.
+by day and at night, each TV with as much wall above and below it as beside it.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
 a ring and a light dot, blue on night blue), drawn from it by `tools/make_launcher_assets.py` for
 the banner, the icons and the button, never scaled from a bitmap. Release notes are

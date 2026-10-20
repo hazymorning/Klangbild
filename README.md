@@ -2,12 +2,12 @@
 
 Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
-[![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
+[![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#devices)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
-  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="Klangbild, see what you're listening to: the album cover on a TV next to the song that plays">
+  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that plays">
 </picture>
 
 When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.
@@ -53,9 +53,15 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 </details>
 
+## Devices
+
+Klangbild runs on TVs and boxes with Android TV 9 or later, Google TV included. Versions 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
+
+On Fire OS, the system of many streaming sticks, Klangbild should work from version 7 on, which is built on Android 9, but it hasn't been tried there yet. Fire OS 6 and older are built on older versions of Android, so the installation fails with a message that the package can't be parsed. The newest sticks run Vega OS, which isn't built on Android and can't install Android apps at all. You'll find your version in the settings, under About.
+
 ## Setup
 
-You need a TV with Android TV 9 or later and Home Assistant. Android TV 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
+You need a TV with Android TV 9 or later and Home Assistant.
 
 <details>
 <summary><b>1. Install Klangbild on your TV</b></summary>
