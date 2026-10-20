@@ -1,7 +1,5 @@
 # Klangbild
 
-See what you're listening to.
-
 Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
 [![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#setup)
