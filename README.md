@@ -7,7 +7,7 @@ Klangbild is a now playing screen for Android TV that works with Home Assistant.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
-  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that plays">
+  <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
 When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.
@@ -16,9 +16,9 @@ When you're listening to music at home, the TV usually just sits there. Switched
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant and shows the album cover with the song and the artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
+Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
 
-During the day the background is light, and at night it turns dark. Since the screen may stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
+During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
@@ -30,7 +30,7 @@ There's also a landscape you can switch to, but for now it's only a placeholder.
 
 ![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
 
-What I'd like to have here one day is a modern audio visualizer, one that moves with the music but calmly enough that you'd happily leave it on all evening in your living room. The landscape is only standing in until I've found the right way to build one.
+One day the landscape will make way for a modern audio visualizer that moves with the music but stays calm enough to leave on all evening in the living room. Until I've found the right way to build one, it's only standing in.
 
 </details>
 
@@ -57,7 +57,7 @@ What I'd like to have here one day is a modern audio visualizer, one that moves 
   </tr>
 </table>
 
-Press down on the remote to open the quick settings, where you can choose how much of your queue you'd like to see. Klangbild learns what's coming up from Music Assistant, so the list needs it, and without it Cover Flow can only show the covers that have already played.
+Press the down button on the remote to open the quick settings, where you can choose how much of your queue you see. The list only works once you've added Music Assistant during setup, and until then Cover Flow mostly shows the covers of songs you've already heard.
 
 </details>
 
@@ -71,7 +71,7 @@ You need Home Assistant and a TV or box with Android TV 9 or later.
 <summary><b>1. Install Klangbild on your TV</b></summary>
 <br>
 
-Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself. The easiest way is to open the release page in the free Downloader app, select the APK and allow the installation from unknown sources when Android asks.
+Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself. The easiest way is to open the release page in the free Downloader app, select the APK and allow installs from unknown sources when Android asks.
 
 </details>
 
@@ -79,7 +79,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 <summary><b>2. Connect it to Home Assistant</b></summary>
 <br>
 
-The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, so there's nothing to type with the remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, though none of that has to happen right away.
+The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, so there's nothing to type with the remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
 </details>
 
@@ -119,7 +119,7 @@ Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 hav
 <summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
 <br>
 
-Many streaming sticks run Fire OS, which is built on Android, so whether Klangbild installs most likely depends on the Android version underneath. Fire OS 7 and later are based on Android 9 or newer, so Klangbild should work on them, though it hasn't been tried on one yet. Fire OS 6 and older are based on older versions of Android, which is probably why the installation fails there. The newest sticks run Vega OS, which isn't built on Android at all, so Android apps most likely can't be installed on them.
+Many streaming sticks run Fire OS, which is built on Android, and the Android version underneath most likely decides whether Klangbild installs. Fire OS 7 and later are built on Android 9 or newer, which should be enough, though Klangbild hasn't been tried on one of those sticks yet. On Fire OS 6 and earlier it won't install, probably because their Android is too old. The newest sticks run Vega OS, which isn't Android at all, so Android apps most likely won't install on them.
 
 </details>
 
@@ -136,7 +136,7 @@ Many streaming sticks run Fire OS, which is built on Android, so whether Klangbi
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-In the settings you can change what some of the buttons do, so if you'd rather turn the volume with up and down, you can.
+In the settings you can change what some of the buttons do, for example to have up and down change the volume.
 
 </details>
 
@@ -144,7 +144,7 @@ In the settings you can change what some of the buttons do, so if you'd rather t
 <summary><b>Contributing</b></summary>
 <br>
 
-Klangbild is a small project I work on for the joy of it, and help is very welcome. Whether you'd like to fix a bug, add a language or bring it to another kind of TV, you can open a pull request, or start a discussion first if you'd like to talk it over.
+I work on Klangbild for the joy of it, and any help is welcome. A bug fix or a translation can go straight into a pull request, while bigger ideas, like bringing it to another kind of TV, are easier to talk over in a discussion first.
 
 </details>
 
