@@ -119,8 +119,11 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
     })
 }
 
-/** The quick settings' colors: like the menu's, near-neutral, on black or on paper. */
-private class QuickColors(
+/**
+ * The quick settings' colors: like the menu's, near-neutral, on black or on paper. Every ink
+ * keeps 4.5:1 on the veil, and the chosen entry's inks on the veil lit by the band as well.
+ */
+internal class QuickColors(
     val veil: Color,
     val band: Color,
     val label: Color,
@@ -144,7 +147,8 @@ private class QuickColors(
                 QuickColors(
                     veil = c(CoverPalette.PAPER, 0.006f),
                     band = Color(0xFF0D0C0B),
-                    label = c(0.52f),
+                    // 0.52 until 2026.10, which gave only 4.25:1 on the paper.
+                    label = c(0.50f),
                     labelFocus = c(0.42f),
                     value = c(0.45f),
                     valueFocus = c(0.24f),
