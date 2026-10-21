@@ -25,18 +25,8 @@ During the day the background is light, and at night it turns dark. Since the TV
 
 There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
-<details>
-<summary><b>More about the landscape</b></summary>
-<br>
-
-![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
-
-You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
-
-</details>
-
 > [!NOTE]
-> Klangbild is being built in two phases. The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, that's the place to say so.
+> **Klangbild is being built in two phases.** The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, that's the place to say so.
 
 ## More
 
@@ -62,6 +52,16 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 </table>
 
 Press the down button on the remote to open the quick settings, where you can choose how much of your queue you see. The list only works once you've added Music Assistant during setup, and until then Cover Flow mostly shows the covers of songs you've already heard.
+
+</details>
+
+<details>
+<summary><b>The landscape</b></summary>
+<br>
+
+![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
+
+You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
 
 </details>
 
@@ -114,7 +114,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 
 <a name="devices"></a>
 <details>
-<summary><b>Devices</b></summary>
+<summary><b>Device support</b></summary>
 <br>
 
 Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 haven't been tried on a real TV yet, so if something looks wrong on one of them, please [open an issue](https://github.com/hazymorning/Klangbild/issues/new?template=bug_report.yml).

@@ -6,8 +6,8 @@ The UI speaks English (default) and German (`values-de`); code, comments, the RE
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
 Klangbild is and what it does, how the queue can show, the landscape in one line as the working
-feature it is (its fold, "More about the landscape", holds its picture and what it shows), then a
-short note (GitHub's `> [!NOTE]`, four sentences) on the two phases: the now playing screen,
+feature it is (its fold, "The landscape" under "More", holds its picture and what it shows), then a
+short note (GitHub's `> [!NOTE]`, four sentences, the first in bold as the user asked) on the two phases: the now playing screen,
 practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
 day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
 the Discussions, where anyone who would like the landscape to stay can say so, the devices it runs on (Android TV 9 or later; folded
@@ -15,9 +15,9 @@ away, streaming sticks with a system of their own, where the Android it is built
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
 first picture and what it does, with the day and night picture; the queue (its three pictures
-inside its fold), setup (its three steps folded inside it), devices, the remote, contributing and
-privacy are each one line to click under "More" (the badge's `#devices` anchor stands before
-devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
+inside its fold), the landscape, setup (its three steps folded inside it), device support, the
+remote, contributing and privacy are each one line to click under "More" (the badge's `#devices`
+anchor stands before device support). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
