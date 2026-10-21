@@ -15,7 +15,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.color.Appearance
@@ -137,7 +136,7 @@ fun FlowTheater(
             if (song == old.middle.track.key) text.release(newer)
             if (target == old) return@collect
             val kind = changeOf(old, target)
-            val plan = plan(old, target, kind, FlowGeometry(target.middle.scene.layout))
+            val plan = plan(old, target, kind, FlowGeometry(target.middle.scene.layout), newLook = takesNewLook(old, target, kind))
             current = target
             if (kind == FlowChange.SIDES && plan.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha }) {
                 // Only a card's scene was renewed (the same picture in the same light): nothing to watch.
@@ -197,13 +196,9 @@ fun FlowTheater(
     val level: () -> Float = { dim.light * intensity() }
     // The text cross-fades with a new look of the same track; a new song's lines leave and rise.
     val softText = kind == FlowChange.SOFT || kind == FlowChange.WALL
-    // The whole strip cross-fades when its cards take a new look (a better cover, the other wall);
-    // a song only described anew changes its text alone.
-    val restrip = prev != null && when (kind) {
-        FlowChange.SOFT, FlowChange.WALL -> !sameCards(prev, current)
-        FlowChange.TEXT -> !samePicture(prev.middle.scene, middle.scene)
-        else -> false
-    }
+    // The strip takes a new look (a better cover, the other wall): each card goes over from its
+    // texture before to its new one. A song only described anew changes its text alone.
+    val restrip = prev != null && takesNewLook(prev, current, kind)
     val oldStrip = prev?.middle?.scene?.takeIf { restrip }
     val party = rememberPartyCode(partyCode, setOfNotNull(appearance, oldStrip?.appearance), geometry) { url, wall -> partySign(url, wall, geometry) }
     val newWall: () -> Float = {
@@ -244,28 +239,26 @@ fun FlowTheater(
             BaseWall(wall, alpha = newWall, beyondOnly = true)
         }
         WallLayer(middle.scene, alpha = newWall, level = level, shift = { balance().cards }, column = { balance().column })
-        if (prev != null && oldStrip != null) {
-            // A new look of the same strip: the old cards stay underneath while the new ones come up.
-            FlowStrip(
-                resting(prev), geometry, oldStrip.appearance, oldStrip.palette.wall.asColor(),
-                dim = { dim.picture }, edges = !oldStrip.coverField, shift = { balance().cards },
-                sign = party.on(oldStrip.appearance), signAlpha = party.shown,
-            )
+        // One strip, also while it takes a new look: each card is the mix of its texture before
+        // and its new one, so a card never shows through another and its mirror image keeps its
+        // strength (until 2026.10 the new strip came up over the old one, the mirror images grew
+        // denser on the way and fell back in one frame when the change landed).
+        val before = remember(oldStrip, party.on(oldStrip?.appearance ?: appearance)) {
+            oldStrip?.let { FlowLook(it.appearance, it.palette.wall.asColor(), !it.coverField, party.on(it.appearance)) }
         }
         FlowStrip(
             cards = motions,
             geometry = geometry,
             appearance = appearance,
             wall = wall,
-            // A new look comes up over the old strip as one picture, so its cards beside the middle
-            // never show through the middle card while it fades in.
-            modifier = Modifier.graphicsLayer { alpha = if (restrip) p(0, total, Motion.Sine) else 1f },
-            time = { if (softText) 1f else at() },
+            time = at,
             dim = { dim.picture },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
             sign = party.on(appearance),
             signAlpha = party.shown,
+            before = before,
+            look = { if (restrip) p(0, total, Motion.Sine) else 1f },
         )
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             if (prevModel != null && prevPlan != null && kind != FlowChange.SIDES) {
@@ -299,6 +292,17 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
     val density = layout.screen.density
     val card = partyCard(url, (layout.art * density).roundToInt(), wall) ?: return null
     return FlowCards.build(card, round = false, cornerPx = layout.radius * density, geometry = geometry, density = density, appearance = wall)
+}
+
+/**
+ * Whether the strip takes a new look from [old] to [new] in a change of [kind]: a better cover or
+ * the other wall for the same song (unless the cards stay as they were), or the next song of the
+ * same card whose cover differs after all.
+ */
+private fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boolean = when (kind) {
+    FlowChange.SOFT, FlowChange.WALL -> !sameCards(old, new)
+    FlowChange.TEXT -> !samePicture(old.middle.scene, new.middle.scene)
+    else -> false
 }
 
 /** Whether [a] and [b] show the same cards in the same places, each with the same picture. */
@@ -349,10 +353,14 @@ private fun resting(flow: FlowData): List<CardMotion> = flow.cards.mapIndexed { 
  * The text column never passes over a card: where the composition's new balance moves it right,
  * it makes room first and the cards follow; where it moves left, the cards leaving on the
  * screen's right go first.
+ *
+ * When the strip takes a [newLook], a card in both strips goes over from its texture before to
+ * its new one.
  */
-private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry): Plan {
+private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry, newLook: Boolean): Plan {
     val oldPos = HashMap<Long, Float>()
     old.cards.forEachIndexed { i, e -> oldPos[e.id] = (i - old.current).toFloat() }
+    val oldCards = old.cards.associate { it.id to it.scene.card!! }
     val newPos = HashMap<Long, Float>()
     new.cards.forEachIndexed { i, e -> newPos[e.id] = (i - new.current).toFloat() }
     val oldMiddle = old.middle.id
@@ -401,7 +409,7 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
         val from = was(e.id)
         out += when {
             e.id in rolling -> CardMotion(e.id, card, dir * (to + run!!), dir * to, move = turn, rolls = true)
-            from != null -> CardMotion(e.id, card, dir * from, dir * to, move = turn)
+            from != null -> CardMotion(e.id, card, dir * from, dir * to, move = turn, was = oldCards.getValue(e.id).takeIf { newLook && it !== card })
             else -> CardMotion(e.id, card, dir * to, dir * to, fromAlpha = 0f, fade = turn)
         }
     }

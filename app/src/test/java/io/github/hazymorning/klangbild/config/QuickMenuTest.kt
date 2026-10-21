@@ -33,11 +33,20 @@ class QuickMenuTest {
         assertThat(rows.map { it.item }).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS).inOrder()
         assertThat(rows[2].label).isEqualTo("Songtext")
         assertThat(rows[2].value).isEqualTo("An")
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.OFF), de)[2].value).isEqualTo("Aus")
-        // On, but this song has no synced words.
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de)[2].value).isEqualTo("Keiner")
+        assertThat(rows[2].muted).isFalse()
+        val off = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.OFF), de)[2]
+        assertThat(off.value).isEqualTo("Aus")
+        assertThat(off.muted).isFalse()
+        // On, but this song has no synced words: still On, said quietly (a word of its own read
+        // like the words switched off).
+        val none = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de)[2]
+        assertThat(none.value).isEqualTo("An")
+        assertThat(none.muted).isTrue()
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), TestTexts.english())[2].value).isEqualTo("On")
+        // No other entry is ever quiet.
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de).filter { it.muted }.map { it.item }).containsExactly(QuickItem.LYRICS)
         // Its place is as wide as any of its values.
-        assertThat(rows[2].values).containsExactly("An", "Aus", "Keiner")
+        assertThat(rows[2].values).containsExactly("An", "Aus")
         // Without Music Assistant, or without a song: no entry.
         assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = null), de).map { it.item }).doesNotContain(QuickItem.LYRICS)
         assertThat(QuickMenu.rows(lights, ctx, TestTexts.english())[2].label).isEqualTo("Lyrics")

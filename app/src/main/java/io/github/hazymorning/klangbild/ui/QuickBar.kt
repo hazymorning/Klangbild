@@ -38,6 +38,7 @@ import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lamp
+import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LinearImage
@@ -94,11 +95,13 @@ object QuickGrid {
  * The quick settings along the bottom edge: they rise a little and fade in when down is
  * pressed, and sink back when they close. Each entry is its name in the quiet ink with its value
  * under it; the chosen one is lit from below by the same soft band of light as the menu's
- * chosen line, its words at full strength (no frame, no chip, no icon). The entries keep their
- * places whatever their values say, so nothing jumps while a value changes.
+ * chosen line, its words at full strength (no frame, no chip, no icon). A value that holds but
+ * has nothing to show now stands in a quieter ink. The entries keep their places whatever their
+ * values say, so nothing jumps while a value changes. While the queue's way just chosen is
+ * [preparing], its value shimmers ([Shimmer]).
  */
 @Composable
-fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier) {
+fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
     // The last state stays while the row sinks away.
     val last = remember { arrayOfNulls<QuickState>(1) }
     if (quick != null) last[0] = quick
@@ -111,16 +114,24 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
     val state = quick ?: last[0] ?: return
     // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's size,
     // which would cut its ground off at the screen's edges while it moves.
-    QuickBar(state, appearance, modifier.graphicsLayer {
-        val v = shown.value
-        alpha = v
-        translationY = (1f - v) * QuickGrid.RISE * density
-        compositingStrategy = CompositingStrategy.ModulateAlpha
-    })
+    QuickBar(
+        state,
+        appearance,
+        modifier.graphicsLayer {
+            val v = shown.value
+            alpha = v
+            translationY = (1f - v) * QuickGrid.RISE * density
+            compositingStrategy = CompositingStrategy.ModulateAlpha
+        },
+        preparing,
+    )
 }
 
-/** The quick settings' colors: like the menu's, near-neutral, on black or on paper. */
-private class QuickColors(
+/**
+ * The quick settings' colors: like the menu's, near-neutral, on black or on paper. Every ink
+ * keeps 4.5:1 on the veil, and the chosen entry's inks on the veil lit by the band as well.
+ */
+internal class QuickColors(
     val veil: Color,
     val band: Color,
     val label: Color,
@@ -128,6 +139,27 @@ private class QuickColors(
     val value: Color,
     val valueFocus: Color,
 ) {
+    /**
+     * A value that holds but has nothing to show now (the song's words on, for a song without
+     * them): as quiet as the names. No ink of its own: the screen keeps its few levels.
+     */
+    val valueMuted: Color get() = label
+
+    /**
+     * A value's ink: full while its entry is chosen. A [muted] one stays quiet, and chosen it is
+     * no brighter than another value at rest, as a dimmed line in the menu is.
+     */
+    fun valueInk(focused: Boolean, muted: Boolean): Color = when {
+        muted -> if (focused) value else valueMuted
+        else -> if (focused) valueFocus else value
+    }
+
+    /**
+     * The ink a shimmering value waits in, one step quieter than its own: the name's ink, chosen
+     * or at rest. The band brings its own ink back as it passes.
+     */
+    fun waitingInk(focused: Boolean): Color = if (focused) labelFocus else label
+
     companion object {
         fun of(appearance: Appearance): QuickColors {
             fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
@@ -144,7 +176,8 @@ private class QuickColors(
                 QuickColors(
                     veil = c(CoverPalette.PAPER, 0.006f),
                     band = Color(0xFF0D0C0B),
-                    label = c(0.52f),
+                    // 0.52 until 2026.10, which gave only 4.25:1 on the paper.
+                    label = c(0.50f),
                     labelFocus = c(0.42f),
                     value = c(0.45f),
                     valueFocus = c(0.24f),
@@ -155,7 +188,7 @@ private class QuickColors(
 }
 
 @Composable
-fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Modifier) {
+fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
     val colors = remember(appearance) { QuickColors.of(appearance) }
     val labelStyle = remember { textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT) }
     val valueStyle = remember { textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT) }
@@ -218,15 +251,21 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
             key(row.key) {
                 val focused = i == cursor
                 val labelColor by animateColorAsState(if (focused) colors.labelFocus else colors.label, tween(240, easing = Motion.Dimmer), label = "quick-label")
-                val valueColor by animateColorAsState(if (focused) colors.valueFocus else colors.value, tween(240, easing = Motion.Dimmer), label = "quick-value")
+                val valueColor by animateColorAsState(colors.valueInk(focused, row.muted), tween(240, easing = Motion.Dimmer), label = "quick-value")
                 val left = lefts[i]
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
+                // The queue's way just chosen is on its way: its value shimmers until the screen shows it.
+                val sweep = if (row.item == QuickItem.QUEUE) rememberSweep(preparing) else null
                 Entry(x = { left - shift }, labelBaseline = QuickGrid.LABEL_BASELINE, valueBaseline = QuickGrid.VALUE_BASELINE, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
                     Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
-                        BasicText(v, style = valueStyle, color = { valueColor.copy(alpha = valueColor.alpha * seen()) }, maxLines = 1)
+                        if (sweep != null) {
+                            ShimmerText(v, valueStyle, sweep, ink = { valueColor }, waiting = colors.waitingInk(focused), alpha = seen)
+                        } else {
+                            BasicText(v, style = valueStyle, color = { valueColor.copy(alpha = valueColor.alpha * seen()) }, maxLines = 1)
+                        }
                     }
                 }
             }

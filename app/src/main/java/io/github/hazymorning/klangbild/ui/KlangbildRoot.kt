@@ -175,8 +175,10 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         }
         // The quick settings rise from the bottom edge over whatever shows (over the landscape on
         // its dark ground); the settings menu lies over everything. Both come and go on their own.
-        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance)
-        MenuOverlay(ui.menu, ui.appearance)
+        // While the queue's way just chosen is being made, their Queue value shimmers.
+        val preparing = ui.queueComing != null
+        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance, preparing = preparing)
+        MenuOverlay(ui.menu, ui.appearance, preparing = preparing)
     }
 }
 

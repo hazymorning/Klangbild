@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -45,10 +46,21 @@ class Scenes(
     private val cache = LinkedHashMap<String, ArtworkScene>()
     private val building = HashMap<String, Job>()
 
+    /**
+     * What scenes are built for now. Another frame lets go of every scene, and of those still
+     * being made for the frame left: a switch to Cover Flow and straight back never waits for a
+     * scene nobody will show, and its own scene starts at once.
+     */
     @Volatile var frame = Frame(ScreenSpec.TV_1080, flow = false)
         set(value) {
-            if (value != field) synchronized(cache) { cache.clear() }
-            field = value
+            synchronized(cache) {
+                if (value != field) {
+                    building.values.forEach { it.cancel() }
+                    building.clear()
+                    cache.clear()
+                }
+                field = value
+            }
         }
 
     /** How many scenes are kept: the cover flow needs a whole strip of them. */
@@ -67,10 +79,10 @@ class Scenes(
      */
     fun prepare(track: TrackInfo, look: Look, done: (ArtworkScene) -> Unit = {}) {
         val key = track.sceneKey
-        val forFrame = frame
         synchronized(cache) {
             if (cache[key]?.let(look::fits) == true || key in building) return
             val old = cache[key]
+            val forFrame = frame
             building[key] = scope.launch { make(track, key, old, look, forFrame, done) }
         }
     }
@@ -94,6 +106,7 @@ class Scenes(
     }
 
     private suspend fun make(track: TrackInfo, key: String, old: ArtworkScene?, look: Look, forFrame: Frame, done: (ArtworkScene) -> Unit) {
+        val me = currentCoroutineContext()[Job]
         val scene = try {
             if (old != null) {
                 withContext(dispatcher) { SceneBuilder.relight(old, look.appearance, look.wallTint, look.coverField) }
@@ -107,7 +120,8 @@ class Scenes(
             runCatching { withContext(dispatcher) { build(track, look, forFrame, withCover = false) } }.getOrNull()
         }
         synchronized(cache) {
-            building.remove(key)
+            // Only its own place: the same song's scene for another frame may be on its way by now.
+            if (building[key] === me) building.remove(key)
             if (scene == null || frame != forFrame) return
             cache.remove(key)
             cache[key] = scene
