@@ -30,14 +30,9 @@ class FlowCard(
     val half: Bitmap,
     /** The print's mean lightness (Oklab L), so a bright card beside a dark one can step back. */
     val lightness: Float,
-    /** Whether the card has a mirror image (on the dark gloss) and is a round plate rather than a square print. */
-    private val mirrored: Boolean = false,
-    private val round: Boolean = false,
+    /** The wall the card was made for: on the dark one it has its mirror image, and it is lit as there. */
+    val appearance: Appearance,
 ) {
-    /** Whether [other] covers the same pixels as this card, so the two can be mixed without a layer. */
-    fun sameShape(other: FlowCard): Boolean =
-        mirrored == other.mirrored && round == other.round && full.width == other.full.width && full.height == other.full.height
-
     /** Width and height of the card itself in [full] (pixels), without the border. */
     val sidePx: Int get() = full.width - 2 * PAD
 
@@ -108,7 +103,7 @@ object FlowCards {
         out.prepareToDraw()
         val half = out.scale(out.width / 2, out.height / 2)
         half.prepareToDraw()
-        return FlowCard(out, half, lightness, mirrored = appearance == Appearance.DARK, round = round)
+        return FlowCard(out, half, lightness, appearance)
     }
 
     private fun alpha(a: Float) = (a.coerceIn(0f, 1f) * 255f).roundToInt() shl 24

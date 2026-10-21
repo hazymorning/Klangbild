@@ -87,7 +87,8 @@ class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, 
  * A card that turns between its full and its half-size texture, or takes a new look, is the
  * mix of its textures laid over the wall as one ([mix]): its half-transparent mirror image keeps
  * its strength all the way (until 2026.10 the textures were laid over one another, so the mirror
- * image grew denser as a card turned and fell back in one frame).
+ * image grew denser as a card turned and fell back in one frame). Each texture is lit as on the
+ * wall it was made for, so a card of the look before keeps its light while it gives way.
  *
  * @param time how far the change has come (0..1, linear); each card eases its own stretch.
  * @param dim brightness of the cards (pause).
@@ -180,11 +181,13 @@ fun FlowStrip(
                 val was = c.was?.takeIf { old != null }
                 val now = if (was == null) 1f else come
                 tools.clear()
-                val filter = lights.filter(lit * stepBack(lightness, middleLightness, p, appearance))
+                // A card that belongs to the look before (it leaves with it) is lit as it was.
+                val own = if (card.appearance != appearance && lightsBefore != null) lightsBefore else lights
+                val filter = own.filter(lit * stepBack(lightness, middleLightness, p, card.appearance))
                 tools.add(card, false, now * (1f - half), filter)
                 tools.add(card, true, now * half, filter)
-                if (was != null && old != null && lightsBefore != null) {
-                    val filterBefore = lightsBefore.filter(lit * stepBack(lightness, middleLightness, p, old.appearance))
+                if (was != null && lightsBefore != null) {
+                    val filterBefore = lightsBefore.filter(lit * stepBack(lightness, middleLightness, p, was.appearance))
                     tools.add(was, false, (1f - now) * (1f - half), filterBefore)
                     tools.add(was, true, (1f - now) * half, filterBefore)
                 }
@@ -197,7 +200,10 @@ fun FlowStrip(
                 for (j in 0 until 8) tools.dst[j] = (tools.dp[j] + if (j % 2 == 0) dx else 0f) * density
                 val lit = geometry.light(0f) * d
                 tools.clear()
-                if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else come, lights.filter(lit))
+                // Until the new wall's sign is made, the one before stands in: lit as before, so it
+                // never jumps.
+                val signLights = if (sign != null && sign.appearance != appearance && lightsBefore != null) lightsBefore else lights
+                if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else come, signLights.filter(lit))
                 if (signBefore != null && lightsBefore != null) tools.add(signBefore, false, if (sign == null) 1f else 1f - come, lightsBefore.filter(lit))
                 mix(native, tools, covered, snap = true)
             }
@@ -291,12 +297,18 @@ private class DrawTools {
 
 /**
  * Draws the textures in [tools] onto the quad in [tools].dst at [alpha], each with its share of
- * the mix, as the mix itself would be laid over what lies beneath. One texture is one quad. For
- * several, laying one over the other would count every half-transparent pixel twice (the mirror
- * image above all), so what lies beneath is darkened once by the card's own coverage and then
- * each texture adds its share of light: exactly the mix, with no layer. Textures of different
- * shapes (a mirror image on the dark wall but not on paper, a round plate and a square cover)
- * do not darken alike, so those are mixed in a small layer of the card's own.
+ * the mix, as the mix itself would be laid over what lies beneath. One texture is one quad.
+ *
+ * A card turning between its own two textures is drawn without a layer, since that happens on
+ * every turn. On the dark wall, laying one over the other would count its half-transparent
+ * mirror image twice, so what lies beneath (the black floor) is darkened once by the card and
+ * then each texture adds its share of light, which is exactly the mix. On paper there is no mirror
+ * image, and the print is opaque, so the full texture goes beneath, just strong enough that the
+ * half-size one laid over it leaves the card at [alpha], and the edges stay as crisp as at rest.
+ *
+ * Textures of different cards (a new look: another cover, which may have clear parts, or the other
+ * wall) are mixed in a small layer of the card's own, exactly whatever they hold. That happens
+ * only now and then, for a moment.
  */
 private fun mix(canvas: android.graphics.Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
     val n = tools.count
@@ -306,13 +318,21 @@ private fun mix(canvas: android.graphics.Canvas, tools: DrawTools, alpha: Float,
         quad(canvas, first, tools.halves[0], alpha, tools.filters[0]!!, tools, snap = snap && !tools.halves[0])
         return
     }
-    var alike = true
-    for (j in 1 until n) if (!tools.textures[j]!!.sameShape(first)) alike = false
-    if (alike) {
+    var own = true
+    for (j in 1 until n) if (tools.textures[j] !== first) own = false
+    if (own && first.appearance == Appearance.DARK) {
         quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], mode = tools.beneath)
         for (j in 0 until n) {
             quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = tools.add)
         }
+    } else if (own && n == 2) {
+        // Full beneath at a(1 - h) / (1 - a h), half over at a h: together exactly a, for any a.
+        val full = if (tools.halves[0]) 1 else 0
+        val half = 1 - full
+        val over = alpha * tools.weights[half]
+        val beneath = if (over >= 1f) 0f else (alpha * tools.weights[full] / (1f - over)).coerceIn(0f, 1f)
+        quad(canvas, first, false, beneath, tools.filters[full]!!, tools, snap = snap)
+        quad(canvas, first, true, over, tools.filters[half]!!, tools, snap = false)
     } else {
         val d = tools.dst
         val b = tools.bounds

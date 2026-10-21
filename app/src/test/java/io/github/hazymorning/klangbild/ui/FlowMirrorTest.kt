@@ -21,8 +21,11 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
+import io.github.hazymorning.klangbild.ui.flow.FlowLook
 import io.github.hazymorning.klangbild.ui.flow.FlowStrip
+import io.github.hazymorning.klangbild.ui.stage.asColor
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -95,6 +98,36 @@ class FlowMirrorTest {
             for (i in 1 until values.size) assertThat(abs(values[i] - values[i - 1])).isLessThan(3f)
             assertThat(values.max()).isAtMost(max(values.first(), values.last()) + 1f)
         }
+    }
+
+    @Test
+    fun aPictureWithClearPartsGivesWayToTheSongsOwnWithoutADarkFlash() {
+        // On paper a station's logo, clear around its mark, gives way to the song's own cover as
+        // Music Assistant finds it. The print goes over evenly and never darkens beyond both ends
+        // (in 2026.10.3 the paper behind the logo's clear parts was cleared and came back slowly).
+        val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.LIGHT, flow = true)
+        val geometry = FlowGeometry(scene.layout)
+        val cover = scene.card!!
+        val side = cover.sidePx
+        val logo = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
+        val was = FlowCards.build(logo, round = false, cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
+        val paper = scene.palette.wall.asColor()
+        val cards = listOf(CardMotion(0, cover, 0f, 0f, was = was))
+        var look by mutableFloatStateOf(0f)
+        compose.setContent {
+            Box(Modifier.fillMaxSize().background(paper)) {
+                FlowStrip(cards, geometry, Appearance.LIGHT, paper, edges = false, before = FlowLook(Appearance.LIGHT, paper, edges = false, sign = null), look = { look })
+            }
+        }
+        val seen = ArrayList<Float>()
+        for (step in 0..40) {
+            look = step / 40f
+            compose.waitForIdle()
+            seen += print(capture(), geometry, 0f)
+        }
+        assertThat(seen.min()).isAtLeast(min(seen.first(), seen.last()) - 2f)
+        for (i in 1 until seen.size) assertThat(abs(seen[i] - seen[i - 1])).isLessThan(6f)
     }
 
     /**

@@ -315,10 +315,10 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val labelColor by animateColorAsState(label, tween(260, easing = Motion.Dimmer), label = "label")
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
-    // The queue's way just chosen is on its way: the chosen Queue line's value waits in the name's
-    // ink and shimmers until the screen shows it. A line at rest has no quieter ink left to wait in
-    // that still reads well, so it stays as it is, and a pass running as the cursor leaves ends in
-    // the line's own ink.
+    // The queue's way just chosen is on its way: the chosen Queue line's value waits in the quiet
+    // ink of a name at rest (its own name stands brighter than its value) and shimmers until the
+    // screen shows it. A line at rest has no quieter ink left to wait in that still reads well, so
+    // it stays as it is, and a pass running as the cursor leaves ends in the line's own ink.
     val sweep = if (row.entry == MenuEntry.QUEUE) rememberSweep(preparing && focused) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
