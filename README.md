@@ -57,18 +57,6 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 With the queue off, the album cover stands on its own and the last line names the next song. As a list, the songs to come line up beside the cover, which needs Music Assistant, and Cover Flow shows the covers in your queue side by side. You switch between them in the quick settings.
 
-## Devices
-
-Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
-
-<details>
-<summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
-<br>
-
-Fire OS, the system on many streaming sticks, is built on Android, and the Android version underneath is most likely what decides whether Klangbild can be installed. Fire OS 7 and later are built on Android 9 or newer, so it should work there, though it hasn't been tried on one yet. Fire OS 6 and older are built on older versions, which is probably why the installation fails there with a message that the package can't be parsed. The newest sticks run Vega OS, which isn't built on Android, so Android apps most likely can't be installed on them at all. You'll find your version in the settings, under About.
-
-</details>
-
 ## Setup
 
 You need a TV with Android TV 9 or later and Home Assistant.
@@ -114,7 +102,28 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 
 </details>
 
-## Remote
+## More
+
+<a name="devices"></a>
+<details>
+<summary><b>Devices</b></summary>
+<br>
+
+Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 have only been tried in an emulator so far, so if something looks wrong there, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
+
+<details>
+<summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
+<br>
+
+Fire OS, the system on many streaming sticks, is built on Android, and the Android version underneath is most likely what decides whether Klangbild can be installed. Fire OS 7 and later are built on Android 9 or newer, so it should work there, though it hasn't been tried on one yet. Fire OS 6 and older are built on older versions, which is probably why the installation fails there with a message that the package can't be parsed. The newest sticks run Vega OS, which isn't built on Android, so Android apps most likely can't be installed on them at all. You'll find your version in the settings, under About.
+
+</details>
+
+</details>
+
+<details>
+<summary><b>Remote</b></summary>
+<br>
 
 | Button | Action |
 | --- | --- |
@@ -125,10 +134,20 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 
 In the settings you can change what the buttons do, for example let up and down turn the volume. In the quick settings you can choose how the queue shows, turn on the landscape and add your own Home Assistant buttons, such as one that groups all your speakers.
 
-## Contributing
+</details>
+
+<details>
+<summary><b>Contributing</b></summary>
+<br>
 
 Klangbild is a small project made for the joy of it, and help is very welcome. Whether you'd like to fix a bug, add a language or bring Klangbild to another TV platform, feel free to open a discussion or a pull request.
 
-## Privacy
+</details>
+
+<details>
+<summary><b>Privacy</b></summary>
+<br>
 
 Klangbild doesn't have accounts or tracking. Your Home Assistant login is stored encrypted on the TV and is only sent to your own Home Assistant.
+
+</details>
