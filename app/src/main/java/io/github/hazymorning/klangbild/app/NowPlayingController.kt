@@ -154,6 +154,12 @@ data class UiState(
     val stage: StageData? = null,
     /** How the queue shows: with Cover Flow its strip ([flow]) shows once it is ready, else the [stage]. */
     val queue: QueueDisplay = QueueDisplay.OFF,
+    /**
+     * How the queue is to show, chosen but not on screen yet, while its stage is being made
+     * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
+     * value shimmer meanwhile.
+     */
+    val queueComing: QueueDisplay? = null,
     /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
     val flow: FlowData? = null,
     /** Light wall by day, dark at night (or as set). */
@@ -279,6 +285,9 @@ class NowPlayingController(
     private val quick = QuickControl(host)
     private val seeking = Seeking(host)
 
+    /** The queue's way just chosen, until the screen shows it. */
+    private val queueSwitch = QueueSwitch()
+
     /** The color field's time now (seconds): it runs while music plays, at the motion setting's speed. */
     fun fieldTime(): Double = fieldClock.now()
 
@@ -398,6 +407,7 @@ class NowPlayingController(
             screen = Screen.Rest(RestReason.CONNECTING),
             stage = null,
             flow = null,
+            queueComing = null,
             asleep = false,
             keepScreenOn = true,
             chapter = null,
@@ -627,7 +637,10 @@ class NowPlayingController(
             scenes.frame = scenes.frame.copy(flow = flow)
             strip.clear()
         }
-        if (_ui.value.queue != s.queue) _ui.value = _ui.value.copy(queue = s.queue)
+        if (_ui.value.queue != s.queue) {
+            queueSwitch.chosen(s.queue)
+            _ui.value = _ui.value.copy(queue = s.queue)
+        }
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {
@@ -840,7 +853,10 @@ class NowPlayingController(
         // act on what shows; the quick settings' Queue still names the choice made. One state is
         // published, never one with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
-        _ui.value = if (shown !== ready) shown.copy(quick = quick.state(shown.screen, landscape != null)) else ready
+        val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen, landscape != null)) else ready
+        // The queue's way just chosen shimmers in the quick settings and the menu until this
+        // state shows it.
+        _ui.value = published.copy(queueComing = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // A landscape kept meanwhile goes on gliding toward the weather outside if it comes back.
         landscapeWeather = _ui.value.landscape?.weather
         // The lights follow what shows, a scene that is ready at once included; lights no longer

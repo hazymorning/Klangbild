@@ -106,8 +106,9 @@ class QuickControlTest {
     /** The quick settings have been opened once (the stage's hint ends). */
     private var quickSeen = false
 
-    /** How the queue shows, as the quick settings set it. */
+    /** How the queue shows, as the quick settings set it, and the choice still waiting as it was set. */
     private var queue = QueueDisplay.OFF
+    private var pendingWhileSet: QueueDisplay? = null
 
     /** How often the landscape was left, and called, and the settings menu opened. */
     private var landscapeLeft = 0
@@ -131,6 +132,7 @@ class QuickControlTest {
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
             quickSeen = updated.quickSeen
+            if (updated.queue != queue) pendingWhileSet = this@QuickControlTest.quick.pending
             queue = updated.queue
         }
         override fun send(command: RemoteCommand) = Unit
@@ -144,7 +146,7 @@ class QuickControlTest {
         }
     }
 
-    private val quick = QuickControl(host)
+    private val quick: QuickControl = QuickControl(host)
 
     private fun rows() = quick.state(ui.screen, landscape = false)!!.rows
 
@@ -395,19 +397,26 @@ class QuickControlTest {
         assertThat(quick.landscapeHeld).isTrue()
         fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
         assertThat(queueValue()).isEqualTo("Off")
+        assertThat(quick.pending).isNull()
         // Stepped round to how it was, nothing changes and the landscape stays.
         quick.change()
         quick.change()
         assertThat(queueValue()).isEqualTo("Off")
+        assertThat(quick.pending).isEqualTo(QueueDisplay.OFF)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
+        assertThat(quick.pending).isNull()
         assertThat(landscapeLeft).isEqualTo(0)
         assertThat(quick.landscapeHeld).isTrue()
         // Without Music Assistant only the next track is known: the list is passed over.
         quick.change()
         assertThat(queueValue()).isEqualTo("Cover Flow")
         assertThat(queue).isEqualTo(QueueDisplay.OFF)
+        // Waiting from the press on (the Queue value shimmers), and until the setting has it.
+        assertThat(quick.pending).isEqualTo(QueueDisplay.FLOW)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(pendingWhileSet).isEqualTo(QueueDisplay.FLOW)
+        assertThat(quick.pending).isNull()
         // Chosen, it leaves the landscape: the stage comes to show it.
         assertThat(landscapeLeft).isEqualTo(1)
         assertThat(quick.landscapeHeld).isFalse()
@@ -419,8 +428,10 @@ class QuickControlTest {
         quick.change()
         assertThat(queueValue()).isEqualTo("List")
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(quick.pending).isEqualTo(QueueDisplay.LIST)
         quick.close()
         assertThat(queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(quick.pending).isNull()
     }
 
     @Test
