@@ -5,7 +5,8 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, how the queue can show and the landscape, the devices it runs on (Android TV 9 or later; folded
+Klangbild is and what it does, how the queue can show, the landscape in one line as the placeholder
+it is (its picture folded away under "More about the landscape"), the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
@@ -21,7 +22,7 @@ and the button come in a light and a dark version, switched by the reader's them
 they are by day; at night the dark wall with
 the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
 be: the lights' colors soft on a matte wall, no colorful backgrounds; the queue's three ways side
-by side and the landscape on its own, one after another on the same evening, in one cozy room
+by side (the landscape's picture only in its fold), one after another on the same evening, in one cozy room
 worked out in 3D on a deep winter night (the queue off with a song on its cover colors, the queue
 as a list on the dark wall, Cover Flow; the landscape with stars, a thin moon and the campfire), a
 lamp's
@@ -736,7 +737,9 @@ UI words are given in English with the German in parentheses where it matters.
   figures) in the very middle of a dim pool of light (the user wants it centered; burn-in care
   is the ±6 dp drift, the changing figures and the screen ending after "Turn off after"); one
   plain sentence when something is wrong ("Home Assistant can't be reached.").
-- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a diorama of real paper, not
+- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): only a placeholder, to be
+  replaced by a modern, living-room-friendly audio visualizer once the right approach is found;
+  the README gives it one line and folds its picture away, and no new work goes into it. A diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
   with its grain (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven
   hand, mountains folded from card (the faces toward the sun or moon lit, some light from the
