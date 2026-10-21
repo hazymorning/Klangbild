@@ -10,7 +10,7 @@ feature it is (its fold, "The landscape" under "More", holds its picture and wha
 short note (GitHub's `> [!NOTE]`, four sentences, the first in bold as the user asked) on the two phases: the now playing screen,
 practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
 day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
-the Discussions, where anyone who would like the landscape to stay can say so, the devices it runs on (Android TV 9 or later; folded
+the Discussions and linking the poll (discussion #51) where anyone who would like the landscape to stay can say so, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
@@ -788,7 +788,7 @@ UI words are given in English with the German in parentheses where it matters.
 - **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a full, working feature of
   the first phase, standing in for the second phase's modern music visualizer (at home in a
   living room, not psychedelic), which takes its place once the right approach is found, unless
-  people ask in the Discussions to keep it (the README invites them to); never
+  people ask to keep it in the poll (discussion #51, linked from the README); never
   call it useless or unfinished, just give it little room (the README: one line and a fold), and
   no new work goes into it. A diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
