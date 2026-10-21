@@ -28,7 +28,13 @@ film's song on it: "Klangbild" by hazymorning over the tagline, "Essential Mix, 
 and the button come in a light and a dark version, switched by the reader's theme (`<picture>` with
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
 they are by day; at night the dark wall with
-the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
+the lights in the cover's colors. In the dark version the promo film plays instead
+(`docs/screenshots/film.avif`: 20 s without sound, its last half second fading into its first frame,
+so it loops without a seam); readers whose system asks for less motion keep the still
+(`prefers-reduced-motion`). The film is an animated AVIF because GitHub plays one by itself and loops
+it. A video uploaded to GitHub only starts when clicked, never loops and sits under a bar with its
+file name, a `<video>` tag hasn't played for signed-in readers since October 2026, and a GIF bands
+the light on the wall. The mockups stay calm and real, as a photograph of a room would
 be: the lights' colors soft on a matte wall, no colorful backgrounds; the queue's three ways side
 by side in its fold (the landscape's picture only in its own), one after another on the same evening, in one cozy room
 worked out in 3D on a deep winter night (the queue off with a song on its cover colors, the queue
@@ -89,6 +95,7 @@ python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what 
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
 python3 tools/make_readme_pictures.py                          # README mockups + download button (Pillow, numpy)
+ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's film from the promo film's MP4 (kept outside the repository)
 ```
 
 - Local SDK: `local.properties` → `sdk.dir=/opt/android-sdk` (not committed). compileSdk 37,
