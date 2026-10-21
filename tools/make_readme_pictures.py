@@ -811,16 +811,16 @@ class Room:
         return to_srgb(gray + (img - gray) * 0.88), (light * paint).astype(np.float64) * exposure / wb
 
 
-def views():
-    """The three views, each on the TV in the same room on a winter night: over a walnut
-    sideboard, lit by a table lamp and three candles. The record sleeve wears the cover of the day
-    and night picture's song."""
+def queue_and_landscape():
+    """The queue's three ways and the landscape, each on the TV in the same room on a winter
+    night: over a walnut sideboard, lit by a table lamp and three candles. The record sleeve wears
+    the cover of the day and night picture's song."""
     room = Room()
     tv = Tv(Room.W / 2, Room.VY, 1260, 9)
     # The day and night song's cover, cut from its render inside its rounded corners (the artwork: 368 dp at 88 dp, 2 px per dp).
     cover = Image.open(os.path.join(RENDERS, "night.png")).convert("RGB").crop((192, 188, 896, 892))
     photo, light = room.photograph(tv, cover)
-    for screen, name in (("single-cover", "mockup-single-cover"), ("cover-flow", "mockup-cover-flow"), ("landscape", "mockup-landscape")):
+    for screen, name in (("queue-off", "mockup-queue-off"), ("queue-list", "mockup-queue-list"), ("cover-flow", "mockup-cover-flow"), ("landscape", "mockup-landscape")):
         img = photo.copy()
         tv_frame(img, tv, os.path.join(RENDERS, screen + ".png"), light * 0.6)
         save(img, name + ".jpg")
@@ -919,7 +919,7 @@ def download_button(scale=4, light=False):
 if __name__ == "__main__":
     now_playing()
     now_playing_light()
-    views()
+    queue_and_landscape()
     day_and_night()
     download_button()
     download_button(light=True)

@@ -22,26 +22,32 @@ The background is light during the day and dark at night, and the picture slowly
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-## Views
+## The queue
 
 <table>
   <tr>
     <td width="33%" valign="top">
-      <img src="docs/screenshots/mockup-single-cover.jpg" alt="The Single cover view: a song on its own colors, on a TV in a room lit by a lamp and candles"><br>
-      <b>Single cover</b>
+      <img src="docs/screenshots/mockup-queue-off.jpg" alt="The queue off: one large album cover on its own colors, on a TV in a room lit by a lamp and candles"><br>
+      <b>Off</b>
     </td>
     <td width="33%" valign="top">
-      <img src="docs/screenshots/mockup-cover-flow.jpg" alt="The Cover Flow view: the covers of the queue side by side, on a TV in a room lit by a lamp and candles"><br>
+      <img src="docs/screenshots/mockup-queue-list.jpg" alt="The queue as a list: the next songs with their small covers beside the album cover, on a TV in a room lit by a lamp and candles"><br>
+      <b>List</b>
+    </td>
+    <td width="33%" valign="top">
+      <img src="docs/screenshots/mockup-cover-flow.jpg" alt="The queue in Cover Flow: the covers side by side, on a TV in a room lit by a lamp and candles"><br>
       <b>Cover Flow</b>
-    </td>
-    <td width="33%" valign="top">
-      <img src="docs/screenshots/mockup-landscape.jpg" alt="The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles"><br>
-      <b>Landscape</b>
     </td>
   </tr>
 </table>
 
-Single cover shows one large album cover next to the song details, and Cover Flow shows the covers in your queue side by side. Landscape is a cozy natural scene with a small player in the corner. You can switch views in the quick settings, or press up on the remote to go straight to the landscape.
+With the queue off, the album cover stands on its own and the last line names the next song. As a list, the songs to come line up beside the cover, which needs Music Assistant, and Cover Flow shows the covers in your queue side by side. You switch between them in the quick settings.
+
+## Landscape
+
+![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
+
+The landscape is a cozy natural scene with a small player in the corner. Press up on the remote to go straight to it, or turn it on in the quick settings.
 
 <details>
 <summary><b>More about the landscape</b></summary>
@@ -119,7 +125,7 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-In the settings you can change what the buttons do, for example let up and down turn the volume. In the quick settings you can switch views and add your own Home Assistant buttons, such as one that groups all your speakers.
+In the settings you can change what the buttons do, for example let up and down turn the volume. In the quick settings you can choose how the queue shows, turn on the landscape and add your own Home Assistant buttons, such as one that groups all your speakers.
 
 ## Contributing
 
