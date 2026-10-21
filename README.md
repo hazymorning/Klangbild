@@ -57,7 +57,11 @@ By default, the landscape comes up by itself after three minutes without music. 
 
 With the queue off, the album cover stands on its own and the last line names the next song. As a list, the songs to come line up beside the cover, which needs Music Assistant, and Cover Flow shows the covers in your queue side by side. You switch between them in the quick settings.
 
-## Setup
+## More
+
+<details>
+<summary><b>Setup</b></summary>
+<br>
 
 You need a TV with Android TV 9 or later and Home Assistant.
 
@@ -102,7 +106,7 @@ Replace the two entity IDs with your speaker and your TV. If you also add Klangb
 
 </details>
 
-## More
+</details>
 
 <a name="devices"></a>
 <details>

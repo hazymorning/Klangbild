@@ -10,9 +10,9 @@ it is (its picture folded away under "More about the landscape"), the devices it
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
-pictures (the first one, day and night, the queue's three ways), what it does and the folded
-setup steps; devices, the remote, contributing and privacy are each one line to click under
-"More" (the badge's `#devices` anchor stands before them). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+pictures (the first one, day and night, the queue's three ways) and what it does; setup (its
+three steps folded inside it), devices, the remote, contributing and privacy are each one line
+to click under "More" (the badge's `#devices` anchor stands before devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
