@@ -26,7 +26,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 > [!NOTE]
-> **Klangbild is being built in two phases.** The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, that's the place to say so.
+> **Klangbild is being built in two phases.** The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
 
 ## More
 
