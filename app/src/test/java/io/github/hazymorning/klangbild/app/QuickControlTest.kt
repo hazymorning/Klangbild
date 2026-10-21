@@ -106,8 +106,9 @@ class QuickControlTest {
     /** The quick settings have been opened once (the stage's hint ends). */
     private var quickSeen = false
 
-    /** How the queue shows, as the quick settings set it. */
+    /** How the queue shows, as the quick settings set it, and the choice still waiting as it was set. */
     private var queue = QueueDisplay.OFF
+    private var pendingWhileSet: QueueDisplay? = null
 
     /** How often the landscape was left, and called, and the settings menu opened. */
     private var landscapeLeft = 0
@@ -131,6 +132,7 @@ class QuickControlTest {
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
             quickSeen = updated.quickSeen
+            if (updated.queue != queue) pendingWhileSet = this@QuickControlTest.quick.pending
             queue = updated.queue
         }
         override fun send(command: RemoteCommand) = Unit
@@ -144,7 +146,7 @@ class QuickControlTest {
         }
     }
 
-    private val quick = QuickControl(host)
+    private val quick: QuickControl = QuickControl(host)
 
     private fun rows() = quick.state(ui.screen, landscape = false)!!.rows
 
@@ -240,25 +242,38 @@ class QuickControlTest {
     }
 
     @Test
-    fun `the lyrics entry shows with Music Assistant and a song, says whether this one has words, and OK turns it on and off`() {
+    fun `the lyrics entry shows with Music Assistant and a song, says On quietly for a song without words, and OK turns it on and off`() {
         val song = TrackInfo("Song", listOf("A"), durationMs = 200_000L)
         ui = ui.copy(screen = Screen.Stage(song, PlayerStatus.PLAYING, null))
         quick.open(menuOpen = false)
         // Without Music Assistant's own link, no words can come: no entry.
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
-        fun lyricsValue() = rows().first { it.item == QuickItem.LYRICS }.value
+        fun lyricsRow() = rows().first { it.item == QuickItem.LYRICS }
+        fun lyricsValue() = lyricsRow().value
         assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS).inOrder()
         assertThat(lyricsValue()).isEqualTo("Off")
         quick.move(+2)
         quick.change()
         assertThat(lyrics).isTrue()
-        // Not known yet: on. Known to have none: none. With words: on.
+        // Not known yet: on. Known to have none: still on, said quietly. With words: on.
         assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isFalse()
         ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, null)))
-        assertThat(lyricsValue()).isEqualTo("None")
+        assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isTrue()
+        // OK on the quiet On turns the words off, and on again (still quiet: this song has none).
+        quick.change()
+        assertThat(lyrics).isFalse()
+        assertThat(lyricsValue()).isEqualTo("Off")
+        assertThat(lyricsRow().muted).isFalse()
+        quick.change()
+        assertThat(lyrics).isTrue()
+        assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isTrue()
         ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
         assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isFalse()
         quick.change()
         assertThat(lyrics).isFalse()
         assertThat(lyricsValue()).isEqualTo("Off")
@@ -382,19 +397,26 @@ class QuickControlTest {
         assertThat(quick.landscapeHeld).isTrue()
         fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
         assertThat(queueValue()).isEqualTo("Off")
+        assertThat(quick.pending).isNull()
         // Stepped round to how it was, nothing changes and the landscape stays.
         quick.change()
         quick.change()
         assertThat(queueValue()).isEqualTo("Off")
+        assertThat(quick.pending).isEqualTo(QueueDisplay.OFF)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
+        assertThat(quick.pending).isNull()
         assertThat(landscapeLeft).isEqualTo(0)
         assertThat(quick.landscapeHeld).isTrue()
         // Without Music Assistant only the next track is known: the list is passed over.
         quick.change()
         assertThat(queueValue()).isEqualTo("Cover Flow")
         assertThat(queue).isEqualTo(QueueDisplay.OFF)
+        // Waiting from the press on (the Queue value shimmers), and until the setting has it.
+        assertThat(quick.pending).isEqualTo(QueueDisplay.FLOW)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(pendingWhileSet).isEqualTo(QueueDisplay.FLOW)
+        assertThat(quick.pending).isNull()
         // Chosen, it leaves the landscape: the stage comes to show it.
         assertThat(landscapeLeft).isEqualTo(1)
         assertThat(quick.landscapeHeld).isFalse()
@@ -406,8 +428,10 @@ class QuickControlTest {
         quick.change()
         assertThat(queueValue()).isEqualTo("List")
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(quick.pending).isEqualTo(QueueDisplay.LIST)
         quick.close()
         assertThat(queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(quick.pending).isNull()
     }
 
     @Test

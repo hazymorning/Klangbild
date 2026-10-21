@@ -122,7 +122,8 @@ internal class QuickControl(private val host: ControllerHost) {
                 host.recompute()
             }
             QuickItem.LANDSCAPE -> toggleLandscape()
-            // On and off, at once: the stage changes its text as it does for a new song.
+            // On and off, at once: the stage changes its text as it does for a new song. A quiet On
+            // (a song without words) goes off too.
             QuickItem.LYRICS -> host.settings.let { s -> host.applySettings(s.copy(lyrics = !s.lyrics)) }
             QuickItem.FAVORITE -> addFavorite()
             QuickItem.LIGHTS -> {
@@ -158,6 +159,9 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
     val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
+    /** How the queue is to show, chosen with OK and not taken yet (the presses have not stopped). */
+    val pending: QueueDisplay? get() = pendingQueue
+
     /**
      * Whether the landscape is chosen to show, as the last [state] had it: its entry names and
      * turns that (a landscape kept a moment longer while a song's first scene is made does not
@@ -176,20 +180,21 @@ internal class QuickControl(private val host: ControllerHost) {
     /**
      * Takes how the queue is to show, as chosen in the quick settings. Another choice over the
      * landscape leaves it ([leave]): the stage comes to show it. Stepped round to the one it had,
-     * nothing changes.
+     * nothing changes. The choice counts as waiting until the setting has it, so the screen never
+     * works out a moment with neither (the Queue value would stop shimmering for it).
      */
     private fun applyQueue(leave: Boolean = true) {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
             pictureJob = null
-            pendingQueue.also { pendingQueue = null }
+            pendingQueue
         } ?: return
         val s = host.settings
-        if (next == s.queue) return
         // The setting first: the landscape stays until the stage's first scene is made, and
         // the composition before never shows in between.
-        host.applySettings(s.copy(queue = next))
-        if (!leave) return
+        if (next != s.queue) host.applySettings(s.copy(queue = next))
+        synchronized(host.lock) { if (pendingQueue == next) pendingQueue = null }
+        if (next == s.queue || !leave) return
         if (hold != null) hold = false
         host.hideLandscape()
     }
@@ -385,7 +390,8 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /**
      * The lyrics entry for [track]: only for a song, while Music Assistant (where the words come
-     * from) is connected. None while it is on and Music Assistant has no synced words for the song.
+     * from) is connected. While it is on and Music Assistant has no synced words for the song (or
+     * the song has no length for them to follow), NONE: still On, said quietly.
      */
     private fun lyricsChoice(track: TrackInfo): LyricsChoice? {
         if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null

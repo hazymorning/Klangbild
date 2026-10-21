@@ -5,7 +5,10 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.text.Texts
 
-/** The song's words in the text column: on, off, or on while this song has no synced words. */
+/**
+ * The song's words in the text column: on, off, or on while this song has no synced words
+ * (NONE: the entry still says On, in a quieter ink).
+ */
 enum class LyricsChoice { ON, OFF, NONE }
 
 /** How far the current song's way into the favorites has come. */
@@ -46,8 +49,10 @@ data class QuickKey(val item: QuickItem, val action: Int = -1)
 /**
  * An entry as the quick settings show it: which it is, its name, its value in words, and every
  * value it can show (its place is as wide as the widest of them, so nothing moves when it changes).
+ * A [muted] value holds but has nothing to show now (the song's words are on, and this song has
+ * none), so it stands in a quieter ink.
  */
-data class QuickRow(val key: QuickKey, val label: String, val value: String, val values: List<String> = listOf(value)) {
+data class QuickRow(val key: QuickKey, val label: String, val value: String, val values: List<String> = listOf(value), val muted: Boolean = false) {
     val item: QuickItem get() = key.item
 }
 
@@ -107,10 +112,12 @@ data class QuickContext(
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
-        fun row(item: QuickItem, value: String) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t)))
+        fun row(item: QuickItem, value: String, muted: Boolean = false) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t), muted))
         row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
         row(QuickItem.LANDSCAPE, t[if (ctx.landscape) R.string.on else R.string.off])
-        if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t))
+        // On while this song has no synced words: still On, only quieter. A word of its own for
+        // that ("None") read as if the words had been switched off.
+        if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
         if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
         if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) R.string.off else R.string.on])
@@ -123,13 +130,7 @@ object QuickMenu {
         row(QuickItem.SETTINGS, t[R.string.quick_open])
     }
 
-    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[
-        when (l) {
-            LyricsChoice.ON -> R.string.on
-            LyricsChoice.OFF -> R.string.off
-            LyricsChoice.NONE -> R.string.lyrics_none
-        },
-    ]
+    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) R.string.off else R.string.on]
 
     fun favoriteValue(f: FavoriteState, t: Texts): String = t[
         when (f) {
@@ -167,9 +168,8 @@ object QuickMenu {
      */
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
         QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
-        QuickItem.LYRICS -> LyricsChoice.entries.map { lyricsValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LANDSCAPE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
+        QuickItem.LANDSCAPE, QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[R.string.quick_open])
     }
