@@ -116,7 +116,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 <summary><b>Devices</b></summary>
 <br>
 
-Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 haven't been tried on a real TV yet, so if something looks wrong on one of them, please [open an issue](https://github.com/hazymorning/Klangbild/issues).
+Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 haven't been tried on a real TV yet, so if something looks wrong on one of them, please [open an issue](https://github.com/hazymorning/Klangbild/issues/new?template=bug_report.yml).
 
 <details>
 <summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
