@@ -129,8 +129,14 @@ jobs:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
+      # The speaker's end-to-end test talks to aiosendspin, the server Music Assistant 2.10.7 runs.
+      - name: Sendspin's reference server
+        run: |
+          python3 -m venv "$RUNNER_TEMP/sendspin"
+          "$RUNNER_TEMP/sendspin/bin/pip" install --quiet 'aiosendspin[server]==10.2.0'
+
       - name: Tests and pictures
-        run: ./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true --stacktrace
+        run: ./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true "-Pklangbild.sendspin=$RUNNER_TEMP/sendspin/bin/python" --stacktrace
 
       - name: Upload the pictures
         if: always()

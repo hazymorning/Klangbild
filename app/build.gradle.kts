@@ -87,6 +87,9 @@ android {
                 )
                 // FirstLaunchTest against the stand-in Home Assistant (ci/fake_ha.py): -Pklangbild.fakeHa=http://127.0.0.1:8123
                 (project.findProperty("klangbild.fakeHa") as String?)?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
+                // The speaker against aiosendspin, the server Music Assistant runs (ci/sendspin_server.py):
+                // -Pklangbild.sendspin=/path/to/a/python/with/aiosendspin
+                (project.findProperty("klangbild.sendspin") as String?)?.let { python -> it.systemProperty("klangbild.sendspin", python) }
                 // The picture tests render how the screens look and check nothing themselves (see
                 // Pictures in the tests). The everyday run leaves them out; -Pklangbild.pictures
                 // runs them too, as CI's picture comparison does.
@@ -148,6 +151,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.zxing.core)
     implementation(libs.suncalc)
+    // Curve25519, ChaCha20-Poly1305 and SHA-256 for Sendspin's Noise channel, through the lightweight
+    // API only (no JCA provider is registered): the platform has no X25519 below API 33.
+    implementation(libs.bouncycastle)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)

@@ -35,6 +35,11 @@ BSD 3-Clause License (full text in Protobuf-BSD-3-Clause.txt)
   Protocol Buffers, as repackaged in AndroidX DataStore
   Copyright 2008 Google Inc.
 
+MIT License (full text in BouncyCastle-MIT.txt)
+
+  Bouncy Castle Crypto APIs (bcprov), used for Sendspin's encryption
+  Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.
+
 SIL Open Font License 1.1
 
   Jost, Copyright 2020 The Jost Project Authors (Jost-OFL.txt)
