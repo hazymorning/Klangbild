@@ -282,8 +282,10 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 own buttons, the party code),
                 Seeking (jumps with the remote), SleepControl, LightTargets, HeldStage (the stage
                 kept from before the clock and when it goes; the clock or the landscape held while
-                a song's first scene is made); ControllerHost
-                (what the parts need), Scenes (scene cache + builds off the main thread), Thumbs
+                a song's first scene is made), QueueSwitch (the queue's way chosen and not on screen
+                yet: `UiState.queueComing`); ControllerHost
+                (what the parts need), Scenes (scene cache + builds off the main thread; another
+                frame lets go of the builds for the one left), Thumbs
                 (the list's small covers at their exact size, made ahead, one at a time after the
                 scenes; a cover that took too long stands in as its figure and is asked again),
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
@@ -296,7 +298,7 @@ config/         Settings (+ QueueDisplay (Off / List / Cover Flow), DisplayOptio
                 open at that moment), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
                 QuickMenu (the quick settings' entries and values: Queue, Landscape On / Off, Lyrics
-                On / Off / None, Party code On / Off, Settings),
+                On / Off (a quiet On for a song without words), Party code On / Off, Settings),
                 QuickActions (the own buttons as stored: a name, an entity, a script's variables, the
                 condition: a state or attribute is, is not, is above or below a value; a list counts
                 its entries), OwnValues (the values in the status line as stored),
@@ -331,6 +333,7 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
+                Shimmer (a value whose choice is on its way: a band of its ink passing over it),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
                 held lines), DebugOverlay, landscape/ (Landscape: bake ahead of time on a thread of low
                 priority, the picture on screen on a thread of its own, never the shared ones; 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
@@ -575,9 +578,15 @@ UI words are given in English with the German in parentheses where it matters.
 - **Quick settings** (`QuickMenu`, `QuickBar`; down on the remote): one row along the bottom
   edge, rising 22 dp as it fades in, where the key points: Queue (Off / List / Cover Flow, taken
   0.9 s after the last press so none in between shows, List only with Music Assistant connected;
-  chosen over the landscape, it leaves it), Landscape On / Off (at once), Lyrics On / Off, or
-  None while this song has no synced words (only with Music Assistant connected and a song on
-  stage), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
+  chosen over the landscape, it leaves it; while the way chosen is on its way, from the press
+  until the stage shows it, its value waits in the name's ink and a soft band of its own ink, 64
+  dp, passes over it in 1.2 s, then rests 0.4 s; a pass that has begun always ends, and the
+  menu's chosen Queue line does the same; over the clock, the setup page or trouble nothing is
+  made, so nothing shimmers (`QueueSwitch`, `Shimmer`)), Landscape On / Off (at once), Lyrics On
+  / Off (only with Music Assistant connected and a song on stage; while this song has no synced
+  words it still says On, in the name's ink and chosen no brighter than another value at rest,
+  since a word of its own, "None" (Keiner), read as switched off until 2026.10; OK turns them
+  off), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
   Lights On / Off (off remembers the level), Shuffle On / Off (only where the player can
   shuffle; the sleep timer lives in the menu), then the own buttons, and last Settings: Open,
   the way into all settings. Left and right choose, OK changes, down, up or back close, 20 s
