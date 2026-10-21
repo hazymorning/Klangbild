@@ -1,11 +1,8 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,21 +24,10 @@ internal class StageDim(
     private val breath: State<Float>,
     private val pictureLevel: State<Float>,
     private val textLevel: State<Float>,
-    private val seen: Breath,
 ) {
-    val light: Float
-        get() {
-            val b = breath.value
-            seen.last = b
-            return pause.value * b
-        }
+    val light: Float get() = pause.value * breath.value
     val picture: Float get() = pictureLevel.value
     val text: Float get() = textLevel.value
-}
-
-/** Where the breath was last drawn, so the light glides back from there. */
-internal class Breath {
-    var last = 1f
 }
 
 /** The dimming for [status] ([dimmed]: the link is down) on the wall of [appearance]. */
@@ -67,21 +53,29 @@ internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance:
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "pause-text",
     )
-    val seen = remember { Breath() }
-    val breath: State<Float> = if (status == PlayerStatus.BUFFERING) {
-        rememberInfiniteTransition(label = "buffering").animateFloat(
-            initialValue = 1f,
-            targetValue = 0.7f,
-            animationSpec = infiniteRepeatable(tween(1_600, easing = Motion.Dimmer), RepeatMode.Reverse),
-            label = "breath",
-        )
-    } else {
-        // Made anew each time buffering ends: from where the breath was, back to full light.
-        // At full light already (no buffering before), nothing runs.
-        val from = remember { seen.last }
-        val back = remember { Animatable(from) }
-        if (from < 1f && !LocalStill.current) LaunchedEffect(Unit) { back.animateTo(1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer)) }
-        back.asState()
+    // One value for the breath, so it always carries on from where the light stands: buffering
+    // again while it glides back starts there (until 2026.10 each spell of buffering began at full
+    // light, and the light jumped up).
+    val breath = remember { Animatable(1f) }
+    val buffering = status == PlayerStatus.BUFFERING
+    if (!LocalStill.current) {
+        LaunchedEffect(buffering) {
+            if (buffering) {
+                while (true) {
+                    breath.animateTo(BREATH_LOW, tween(BREATH_MS, easing = Motion.Dimmer))
+                    breath.animateTo(1f, tween(BREATH_MS, easing = Exhale))
+                }
+            } else if (breath.value < 1f) {
+                breath.animateTo(1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer))
+            }
+        }
     }
-    return StageDim(pause, breath, picture, text, seen)
+    return StageDim(pause, breath.asState(), picture, text)
 }
+
+/** The light's lowest point while the speaker buffers, and how long a breath takes each way (ms). */
+private const val BREATH_LOW = 0.7f
+private const val BREATH_MS = 1_600
+
+/** The way back up is the way down played backwards, so the breath rises as it sank. */
+private val Exhale = Easing { 1f - Motion.Dimmer.transform(1f - it) }

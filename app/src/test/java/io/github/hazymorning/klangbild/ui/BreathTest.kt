@@ -48,6 +48,29 @@ class BreathTest {
         assertThat(soon).isLessThan(full)
     }
 
+    @Test
+    fun `buffering again carries on from where the light stands`() {
+        val stage = Fixtures.stage(Fixtures.track(SyntheticCover.SALT_WATER), screen)
+        var status by mutableStateOf(PlayerStatus.BUFFERING)
+        compose.mainClock.autoAdvance = false
+        compose.setContent { Fixtures.Theater(stage, status) }
+        compose.mainClock.advanceTimeBy(1_600)
+        light()
+        // Playing again, the light glides back up; the speaker buffers again before it is there
+        // (until 2026.10 the light then jumped to full at once).
+        status = PlayerStatus.PLAYING
+        compose.mainClock.advanceTimeBy(200)
+        val seen = arrayListOf(light())
+        status = PlayerStatus.BUFFERING
+        repeat(60) {
+            compose.mainClock.advanceTimeBy(16)
+            seen += light()
+        }
+        // The light moves in steps of 1/40; one step at a time is as smooth as it gets.
+        val steps = seen.zipWithNext { a, b -> kotlin.math.abs(b - a) }
+        assertThat(steps.max()).isLessThan(seen.max() * 0.1f)
+    }
+
     /** The wall's light just beside the cover. */
     private fun light(): Float {
         val picture = compose.onRoot().captureToImage().asAndroidBitmap()
