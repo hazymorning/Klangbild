@@ -7,10 +7,10 @@ notes, CI and every other document are English. The README stays short (about 70
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
 Klangbild is and what it does, how the queue can show, the landscape in one line as the working
 feature it is (its fold, "More about the landscape", holds its picture and what it shows), then a
-short note (GitHub's `> [!NOTE]`) on the two phases: the now playing screen, practically finished,
-and a modern music visualizer at home in a living room, not psychedelic, that takes the landscape's
-place, in the works without a date because every approach gets tried properly (nothing promised
-about how), the devices it runs on (Android TV 9 or later; folded
+short note (GitHub's `> [!NOTE]`, four sentences) on the two phases: the now playing screen,
+practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
+day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
+the Discussions, where anyone who would like the landscape to stay can say so, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
@@ -60,6 +60,10 @@ pictures: effort goes into the app, not into documents.
   next song"), no stiff or odd wording that only machine-written text has. The user hates that
   style: in the README it tells a first-time visitor that nobody cared, and the whole project
   loses its first impression. Read every sentence aloud before it goes in.
+- The README never speaks in the first person (no I, me, my, we, our): the user finds it
+  unprofessional there. It talks about Klangbild and to the reader. A text asked to be short says
+  each point once in the fewest natural words, with no reasons, contrasts or examples nobody asked
+  for; count the words before it goes in.
 - No emoji, no em dashes, no dashes as punctuation, no exclamation marks, no bold for emphasis,
   no marketing words (seamless, effortless, elevate, delightful, immersive, robust, powerful,
   crafted), no filler, no poetic fragments. Commit subjects under 60 characters, PR descriptions
@@ -754,7 +758,8 @@ UI words are given in English with the German in parentheses where it matters.
   plain sentence when something is wrong ("Home Assistant can't be reached.").
 - **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a full, working feature of
   the first phase, standing in for the second phase's modern music visualizer (at home in a
-  living room, not psychedelic), which takes its place once the right approach is found; never
+  living room, not psychedelic), which takes its place once the right approach is found, unless
+  people ask in the Discussions to keep it (the README invites them to); never
   call it useless or unfinished, just give it little room (the README: one line and a fold), and
   no new work goes into it. A diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet

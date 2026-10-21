@@ -35,7 +35,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 </details>
 
 > [!NOTE]
-> I'm building Klangbild in two phases. The first is the now playing screen you see here, and it's practically finished. The second is a modern music visualizer, not the psychedelic kind but a calm one for the living room, and once it's ready, it will take the landscape's place. I'm working on it, but I'd rather try every approach properly than rush it, so there's no date yet.
+> Klangbild is being built in two phases. The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, that's the place to say so.
 
 ## More
 
@@ -147,7 +147,7 @@ In the settings you can change what some of the buttons do, for example to have 
 <summary><b>Contributing</b></summary>
 <br>
 
-I work on Klangbild for the joy of it, and any help is welcome. A bug fix or a translation can go straight into a pull request, while bigger ideas, like bringing it to another kind of TV, are easier to talk over in a discussion first.
+Klangbild is a small project made for the joy of it, and any help is welcome. A bug fix or a translation can go straight into a pull request, while bigger ideas, like bringing it to another kind of TV, are easier to talk over in a discussion first.
 
 </details>
 
