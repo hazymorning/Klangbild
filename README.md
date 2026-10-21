@@ -130,7 +130,7 @@ Many streaming sticks run Fire OS, which is built on Android, and the Android ve
 </details>
 
 <details>
-<summary><b>Remote</b></summary>
+<summary><b>TV Remote</b></summary>
 <br>
 
 | Button | Action |
