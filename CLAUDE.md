@@ -5,10 +5,12 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, how the queue can show, the landscape in one line as the placeholder
-it is (its fold, "More about the landscape", holds its picture and the plan: a modern audio
-visualizer that suits a living room takes its place once the right approach is found, nothing
-promised about how), the devices it runs on (Android TV 9 or later; folded
+Klangbild is and what it does, how the queue can show, the landscape in one line as the working
+feature it is (its fold, "More about the landscape", holds its picture and what it shows), then a
+short note (GitHub's `> [!NOTE]`) on the two phases: the now playing screen, practically finished,
+and a modern music visualizer at home in a living room, not psychedelic, that takes the landscape's
+place, in the works without a date because every approach gets tried properly (nothing promised
+about how), the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
@@ -750,9 +752,11 @@ UI words are given in English with the German in parentheses where it matters.
   figures) in the very middle of a dim pool of light (the user wants it centered; burn-in care
   is the ±6 dp drift, the changing figures and the screen ending after "Turn off after"); one
   plain sentence when something is wrong ("Home Assistant can't be reached.").
-- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): only a placeholder, to be
-  replaced by a modern, living-room-friendly audio visualizer once the right approach is found;
-  the README gives it one line and folds its picture away, and no new work goes into it. A diorama of real paper, not
+- **Landscape** (Landschaft, `landscape/`; the window view until 6.3): a full, working feature of
+  the first phase, standing in for the second phase's modern music visualizer (at home in a
+  living room, not psychedelic), which takes its place once the right approach is found; never
+  call it useless or unfinished, just give it little room (the README: one line and a fold), and
+  no new work goes into it. A diorama of real paper, not
   a flat illustration (the smooth paper cut read as a comic) and not a photograph. Every sheet
   with its grain (pulp clouds, fibers, tooth; breaking off at every cut), edges cut by an uneven
   hand, mountains folded from card (the faces toward the sun or moon lit, some light from the
