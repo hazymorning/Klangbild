@@ -22,7 +22,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-There's also a landscape that takes over the screen when the music has stopped for a while, and it changes with the time of day, the seasons and the weather outside.
+There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 <details>
 <summary><b>More about the landscape</b></summary>
@@ -30,12 +30,12 @@ There's also a landscape that takes over the screen when the music has stopped f
 
 ![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
 
-You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, rain falls on screen when it's raining outside. By default the landscape comes up after three minutes without music, which you can change or turn off in the settings, and up on the remote brings it at any time.
+You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
 
 </details>
 
 > [!NOTE]
-> Klangbild is being built in two phases. The first is the now playing screen you see here, and it's practically finished. The second is a modern music visualizer that feels at home in a living room rather than looking psychedelic, and once it's ready, it will take the landscape's place. I'm working on it, but I want to try every approach properly first, so there's no date yet.
+> I'm building Klangbild in two phases. The first is the now playing screen you see here, and it's practically finished. The second is a modern music visualizer, not the psychedelic kind but a calm one for the living room, and once it's ready, it will take the landscape's place. I'm working on it, but I'd rather try every approach properly than rush it, so there's no date yet.
 
 ## More
 
