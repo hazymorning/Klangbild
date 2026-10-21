@@ -17,7 +17,7 @@ Home Assistant open it, the remote (and that its buttons can be changed), an ope
 first picture and what it does, with the day and night picture; the queue (its three pictures
 inside its fold), setup (its three steps folded inside it), devices, the remote, contributing and
 privacy are each one line to click under "More" (the badge's `#devices` anchor stands before
-devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download

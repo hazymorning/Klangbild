@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in Klangbild doesn't work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Issues are kept for bugs, things that are actually broken, so they stay easy to follow. If you have an idea, a wish for a new feature or a question, please start a [discussion](https://github.com/hazymorning/Klangbild/discussions) instead. I'm happy to talk about it there.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you see, and what did you expect to see instead?
+    validations:
+      required: true
+  - type: input
+    id: klangbild-version
+    attributes:
+      label: Klangbild version
+      description: It's shown in the TV's app settings.
+    validations:
+      required: true
+  - type: input
+    id: tv-device
+    attributes:
+      label: TV device and Android TV version
+      description: The model, and the version of Android TV or Fire OS shown in its settings under About.
+    validations:
+      required: true
+  - type: input
+    id: home-assistant
+    attributes:
+      label: Home Assistant version, and Music Assistant if you use it
