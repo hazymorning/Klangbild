@@ -22,7 +22,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-There's also a landscape you can switch to, but for now it's only a placeholder.
+There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 <details>
 <summary><b>More about the landscape</b></summary>
@@ -30,9 +30,12 @@ There's also a landscape you can switch to, but for now it's only a placeholder.
 
 ![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
 
-One day the landscape will make way for a modern audio visualizer that moves with the music but stays calm enough to leave on all evening in the living room. Until I've found the right way to build one, it's only standing in.
+You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
 
 </details>
+
+> [!NOTE]
+> I'm building Klangbild in two phases. The first is the now playing screen you see here, and it's practically finished. The second is a modern music visualizer, not the psychedelic kind but a calm one for the living room, and once it's ready, it will take the landscape's place. I'm working on it, but I'd rather try every approach properly than rush it, so there's no date yet.
 
 ## More
 
