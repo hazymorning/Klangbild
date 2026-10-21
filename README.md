@@ -66,7 +66,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 </details>
 
 <details>
-<summary><b>Setup</b></summary>
+<summary><b>Setup & automation</b></summary>
 <br>
 
 You need Home Assistant and a TV or box with Android TV 9 or later.
@@ -130,7 +130,7 @@ Many streaming sticks run Fire OS, which is built on Android, and the Android ve
 </details>
 
 <details>
-<summary><b>TV Remote</b></summary>
+<summary><b>TV remote</b></summary>
 <br>
 
 | Button | Action |
