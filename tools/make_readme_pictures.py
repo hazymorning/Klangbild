@@ -924,13 +924,14 @@ def download_buttons():
     download_button(light=True)
 
 
-def poll_banner(light=False, top=0.225, sides=(0.02, 0.905), veil=(0.30, 0.62)):
+def poll_banner(light=False, top=0.225, sides=(0.08, 0.965), veil=(0.30, 0.62)):
     """The slim banner under the note that asks whether the landscape should stay and leads to its
     poll: the landscape's mountains behind a veil, at night for dark pages (the README's landscape)
     and the same place by day for light ones, the question on the left and a button on the right.
-    The README shows it at the column's width, about 860 px, so it is drawn at 1800. The band starts
-    at [top] of the render and runs between [sides], inside the tall firs at its edges; [veil] is how
-    much of the landscape shows at the left and the right."""
+    The README shows it at the column's width, about 840 px, so it is drawn at 1800. The band starts
+    at [top] of the render and runs between [sides], which keep the moon whole beside the button
+    (only a fir's tip comes in at the corner); [veil] is how much of the landscape shows at the
+    left and the right."""
     W, H = 1800, 240
     src = os.path.join(ROOT, "app", "build", "screenshots", "landscape", "gallery", "2_summer_2_noon.png") if light \
         else os.path.join(RENDERS, "landscape.png")
@@ -947,15 +948,17 @@ def poll_banner(light=False, top=0.225, sides=(0.02, 0.905), veil=(0.30, 0.62)):
     pad = 76
     title, title_cap = text_mask("Should the landscape stay?", "jost.ttf", 56, 440, tracking=-0.005, kern=True)
     paste(img, title, pad, int(round(H / 2 - 0.70 * 56 / 2)) - title_cap, (12, 24, 52) if light else (242, 246, 252))
-    # The button, built like the download button: rounded a fifth of its height, its words centered on it.
-    label, label_cap = text_mask("Vote in the poll", "dmsans.ttf", 30, 520, kern=True)
-    bh = 84
-    bw = ink_width(label) + 2 * 46
+    # The button, built like the download button: rounded a fifth of its height, its words centered on
+    # it. They are seen at about 18 px on the page, so DM Sans takes that optical size.
+    size = 38
+    label, label_cap = text_mask("Vote in the poll", "dmsans.ttf", size, 520, optical=18, kern=True)
+    bh = 100
+    bw = ink_width(label) + 2 * 54
     bx, by = W - pad - bw, (H - bh) // 2
     button = rounded_box(H, W, (bx, by, bx + bw, by + bh), bh * 0.22)[..., None]
     fill, words = (np.array(NAVY, dtype=np.float64), (242, 246, 252)) if light else (np.array([238.0, 243.0, 250.0]), (12, 24, 52))
     img = img * (1 - button) + fill * button
-    paste(img, label, bx + (bw - ink_width(label)) // 2, int(round(by + bh / 2 - 0.70 * 30 / 2)) - label_cap, words)
+    paste(img, label, bx + (bw - ink_width(label)) // 2, int(round(by + bh / 2 - 0.70 * size / 2)) - label_cap, words)
     # The banner's own corners and a hairline round it, so it stands apart from the page.
     r = 22
     shape = rounded_box(H, W, (0, 0, W, H), r)
