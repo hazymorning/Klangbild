@@ -7,5 +7,4 @@
 *.jar binary
 *.gif binary
 *.webp binary
-*.avif binary
 *.bat text eol=crlf

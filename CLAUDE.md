@@ -28,9 +28,9 @@ film's song on it: "Klangbild" by hazymorning over the tagline, "Essential Mix, 
 and the button come in a light and a dark version, switched by the reader's theme (`<picture>` with
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
 they are by day; at night the dark wall with
-the lights in the cover's colors. In the dark version the promo film plays instead
+the lights in the cover's colors. In both themes the promo film takes the first picture's place
 (`docs/screenshots/film.avif`: 20 s without sound, its last half second fading into its first frame,
-so it loops without a seam); readers whose system asks for less motion keep the still
+so it loops without a seam); only readers whose system asks for less motion see the stills
 (`prefers-reduced-motion`). The film is an animated AVIF because GitHub plays one by itself and loops
 it. A video uploaded to GitHub only starts when clicked, never loops and sits under a bar with its
 file name, a `<video>` tag hasn't played for signed-in readers since October 2026, and a GIF bands
