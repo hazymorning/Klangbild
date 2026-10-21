@@ -326,7 +326,8 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 tick, or a loop of its own for a part shown alone; animateGlide: a list's glide that
                 carries on from its pace),
                 OffMain (bitmaps off the main thread, at once in stills),
-                flow/ (FlowStrip: cards as quads, a sign in the middle card's place; FlowTheater:
+                flow/ (FlowStrip: cards as quads, a card's textures mixed exactly, a sign in the
+                middle card's place, FlowLook: the strip's look before a new one; FlowTheater:
                 keyed strip transitions),
                 theme/Type (Jost + DM Sans, `titleType()`/`textType()`, Figures, ink shift),
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
@@ -499,7 +500,16 @@ UI words are given in English with the German in parentheses where it matters.
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,
   48 dp left of the outermost card and right of the column; every other rule holds. A card is
   one textured quad (print, corners and, on the dark gloss only, its reflection baked; a
-  half-size copy against shimmer, since HWUI has no mipmaps). Side cards at 55% / 40%, and on
+  half-size copy against shimmer, since HWUI has no mipmaps). While a card turns between its two
+  copies, or the strip takes a new look (a better cover, a song of the same card whose cover
+  differs, the other wall: one strip, each card going over from its texture before), the card
+  is the mix of its textures laid over the wall as one: what lies beneath is darkened once by
+  the card, then each texture adds its share (DST_OUT, then ADD; no layer), and textures of
+  different shapes (a mirror image only on the dark wall, a round plate and a square cover)
+  are mixed in a small layer of the card's own. So the half-transparent mirror image never
+  counts twice (until 2026.10 the copies were laid over one another, the mirror image grew
+  denser as a card turned and fell back in one frame, and a new look came up over the old strip
+  with the same jump as it landed; `FlowMirrorTest`). Side cards at 55% / 40%, and on
   the dark wall a much lighter card steps back further beside a dark middle one, coming forward
   with the turn, never before the strip moves (`FlowStepBackTest`; until 2026.10 it flashed
   bright on the turn's first frame). Dark: a soft
