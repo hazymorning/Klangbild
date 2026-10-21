@@ -103,13 +103,13 @@ class ReadmeShotsTest {
     }
 
     /**
-     * The views, one after another on the same evening: first Salt Water, on its own colors (the
-     * background "Cover colors").
+     * The queue's three ways and the landscape, one after another on the same evening: first Salt
+     * Water with the queue off, on its own colors (the background "Cover colors").
      */
     @Test
-    fun singleCover() {
+    fun queueOff() {
         val scene = Fixtures.scene(saltWater, coverField = true)
-        shot("single-cover") {
+        shot("queue-off") {
             CompositionLocalProvider(LocalFieldTime provides FieldTime({ 0.0 }, false)) {
                 Stage(Fixtures.model(saltWater, next = neonHighway, positionMs = 71_000L, clock = en.clock(Fixtures.at(21, 51), Fixtures.zone), group = "Living room", scene = scene, t = en))
             }
@@ -126,6 +126,23 @@ class ReadmeShotsTest {
                 Fixtures.model(neonHighway, next = morningFog, positionMs = 84_000L, clock = en.clock(Fixtures.at(21, 55), Fixtures.zone), group = "Living room", scene = scenes[2], t = en),
                 Fixtures.restingCards(scenes, 2),
             )
+        }
+    }
+
+    /** Then Morning Fog with the queue as a list beside it: the songs that come, each with its small cover. */
+    @Test
+    fun queueList() {
+        val coming = listOf(
+            desertSong,
+            TrackInfo("Lantern Field", listOf("Ines Moreau"), "Paper Boats", 2023, 221_000, artworkUrl = cover(SyntheticCover.PASTEL)),
+            TrackInfo("Snowfield", listOf("Ida Holm"), "Northern Lights", 2025, 280_000, artworkUrl = cover(SyntheticCover.AURORA)),
+            TrackInfo("Grey Ridge", listOf("Theo Lind"), "Stone Paths", 2024, 306_000, artworkUrl = cover(SyntheticCover.MIST)),
+            TrackInfo("Blue Hour", listOf("Northern Light Collective"), "Tides", 2023, 247_000, artworkUrl = cover(SyntheticCover.SALT_WATER)),
+        )
+        val scene = Fixtures.scene(morningFog)
+        val list = Fixtures.queueList(coming, remaining = coming.size)
+        shot("queue-list") {
+            Stage(Fixtures.queueModel(morningFog, list, positionMs = 88_000L, clock = en.clock(Fixtures.at(21, 59), Fixtures.zone), group = "Living room", scene = scene, t = en))
         }
     }
 

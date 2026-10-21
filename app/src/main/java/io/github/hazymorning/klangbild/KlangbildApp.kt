@@ -56,8 +56,8 @@ class AppGraph(context: Context) {
     val controller = NowPlayingController(scope, http, tokenHttp, settings, localizer)
 
     init {
-        // Tokens written by an earlier version are sealed now rather than on the next change.
-        scope.launch { settings.sealStoredSecrets() }
+        // What an earlier version stored is brought up to date now rather than on the next change.
+        scope.launch { settings.migrate() }
     }
 }
 

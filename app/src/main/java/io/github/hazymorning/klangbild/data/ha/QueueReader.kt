@@ -210,6 +210,18 @@ internal class QueueReader(
     }
 
     /**
+     * How many items follow the song [key] in the queue: as Music Assistant itself last said while
+     * it plays (the queue may have grown or shrunk since it started), else as Home Assistant's
+     * answer ([q]) has it. Null when neither tells.
+     */
+    fun remainingOf(q: QueueInfo?, key: String?): Int? {
+        val mine = maNext?.takeIf { q != null && it.key == key }?.basis
+        val index = if (mine != null) mine.first else q?.currentIndex
+        val total = if (mine != null) mine.third else q?.items
+        return if (index != null && total != null) (total - index - 1).coerceAtLeast(0) else null
+    }
+
+    /**
      * The song Music Assistant's queue announced as next, when [track] is it: described before
      * its own read (music only; a book's or an episode's chapters come with that read).
      */
@@ -282,8 +294,10 @@ internal class QueueReader(
     }
 
     /**
-     * What Music Assistant itself says comes next, while the song Home Assistant described plays:
-     * when that has changed, the cards to come are read anew too.
+     * What Music Assistant itself says comes next, while the song Home Assistant described plays,
+     * and the songs to come with it, read anew each time: a song moved further down keeps the
+     * next one and the count, and Music Assistant tells of no change otherwise. Only what has
+     * changed is published.
      */
     private suspend fun checkMaQueue(client: MaClient) {
         val key = songKey ?: return
@@ -306,9 +320,10 @@ internal class QueueReader(
         // Music Assistant has moved on to another item: that song's own read follows.
         if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
         val basis = Triple(now.index, now.nextId, now.items)
-        if (maNext?.let { it.key == key && it.basis == basis } == true) return
+        val same = maNext?.let { it.key == key && it.basis == basis } == true
         val read = now.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
         if (songKey != key) return
+        if (same && (read == null || read == window)) return
         maNext = MaNext(key, now.next, basis)
         if (read != null) {
             window = read

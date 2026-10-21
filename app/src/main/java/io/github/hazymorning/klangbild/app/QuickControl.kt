@@ -4,18 +4,17 @@ import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.config.ViewChoice
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,8 +33,8 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the landscape showed when the quick settings opened: it stays as it was while they are open. */
     @Volatile private var hold: Boolean? = null
 
-    /** A view chosen with OK, taken once the presses stop (so a step through the views never shows the one between). */
-    @Volatile private var pendingView: ViewChoice? = null
+    /** How the queue is to show, chosen with OK, taken once the presses stop (so a step through them never shows the one between). */
+    @Volatile private var pendingQueue: QueueDisplay? = null
     private var pictureJob: Job? = null
 
     /** The lights' level before they were switched off from the quick settings. */
@@ -65,11 +64,11 @@ internal class QuickControl(private val host: ControllerHost) {
 
     val isOpen: Boolean get() = cursor != null
 
-    /** Opens the quick settings on the view entry. Once opened, the stage no longer tells how. */
+    /** Opens the quick settings on the queue's entry. Once opened, the stage no longer tells how. */
     fun open(menuOpen: Boolean) {
         synchronized(host.lock) {
             if (menuOpen || cursor != null) return
-            cursor = QuickKey(QuickItem.VIEW)
+            cursor = QuickKey(QuickItem.QUEUE)
             touchedAt = host.now()
             hold = host.ui.landscape != null
             host.recompute()
@@ -77,9 +76,9 @@ internal class QuickControl(private val host: ControllerHost) {
         host.settings.let { s -> if (!s.quickSeen) host.applySettings(s.copy(quickSeen = true)) }
     }
 
-    /** Closes the quick settings (up, back, after a while alone); a view still waiting is taken now. */
+    /** Closes the quick settings (up, back, after a while alone); a choice still waiting is taken now. */
     fun close() {
-        applyView()
+        applyQueue()
         synchronized(host.lock) {
             cursor = null
             hold = null
@@ -112,16 +111,17 @@ internal class QuickControl(private val host: ControllerHost) {
             rows.getOrNull(indexOf(rows.map { it.key }, c))
         } ?: return
         when (row.item) {
-            QuickItem.VIEW -> synchronized(host.lock) {
-                val shown = pendingView ?: QuickMenu.view(host.settings, context())
-                pendingView = QuickMenu.step(shown, +1, wrap = true)
+            QuickItem.QUEUE -> synchronized(host.lock) {
+                val shown = pendingQueue ?: host.settings.queue
+                pendingQueue = QuickMenu.step(shown, +1, wrap = true, list = listCanShow())
                 pictureJob?.cancel()
                 pictureJob = host.scope.launch {
                     delay(SETTLE_MS)
-                    applyView()
+                    applyQueue()
                 }
                 host.recompute()
             }
+            QuickItem.LANDSCAPE -> toggleLandscape()
             // On and off, at once: the stage changes its text as it does for a new song.
             QuickItem.LYRICS -> host.settings.let { s -> host.applySettings(s.copy(lyrics = !s.lyrics)) }
             QuickItem.FAVORITE -> addFavorite()
@@ -151,7 +151,7 @@ internal class QuickControl(private val host: ControllerHost) {
         if (cursor != null && (t - touchedAt > IDLE_MS || menuOpen)) {
             cursor = null
             hold = null
-            if (pendingView != null) host.scope.launch { applyView() }
+            if (pendingQueue != null) host.scope.launch { applyQueue() }
         }
     }
 
@@ -159,9 +159,9 @@ internal class QuickControl(private val host: ControllerHost) {
     val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
     /**
-     * Whether the landscape is chosen to show, as the last [state] had it: the view entry names
-     * and steps from that (a landscape kept a moment longer while a song's first scene is made
-     * does not count).
+     * Whether the landscape is chosen to show, as the last [state] had it: its entry names and
+     * turns that (a landscape kept a moment longer while a song's first scene is made does not
+     * count).
      */
     private var landscapeChosen = false
 
@@ -173,26 +173,40 @@ internal class QuickControl(private val host: ControllerHost) {
         return QuickState(rows, indexOf(rows.map { it.key }, c))
     }
 
-    /** Takes the view chosen in the quick settings: the landscape, or one of the stage's two views. */
-    private fun applyView() {
+    /**
+     * Takes how the queue is to show, as chosen in the quick settings. Another choice over the
+     * landscape leaves it ([leave]): the stage comes to show it. Stepped round to the one it had,
+     * nothing changes.
+     */
+    private fun applyQueue(leave: Boolean = true) {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
             pictureJob = null
-            pendingView.also { pendingView = null }
+            pendingQueue.also { pendingQueue = null }
         } ?: return
         val s = host.settings
-        if (next == ViewChoice.LANDSCAPE) {
-            if (hold != null) hold = true
-            host.showLandscape()
-            return
-        }
+        if (next == s.queue) return
+        // The setting first: the landscape stays until the stage's first scene is made, and
+        // the composition before never shows in between.
+        host.applySettings(s.copy(queue = next))
+        if (!leave) return
         if (hold != null) hold = false
-        // The view first: the landscape stays until that view's first scene is made, and the
-        // other view never shows in between.
-        val view = if (next == ViewChoice.FLOW) StageView.FLOW else StageView.SINGLE
-        if (view != s.view) host.applySettings(s.copy(view = view))
         host.hideLandscape()
     }
+
+    /**
+     * The landscape now, or no longer, at once. A queue still waiting to be taken is taken
+     * first, without leaving the landscape.
+     */
+    private fun toggleLandscape() {
+        applyQueue(leave = false)
+        val on = synchronized(host.lock) { !landscapeChosen }
+        if (hold != null) hold = on
+        if (on) host.showLandscape() else host.hideLandscape()
+    }
+
+    /** The queue can show as a list: Music Assistant, which tells the whole queue, is connected. */
+    private fun listCanShow(): Boolean = host.ui.source.ma == MaLink.CONNECTED
 
     /** Adds what plays to Music Assistant's favorites; the quick settings say how it went. */
     private fun addFavorite() {
@@ -392,7 +406,7 @@ internal class QuickControl(private val host: ControllerHost) {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
             landscape = landscape,
-            pending = pendingView,
+            pending = pendingQueue,
             music = track != null,
             favorite = track?.takeIf { host.ui.source.favorites }?.let { favoriteState(it) },
             shuffle = shuffleShown(),
@@ -418,7 +432,7 @@ internal class QuickControl(private val host: ControllerHost) {
         /** Untouched quick settings close after this long: they are for a moment's choice. */
         const val IDLE_MS = 20_000L
 
-        /** A view chosen in the quick settings is taken this long after the last press. */
+        /** How the queue is to show, chosen in the quick settings, is taken this long after the last press. */
         const val SETTLE_MS = 900L
 
         /** Shuffle just asked for is shown this long before the player has reported it. */

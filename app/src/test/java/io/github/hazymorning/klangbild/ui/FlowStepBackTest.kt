@@ -11,7 +11,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -36,7 +35,7 @@ class FlowStepBackTest {
     @Test
     fun aLightCardBesideTheMiddleBrightensWithTheTurn() {
         val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.NOCTURNE, SyntheticCover.WHITE_SPACE, SyntheticCover.MOSS)
-        val s = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, view = StageView.FLOW) }.toMap()
+        val s = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, flow = true) }.toMap()
         var flow by mutableStateOf(Fixtures.flow(s, listOf(0, 1, 2, 3), 1))
         compose.mainClock.autoAdvance = false
         compose.setContent { Fixtures.FlowTheaterOf(flow) }

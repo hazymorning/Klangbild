@@ -27,6 +27,7 @@ import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaConfig
 import io.github.hazymorning.klangbild.data.ha.HaSource
+import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.CoverStrip
@@ -42,10 +43,15 @@ import io.github.hazymorning.klangbild.domain.ScreenDecision
 import io.github.hazymorning.klangbild.domain.ScreenStateMachine
 import io.github.hazymorning.klangbild.domain.SmoothedPosition
 import io.github.hazymorning.klangbild.domain.SongLyrics
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.domain.UpNext
+import io.github.hazymorning.klangbild.domain.UpNextRow
+import io.github.hazymorning.klangbild.config.QueueDisplay
+import io.github.hazymorning.klangbild.render.StageGrid
+import android.graphics.Bitmap
+import kotlin.math.roundToInt
 import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.domain.LandscapePolicy
 import io.github.hazymorning.klangbild.data.LightBridge
@@ -79,8 +85,26 @@ import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import java.util.concurrent.atomic.AtomicInteger
 
-/** A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text column. */
-data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: Lyrics? = null)
+/**
+ * A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text
+ * column, or the [queue] while it shows as a list beside the cover.
+ */
+data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: Lyrics? = null, val queue: QueueList? = null)
+
+/** The queue as a list beside the cover: what comes next, and the small covers made so far, by [UpNextRow.id]. */
+data class QueueList(val upNext: UpNext, val covers: Map<String, Bitmap> = emptyMap()) {
+    /**
+     * The list once its first row, [track], plays: the rows after it, one fewer to come and its
+     * length less. Null unless that is the song, or when nothing would be left.
+     */
+    fun movedUp(track: TrackInfo): QueueList? {
+        val first = upNext.rows.firstOrNull()?.takeIf { TrackMatch.sameTitle(it.track.title, track.title) } ?: return null
+        val rows = upNext.rows.drop(1).ifEmpty { return null }
+        val count = upNext.count?.minus(1)
+        val durationMs = upNext.durationMs?.let { all -> first.track.durationMs?.let { all - it } }
+        return QueueList(UpNext(rows, count, durationMs), covers - first.id)
+    }
+}
 
 /** A card of the cover flow with its scene, ready to be shown. */
 data class FlowEntry(val id: Long, val track: TrackInfo, val scene: ArtworkScene) {
@@ -124,13 +148,13 @@ data class UiState(
     /**
      * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays
      * through a switch to Cover Flow until the cards' first scene is made, and goes when another
-     * song (or the same one on a new wall, or in the other view) comes after the clock, the
+     * song (or the same one on a new wall, or to or from Cover Flow) comes after the clock, the
      * setup page or the landscape ([HeldStage]).
      */
     val stage: StageData? = null,
-    /** How the stage shows what plays. */
-    val view: StageView = StageView.SINGLE,
-    /** The cover flow (in [StageView.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
+    /** How the queue shows: with Cover Flow its strip ([flow]) shows once it is ready, else the [stage]. */
+    val queue: QueueDisplay = QueueDisplay.OFF,
+    /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
     val flow: FlowData? = null,
     /** Light wall by day, dark at night (or as set). */
     val appearance: Appearance = Appearance.DARK,
@@ -263,6 +287,7 @@ class NowPlayingController(
 
     private val artwork = ArtworkLoader(http, tokenHttp, { auth })
     private val scenes = Scenes(scope, artwork)
+    private val thumbs = Thumbs(scope, artwork, now)
     private val strip = CoverStrip()
 
     private var viewers = 0
@@ -297,6 +322,7 @@ class NowPlayingController(
     fun attach(spec: ScreenSpec) {
         viewers++
         scenes.frame = scenes.frame.copy(screen = spec)
+        thumbs.px = (StageGrid(spec).rowCover * spec.density).roundToInt()
         if (viewers == 1) start()
     }
 
@@ -384,6 +410,7 @@ class NowPlayingController(
     fun releaseMemory(): Boolean {
         if (viewers > 0) return false
         scenes.clear()
+        thumbs.clear()
         artwork.clear()
         strip.clear()
         return true
@@ -575,10 +602,10 @@ class NowPlayingController(
 
     val quickOpen: Boolean get() = quick.isOpen
 
-    /** Opens the quick settings (down on the remote), on the view. */
+    /** Opens the quick settings (down on the remote), on how the queue shows. */
     fun openQuick() = quick.open(menu.isOpen)
 
-    /** Closes the quick settings (up, back, after a while alone); a view still waiting is taken now. */
+    /** Closes the quick settings (up, back, after a while alone); a queue's choice still waiting is taken now. */
     fun closeQuick() = quick.close()
 
     /** A key in the quick settings that changes nothing: they stay open a while longer. */
@@ -592,15 +619,15 @@ class NowPlayingController(
 
     @Synchronized
     private fun onSettings(s: Settings) {
-        val view = s.view
-        if (view != settings.value.view || _ui.value.view != view) {
-            // Another view needs other scenes; the strip starts afresh. The view before stays on
-            // screen until the new one's first scene is made (it goes then), so the switch never
-            // waits in the dark.
-            scenes.frame = scenes.frame.copy(view = view)
+        val flow = s.queue == QueueDisplay.FLOW
+        if (flow != scenes.frame.flow || (_ui.value.queue == QueueDisplay.FLOW) != flow) {
+            // Cover Flow needs scenes of its own, and its strip starts afresh. What showed before
+            // stays on screen until the first scene is made (it goes then), so the switch never
+            // waits in the dark. Off and the list share the cover's scenes.
+            scenes.frame = scenes.frame.copy(flow = flow)
             strip.clear()
-            _ui.value = _ui.value.copy(view = view)
         }
+        if (_ui.value.queue != s.queue) _ui.value = _ui.value.copy(queue = s.queue)
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {
@@ -759,8 +786,9 @@ class NowPlayingController(
             if (party) 0L else s.landscapePauseSeconds * 1000L,
             if (party) 0L else s.landscapePlayingSeconds * 1000L,
         )
-        // While the quick settings are open, the landscape stays as it was (unless they change it).
-        val landscapeOn = quick.landscapeHeld ?: quietLongEnough
+        // While the quick settings are open, the landscape stays as it was (unless they change it),
+        // but never over a screen that says something is wrong, or the setup page.
+        val landscapeOn = (quick.landscapeHeld ?: quietLongEnough) && !landscapePolicy.trouble
         val landscape = if (landscapeOn && menuState == null) {
             // The weather outside as the landscape comes, then gliding toward every change.
             val outside = WeatherMood.of(src.weather, src.cloudCoverage, src.windKmh) ?: Weather.FAIR
@@ -770,10 +798,11 @@ class NowPlayingController(
             null
         }
         val lyrics = stage?.let { lyricsFor(s, src, it.track) }
+        val list = stage?.let { queueFor(s, src, it.track, lyrics, previous.stage) }
         val quickState = quick.state(decision.screen, landscape != null)
         // After the clock, the setup page or the landscape, another song (or the same one on a new
-        // wall, or in the other view) waits for its own scene.
-        val stale = HeldStage.stale(previous, s.view, look::fits, stage, landscape != null)
+        // wall, or to or from Cover Flow) waits for its own scene.
+        val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage, landscape != null)
         val decided = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
@@ -804,11 +833,11 @@ class NowPlayingController(
         fieldClock.run(if (playing) s.motion.speed else 0f)
         val ready = when {
             stage == null -> decided
-            s.view == StageView.FLOW -> showFlow(decided, stage, look, lyrics)
-            else -> showStage(decided, stage, look, lyrics)
+            s.queue == QueueDisplay.FLOW -> showFlow(decided, stage, look, lyrics)
+            else -> showStage(decided, stage, look, lyrics, list)
         }
         // Meanwhile the clock or the landscape stays, never the dark, and the keys and the lights
-        // act on what shows; the quick settings' View still names the view chosen. One state is
+        // act on what shows; the quick settings' Queue still names the choice made. One state is
         // published, never one with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         _ui.value = if (shown !== ready) shown.copy(quick = quick.state(shown.screen, landscape != null)) else ready
@@ -865,21 +894,43 @@ class NowPlayingController(
     }
 
     /**
-     * [ui] with the stage showing [stage]'s track as soon as its scene is ready (the next track's
-     * is made ahead).
+     * The queue as a list beside the cover for [track], with Queue on List: what Music Assistant's
+     * queue says comes after it, while the song plays and no words take the column. A song only
+     * (a station or spoken word keeps its own last line), and only with something to come. The
+     * small covers its rows have so far come with it. A song the player no longer reports keeps
+     * the list it had ([shown]), and so does a song whose queue is being read again. A song the
+     * list announced plays a moment before its own queue is read: meanwhile the list before
+     * moves up by one, so the rows that stay glide up with the song and nothing comes twice.
      */
-    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?): UiState {
-        scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
-        val scene = scenes.ready(stage.track, look)
-        if (scene == null) {
-            scenes.prepare(stage.track, look) { recompute() }
-            return ui
+    private fun queueFor(s: Settings, src: SourceState, track: TrackInfo, lyrics: Lyrics?, shown: StageData?): QueueList? {
+        if (s.queue != QueueDisplay.LIST || lyrics != null || track.kind != MediaKind.MUSIC) return null
+        if (src.player?.track?.key != track.key) return shown?.takeIf { it.track.key == track.key }?.queue
+        if (!src.queueKnown) {
+            val before = shown?.queue ?: return null
+            return if (shown.track.key == track.key) before else before.movedUp(track)
         }
-        stage.next?.let { scenes.prepare(it, look) }
+        val upNext = UpNext.of(src.coming, src.remaining) ?: return null
+        return QueueList(upNext, upNext.rows.mapNotNull { row -> thumbs.ready(row.track)?.let { row.id to it } }.toMap())
+    }
+
+    /**
+     * [ui] with the stage showing [stage]'s track as soon as its scene is ready (the next track's
+     * is made ahead), with the queue's [list] while it shows. The small covers of its rows are
+     * asked for after the song's own picture and made one at a time, so they never hold it up: a
+     * row whose small cover is still on its way shows without it, and it comes in where it stands.
+     */
+    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?, list: QueueList?): UiState {
+        scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
+        val rows = list?.upNext?.rows.orEmpty().map { it.track }
+        thumbs.retain(rows)
+        val scene = scenes.ready(stage.track, look)
+        if (scene == null) scenes.prepare(stage.track, look) { recompute() } else stage.next?.let { scenes.prepare(it, look) }
+        for (track in rows) thumbs.prepare(track) { recompute() }
+        if (scene == null) return ui
         val shown = ui.stage
-        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && ui.flow == null) return ui
-        // The view before (a cover flow) goes now.
-        return ui.copy(stage = StageData(stage.track, scene, lyrics), flow = null)
+        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && shown.queue == list && ui.flow == null) return ui
+        // Cover Flow, if it showed before, goes now.
+        return ui.copy(stage = StageData(stage.track, scene, lyrics, list), flow = null)
     }
 
     /**
@@ -910,7 +961,7 @@ class NowPlayingController(
         }
         val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics)
         if (flow == ui.flow && ui.stage == null) return ui
-        // The view before (a single cover) goes now.
+        // The single cover, if it showed before, goes now.
         return ui.copy(flow = flow, stage = null)
     }
 

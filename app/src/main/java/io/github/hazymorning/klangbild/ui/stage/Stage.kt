@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.render.ArtworkScene
@@ -100,7 +99,7 @@ fun WallLayer(
     val image = remember(scene) { scene.wall.asImageBitmap() }
     val filters = remember { HashMap<Int, ColorFilter?>() }
     val lit = scene.appearance == Appearance.DARK
-    val beside = lit && scene.layout.view == StageView.FLOW
+    val beside = lit && scene.layout.flow
     val density = LocalDensity.current.density
     val shade = remember(density) { columnShade(density) }
     Canvas(modifier.fillMaxSize()) {
@@ -217,10 +216,13 @@ fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Tripl
  * station, or a notice). What comes next sits apart on the artwork's bottom edge. [alpha] and
  * [rise] animate a change line by line; [dim] darkens the text while paused; [shift] moves the
  * column to the right of its place in the grid (dp: a cover flow with cards missing). While the
- * song's words take the column ([StageModel.lyrics]), they stand there instead ([LyricsText]).
+ * song's words take the column ([StageModel.lyrics]), they stand there instead ([LyricsText]);
+ * while the queue shows as a list ([StageModel.queue]), the song stands above it ([QueueText]),
+ * its rows drawn too unless a theater draws them itself ([rows] false). [pictureDim] darkens
+ * the rows' small covers as the cover is darkened.
  */
 @Composable
-fun TextLayer(
+internal fun TextLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
     plan: TextPlan = rememberTextPlan(model),
@@ -228,10 +230,17 @@ fun TextLayer(
     rise: (TextLine) -> Float = { 0f },
     dim: () -> Float = { 1f },
     shift: () -> Float = { 0f },
+    queuePlan: QueuePlan? = rememberQueuePlan(model),
+    rows: Boolean = true,
+    pictureDim: () -> Float = dim,
 ) {
     val lyrics = model.lyrics
     if (lyrics != null) {
         LyricsText(model, lyrics, modifier, alpha, rise, dim, shift)
+        return
+    }
+    if (queuePlan != null) {
+        QueueText(model, queuePlan, modifier, alpha, rise, dim, shift, rows, pictureDim)
         return
     }
     val layout = model.scene.layout
@@ -356,7 +365,7 @@ fun TextLayer(
  * goes ([text] null: none).
  */
 @Composable
-private fun NextLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
+internal fun NextLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
     Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "next") { line ->
         if (line == null) {
             Box(Modifier)

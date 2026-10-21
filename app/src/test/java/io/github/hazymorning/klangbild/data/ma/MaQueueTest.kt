@@ -43,6 +43,8 @@ class MaQueueTest {
         // A local picture comes through Music Assistant's proxy, the larger size first.
         assertThat(played.artworkUrl).isEqualTo("$base/imageproxy/3f2a?size=1024")
         assertThat(played.artworkFallbackUrl).isEqualTo("$base/imageproxy/3f2a?size=512")
+        // Which item of the queue it is.
+        assertThat(played.queueItemId).isEqualTo("a")
 
         val current = w.current!!
         assertThat(current.title).isEqualTo("Spiegel im Spiegel (Live)")
@@ -57,6 +59,7 @@ class MaQueueTest {
         assertThat(radio.artworkUrl).isNull()
         assertThat(plain.title).isEqualTo("Nur ein Name")
         assertThat(plain.durationMs).isNull()
+        assertThat(plain.queueItemId).isEqualTo("d")
     }
 
     @Test

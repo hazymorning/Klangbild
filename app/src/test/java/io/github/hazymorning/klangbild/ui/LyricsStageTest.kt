@@ -14,7 +14,6 @@ import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -29,9 +28,10 @@ import io.github.hazymorning.klangbild.Pictures
 import org.junit.experimental.categories.Category
 
 /**
- * The song's words in the text column: both views, both walls, the cover's colors, German and
- * English; a break in the singing, the first line waiting, the bar for a moment, long lines,
- * other scripts, a lost link, and the quick settings' Lyrics entry over them.
+ * The song's words in the text column: beside a single cover and in Cover Flow, on both walls
+ * and the cover's colors, German and English; a break in the singing, the first line waiting,
+ * the bar for a moment, long lines, other scripts, a lost link, and the quick settings' Lyrics
+ * entry over them.
  */
 @Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
@@ -51,7 +51,7 @@ class LyricsStageTest {
         val tracks = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS).map(Fixtures::track) + track +
             listOf(SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS).map(Fixtures::track)
         val scenes = Fixtures.flowScenes(tracks, appearance, coverField = coverField)
-        val model = Fixtures.lyricsModel(track, words, appearance = appearance, view = StageView.FLOW, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
+        val model = Fixtures.lyricsModel(track, words, appearance = appearance, flow = true, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { FlowStage(model, Fixtures.restingCards(scenes, 2)) } }
     }
 

@@ -31,12 +31,12 @@ import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
@@ -48,6 +48,7 @@ import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
+import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
@@ -149,10 +150,10 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             label = "screen",
         ) { k ->
             when (val c = latest[k] ?: Content.Dark) {
-                is Content.StageContent -> StageContentView(ui, c.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                is Content.StageContent -> StageOnScreen(ui, c.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
                     StageTheater(stage = c.stage, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
-                is Content.FlowContent -> StageContentView(ui, c.flow.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
+                is Content.FlowContent -> StageOnScreen(ui, c.flow.stage, hooks, wall) { status, modelFor, intensity, linkDown ->
                     FlowTheater(flow = c.flow, status = status, modelFor = modelFor, intensity = intensity, dimmed = linkDown, partyCode = ui.partyCode)
                 }
                 is Content.RestContent -> RestScreen(
@@ -183,12 +184,12 @@ private sealed interface Content {
     val key: String
 
     data class StageContent(val stage: StageData) : Content {
-        // One stage view for all tracks: track changes are animated inside the theater.
+        // One stage for all tracks: track changes are animated inside the theater.
         override val key = "stage"
     }
 
     data class FlowContent(val flow: FlowData) : Content {
-        // The cover flow animates its own changes, too; switching views fades through the dark.
+        // The cover flow animates its own changes, too; a switch to or from it fades through the dark.
         override val key = "flow"
     }
 
@@ -233,10 +234,11 @@ private const val SCREEN_SWITCH_MS = 3_000L
 
 private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.landscape != null) Content.LandscapeContent(ui.landscape) else when (val s = ui.screen) {
     is Screen.Stage -> {
-        // The view chosen once its first scene is made; until then the view before it stays.
+        // Cover Flow or the single cover, as the queue shows, once its first scene is made;
+        // until then what showed before stays.
         val flow = ui.flow?.let { Content.FlowContent(it) }
         val single = ui.stage?.let { Content.StageContent(it) }
-        (if (ui.view == StageView.FLOW) flow ?: single else single ?: flow) ?: Content.Dark
+        (if (ui.queue == QueueDisplay.FLOW) flow ?: single else single ?: flow) ?: Content.Dark
     }
     is Screen.Rest ->
         if (quietStart && s.reason == io.github.hazymorning.klangbild.domain.RestReason.CONNECTING) Content.Dark
@@ -244,7 +246,7 @@ private fun contentKey(ui: UiState, quietStart: Boolean): Content = if (ui.lands
     is Screen.Setup -> Content.SetupContent(s.reason, ui.appearance, ui.setup)
 }
 
-/** A view's theater, given the player's status, how to build a model, the light setting and a lost link. */
+/** A theater (the single cover's or Cover Flow's), given the player's status, how to build a model, the light setting and a lost link. */
 private typealias Theater = @Composable (
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,
@@ -253,11 +255,11 @@ private typealias Theater = @Composable (
 ) -> Unit
 
 /**
- * What both views share for the [stage] on screen: the status line's words, the models, the
- * light setting. Then [theater] draws.
+ * What the single cover and Cover Flow share for the [stage] on screen: the status line's words,
+ * the models, the light setting. Then [theater] draws.
  */
 @Composable
-private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wall: State<Long>, theater: Theater) {
+private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall: State<Long>, theater: Theater) {
     val stageScreen = ui.screen as? Screen.Stage
     // While a new cover loads, the previous stage stays; status follows the live state.
     // A lost connection (after the grace period) or a muted speaker dims the stage.
@@ -320,8 +322,11 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
             val nextChapter = ch?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
-            // The hint takes the place of what comes next (beside the song's words the song stays).
-            val tip = hint && lyrics == null
+            // The queue as a list: "Up next" over it says how much follows.
+            val list = s.queue?.takeIf { lyrics == null }
+            // The hint takes the place of what comes next (beside the song's words the song stays,
+            // over the list what it holds).
+            val tip = hint && lyrics == null && list == null
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -335,11 +340,13 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 next = when {
                     tip -> t[R.string.hint_down]
                     lyrics != null -> StageTexts.next(s.track, t)
+                    list != null -> StageTexts.queue(list.upNext.count, list.upNext.durationMs, t).orEmpty()
                     else -> nextChapter ?: StageTexts.next(after, t)
                 },
                 nextTitle = when {
                     tip -> null
                     lyrics != null -> StageTexts.nextTitle(s.track, t)
+                    list != null -> null
                     nextChapter != null -> null
                     else -> StageTexts.nextTitle(after, t)
                 },
@@ -348,6 +355,7 @@ private fun StageContentView(ui: UiState, stage: StageData, hooks: RootHooks, wa
                 chapter = ch?.label,
                 rangeStartMs = ch?.startMs ?: 0L,
                 lyrics = lyrics,
+                queue = list?.let { QueueModel.of(it, t) },
             )
         }
     }

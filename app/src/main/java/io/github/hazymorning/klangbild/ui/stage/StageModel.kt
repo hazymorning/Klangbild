@@ -50,6 +50,11 @@ class StageModel(
      * and the progress bar shows only for a moment after a key ([progress]).
      */
     val lyrics: Lyrics? = null,
+    /**
+     * The queue as a list beside the cover, while it shows (and no words take the column): then
+     * the song stands at the top of the column and [next] says how much follows ("11 tracks · 48 min").
+     */
+    val queue: QueueModel? = null,
 )
 
 /**
@@ -93,6 +98,11 @@ object StageTexts {
     /** "Spiegel im Spiegel · Arvo Pärt". */
     fun next(track: TrackInfo?, t: Texts): String? =
         track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
+
+    /** "11 tracks · 48 min": how many tracks follow and how long they play, as far as known; null when neither is. */
+    fun queue(count: Int?, durationMs: Long?, t: Texts): String? =
+        listOfNotNull(count?.let { t.plural(R.plurals.queue_tracks, it, t.number(it.toDouble(), 0)) }, durationMs?.let { TimeText.length(it, t) })
+            .joinToString(TimeText.SEPARATOR).ifEmpty { null }
 
     /** "Spiegel im Spiegel". */
     fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[R.string.artists_others]).title }

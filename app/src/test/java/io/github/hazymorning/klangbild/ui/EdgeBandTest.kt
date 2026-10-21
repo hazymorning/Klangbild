@@ -25,8 +25,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * OLED: the band next to the screen edges stays black. This is checked on the rendered pixels
- * of every test scene, in both views and behind the menu, not on the light model. Only the cover
- * colors fill the screen to its edges, wherever the stage drifts.
+ * of every test scene, beside a single cover, in Cover Flow and behind the menu, not on the
+ * light model. Only the cover colors fill the screen to its edges, wherever the stage drifts.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

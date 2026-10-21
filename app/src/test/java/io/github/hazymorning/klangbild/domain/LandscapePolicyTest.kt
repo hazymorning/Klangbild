@@ -57,6 +57,10 @@ class LandscapePolicyTest {
         assertThat(shows(Screen.Rest(RestReason.OFFLINE), 0)).isFalse()
         assertThat(shows(Screen.Rest(RestReason.UNAVAILABLE), pause * 10)).isFalse()
         assertThat(shows(Screen.Setup(SetupReason.REQUESTED), pause * 10)).isFalse()
+        // The quick settings holding the landscape ask for it here too: it says so, and the hold gives way.
+        assertThat(policy.trouble).isTrue()
+        assertThat(shows(paused, pause * 11)).isTrue()
+        assertThat(policy.trouble).isFalse()
         // A lost link dims the stage like a pause, but the landscape waits for it.
         val down = Screen.Stage(track, PlayerStatus.PAUSED, null, linkDown = true)
         val fresh = LandscapePolicy()

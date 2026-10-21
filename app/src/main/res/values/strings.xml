@@ -25,7 +25,7 @@
     <string name="section_remote">Remote</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
-    <string name="about_section_picture">How the picture looks: the view, light or dark, colors and motion.</string>
+    <string name="about_section_picture">How the picture looks: the queue, light or dark, colors and motion.</string>
     <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next and the lyrics.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
@@ -34,7 +34,7 @@
     <string name="about_section_system">Home Assistant, Music Assistant, the language.</string>
 
     <!-- Settings menu: lines -->
-    <string name="entry_view">View</string>
+    <string name="entry_queue">Queue</string>
     <string name="entry_appearance">Appearance</string>
     <string name="entry_clock">Clock</string>
     <string name="entry_progress">Progress bar</string>
@@ -61,9 +61,8 @@
     <string name="entry_language">Language</string>
 
     <!-- Settings menu: values -->
-    <string name="view_single">Single cover</string>
-    <string name="view_flow">Cover Flow</string>
-    <string name="view_landscape">Landscape</string>
+    <string name="queue_list">List</string>
+    <string name="queue_flow">Cover Flow</string>
     <string name="appearance_auto">Automatic</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
@@ -113,8 +112,10 @@
     </plurals>
 
     <!-- Settings menu: what each line does -->
-    <string name="about_view_single">One large cover beside the title.</string>
-    <string name="about_view_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts.</string>
+    <string name="about_queue_off">One large cover beside the title.</string>
+    <string name="about_queue_list">The next tracks as a list beside the cover.</string>
+    <string name="about_queue_list_set_up">The next tracks as a list beside the cover. It needs Music Assistant: without it, the last line names only the next track.</string>
+    <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts.</string>
     <string name="about_appearance_auto">Light by day, dark from sunset to sunrise, by the sun’s position in Home Assistant.</string>
     <string name="about_appearance_light">Always light: a light background, dark type.</string>
     <string name="about_appearance_dark">Always dark: a dark background, light type.</string>
@@ -189,12 +190,13 @@
     <string name="about_sleep_action_release">The TV takes over: its screen saver or standby.</string>
     <string name="about_connection_set_up">OK shows the QR code. On your phone you sign in to Home Assistant and choose the speaker.</string>
     <string name="about_connection">OK shows the QR code. On your phone you change address, sign-in and speaker.</string>
-    <string name="about_ma_set_up">Optional. With Music Assistant, Cover Flow shows the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
-    <string name="about_ma">Cover Flow shows the whole queue. OK shows the QR code. On your phone you change address and token.</string>
+    <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
+    <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
 
     <!-- Quick settings -->
-    <string name="quick_view">View</string>
+    <string name="quick_queue">Queue</string>
+    <string name="quick_landscape">Landscape</string>
     <string name="quick_lyrics">Lyrics</string>
     <string name="quick_favorite">Favorite</string>
     <string name="quick_lights">Lights</string>
@@ -245,6 +247,14 @@
     <string name="volume_muted">muted</string>
     <string name="stage_link_down">Reconnecting…</string>
     <string name="stage_next">Up next</string>
+    <!-- The queue's list beside the cover: how many tracks follow, and how long they play ("11 tracks · 48 min") -->
+    <plurals name="queue_tracks">
+        <item quantity="one">%s track</item>
+        <item quantity="other">%s tracks</item>
+    </plurals>
+    <string name="queue_minutes">%1$s min</string>
+    <string name="queue_hours">%1$s h</string>
+    <string name="queue_hours_minutes">%1$s h %2$s min</string>
     <string name="hint_down_key">Arrow down</string>
     <string name="hint_down">opens the quick settings</string>
     <string name="chapter_number">Chapter %d</string>
@@ -298,7 +308,7 @@
     <string name="page_clock">Show the clock</string>
     <string name="page_remote">The remote controls the music (OK: pause, ◀ ▶: track)</string>
     <string name="page_ma_heading">4 · Music Assistant (optional)</string>
-    <string name="page_ma_hint">For Cover Flow: with Music Assistant, Klangbild shows the whole queue, what played and what comes.</string>
+    <string name="page_ma_hint">For the queue: with Music Assistant, the list shows what comes next, and Cover Flow all of it, what played and what comes.</string>
     <string name="page_ma_token_placeholder">From Music Assistant</string>
     <string name="page_ma_token_hint">Create a long-lived access token in Music Assistant under Settings → Profile. Leave it empty if you don’t need it.</string>
     <string name="page_lights_heading">5 · Lights (optional)</string>

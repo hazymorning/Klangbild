@@ -16,7 +16,7 @@
     <string name="section_remote">Fernbedienung</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
-    <string name="about_section_picture">Wie das Bild aussieht: Ansicht, hell oder dunkel, Farben und Bewegung.</string>
+    <string name="about_section_picture">Wie das Bild aussieht: Warteschlange, hell oder dunkel, Farben und Bewegung.</string>
     <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt und der Songtext.</string>
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_landscape">Wann die Landschaft aus Papier kommt und wo ihr Mini-Player sitzt.</string>
@@ -24,7 +24,7 @@
     <string name="about_section_timer">Der Sleep-Timer und wann sich Klangbild ausschaltet.</string>
     <string name="about_section_system">Home Assistant, Music Assistant und die Sprache.</string>
 
-    <string name="entry_view">Ansicht</string>
+    <string name="entry_queue">Warteschlange</string>
     <string name="entry_appearance">Erscheinungsbild</string>
     <string name="entry_clock">Uhrzeit</string>
     <string name="entry_progress">Fortschrittsbalken</string>
@@ -50,9 +50,8 @@
     <string name="entry_sleep_action">Beim Ausschalten</string>
     <string name="entry_language">Sprache</string>
 
-    <string name="view_single">Einzelnes Cover</string>
-    <string name="view_flow">Cover Flow</string>
-    <string name="view_landscape">Landschaft</string>
+    <string name="queue_list">Liste</string>
+    <string name="queue_flow">Cover Flow</string>
     <string name="appearance_auto">Automatisch</string>
     <string name="appearance_light">Hell</string>
     <string name="appearance_dark">Dunkel</string>
@@ -99,8 +98,10 @@
         <item quantity="other">%s Stunden</item>
     </plurals>
 
-    <string name="about_view_single">Ein Cover, groß, neben dem Titel.</string>
-    <string name="about_view_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt.</string>
+    <string name="about_queue_off">Ein Cover, groß, neben dem Titel.</string>
+    <string name="about_queue_list">Die nächsten Titel als Liste neben dem Cover.</string>
+    <string name="about_queue_list_set_up">Die nächsten Titel als Liste neben dem Cover. Dafür braucht es Music Assistant: Ohne nennt die letzte Zeile nur den nächsten Titel.</string>
+    <string name="about_queue_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt.</string>
     <string name="about_appearance_auto">Tagsüber hell, von Sonnenuntergang bis Sonnenaufgang dunkel, nach dem Stand der Sonne in Home Assistant.</string>
     <string name="about_appearance_light">Immer hell: heller Hintergrund, dunkle Schrift.</string>
     <string name="about_appearance_dark">Immer dunkel: dunkler Hintergrund, helle Schrift.</string>
@@ -175,11 +176,12 @@
     <string name="about_sleep_action_release">Der Fernseher übernimmt: sein Bildschirmschoner oder Standby.</string>
     <string name="about_connection_set_up">OK zeigt den QR-Code. Am Handy meldest du dich bei Home Assistant an und wählst den Lautsprecher.</string>
     <string name="about_connection">OK zeigt den QR-Code. Am Handy änderst du Adresse, Anmeldung und Lautsprecher.</string>
-    <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
-    <string name="about_ma">Cover Flow zeigt die ganze Warteschlange. OK zeigt den QR-Code. Am Handy änderst du Adresse und Token.</string>
+    <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt die Liste die nächsten Titel, Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
+    <string name="about_ma">Die Liste zeigt die nächsten Titel, Cover Flow die ganze Warteschlange. OK zeigt den QR-Code. Am Handy änderst du Adresse und Token.</string>
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
 
-    <string name="quick_view">Ansicht</string>
+    <string name="quick_queue">Warteschlange</string>
+    <string name="quick_landscape">Landschaft</string>
     <string name="quick_lyrics">Songtext</string>
     <string name="quick_favorite">Favorit</string>
     <string name="quick_lights">Licht</string>
@@ -226,6 +228,13 @@
     <string name="volume_muted">stumm</string>
     <string name="stage_link_down">Verbindung wird wiederhergestellt …</string>
     <string name="stage_next">Als Nächstes</string>
+    <plurals name="queue_tracks">
+        <item quantity="one">%s Titel</item>
+        <item quantity="other">%s Titel</item>
+    </plurals>
+    <string name="queue_minutes">%1$s Min.</string>
+    <string name="queue_hours">%1$s Std.</string>
+    <string name="queue_hours_minutes">%1$s Std. %2$s Min.</string>
     <string name="hint_down_key">Pfeil runter</string>
     <string name="hint_down">öffnet die Schnelleinstellungen</string>
     <string name="chapter_number">Kapitel %d</string>
@@ -275,7 +284,7 @@
     <string name="page_clock">Uhrzeit anzeigen</string>
     <string name="page_remote">Fernbedienung steuert die Musik (OK: Pause, ◀ ▶: Titel)</string>
     <string name="page_ma_heading">4 · Music Assistant (freiwillig)</string>
-    <string name="page_ma_hint">Für Cover Flow: Mit Music Assistant zeigt Klangbild die ganze Warteschlange, was lief und was kommt.</string>
+    <string name="page_ma_hint">Für die Warteschlange: Mit Music Assistant zeigt die Liste, was als Nächstes kommt, und Cover Flow alles, was lief und was kommt.</string>
     <string name="page_ma_token_placeholder">Aus Music Assistant</string>
     <string name="page_ma_token_hint">In Music Assistant unter Einstellungen → Profil ein langlebiges Zugangstoken erstellen. Leer lassen, wenn du es nicht brauchst.</string>
     <string name="page_lights_heading">5 · Licht (freiwillig)</string>

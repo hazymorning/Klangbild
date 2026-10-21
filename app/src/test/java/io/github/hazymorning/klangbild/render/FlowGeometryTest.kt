@@ -1,12 +1,11 @@
 package io.github.hazymorning.klangbild.render
 
 import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.domain.StageView
 import org.junit.Test
 
 /** The cover flow's geometry against the design's measurements (dp at 960 × 540). */
 class FlowGeometryTest {
-    private val layout = StageGrid(ScreenSpec.TV_1080, StageView.FLOW)
+    private val layout = StageGrid(ScreenSpec.TV_1080, flow = true)
     private val g = FlowGeometry(layout)
     private val c = FloatArray(8)
 
@@ -115,7 +114,7 @@ class FlowGeometryTest {
             val column = layout.columnLeft + b.column
             val room = layout.screen.widthDp - (column + layout.columnWidth)
             assertThat(start).isWithin(0.5f).of(room)
-            // The column keeps its gap: 40 dp after the cards to come, else the single view's 64 dp.
+            // The column keeps its gap: 40 dp after the cards to come, else the single cover's 64 dp.
             assertThat(column - end).isWithin(0.5f).of(if (right > 0) 40f else 64f)
         }
         // The full strip stays exactly where the grid has it.

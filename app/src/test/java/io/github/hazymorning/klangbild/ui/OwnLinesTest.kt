@@ -13,9 +13,9 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -50,9 +50,9 @@ class OwnLinesTest {
 
     @Test
     fun coverFlowKeepsItsTimeAndNext() {
-        val scene = Fixtures.scene(a, mdpi, view = StageView.FLOW)
+        val scene = Fixtures.scene(a, mdpi, flow = true)
         val flow = FlowData(listOf(FlowEntry(0L, a, scene)), 0)
-        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), view = StageView.FLOW, flow = flow))
+        keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), queue = QueueDisplay.FLOW, flow = flow))
     }
 
     /**

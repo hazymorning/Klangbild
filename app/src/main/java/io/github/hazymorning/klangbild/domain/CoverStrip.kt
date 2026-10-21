@@ -72,7 +72,7 @@ class CoverStrip(private val side: Int = SIDE) {
         return Strip(shown + now + upcoming, shown.size)
     }
 
-    /** Forgets everything (another speaker, another view). */
+    /** Forgets everything (another speaker, or the queue to or from Cover Flow). */
     fun clear() {
         history.clear()
         current = null

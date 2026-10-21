@@ -8,7 +8,6 @@ import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.color.Oklab
 import io.github.hazymorning.klangbild.color.relativeLuminance
-import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -410,7 +409,7 @@ object CoverField {
      * cards are missing ([FlowGeometry.balance]), and the shade under it reaches every place.
      */
     private fun textLeft(layout: StageGrid): Float =
-        layout.columnLeft + if (layout.view == StageView.FLOW) FlowGeometry(layout).leftmostColumn else 0f
+        layout.columnLeft + if (layout.flow) FlowGeometry(layout).leftmostColumn else 0f
 
     /** How soft the text shade's edge is (σ, dp). */
     private const val TEXT_SCRIM_SIGMA = 40f

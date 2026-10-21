@@ -25,6 +25,8 @@ data class TrackInfo(
     val favorite: Boolean = false,
     /** A station's song with its own picture (from the stream). It goes before any other. */
     val songPicture: Boolean = false,
+    /** Which item of Music Assistant's queue this is: the same song twice in the queue is two items. */
+    val queueItemId: String? = null,
     /** Stable identity used for transitions and caching. */
     val key: String = listOf(title, artists.joinToString(), album.orEmpty()).joinToString("|"),
 ) {

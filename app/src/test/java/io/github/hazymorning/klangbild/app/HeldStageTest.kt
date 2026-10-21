@@ -5,11 +5,11 @@ import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SetupReason
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.Fixtures
@@ -20,8 +20,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * After the clock, the setup page or the landscape, a song other than the one the stage kept
- * waits for its own scene, and so does the same song when the wall or the view has changed
- * meanwhile: the stage left from before never comes up for it (until 2026.10 the song before
+ * waits for its own scene, and so does the same song when the wall has changed meanwhile or the
+ * queue has gone to or from Cover Flow: the stage left from before never comes up for it (until 2026.10 the song before
  * came up first and the lights took its colors). Meanwhile the clock or the landscape stays,
  * never the dark; over the landscape the song keys act on what plays. A screen that says
  * something is wrong and the setup page go through the dark.
@@ -40,8 +40,8 @@ class HeldStageTest {
 
     private fun playing(t: TrackInfo) = Screen.Stage(t, PlayerStatus.PLAYING, null)
 
-    private fun stale(before: UiState, stage: Screen.Stage?, view: StageView = StageView.SINGLE, look: Look = dark, landscape: Boolean = false) =
-        HeldStage.stale(before, view, look::fits, stage, landscape)
+    private fun stale(before: UiState, stage: Screen.Stage?, flow: Boolean = false, look: Look = dark, landscape: Boolean = false) =
+        HeldStage.stale(before, flow, look::fits, stage, landscape)
 
     @Test
     fun aNewSongAfterTheClockNeverShowsTheStageBefore() {
@@ -72,15 +72,15 @@ class HeldStageTest {
     @Test
     fun coverFlowIsKeptTheSameWay() {
         val flow = FlowData(listOf(FlowEntry(0L, a.track, a.scene)), 0)
-        val idle = UiState(screen = Screen.Rest(RestReason.IDLE), view = StageView.FLOW, flow = flow)
-        assertThat(stale(idle, playing(b), view = StageView.FLOW)).isTrue()
-        assertThat(stale(idle, playing(a.track), view = StageView.FLOW)).isFalse()
+        val idle = UiState(screen = Screen.Rest(RestReason.IDLE), queue = QueueDisplay.FLOW, flow = flow)
+        assertThat(stale(idle, playing(b), flow = true)).isTrue()
+        assertThat(stale(idle, playing(a.track), flow = true)).isFalse()
     }
 
     @Test
-    fun aViewChangedMeanwhileNeverBringsBackTheOtherView() {
+    fun aSwitchToCoverFlowMeanwhileNeverBringsBackTheSingleCover() {
         // Cover Flow was chosen over the clock: the single cover kept from before stays away.
-        assertThat(stale(clock, playing(a.track), view = StageView.FLOW)).isTrue()
+        assertThat(stale(clock, playing(a.track), flow = true)).isTrue()
     }
 
     @Test

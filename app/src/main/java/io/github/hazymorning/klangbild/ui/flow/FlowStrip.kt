@@ -216,7 +216,7 @@ private fun quad(
     s[6] = pad; s[7] = pad + h
     val m = tools.matrix
     if (snap) {
-        // Facing the room, the card is drawn 1:1 on whole pixels, as crisp as the single view.
+        // Facing the room, the card is drawn 1:1 on whole pixels, as crisp as the single cover.
         m.setTranslate((tools.dst[0] - pad).roundToInt().toFloat(), (tools.dst[1] - pad).roundToInt().toFloat())
     } else {
         m.setPolyToPoly(s, 0, tools.dst, 0, 4)

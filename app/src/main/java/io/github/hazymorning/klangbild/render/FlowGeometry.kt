@@ -156,7 +156,7 @@ class FlowGeometry(val layout: StageGrid) {
      * most [MAX_SIDE] each. What is there stands with the text column in the middle of the
      * screen, as much room left of the outermost card as right of the column, measured on what
      * is seen. The column keeps its width; it stands as far from the outermost card to come as
-     * in the full strip or, with none to come, as far from the middle card as in the single view.
+     * in the full strip or, with none to come, as far from the middle card as beside a single cover.
      * With two cards on each side nothing moves.
      */
     fun balance(left: Int, right: Int): Balance {
@@ -191,7 +191,7 @@ class FlowGeometry(val layout: StageGrid) {
     /** From the outermost card to come to the text column (dp): as the grid has it. */
     private val stripGap: Float get() = layout.columnLeft - cx - reach(MAX_SIDE.toInt())
 
-    /** From the middle card to the text column when nothing comes (dp): the single view's gap. */
+    /** From the middle card to the text column when nothing comes (dp): the single cover's gap. */
     private val heroGap: Float get() = StageGrid.ART_TEXT_GAP * layout.screen.widthDp / StageGrid.GRID_WIDTH
 
     companion object {

@@ -6,6 +6,7 @@
     <!-- Depends on the network and the day: CI would fail without a change to the code. -->
     <issue id="NewerVersionAvailable" severity="ignore" />
     <issue id="GradleDependency" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
     <!-- Sideloaded as one APK with every language; there are no app bundle language splits. -->
     <issue id="AppBundleLocaleChanges" severity="ignore" />
     <!-- The TV shows the banner; the square icon is a full tile on purpose. -->

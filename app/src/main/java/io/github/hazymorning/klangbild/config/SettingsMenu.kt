@@ -7,7 +7,6 @@ import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
 
@@ -24,7 +23,7 @@ enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
 
 /** One setting, in its group's order; [label] is 0 for a line named after what it connects to. */
 enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
-    VIEW(MenuSection.PICTURE, R.string.entry_view),
+    QUEUE(MenuSection.PICTURE, R.string.entry_queue),
     APPEARANCE(MenuSection.PICTURE, R.string.entry_appearance),
     BACKGROUND(MenuSection.PICTURE, R.string.entry_background),
     INTENSITY(MenuSection.PICTURE, R.string.entry_intensity),
@@ -135,7 +134,7 @@ object SettingsMenu {
     }
 
     fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
-        MenuEntry.VIEW -> t[if (s.view == StageView.FLOW) R.string.view_flow else R.string.view_single]
+        MenuEntry.QUEUE -> queueValue(s.queue, t)
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
@@ -222,7 +221,13 @@ object SettingsMenu {
     }
 
     fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
-        MenuEntry.VIEW -> t[if (s.view == StageView.FLOW) R.string.about_view_flow else R.string.about_view_single]
+        MenuEntry.QUEUE -> t[
+            when (s.queue) {
+                QueueDisplay.OFF -> R.string.about_queue_off
+                QueueDisplay.LIST -> if (s.hasMusicAssistant) R.string.about_queue_list else R.string.about_queue_list_set_up
+                QueueDisplay.FLOW -> R.string.about_queue_flow
+            },
+        ]
         MenuEntry.APPEARANCE -> t[
             when (s.appearance) {
                 AppearanceMode.AUTO -> R.string.about_appearance_auto
@@ -348,7 +353,7 @@ object SettingsMenu {
      * lines that need something set up first ([needsSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
-        MenuEntry.VIEW -> s.copy(view = if (s.view == StageView.FLOW) StageView.SINGLE else StageView.FLOW)
+        MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
@@ -429,6 +434,15 @@ object SettingsMenu {
         else -> R.string.sleep_end_track
     }
 
+    /** How the queue shows, in a word: Off, List, Cover Flow. */
+    fun queueValue(queue: QueueDisplay, t: Texts): String = t[
+        when (queue) {
+            QueueDisplay.OFF -> R.string.off
+            QueueDisplay.LIST -> R.string.queue_list
+            QueueDisplay.FLOW -> R.string.queue_flow
+        },
+    ]
+
     /** A language as the menu names it: English and German in their own words, the system's in the language shown. */
     fun languageValue(language: AppLanguage, t: Texts): String = t[
         when (language) {
@@ -439,6 +453,7 @@ object SettingsMenu {
     ]
 
     /** From quiet to present: left means less, right means more. */
+    val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST, QueueDisplay.FLOW)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)

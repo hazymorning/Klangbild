@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.config
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.QuickAction
-import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.roundToInt
 
 /** What to do once the sleep timeout has passed without music. */
@@ -81,6 +80,20 @@ enum class RoomLightBrightness(val brightness: Float) {
     }
 }
 
+/**
+ * How the stage shows the queue: not at all (one large cover, the last line naming what comes
+ * next), as a list beside that same cover, or as Cover Flow.
+ */
+enum class QueueDisplay {
+    OFF,
+
+    /** What comes next as a list in the text column, beside the cover. */
+    LIST,
+
+    /** Cover Flow: the cover in the middle, those before it to the left, those to come to the right. */
+    FLOW,
+}
+
 /** Where the music's label sits in the landscape. */
 enum class MiniPlayer { LEFT, RIGHT, OFF }
 
@@ -138,7 +151,8 @@ data class Settings(
     /** Up and down on the remote change the speaker's volume (instead of the landscape and the quick settings). */
     val volumeKeys: Boolean = false,
     val appearance: AppearanceMode = AppearanceMode.AUTO,
-    val view: StageView = StageView.SINGLE,
+    /** How the queue shows: not at all, as a list, or as Cover Flow. */
+    val queue: QueueDisplay = QueueDisplay.OFF,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
     /** Music Assistant itself (optional): for the whole queue in Cover Flow. */

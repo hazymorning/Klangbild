@@ -33,6 +33,10 @@ class LandscapePolicy {
     var onItsWay = false
         private set
 
+    /** As of the last [shows]: the screen says something is wrong, or the setup page shows; no landscape comes over it. */
+    var trouble = false
+        private set
+
     /** A key was pressed: the delays start again (a chosen landscape stays). */
     fun interaction(now: Long) {
         lastKey = now
@@ -60,7 +64,7 @@ class LandscapePolicy {
             is Screen.Setup -> false
         }
         quietSince = if (quiet) quietSince ?: now else null
-        val trouble = screen is Screen.Setup || (screen is Screen.Rest && !quiet)
+        trouble = screen is Screen.Setup || (screen is Screen.Rest && !quiet)
         onItsWay = !trouble && (requested || (playing && playingMs > 0) || (quiet && pauseMs > 0))
         if (trouble) return false
         if (requested) return true

@@ -655,9 +655,18 @@ class HaSourceTest {
             titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied")
             val changed = withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
             assertThat(changed.coming.map { it.title }).containsExactly("Eingeschoben", "Zweites Lied").inOrder()
+            // How many follow, as Music Assistant now says.
+            assertThat(changed.remaining).isEqualTo(2)
+            // A song moved further down: the same song next and as many to come, yet the order follows.
+            titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied", "Drittes Lied")
+            withTimeout(5_000) { s.state.first { it.coming.size == 3 } }
+            titles = listOf("Erstes Lied", "Eingeschoben", "Drittes Lied", "Zweites Lied")
+            val moved = withTimeout(5_000) { s.state.first { it.coming.map { c -> c.title } == listOf("Eingeschoben", "Drittes Lied", "Zweites Lied") } }
+            assertThat(moved.next?.title).isEqualTo("Eingeschoben")
             // Nothing left to come: nothing is next.
             titles = listOf("Erstes Lied")
-            withTimeout(5_000) { s.state.first { it.queueKnown && it.next == null } }
+            val last = withTimeout(5_000) { s.state.first { it.queueKnown && it.next == null } }
+            assertThat(last.remaining).isEqualTo(0)
             s.stop()
         } finally {
             ma.close()

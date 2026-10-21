@@ -246,7 +246,7 @@ private fun planText(
  */
 enum class TextLine(val stagger: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), BOTTOM(200), NEXT(260) }
 
-private class TitleChoice(val step: TitleStep, val text: AnnotatedString)
+internal class TitleChoice(val step: TitleStep, val text: AnnotatedString)
 
 /**
  * The title at the largest step of the ladder that fits its line limit and the height it is
@@ -254,15 +254,16 @@ private class TitleChoice(val step: TitleStep, val text: AnnotatedString)
  * At each step, a version that may only break after the dashes between a movement's sections is
  * tried first (a line may end after "Presto" and its dash, but never between "Allegro" and
  * "assai"). If only the free version fits, one step smaller is still worth it when the dash
- * version fits there. Returns null if nothing fits.
+ * version fits there. Returns null if nothing fits. [ladder] is the title's, or a shorter one.
  */
-private fun pickTitleSize(
+internal fun pickTitleSize(
     text: AnnotatedString,
     styleOf: (TitleStep) -> TextStyle,
     measurer: androidx.compose.ui.text.TextMeasurer,
     maxW: Int,
     budget: (TitleStep) -> Float,
     density: Float,
+    ladder: List<TitleStep> = titleLadder,
 ): TitleChoice? {
     val base = glueShortWords(glueParentheses(text))
     val glued = glueBetweenDashes(base)
@@ -273,11 +274,11 @@ private fun pickTitleSize(
         val g = measurer.measure(glued, style = styleOf(step), constraints = Constraints(maxWidth = maxW), maxLines = step.lines + 1)
         return g.lineCount <= step.lines && height(g) <= budget(step) && breaksOnlyAfterDashes(g)
     }
-    for ((i, step) in titleLadder.withIndex()) {
+    for ((i, step) in ladder.withIndex()) {
         if (gluedFits(step)) return TitleChoice(step, glued!!)
         val r = measurer.measure(base, style = styleOf(step), constraints = Constraints(maxWidth = maxW), maxLines = step.lines + 1)
         if (r.lineCount <= step.lines && height(r) <= budget(step) && !breaksInsideWord(r)) {
-            val smaller = titleLadder.getOrNull(i + 1)
+            val smaller = ladder.getOrNull(i + 1)
             if (smaller != null && gluedFits(smaller)) return TitleChoice(smaller, glued!!)
             return TitleChoice(step, base)
         }

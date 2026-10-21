@@ -16,6 +16,18 @@ object TimeText {
         return t.format(R.string.status_speed, t.decimal(hundredths / 100.0, 2))
     }
 
+    /** "48 min", "2 h", "1 h 12 min": how long something plays, to the minute (at least one). */
+    fun length(ms: Long, t: Texts): String {
+        val minutes = ((ms + 30_000L) / 60_000L).coerceAtLeast(1L).toInt()
+        val h = minutes / 60
+        val m = minutes % 60
+        return when {
+            h == 0 -> t.format(R.string.queue_minutes, m)
+            m == 0 -> t.format(R.string.queue_hours, h)
+            else -> t.format(R.string.queue_hours_minutes, h, m)
+        }
+    }
+
     /** "0:07", "3:41", "1:02:05": as a clock shows it, no leading zero. */
     fun formatClock(ms: Long): String {
         val total = (ms / 1000).coerceAtLeast(0)

@@ -19,7 +19,6 @@ import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -45,7 +44,7 @@ class HurryTest {
     private val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE, SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS)
 
     private val strip by lazy {
-        covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, view = StageView.FLOW) }.toMap()
+        covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, flow = true) }.toMap()
     }
 
     /** Both theaters go from [first] to [change]; the second gets [more] 300 ms later. Returns both, 800 ms into the change. */
