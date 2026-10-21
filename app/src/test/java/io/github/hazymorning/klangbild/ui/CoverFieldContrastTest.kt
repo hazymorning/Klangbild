@@ -12,7 +12,6 @@ import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.contrastRatio
 import io.github.hazymorning.klangbild.color.relativeLuminance
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -46,13 +45,13 @@ class CoverFieldContrastTest {
     fun theQuietestTextKeepsItsContrastOnThePaleField() = check(Appearance.LIGHT)
 
     @Test
-    fun inCoverFlowTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.DARK, StageView.FLOW)
+    fun inCoverFlowTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.DARK, flow = true)
 
     @Test
-    fun inCoverFlowOnPaleColorsTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.LIGHT, StageView.FLOW)
+    fun inCoverFlowOnPaleColorsTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.LIGHT, flow = true)
 
-    private fun check(appearance: Appearance, view: StageView = StageView.SINGLE) {
-        val first = Fixtures.scene(Fixtures.tracks.first(), mdpi, appearance = appearance, view = view, coverField = true)
+    private fun check(appearance: Appearance, flow: Boolean = false) {
+        val first = Fixtures.scene(Fixtures.tracks.first(), mdpi, appearance = appearance, flow = flow, coverField = true)
         var scene by mutableStateOf(first)
         var at by mutableStateOf(0.0)
         compose.setContent {
@@ -61,7 +60,7 @@ class CoverFieldContrastTest {
             }
         }
         for (track in Fixtures.tracks) {
-            scene = Fixtures.scene(track, mdpi, appearance, view = view, coverField = true)
+            scene = Fixtures.scene(track, mdpi, appearance, flow = flow, coverField = true)
             for (t in listOf(0.0, 47.0, 133.0, 260.0)) {
                 at = t
                 val worst = worstBehindText(scene, darkText = appearance == Appearance.LIGHT)
@@ -78,7 +77,7 @@ class CoverFieldContrastTest {
         val bmp = compose.onRoot().captureToImage().asAndroidBitmap()
         val l = scene.layout
         // In Cover Flow the column moves left when cards are missing.
-        val reach = if (l.view == StageView.FLOW) FlowGeometry(l).leftmostColumn else 0f
+        val reach = if (l.flow) FlowGeometry(l).leftmostColumn else 0f
         val x0 = (l.columnLeft + reach).toInt()
         val x1 = (l.columnLeft + l.columnWidth).toInt()
         val y0 = l.statusTop.toInt() - 4

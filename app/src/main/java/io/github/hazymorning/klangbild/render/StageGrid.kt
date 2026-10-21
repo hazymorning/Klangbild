@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.render
 
-import io.github.hazymorning.klangbild.domain.StageView
 
 /**
  * The stage's grid on a 960 × 540 dp screen. The artwork is the heaviest element and sets
@@ -29,15 +28,15 @@ import io.github.hazymorning.klangbild.domain.StageView
  *  │        ╰──────────────╯                                  │  ← artwork bottom
  *  └──────────────────────────────────────────────────────────┘
  *
- * Cover Flow ([StageView.FLOW]) keeps every rule but makes room for the cards beside the
+ * Cover Flow ([flow]) keeps every rule but makes room for the cards beside the
  * middle one: the middle cover is 300 dp with its center 303 dp from the left, so the strip's
  * outer edge (255 dp beside it, see [FlowGeometry]) keeps 48 dp from the screen's edge. That is
  * as much as the column (from 598 dp) keeps on the right.
  */
-data class StageGrid(val screen: ScreenSpec, val view: StageView = StageView.SINGLE) {
+data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
     private val sx = screen.widthDp / 960f
     private val sy = screen.heightDp / 540f
-    private val grid = if (view == StageView.FLOW) FLOW else SINGLE
+    private val grid = if (flow) FLOW else SINGLE
 
     /** Left margin before the artwork, and after the column on the right. */
     val margin = grid.margin * sx
@@ -65,7 +64,10 @@ data class StageGrid(val screen: ScreenSpec, val view: StageView = StageView.SIN
     /** Corner radius of a square artwork (dp): a hair over 2 % of its side. */
     val radius get() = RADIUS * art / SINGLE.art
 
-    /** Margins, artwork and gap of a view at 960 × 540 dp. */
+    /** The small cover of a row in the queue's list (dp): as tall as the row's two lines, from cap height to baseline. */
+    val rowCover get() = ROW_COVER * art / SINGLE.art
+
+    /** Margins, artwork and gap at 960 × 540 dp: the single cover's, or Cover Flow's. */
     private class Grid(val margin: Float, val art: Float, val gap: Float, val rightMargin: Float)
 
     companion object {
@@ -78,8 +80,11 @@ data class StageGrid(val screen: ScreenSpec, val view: StageView = StageView.SIN
         private val SINGLE = Grid(margin = 88f, art = 368f, gap = ART_TEXT_GAP, rightMargin = 88f)
         private val FLOW = Grid(margin = 153f, art = 300f, gap = 145f, rightMargin = 48f)
 
-        /** Corner radius of square artwork (dp at 960 × 540, for the single view's 368 dp). */
+        /** Corner radius of square artwork (dp at 960 × 540, for the single cover's 368 dp). */
         const val RADIUS = 8f
+
+        /** A row's small cover in the queue's list (dp at 960 × 540). */
+        const val ROW_COVER = 30f
 
     }
 }

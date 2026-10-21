@@ -34,7 +34,7 @@ data class QueueWindow(
  * gave it (to ask for its words with), and the words it brought along ([lyrics] plain or with
  * times, [lrcLyrics] with times), if any.
  */
-class QueueSong(val uri: String, val item: JsonObject, val lyrics: String?, val lrcLyrics: String?)
+data class QueueSong(val uri: String, val item: JsonObject, val lyrics: String?, val lrcLyrics: String?)
 
 /**
  * Music Assistant's queue as it stands now (`player_queues/get`): the current item's place, the
@@ -151,6 +151,7 @@ object MaQueue {
             chapters = if (kind.spoken) chapters(media, durationMs) else emptyList(),
             favorite = !isRadio && (media?.get("favorite") as? JsonPrimitive)?.booleanOrNull == true,
             songPicture = songPicture != null,
+            queueItemId = item.string("queue_item_id")?.takeIf { it.isNotBlank() },
         )
     }
 

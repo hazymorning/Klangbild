@@ -45,6 +45,8 @@ data class SourceState(
     /** What follows the current track and what was played before it (most recent last), from Music Assistant. */
     val coming: List<TrackInfo> = emptyList(),
     val played: List<TrackInfo> = emptyList(),
+    /** How many items follow the current one in the queue, as far as known ([coming] may hold only the first of them). */
+    val remaining: Int? = null,
     /** The optional link to Music Assistant; null when it is not set up. */
     val ma: MaLink? = null,
     /** Where Home Assistant stands (degrees), from its configuration; null until known. */

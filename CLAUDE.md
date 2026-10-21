@@ -5,7 +5,7 @@ TV device with a weak GPU in front of an OLED TV. Sideload only.
 The UI speaks English (default) and German (`values-de`); code, comments, the README, the release
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
-Klangbild is and what it does, its views, the devices it runs on (Android TV 9 or later; folded
+Klangbild is and what it does, how the queue can show and the landscape, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
@@ -20,9 +20,11 @@ and the button come in a light and a dark version, switched by the reader's them
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
 they are by day; at night the dark wall with
 the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
-be: the lights' colors soft on a matte wall, no colorful backgrounds; the three views, one after
-another on the same evening, in one cozy room worked out in 3D on a deep winter night (Single cover
-on its cover colors, Cover Flow, the landscape with stars, a thin moon and the campfire), a lamp's
+be: the lights' colors soft on a matte wall, no colorful backgrounds; the queue's three ways side
+by side and the landscape on its own, one after another on the same evening, in one cozy room
+worked out in 3D on a deep winter night (the queue off with a song on its cover colors, the queue
+as a list on the dark wall, Cover Flow; the landscape with stars, a thin moon and the campfire), a
+lamp's
 light falling through its shade, candles, books and a record sleeve on a walnut sideboard; one song
 by day and at night, each TV with as much wall above and below it as beside it.
 The logo is `tools/logo.svg` (four rounded squares, each turned a little further toward the middle,
@@ -167,9 +169,11 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 queue (one read at a time, only for MA players with a queue) + the optional MA
                 queue window; a Music Assistant song published once its queue has described it;
                 the words of the song that plays, found by the URI Home Assistant names as what
-                plays; with Music Assistant set up, its own queue asked every 15 s while a song
-                plays, since Home Assistant hears nothing of a queue changed mid-song: what comes
-                next and the cards to come; its word holds for that song only), TrackMatch (one
+                plays; with Music Assistant set up, its own queue and the songs to come asked
+                every 15 s while a song plays, since Home Assistant hears nothing of a queue
+                changed mid-song (and a song moved further down keeps the next one and the
+                count): what comes next and the cards to come, published when they change; its
+                word holds for that song only), TrackMatch (one
                 song in two descriptions), StationPictures (a station's song: the best picture on
                 offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
@@ -191,7 +195,8 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 SpeakerLabel ("Living room + 5", "Everywhere", room names, "35%"), TrackText
                 (typographic cleanup), Progress (runs at the item's speed) + SmoothedPosition,
                 TimeText (track times, separator, "Speed 1.5×"),
-                ScreenStateMachine, StageView (SINGLE / FLOW), CoverStrip (the cover flow's cards:
+                ScreenStateMachine, UpNext (the queue's list: a row per song, ids kept, how many
+                follow and how long they play), CoverStrip (the cover flow's cards:
                 one per picture, ids kept), Spoken (MediaKind, Chapter/Chapters/ChapterPlace:
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
@@ -211,7 +216,7 @@ color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, bo
                 (LIGHT / DARK, by the sun), Contrast (WCAG luminance and contrast ratio)
 math/           smoothstep, Rnd (a random source with a fixed seed), hash64 / hashUnit
 json/           string(): a JSON string, or null for anything else
-render/         StageGrid (the grid, per view), ScreenSpec, RectDp, QrCode, PrintShape (the print's
+render/         StageGrid (the grid: the single cover's, or Cover Flow's with `flow`), ScreenSpec, RectDp, QrCode, PrintShape (the print's
                 outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
                 at a field time) + FieldModel (the field on the CPU, for the text shade), WallGlow
@@ -258,19 +263,26 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 Seeking (jumps with the remote), SleepControl, LightTargets, HeldStage (the stage
                 kept from before the clock and when it goes; the clock or the landscape held while
                 a song's first scene is made); ControllerHost
-                (what the parts need), Scenes (scene cache + builds off the main thread),
+                (what the parts need), Scenes (scene cache + builds off the main thread), Thumbs
+                (the list's small covers at their exact size, made ahead, one at a time after the
+                scenes; a cover that took too long stands in as its figure and is asked again),
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
-config/         Settings (+ DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
+config/         Settings (+ QueueDisplay (Off / List / Cover Flow), DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
                 MotionLevel, RoomLights, RoomLightBrightness), SettingsStore (DataStore, written whole
-                in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore), SettingsMenu (groups,
+                in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore;
+                `migrate` at the start brings an earlier version's store up to date: its tokens
+                sealed, its view (SINGLE or FLOW) moved to the queue's own key, touching nothing
+                else, since rewriting all would open the tokens and lose one the keystore cannot
+                open at that moment), SettingsMenu (groups,
                 entries, values, explanations, steps; what needs something set up first dimmed),
-                QuickMenu (the quick settings' entries and values, Lyrics On / Off / None, Party code
-                On / Off, Settings),
+                QuickMenu (the quick settings' entries and values: Queue, Landscape On / Off, Lyrics
+                On / Off / None, Party code On / Off, Settings),
                 QuickActions (the own buttons as stored: a name, an entity, a script's variables, the
                 condition: a state or attribute is, is not, is above or below a value; a list counts
                 its entries), OwnValues (the values in the status line as stored),
                 LaunchExtras (am start extras and klangbild:// links: English names and values, those
-                of earlier versions still taken, the German ones and `window_view`)
+                of earlier versions still taken (`window_view` for the landscape, `view` for the
+                queue), the German ones)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
@@ -406,11 +418,12 @@ UI words are given in English with the German in parentheses where it matters.
   cover): quiet cross-fade. Pause (600 ms) dims light, artwork and text; nothing moves, so the
   lines hung on the artwork's edges stay aligned.
   Mute is only a word; a lost link dims like a pause. Nothing slides, nothing bounces.
-  Screens switch by fading through dark; another view waits on the view before until its
-  first scene is made, then the two cross at once (until 2026.10 the screen waited in the
-  dark, which read as stuck). A song that comes after the clock, the setup page or the
+  Screens switch by fading through dark; a switch to or from Cover Flow leaves what shows until
+  the first scene of the other is made, then the two cross at once (until 2026.10 the screen
+  waited in the dark, which read as stuck). A song that comes after the clock, the setup page or the
   landscape shows its own stage once its scene is made, never the stage left from the song
-  before, nor the same song's from a wall or a view that has changed meanwhile. The clock or
+  before, nor the same song's from a wall that has changed meanwhile or from before a switch
+  to or from Cover Flow. The clock or
   the landscape stays until then (the clock's words a moment longer), never the dark, also
   when no stage was kept; the keys, the quick settings and the lights act on what shows, and
   over the landscape the song keys act on what plays, as always. A screen that says something
@@ -431,7 +444,37 @@ UI words are given in English with the German in parentheses where it matters.
   time, "Up next" and chapter, and lines leaving showed its "Up next" and lost their own time
   and chapter; `OwnLinesTest`).
   The landscape's label keeps its own cover and time the same way while it leaves.
-- **Cover Flow** (`StageView.FLOW`): middle cover 300 dp centered 303 dp from the left and
+- **The queue as a list** (Queue: List; `QueueText`, `UpNext`): beside the cover, which never
+  moves; the text column set for it, as for the song's words, which win while they show. The song hangs under the status line: its title from 34 sp down, two lines at most;
+  artist (17 sp, the artist's ink and weight), album and year on one line (the year leaves
+  first, then the album); then the bar as everywhere. Then "Up next" with how many follow and how
+  long they play ("11 tracks · 48 min", the length only when every item is known), then the rows.
+  Every row alike and as tall as its small cover (30 dp, corners 2.5 dp): title (17 sp, the
+  artist's ink) over its artists (15 sp, quiet), its length on the title's baseline; only whole
+  rows, every one in the same inks (a quieter last row was a fourth ink below 4.5:1). Spacing,
+  baseline to cap height: 18 dp from each quiet line to what it leads (the status line to the
+  title, "Up next" to the first row), 12 from the title to its artist, 20 to the bar, 30 from the
+  bar's times to "Up next" (half again the room above the bar, so the bar belongs to the song),
+  16 between rows; a mixed rhythm (rows of one and two lines, numbers beside covers, a row cut by
+  a gradient) read as clutter (`CenteringTest`). A title too long for two lines at 24 sp ends
+  after a whole word. The bar coming for a moment (or going): "Up next" and the rows make room
+  in 400 ms first, the bar fades in once the room is mostly open (and goes before it closes),
+  a row that no longer fits goes before it would pass the column's foot. No hint in the place
+  of "Up next" while the list shows. Music only, with Music Assistant's queue and something to
+  come; otherwise the cover as with the queue off. Off and List switch as the column's text changes,
+  the cover and the lights stay; a new song moves the list up (rows that stay glide to their
+  places, the first goes as the new title comes, a new row comes at the foot). The player names
+  a song the list announced a moment before its queue is read: meanwhile the list before moves
+  up by one, so the song changes in one change. The rows are the queue, not the song: they come
+  the whole way also when another song hurries a change. A queue changed beneath the song moves
+  only the rows (those that go first, rows put in once their place is clear); rows that changed
+  order go and come again rather than pass through each other (`QueueGlideTest`,
+  `QueueMotionTest`). The small covers are asked for after the song's own picture and made one at
+  a time, so they never hold it up or the song: a row whose small cover is still on its way shows
+  without it, and it comes in where it stands (`Thumbs`); on another wall they stay whole under
+  the new ones, as the cover does. A stage that leaves keeps the bar's room as it stood
+  (`QueueRooms`).
+- **Cover Flow** (Queue: Cover Flow, `StageGrid.flow`): middle cover 300 dp centered 303 dp from the left and
   vertically, two cards per side turned 60° in one shared perspective (outer edges 222.5/255 dp
   beside the center, 92% height), mirrored on a glossy floor; column from 598 dp, 314 dp wide,
   48 dp left of the outermost card and right of the column; every other rule holds. A card is
@@ -451,7 +494,7 @@ UI words are given in English with the German in parentheses where it matters.
 - **Cover Flow with cards missing** (the first song, the last, no queue): what is there stands
   with the text in the middle of the screen, as much room left of the outermost card as right
   of the column, measured on what is seen (`FlowGeometry.balance`); the column keeps its 40 dp
-  to the cards to come, or the single view's 64 dp to the middle card when none come; the full
+  to the cards to come, or the single cover's 64 dp to the middle card when none come; the full
   strip stays exactly on the grid. A new balance comes with the strip's turn, and the column
   never passes over a card: it makes room first, or the cards leaving on the right go first.
   Lines that leave go from where they stood, new ones rise at the new place. The dark wall's
@@ -470,9 +513,8 @@ UI words are given in English with the German in parentheses where it matters.
   template helper can hide a value. The place always has its room: values that do not fit
   beside it are left out from the last, never cut. They tick like the clock, no cross-fade.
 - **The song's words** (`Lyrics`, `LyricsText`; Lyrics (Songtext) in the quick settings and
-  under Information, remembered like the view; Music Assistant only, nothing else to set up): a
-  view of the text column,
-  not a screen. The line sung now stands centered on the artwork (first cap height to last
+  under Information, remembered like the queue's setting; Music Assistant only, nothing else to
+  set up): the text column set for them, not a screen. The line sung now stands centered on the artwork (first cap height to last
   baseline, `CenteringTest`) in the title's ink; the lines around it in the quiet ink, each
   fading as a whole with the distance of its nearer edge (whole within 40 dp, like the settings
   list), gone before its far edge comes within 8 dp of the status line, the song or the bar.
@@ -501,8 +543,9 @@ UI words are given in English with the German in parentheses where it matters.
   landscape), else the app. Commands go to Home Assistant only where the player's
   `supported_features` allow them.
 - **Quick settings** (`QuickMenu`, `QuickBar`; down on the remote): one row along the bottom
-  edge, rising 22 dp as it fades in, where the key points: View (Single cover / Cover Flow /
-  Landscape, taken 0.9 s after the last press so no view in between shows), Lyrics On / Off, or
+  edge, rising 22 dp as it fades in, where the key points: Queue (Off / List / Cover Flow, taken
+  0.9 s after the last press so none in between shows, List only with Music Assistant connected;
+  chosen over the landscape, it leaves it), Landscape On / Off (at once), Lyrics On / Off, or
   None while this song has no synced words (only with Music Assistant connected and a song on
   stage), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
   Lights On / Off (off remembers the level), Shuffle On / Off (only where the player can
@@ -514,7 +557,8 @@ UI words are given in English with the German in parentheses where it matters.
   line. A row longer than the room (in German the built-in entries alone are) glides to show the
   chosen entry whole, entries beyond its ends faded out; every entry fits the room on its own
   (`LanguageTest`). An opaque veil (black, paper) from 448 dp down, softened above: nothing
-  behind shows through. They leave the landscape as it was. Until they have been opened once
+  behind shows through. They leave the landscape as it was, but never bring it over a screen
+  that says something is wrong or the setup page. Until they have been opened once
   (`Settings.quickSeen`), the stage tells how: 3 s after it comes, for 12 s, its bottom line
   says "Arrow down opens the quick settings" (Pfeil runter öffnet die Schnelleinstellungen) in
   the place and style of "Up next" (`QuickHintTest`), coming and going in its cross-fade; not
@@ -548,7 +592,8 @@ UI words are given in English with the German in parentheses where it matters.
   while it shows, the landscape comes only when chosen and a pause never turns into the clock,
   so the guests can always scan it. Off, or when the party ends or plays elsewhere: the cover
   comes back, and the next party starts without it. `PartyCodeTest` reads the code from rendered
-  pixels in both views, on both walls, on the cover's colors and in a pause.
+  pixels beside a single cover and in Cover Flow, on both walls, on the cover's colors and in a
+  pause.
 - **Settings menu** (OK long-press, Menu, or Settings in the quick settings), in two levels as
   on every TV: first the groups, then the settings of the one opened. It opens on the groups; OK
   or right opens a group on its first line, Back goes to the groups (on the group left) and from
@@ -567,9 +612,9 @@ UI words are given in English with the German in parentheses where it matters.
   something is set up on the phone (Lyrics without Music Assistant: "Needs Music Assistant"; the
   lights and the values while none are chosen: "Set up") is dimmed, never brighter when chosen
   than another line at rest, its explanation says what it needs, and OK opens the setup. Options
-  show or hide parts, choose the view, the wall and the language, and dim the light; no fonts,
-  colors or layout variants. Labels are the common words people know from TVs and phones, values
-  plain words: groups Picture (View: Single cover / Cover Flow, Appearance, Background: Plain /
+  show or hide parts, choose how the queue shows, the wall and the language, and dim the light; no
+  fonts, colors or layout variants. Labels are the common words people know from TVs and phones,
+  values plain words: groups Picture (Queue: Off / List / Cover Flow, Appearance, Background: Plain /
   Cover colors, Intensity, Motion: Off / Slow / Medium / Fast), Information (Clock, Progress
   bar, Next track, Album and year, Speaker group, Volume, Values, Lyrics), Lights (Brightness:
   Off / 10 to 100% with a slider, Lights that are off: Turn on / Leave off), Landscape (When
@@ -732,8 +777,8 @@ UI words are given in English with the German in parentheses where it matters.
   features nobody asked for); the time-lapse is only the `landscape=timelapse` extra for
   measuring. Comes after the pause delay (default 3 min; the rest clock first), during music
   only if set, never over trouble, setup or the menu, nor by itself while a party's code shows;
-  up on the remote or the quick settings (View) bring it whatever plays, until it is left (up
-  again, back, or another view there). Every key starts the delays again; one that came by
+  up on the remote or the quick settings (Landscape) bring it whatever plays, until it is left
+  (up again, back, Landscape Off, or a choice of the queue there). Every key starts the delays again; one that came by
   itself goes with any key, which still does its work. Baked ahead only while it shows or is on
   its way (`LandscapePolicy.onItsWay`); the bake is let go 10 s after it stopped coming and when the
   app goes to the background (tens of megabytes at 4K). While a first bake keeps one waiting

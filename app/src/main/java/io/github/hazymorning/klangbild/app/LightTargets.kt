@@ -1,11 +1,11 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.MiniPlayer
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightSync
@@ -56,8 +56,8 @@ internal class LightTargets(
             )
         }
         if (stage == null) return null
-        // While a view switch waits for the new view's first scene, the view before still shows.
-        val shown = if (s.view == StageView.FLOW) ui.flow?.middle?.stage ?: ui.stage else ui.stage ?: ui.flow?.middle?.stage
+        // While a switch to or from Cover Flow waits for its first scene, what showed before still shows.
+        val shown = if (s.queue == QueueDisplay.FLOW) ui.flow?.middle?.stage ?: ui.stage else ui.stage ?: ui.flow?.middle?.stage
         val field = shown?.scene?.field ?: return null
         return LightSync.Target(
             lights = s.roomLights,

@@ -13,7 +13,6 @@ import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +24,8 @@ import org.robolectric.annotation.GraphicsMode
  * At sunset the stage turns from paper to the dark wall in one cross-fade, its lines with it: a
  * few frames in they are still the dark lines on paper, and once the wall is dark they are the
  * light ones (until 2026.10 the light lines stood at once on the single stage, and the status
- * line in both views, a pale ghost of the title on the still-light paper).
+ * line beside a single cover and in Cover Flow, a pale ghost of the title on the still-light
+ * paper).
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -49,7 +49,7 @@ class WallChangeTest {
     fun coverFlowStatusLineCrossFadesWithTheWall() {
         val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.NOCTURNE, SyntheticCover.MOSS)
         fun flow(wall: Appearance) = Fixtures.flow(
-            covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = wall, view = StageView.FLOW) }.toMap(),
+            covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = wall, flow = true) }.toMap(),
             listOf(0L, 1L, 2L),
             1L,
         )

@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.data.ArtworkLoader
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
@@ -27,8 +26,8 @@ data class Look(val appearance: Appearance, val wallTint: Float, val coverField:
             (appearance == Appearance.DARK && !coverField || scene.wallTint == wallTint)
 }
 
-/** What scenes are built for: the screen and the view. Another frame means new scenes. */
-data class Frame(val screen: ScreenSpec, val view: StageView)
+/** What scenes are built for: the screen, and Cover Flow's grid or the cover's own. Another frame means new scenes. */
+data class Frame(val screen: ScreenSpec, val flow: Boolean)
 
 /**
  * Prepares the stage's scenes (cover, palette, light; see [SceneBuilder]) off the main thread,
@@ -46,14 +45,14 @@ class Scenes(
     private val cache = LinkedHashMap<String, ArtworkScene>()
     private val building = HashMap<String, Job>()
 
-    @Volatile var frame = Frame(ScreenSpec.TV_1080, StageView.SINGLE)
+    @Volatile var frame = Frame(ScreenSpec.TV_1080, flow = false)
         set(value) {
             if (value != field) synchronized(cache) { cache.clear() }
             field = value
         }
 
     /** How many scenes are kept: the cover flow needs a whole strip of them. */
-    private val capacity get() = if (frame.view == StageView.FLOW) 10 else 3
+    private val capacity get() = if (frame.flow) 10 else 3
 
     /** The scene for [track] if it is ready and lit as [look]. */
     fun ready(track: TrackInfo, look: Look): ArtworkScene? =
@@ -128,7 +127,7 @@ class Scenes(
                 screen = frame.screen,
                 appearance = look.appearance,
                 wallTint = look.wallTint,
-                view = frame.view,
+                flow = frame.flow,
                 coverField = look.coverField,
             )
         }

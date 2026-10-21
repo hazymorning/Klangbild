@@ -20,7 +20,6 @@ import com.google.zxing.qrcode.QRCodeReader
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.StageView
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,8 +29,8 @@ import kotlin.math.abs
 
 /**
  * A party's code where the cover stands, for the guests to scan from the couch. Read from
- * rendered pixels, it gives the party's link back in both views, on both walls, on the cover's
- * colors and in a pause, and nothing of the cover shows through it.
+ * rendered pixels, it gives the party's link back beside a single cover and in Cover Flow, on
+ * both walls, on the cover's colors and in a pause, and nothing of the cover shows through it.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -74,7 +73,7 @@ class PartyCodeTest {
 
     private val song = Fixtures.track(SyntheticCover.BAUHAUS)
 
-    /** The single view's artwork at 2 px a dp (368 dp at 88 dp from the left, centered), inside its corners. */
+    /** The single cover's artwork at 2 px a dp (368 dp at 88 dp from the left, centered), inside its corners. */
     private val single = intArrayOf(176 + 16, 172 + 16, 912 - 16, 908 - 16)
 
     /** Cover Flow's middle card (300 dp, its middle 303 dp from the left and in the middle of the height), inside its corners. */
@@ -111,7 +110,7 @@ class PartyCodeTest {
     fun `in Cover Flow the code stands in the middle card's place`() {
         val strip = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.BAUHAUS, SyntheticCover.WHITE_SPACE, SyntheticCover.NIGHT_DRIVE)
         for (wall in Appearance.entries) {
-            val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, view = StageView.FLOW) }.toMap()
+            val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, flow = true) }.toMap()
             val name = "flow_${wall.name.lowercase()}"
             val bmp = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
             assertWithMessage(name).that(scan(bmp, middle)).isEqualTo(LINK)

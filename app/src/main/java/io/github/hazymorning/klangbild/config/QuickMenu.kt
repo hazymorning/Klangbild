@@ -3,11 +3,7 @@ package io.github.hazymorning.klangbild.config
 import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.domain.ActionKind
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.text.Texts
-
-/** What the screen shows: one of the two views of the music, or the landscape. */
-enum class ViewChoice { SINGLE, FLOW, LANDSCAPE }
 
 /** The song's words in the text column: on, off, or on while this song has no synced words. */
 enum class LyricsChoice { ON, OFF, NONE }
@@ -33,7 +29,8 @@ enum class FavoriteState {
  * all settings ([SETTINGS]).
  */
 enum class QuickItem(@StringRes val label: Int?) {
-    VIEW(R.string.quick_view),
+    QUEUE(R.string.quick_queue),
+    LANDSCAPE(R.string.quick_landscape),
     LYRICS(R.string.quick_lyrics),
     PARTY(R.string.quick_party),
     FAVORITE(R.string.quick_favorite),
@@ -74,8 +71,8 @@ enum class ActionState {
 data class QuickContext(
     /** The screen shows the landscape. */
     val landscape: Boolean = false,
-    /** A view chosen with OK that is taken once the presses stop. */
-    val pending: ViewChoice? = null,
+    /** How the queue is to show, chosen with OK and taken once the presses stop. */
+    val pending: QueueDisplay? = null,
     /** Something plays (or is paused) on the stage. */
     val music: Boolean = false,
     /**
@@ -104,13 +101,15 @@ data class QuickContext(
  * says), up leaves the row. Entries that cannot do anything now are left out (no lyrics without
  * Music Assistant or without a song, no favorite without music, no lights before they are set
  * up, no shuffle on a player that cannot, no party code without a party playing here, no button
- * whose entity is unavailable or whose condition does not hold). The buttons set up on the phone
- * come last. The sleep timer lives in the settings.
+ * whose entity is unavailable or whose condition does not hold), and the queue's entry passes
+ * over its list while Music Assistant is not connected. The buttons set up on the phone come
+ * last. The sleep timer lives in the settings.
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t)))
-        row(QuickItem.VIEW, viewValue(ctx.pending ?: view(s, ctx), t))
+        row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
+        row(QuickItem.LANDSCAPE, t[if (ctx.landscape) R.string.on else R.string.off])
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t))
         if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
@@ -123,21 +122,6 @@ object QuickMenu {
         }
         row(QuickItem.SETTINGS, t[R.string.quick_open])
     }
-
-    /** What the screen shows now. */
-    fun view(s: Settings, ctx: QuickContext): ViewChoice = when {
-        ctx.landscape -> ViewChoice.LANDSCAPE
-        s.view == StageView.FLOW -> ViewChoice.FLOW
-        else -> ViewChoice.SINGLE
-    }
-
-    fun viewValue(p: ViewChoice, t: Texts): String = t[
-        when (p) {
-            ViewChoice.SINGLE -> R.string.view_single
-            ViewChoice.FLOW -> R.string.view_flow
-            ViewChoice.LANDSCAPE -> R.string.view_landscape
-        },
-    ]
 
     fun lyricsValue(l: LyricsChoice, t: Texts): String = t[
         when (l) {
@@ -182,20 +166,26 @@ object QuickMenu {
      * nothing moves when a value changes (for the buttons: what any of them can show).
      */
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
-        QuickItem.VIEW -> VIEWS.map { viewValue(it, t) }
+        QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
         QuickItem.LYRICS -> LyricsChoice.entries.map { lyricsValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
+        QuickItem.LANDSCAPE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[R.string.quick_open])
     }
 
-    /** From the music's own picture outward: the cover, the strip of covers, the landscape. */
-    val VIEWS = listOf(ViewChoice.SINGLE, ViewChoice.FLOW, ViewChoice.LANDSCAPE)
-
-    /** The picture after one step from [p] (−1 or +1); [wrap] goes round. */
-    fun step(p: ViewChoice, direction: Int, wrap: Boolean): ViewChoice {
-        val i = VIEWS.indexOf(p) + direction
-        return if (wrap) VIEWS[Math.floorMod(i, VIEWS.size)] else VIEWS[i.coerceIn(0, VIEWS.size - 1)]
+    /**
+     * How the queue shows after one step from [q] (−1 or +1), from the quietest to the fullest;
+     * [wrap] goes round. The list is passed over while it cannot show ([list] false).
+     */
+    fun step(q: QueueDisplay, direction: Int, wrap: Boolean, list: Boolean): QueueDisplay {
+        val order = SettingsMenu.QUEUE_ORDER
+        var i = order.indexOf(q)
+        repeat(order.size) {
+            i += direction
+            i = if (wrap) Math.floorMod(i, order.size) else i.coerceIn(0, order.size - 1)
+            if (order[i] != QueueDisplay.LIST || list) return order[i]
+        }
+        return q
     }
 }

@@ -4,10 +4,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.config.LyricsChoice
+import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickItem
-import io.github.hazymorning.klangbild.ui.Fixtures
-import io.github.hazymorning.klangbild.config.MiniPlayer
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
@@ -21,6 +21,8 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.landscape.Weather
+import io.github.hazymorning.klangbild.landscape.WeatherGlide
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -104,15 +106,19 @@ class QuickControlTest {
     /** The quick settings have been opened once (the stage's hint ends). */
     private var quickSeen = false
 
-    /** How often the landscape was left, and the settings menu opened. */
+    /** How the queue shows, as the quick settings set it. */
+    private var queue = QueueDisplay.OFF
+
+    /** How often the landscape was left, and called, and the settings menu opened. */
     private var landscapeLeft = 0
+    private var landscapeCalled = 0
     private var menuOpened = 0
 
     private val host = object : ControllerHost {
         override val lock: Any = this
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
-        override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen)
+        override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen, queue = queue)
         override val ui: UiState get() = this@QuickControlTest.ui
         override val source: NowPlayingSource = this@QuickControlTest.source
         override val texts: Texts = TestTexts.english()
@@ -125,10 +131,13 @@ class QuickControlTest {
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
             quickSeen = updated.quickSeen
+            queue = updated.queue
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
-        override fun showLandscape() = Unit
+        override fun showLandscape() {
+            landscapeCalled++
+        }
         override fun hideLandscape(): Boolean {
             landscapeLeft++
             return false
@@ -239,9 +248,9 @@ class QuickControlTest {
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsValue() = rows().first { it.item == QuickItem.LYRICS }.value
-        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.VIEW, QuickItem.LYRICS).inOrder()
+        assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS).inOrder()
         assertThat(lyricsValue()).isEqualTo("Off")
-        quick.move(+1)
+        quick.move(+2)
         quick.change()
         assertThat(lyrics).isTrue()
         // Not known yet: on. Known to have none: none. With words: on.
@@ -366,15 +375,65 @@ class QuickControlTest {
     }
 
     @Test
-    fun `the view steps on from the one it names while the landscape is still kept`() {
+    fun `the queue steps on from how it shows, passes the list without Music Assistant, and is taken once the presses stop`() {
+        // Opened over the landscape, which they hold as it is.
+        ui = ui.copy(landscape = LandscapeUi(null, null, MiniPlayer.LEFT, WeatherGlide.still(Weather.FAIR)))
         quick.open(menuOpen = false)
-        // Single cover was chosen over the landscape; its first scene is still being made, so the
-        // landscape stays a moment longer, and the row names the view chosen.
-        ui = ui.copy(landscape = Fixtures.landscape(null, null, MiniPlayer.LEFT))
-        assertThat(rows().first { it.item == QuickItem.VIEW }.value).isEqualTo("Single cover")
-        // OK goes on from there, not from the landscape kept on screen (the press would seem lost).
+        assertThat(quick.landscapeHeld).isTrue()
+        fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
+        assertThat(queueValue()).isEqualTo("Off")
+        // Stepped round to how it was, nothing changes and the landscape stays.
         quick.change()
-        assertThat(rows().first { it.item == QuickItem.VIEW }.value).isEqualTo("Cover Flow")
+        quick.change()
+        assertThat(queueValue()).isEqualTo("Off")
+        test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
+        assertThat(landscapeLeft).isEqualTo(0)
+        assertThat(quick.landscapeHeld).isTrue()
+        // Without Music Assistant only the next track is known: the list is passed over.
+        quick.change()
+        assertThat(queueValue()).isEqualTo("Cover Flow")
+        assertThat(queue).isEqualTo(QueueDisplay.OFF)
+        test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
+        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        // Chosen, it leaves the landscape: the stage comes to show it.
+        assertThat(landscapeLeft).isEqualTo(1)
+        assertThat(quick.landscapeHeld).isFalse()
+        ui = ui.copy(landscape = null)
+        // With Music Assistant, the list comes between: steps that follow quickly show only the last.
+        ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
+        quick.change()
+        assertThat(queueValue()).isEqualTo("Off")
+        quick.change()
+        assertThat(queueValue()).isEqualTo("List")
+        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        quick.close()
+        assertThat(queue).isEqualTo(QueueDisplay.LIST)
+    }
+
+    @Test
+    fun `the landscape has an entry of its own, which turns it on and off at once`() {
+        quick.open(menuOpen = false)
+        fun landscapeValue(shows: Boolean) = quick.state(ui.screen, landscape = shows)!!.rows.first { it.item == QuickItem.LANDSCAPE }.value
+        assertThat(landscapeValue(false)).isEqualTo("Off")
+        assertThat(landscapeValue(true)).isEqualTo("On")
+        // The cursor on it: OK brings the landscape while it does not show, and leaves it while it does.
+        quick.state(ui.screen, landscape = false)
+        quick.move(+1)
+        quick.change()
+        assertThat(landscapeCalled).isEqualTo(1)
+        quick.state(ui.screen, landscape = true)
+        quick.change()
+        assertThat(landscapeLeft).isEqualTo(1)
+        assertThat(landscapeCalled).isEqualTo(1)
+        // A queue's choice still waiting is taken first, without leaving the landscape.
+        quick.state(ui.screen, landscape = false)
+        quick.move(-1)
+        quick.change()
+        quick.move(+1)
+        quick.change()
+        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(landscapeLeft).isEqualTo(1)
+        assertThat(landscapeCalled).isEqualTo(2)
     }
 
     @Test

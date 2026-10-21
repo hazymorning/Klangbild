@@ -17,7 +17,7 @@ import org.robolectric.annotation.GraphicsMode
 import io.github.hazymorning.klangbild.Pictures
 import org.junit.experimental.categories.Category
 
-/** Cover colors: the cover's colors as the wall, dark and light, in the single view and the cover flow, and moving. */
+/** Cover colors: the cover's colors as the wall, dark and light, beside a single cover and in Cover Flow, and moving. */
 @Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

@@ -157,6 +157,29 @@ class LaunchExtrasTest {
     }
 
     @Test
+    fun `how the queue shows is taken by its own name, and by the name earlier versions gave it`() {
+        // Each from a setting it changes, so a value that is not taken shows.
+        fun queue(vararg extras: Pair<String, String>, from: QueueDisplay = QueueDisplay.FLOW) =
+            LaunchExtras.applyTo(Settings(queue = from), mapOf(*extras)).queue
+        assertThat(queue("queue" to "list")).isEqualTo(QueueDisplay.LIST)
+        assertThat(queue("queue" to "Cover Flow", from = QueueDisplay.LIST)).isEqualTo(QueueDisplay.FLOW)
+        assertThat(queue("queue" to "off")).isEqualTo(QueueDisplay.OFF)
+        assertThat(queue("queue" to "liste")).isEqualTo(QueueDisplay.LIST)
+        // Earlier versions called it the view, and its single cover is the queue off.
+        assertThat(queue("view" to "single", from = QueueDisplay.LIST)).isEqualTo(QueueDisplay.OFF)
+        assertThat(queue("view" to "flow", from = QueueDisplay.OFF)).isEqualTo(QueueDisplay.FLOW)
+        assertThat(queue("view" to "einzelbild")).isEqualTo(QueueDisplay.OFF)
+        // Both given: the queue's own name counts.
+        assertThat(queue("view" to "flow", "queue" to "list")).isEqualTo(QueueDisplay.LIST)
+        // A value it does not know leaves the setting as it was.
+        assertThat(queue("queue" to "sideways")).isEqualTo(QueueDisplay.FLOW)
+        assertThat(queue("queue" to "sideways", from = QueueDisplay.LIST)).isEqualTo(QueueDisplay.LIST)
+        // A link may set it, under either name.
+        assertThat(LaunchExtras.fromLink(mapOf("queue" to "list", "view" to "flow")).keys).containsExactly("queue", "view")
+        assertThat(LaunchExtras.hasStoredExtras(mapOf("queue" to "list"))).isTrue()
+    }
+
+    @Test
     fun `session options`() {
         assertThat(LaunchExtras.session(mapOf("setup" to true))).isEqualTo(SessionOptions(showSetup = true))
         assertThat(LaunchExtras.session(mapOf("debug" to 1, "setup" to "ja")))

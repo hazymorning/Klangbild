@@ -10,7 +10,6 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -44,7 +43,7 @@ class FlowMotionTest {
     )
 
     private fun scenes(appearance: Appearance = Appearance.DARK) = covers.mapIndexed { i, c ->
-        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, view = StageView.FLOW)
+        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, flow = true)
     }.toMap()
 
     /** Shows [from], then each of [then] at its frame (counted from 1), capturing every [stepMs]. */

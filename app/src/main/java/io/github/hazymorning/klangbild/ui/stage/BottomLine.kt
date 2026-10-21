@@ -23,10 +23,18 @@ internal fun bottomOf(model: StageModel): String? = when {
 
 /**
  * The progress bar's place in the column ([bottomOf]): the bar, or a line of words. A change
- * cross-fades.
+ * cross-fades; the bar itself shows as much as [barAlpha] says on top of that.
  */
 @Composable
-internal fun BottomLine(content: String?, model: StageModel, styles: StageStyles, playing: Boolean, modifier: Modifier, label: String) {
+internal fun BottomLine(
+    content: String?,
+    model: StageModel,
+    styles: StageStyles,
+    playing: Boolean,
+    modifier: Modifier,
+    label: String,
+    barAlpha: () -> Float = { 1f },
+) {
     Crossfade(content, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = label) { shown ->
         when (shown) {
             null -> Box(Modifier)
@@ -38,6 +46,7 @@ internal fun BottomLine(content: String?, model: StageModel, styles: StageStyles
                 playing = playing,
                 colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
                 labelStyle = styles.time,
+                modifier = Modifier.graphicsLayer { alpha = barAlpha().coerceIn(0f, 1f) },
             )
             else -> BasicText(shown, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

@@ -156,7 +156,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactlyElementsIn(SettingsMenu.entries).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.VIEW, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
+            MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         ).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.LANGUAGE).inOrder()
     }

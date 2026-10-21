@@ -75,4 +75,6 @@ data class QueueInfo(
     /** Music Assistant's id of the queue and the current item's place in it (to read the whole queue). */
     val queueId: String? = null,
     val currentIndex: Int? = null,
+    /** How many items the queue holds in all. */
+    val items: Int? = null,
 )

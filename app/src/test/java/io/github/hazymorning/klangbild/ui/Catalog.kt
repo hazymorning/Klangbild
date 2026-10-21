@@ -130,6 +130,19 @@ object Catalog {
         [00:28.00]Und dann kam der Morgen
     """.trimIndent()
 
+    /** For the queue's list, in English: a song of an album, the album's next songs, then the next record. */
+    val desert = TrackInfo("Desert Song", listOf("Amal Haddad"), "Cairo Nights", 2016, 289_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "3")
+    val cairoNights = listOf(
+        TrackInfo("Old Town Rain", listOf("Amal Haddad"), "Cairo Nights", 2016, 252_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "4"),
+        TrackInfo("Saffron", listOf("Amal Haddad"), "Cairo Nights", 2016, 238_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "5"),
+        TrackInfo("Night Ferry", listOf("Amal Haddad"), "Cairo Nights", 2016, 303_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "6"),
+    )
+    val northernHours = listOf(
+        TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Hours", 2021, 312_000, artworkUrl = cover(SyntheticCover.NOCTURNE), queueItemId = "7"),
+        TrackInfo("Snowfield", listOf("Ida Holm"), "Northern Hours", 2021, 280_000, artworkUrl = cover(SyntheticCover.NOCTURNE), queueItemId = "8"),
+        TrackInfo("Aurora Street", listOf("Ida Holm"), "Northern Hours", 2021, 231_000, artworkUrl = cover(SyntheticCover.NOCTURNE), queueItemId = "9"),
+    )
+
     val tracks: List<TrackInfo> = listOf(
         TrackInfo(
             "Neonlicht über der A40", listOf("Lumen Drive"), "Nachtfahrt", 2024, 251_000,

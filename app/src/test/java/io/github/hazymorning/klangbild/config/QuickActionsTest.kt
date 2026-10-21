@@ -130,15 +130,15 @@ class QuickActionsTest {
         val s = Settings(quickActions = listOf(ungroup, movie, party))
         val ctx = QuickContext(music = true, actions = mapOf(0 to ActionState.READY, 2 to ActionState.ON))
         val rows = QuickMenu.rows(s, ctx, en)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS).inOrder()
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS).inOrder()
         // The scene's entity is not there (unavailable): its button is left out, the others keep their places.
         assertThat(rows.filter { it.item == QuickItem.ACTION }.map { it.key.action }).containsExactly(0, 2).inOrder()
-        assertThat(rows[1].label).isEqualTo("Ungroup")
-        assertThat(rows[1].value).isEqualTo("Run")
-        assertThat(rows[2].value).isEqualTo("On")
+        assertThat(rows[2].label).isEqualTo("Ungroup")
+        assertThat(rows[2].value).isEqualTo("Run")
+        assertThat(rows[3].value).isEqualTo("On")
         // Every value a button can show, so its place never changes width.
-        assertThat(rows[1].values).containsExactly("Run", "Done", "Failed").inOrder()
-        assertThat(rows[2].values).containsExactly("On", "Off", "Failed").inOrder()
+        assertThat(rows[2].values).containsExactly("Run", "Done", "Failed").inOrder()
+        assertThat(rows[3].values).containsExactly("On", "Off", "Failed").inOrder()
     }
 
     @Test

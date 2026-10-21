@@ -13,9 +13,9 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
 import org.junit.Test
@@ -24,13 +24,13 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Another view is chosen: the view before stays on screen until the new view's first scene is
- * made, then the two cross through the dark at once. The screen never waits in the dark.
+ * The queue goes to or from Cover Flow: what showed stays on screen until the first scene of the
+ * other is made, then the two cross through the dark at once. The screen never waits in the dark.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")
-class ViewSwitchTest {
+class CoverFlowSwitchTest {
     @get:Rule
     val compose = composeRule()
 
@@ -44,14 +44,14 @@ class ViewSwitchTest {
     }
 
     @Test
-    fun theViewBeforeStaysUntilTheNewOneIsReady() {
+    fun whatShowedStaysUntilTheOtherIsReady() {
         var ui by mutableStateOf(UiState(screen = Screen.Stage(track, PlayerStatus.PLAYING, null), stage = Fixtures.stage(track, mdpi)))
         compose.mainClock.autoAdvance = false
         compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L })) }
         compose.mainClock.advanceTimeBy(2_500)
         val single = capture()
         // Cover Flow is chosen; its cards are still being made: the single cover stays as it is.
-        ui = ui.copy(view = StageView.FLOW)
+        ui = ui.copy(queue = QueueDisplay.FLOW)
         compose.mainClock.advanceTimeBy(2_000)
         assertThat(capture().sameAs(single)).isTrue()
         // The cards are ready: the single cover fades out, and the cards come up right after.
@@ -63,7 +63,7 @@ class ViewSwitchTest {
         assertThat(brightest(cards)).isGreaterThan(150)
         assertThat(cards.sameAs(single)).isFalse()
         // And back: the cards stay until the single cover is made again.
-        ui = ui.copy(view = StageView.SINGLE)
+        ui = ui.copy(queue = QueueDisplay.OFF)
         compose.mainClock.advanceTimeBy(2_000)
         assertThat(capture().sameAs(cards)).isTrue()
     }

@@ -14,7 +14,6 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.StageView
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.StageModel
@@ -189,7 +188,7 @@ class LyricsMotionTest {
     private val flowCovers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE, SyntheticCover.SALT_WATER, SyntheticCover.BAUHAUS)
 
     private fun flowScenes() = flowCovers.mapIndexed { i, c ->
-        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, view = StageView.FLOW)
+        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, flow = true)
     }.toMap()
 
     @Test

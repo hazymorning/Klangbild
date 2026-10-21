@@ -7,7 +7,6 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverAnalysis
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.ScenePalette
-import io.github.hazymorning.klangbild.domain.StageView
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -39,7 +38,7 @@ class ArtworkScene(
     val thumb: IntArray,
     /** How much of the cover's color the light wall takes (the light level setting). */
     val wallTint: Float = 1f,
-    /** The print as a card of the cover flow, with its mirror image; null in the single view. */
+    /** The print as a card of the cover flow, with its mirror image; null beside a single cover. */
     val card: FlowCard? = null,
     /**
      * The cover's colors as a field ([CoverField]). With [coverField] it is the wall behind
@@ -70,10 +69,10 @@ object SceneBuilder {
         screen: ScreenSpec,
         appearance: Appearance = Appearance.DARK,
         wallTint: Float = 1f,
-        view: StageView = StageView.SINGLE,
+        flow: Boolean = false,
         coverField: Boolean = false,
     ): ArtworkScene {
-        val layout = StageGrid(screen, view)
+        val layout = StageGrid(screen, flow)
         val slotPx = (layout.art * screen.density).roundToInt()
         val slotRect = layout.artRect
         val coverPixels: IntArray
@@ -102,6 +101,22 @@ object SceneBuilder {
         return assemble(key, layout, cover, shape, source == null, analysis, thumb, appearance, wallTint, coverField)
     }
 
+    /**
+     * A row's small cover in the queue's list: [cover] cut square and made [side] px wide with
+     * Lanczos, as the stage's cover is; without one, the generated figure for [seed].
+     */
+    fun rowCover(cover: Bitmap?, seed: String, side: Int): Bitmap {
+        val pixels = if (cover == null) {
+            ChladniArt.render(ChladniArt.specFor(seed), side, seed = stableHash(seed))
+        } else {
+            val s = min(cover.width, cover.height)
+            val square = IntArray(s * s)
+            cover.getPixels(square, 0, s, (cover.width - s) / 2, (cover.height - s) / 2, s, s)
+            ImageOps.resize(square, s, s, side, side)
+        }
+        return Bitmap.createBitmap(pixels, side, side, Bitmap.Config.ARGB_8888)
+    }
+
     /** Re-light an existing scene (appearance, wall tint or background changed) without the source image. */
     fun relight(scene: ArtworkScene, appearance: Appearance, wallTint: Float, coverField: Boolean = scene.coverField): ArtworkScene {
         val sameWall = scene.appearance == appearance
@@ -127,7 +142,7 @@ object SceneBuilder {
         card: FlowCard? = null,
     ): ArtworkScene {
         val palette = CoverPalette.derive(analysis, appearance, wallTint, cover = coverField)
-        val flow = layout.view == StageView.FLOW
+        val flow = layout.flow
         // The cover's colors: the wall itself with "cover colors", otherwise only for the lights.
         val field = CoverField.build(
             thumb, THUMB, analysis, appearance, strength = wallTint,

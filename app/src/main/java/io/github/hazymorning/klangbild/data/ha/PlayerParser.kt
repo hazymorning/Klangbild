@@ -172,6 +172,7 @@ object PlayerParser {
             name = q.string("name")?.trim()?.takeIf { it.isNotEmpty() },
             queueId = q.string("queue_id")?.takeIf { it.isNotBlank() },
             currentIndex = (q["current_index"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
+            items = (q["items"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
         )
     }
 

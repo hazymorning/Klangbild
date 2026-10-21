@@ -39,8 +39,11 @@ enum class Change {
     /** Same track on the other wall (light ↔ dark): the same cross-fade, slower, like the light outside. */
     WALL,
 
-    /** Same track and picture, other words in the column (its lyrics come or go): only the text changes. */
-    LYRICS,
+    /** Same track and picture, another arrangement of the column (its words or the queue's list come or go): only the text changes. */
+    COLUMN,
+
+    /** Same track, the queue's list has changed (a song put in, the order changed): only its rows move. */
+    ROWS,
     ;
 
     /** A cross-fade of the same track. */
@@ -51,8 +54,10 @@ enum class Change {
  * The stage with its transitions. On a track change the new artwork comes up over the old one
  * in a plain cross-fade (the screen never goes dark), while the light on the wall turns from
  * the old colors to the new. The old text leaves first; the new lines rise into place one
- * after another, and so they do when the song's words come or go. A pause dims light, artwork
- * and text; nothing moves.
+ * after another, and so they do when the song's words or the queue's list come or go. With the
+ * list, a new song moves it up: the rows that stay glide to their new places, the first one
+ * goes as the new title comes, and a new row comes at the foot. A pause dims light, artwork and
+ * text; nothing moves.
  *
  * Every animated value is read inside draw/layer lambdas, so animations never recompose.
  *
@@ -88,11 +93,12 @@ fun StageTheater(
             val newer: suspend () -> Unit = { snapshotFlow { latest.track.key }.first { it != song } }
             // Lines held by a skip that came to nothing rise the rest of the way first.
             if (song == old.track.key) text.release(newer)
-            if (target.scene === old.scene && target.track == old.track && target.lyrics === old.lyrics) return@collect
+            if (target.scene === old.scene && target.track == old.track && target.lyrics === old.lyrics && target.queue == old.queue) return@collect
             val kind = when {
                 song == old.track.key && target.scene.appearance != old.scene.appearance -> Change.WALL
                 song == old.track.key && target.scene !== old.scene -> Change.SOFT
-                song == old.track.key && target.lyrics !== old.lyrics -> Change.LYRICS
+                song == old.track.key && (target.lyrics !== old.lyrics || (target.queue == null) != (old.queue == null)) -> Change.COLUMN
+                song == old.track.key && target.queue != old.queue && target.track == old.track -> Change.ROWS
                 song == old.track.key -> Change.SOFT
                 samePicture(old.scene, target.scene) -> Change.TEXT
                 else -> Change.FULL
@@ -101,7 +107,7 @@ fun StageTheater(
             t.snapTo(0f)
             when (kind) {
                 Change.FULL -> text.begin(TextRise(Motion.TEXT_IN_MS, durationOf(kind)))
-                Change.TEXT, Change.LYRICS -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, durationOf(kind)))
+                Change.TEXT, Change.COLUMN -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, durationOf(kind)))
                 else -> Unit
             }
             change = kind
@@ -133,9 +139,13 @@ fun StageTheater(
     val party = rememberPartyCode(partyCode, setOfNotNull(cur.scene.appearance, prev?.scene?.appearance), px) { url, wall -> partyCard(url, px, wall) }
     val curPlan = rememberTextPlan(curModel)
     val prevPlan = prevModel?.let { rememberTextPlan(it) }
+    // The bar's room of the stage shown and of the one leaving, kept by stage through a change.
+    val queueRooms = remember { QueueRooms() }
+    val curQueue = rememberQueuePlan(curModel, queueRooms)
+    val prevQueue = prevModel?.let { rememberQueuePlan(it, queueRooms) }
 
     val level: () -> Float = { dim.light * intensity() }
-    val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.LYRICS
+    val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.COLUMN && kind != Change.ROWS
     // A new picture comes up over the old one; the old goes once it is covered (a picture of
     // another shape, such as a round plate, lets the old one's corners fade with it).
     val oldPicture: () -> Float = {
@@ -159,10 +169,13 @@ fun StageTheater(
     // The text: the old block leaves first (from where it stood), the new lines follow one after
     // another; a new look of the same song cross-fades in place. On the other wall the new lines
     // come up with the wall (their inks would otherwise stand at once, pale on the old paper).
+    // The queue's list changing beneath the same song: only "Up next" cross-fades, if its words change.
+    val newHeading = prevModel != null && prevModel.next != curModel.next
     val textIn: (TextLine) -> Float = { line ->
         when {
             began != seen -> text.before(line)
             prev != null && kind == Change.WALL -> text.level(line) * p(0, total, Motion.Sine)
+            prev != null && kind == Change.ROWS -> if (line == TextLine.NEXT && newHeading) p(0, total) else 1f
             else -> text.level(line)
         }
     }
@@ -174,10 +187,68 @@ fun StageTheater(
         }
     }
     val stood: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
+    // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
+    val textOut: (TextLine) -> Float = { line ->
+        when (kind) {
+            Change.ROWS -> if (line == TextLine.NEXT && newHeading) 1f - p(0, total) else 0f
+            else -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS))
+        }
+    }
+    val textOutRise: (TextLine) -> Float = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft || kind == Change.ROWS) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) }
+    // The queue's rows are the queue, not the song: they come the whole way also when another song
+    // hurries a change (the skipped song's own lines stay down), so every change finds them whole
+    // and moves them on from there. They glide when the list goes on from the one before (a new
+    // song moves it up, the queue changed), else they come and go with the text, as "Up next" does.
+    val rowsIn: () -> Float = {
+        when {
+            began != seen -> 1f
+            kind == Change.WALL -> p(0, total, Motion.Sine)
+            else -> text.unheld(TextLine.NEXT)
+        }
+    }
+    val rowsInRise: () -> Float = { if (began != seen) 0f else 10f * (1f - text.unheld(TextLine.NEXT)) }
+    val rowsOut: () -> Float = { if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS) }
+    val rowsOutRise: () -> Float = { if (kind.isSoft) 0f else -6f * p(0, Motion.TEXT_OUT_MS) }
+    // The queue changed beneath the song (with a new look of it too): only the rows move.
+    val reordered = kind == Change.ROWS ||
+        (kind == Change.SOFT && prevQueue != null && curQueue != null && prevQueue.rows.map { it.id } != curQueue.rows.map { it.id })
+    val rowsGo = prevQueue != null && curQueue != null && (kind == Change.FULL || kind == Change.TEXT || reordered) &&
+        prevQueue.rows.any { a -> curQueue.rows.any { it.id == a.id } }
+    val rows = when {
+        prev == null -> RowsMotion(false, { 1f }, { 0f }, { 0f }, rowsIn, rowsInRise)
+        // Rows that go dissolve first, the others move, and rows put in come once their place is clear.
+        reordered -> RowsMotion(
+            matched = rowsGo,
+            glide = { p(ROWS_CLEAR_MS, ROWS_SETTLED_MS) },
+            old = { 1f - p(0, ROWS_CLEAR_MS) },
+            oldRise = { 0f },
+            new = { p(if (rowsGo) ROWS_COME_MS else ROWS_CLEAR_MS, total) },
+            newRise = { 0f },
+            // A small cover made meanwhile comes in over the whole change, where its row stands.
+            cover = { p(0, total, Motion.Sine) },
+        )
+        rowsGo -> RowsMotion(
+            matched = true,
+            glide = { p(Motion.TEXT_OUT_MS, Motion.TEXT_OUT_MS + ROWS_GLIDE_MS) },
+            old = rowsOut,
+            oldRise = rowsOutRise,
+            new = rowsIn,
+            newRise = rowsInRise,
+        )
+        // On another wall the old small covers stay whole under the new ones, as the cover does,
+        // where the same rows stand.
+        else -> {
+            val sameRows = kind == Change.WALL && prevQueue?.rows?.map { it.id } == curQueue?.rows?.map { it.id }
+            RowsMotion(false, { 1f }, rowsOut, rowsOutRise, rowsIn, rowsInRise, oldCover = if (sameRows) ({ 1f }) else rowsOut)
+        }
+    }
 
     // The words of the song shown and of the one leaving keep their places through a change.
     val lyricsViews = remember { LyricsViews() }
-    SideEffect { lyricsViews.keep(cur.lyrics, prev?.lyrics) }
+    SideEffect {
+        lyricsViews.keep(cur.lyrics, prev?.lyrics)
+        queueRooms.keep(setOfNotNull(cur.scene.key, prev?.scene?.key))
+    }
 
     Box(modifier.fillMaxSize()) {
         // The old wall stays whole until the new one (its light and its color beyond the screen's
@@ -198,15 +269,12 @@ fun StageTheater(
         PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { dim.picture })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             if (prevModel != null && prevPlan != null) {
-                TextLayer(
-                    prevModel,
-                    plan = prevPlan,
-                    alpha = { line -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
-                    rise = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) },
-                    dim = { dim.text },
-                )
+                TextLayer(prevModel, plan = prevPlan, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue, rows = false)
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text })
+            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue, rows = false)
+        }
+        if (curQueue != null || prevQueue != null) {
+            QueueRowsLayer(curQueue, prevQueue.takeIf { prev != null }, rows, text = { dim.text }, picture = { dim.picture })
         }
         // The status line belongs to the room, not to the track, so it stays; on the other wall
         // its inks cross-fade with the stage.
@@ -221,10 +289,22 @@ fun StageTheater(
 
 private fun durationOf(change: Change) = when (change) {
     Change.FULL -> Motion.TRACK_CHANGE_MS
-    Change.TEXT, Change.LYRICS -> Motion.TEXT_CHANGE_MS
+    Change.TEXT, Change.COLUMN -> Motion.TEXT_CHANGE_MS
     Change.SOFT -> Motion.SOFT_SWAP_MS
     Change.WALL -> Motion.WALL_CHANGE_MS
+    Change.ROWS -> Motion.FLOW_SIDES_MS
 }
+
+/** The queue's rows glide to their new places in this long (ms), once the text before has left. */
+private const val ROWS_GLIDE_MS = 600
+
+/**
+ * When the queue changes beneath a song, the rows that go have gone after this long (ms); then the
+ * others move until they have settled, and the rows put in come from when their place is nearly clear.
+ */
+private const val ROWS_CLEAR_MS = 300
+private const val ROWS_SETTLED_MS = 750
+private const val ROWS_COME_MS = 650
 
 /** Same picture: consecutive songs of one album. */
 internal fun samePicture(a: ArtworkScene, b: ArtworkScene): Boolean =

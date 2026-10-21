@@ -4,7 +4,6 @@ import android.content.Intent
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaUrls
 import io.github.hazymorning.klangbild.domain.EntityId
-import io.github.hazymorning.klangbild.domain.StageView
 
 /**
  * `am start` extras. Configuration extras (`ha_url`, `token`, `ma_url`, `ma_token`, `entity`,
@@ -37,7 +36,7 @@ object LaunchExtras {
     const val VOLUME_KEYS = "volume_keys"
     const val REMOTE = "remote"
     const val APPEARANCE = "appearance"
-    const val VIEW = "view"
+    const val QUEUE = "queue"
     const val BACKGROUND = "background"
     const val MOTION = "motion"
     const val LIGHTS_LEFT = "lights_left"
@@ -62,6 +61,7 @@ object LaunchExtras {
         "window_view_pause" to LANDSCAPE_PAUSE,
         "window_view_playing" to LANDSCAPE_PLAYING,
         "window_view" to LANDSCAPE,
+        "view" to QUEUE,
         "fensterblick_pause" to LANDSCAPE_PAUSE,
         "fensterblick_musik" to LANDSCAPE_PLAYING,
         "fensterblick" to LANDSCAPE,
@@ -69,7 +69,7 @@ object LaunchExtras {
 
     private val stored = listOf(
         HA_URL, TOKEN, MA_URL, MA_TOKEN, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY,
-        VOLUME_KEYS, REMOTE, APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_BRIGHTNESS,
+        VOLUME_KEYS, REMOTE, APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_BRIGHTNESS,
         SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER, WEATHER,
     )
 
@@ -137,12 +137,14 @@ object LaunchExtras {
                 else -> null
             }?.let { out = out.copy(appearance = it) }
         }
-        (extras[VIEW] as? String)?.let { v ->
+        // Earlier versions named the queue's place the view: its single cover is the queue off.
+        (extras[QUEUE] as? String)?.let { v ->
             when (v.trim().lowercase().replace(" ", "").replace("_", "")) {
-                "single", "einzelbild", "bild" -> StageView.SINGLE
-                "flow", "coverflow" -> StageView.FLOW
+                "off", "aus", "single", "einzelbild", "bild" -> QueueDisplay.OFF
+                "list", "liste" -> QueueDisplay.LIST
+                "flow", "coverflow" -> QueueDisplay.FLOW
                 else -> null
-            }?.let { out = out.copy(view = it) }
+            }?.let { out = out.copy(queue = it) }
         }
         (extras[BACKGROUND] as? String)?.let { v ->
             when (v.trim().lowercase().replace(" ", "").replace("_", "")) {
@@ -247,7 +249,7 @@ object LaunchExtras {
      */
     private val linkKeys = setOf(
         CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY, VOLUME_KEYS, REMOTE, SLEEP_MINUTES, SLEEP_ACTION,
-        APPEARANCE, VIEW, BACKGROUND, MOTION, LIGHTS_BRIGHTNESS, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
+        APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_BRIGHTNESS, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
         LANDSCAPE,
     )
 
