@@ -103,7 +103,11 @@ class QuickShimmerTest {
         }
     }
 
-    private fun same(a: Bitmap, b: Bitmap): Boolean = word(a).zip(word(b)).all { (p, q) -> p.contentEquals(q) }
+    /** Whether the value's place holds exactly the same pixels in [a] and [b]. */
+    private fun same(a: Bitmap, b: Bitmap): Boolean {
+        fun pixels(bmp: Bitmap) = IntArray((x1 - x0) * (y1 - y0)).also { bmp.getPixels(it, 0, x1 - x0, x0, y0, x1 - x0, y1 - y0) }
+        return pixels(a).contentEquals(pixels(b))
+    }
 
     /**
      * Where the band's middle stands (px from the word's start) in [mid], with the word in its
