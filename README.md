@@ -82,7 +82,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 <summary><b>2. Connect it to Home Assistant</b></summary>
 <br>
 
-The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, so there's nothing to type with the remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
+The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
 </details>
 
