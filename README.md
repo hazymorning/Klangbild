@@ -22,6 +22,20 @@ The background is light during the day and dark at night, and the picture slowly
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
+Klangbild can also show a landscape, a calm scene with a small player in the corner. It's only a placeholder for now and will be replaced later.
+
+<details>
+<summary><b>More about the landscape</b></summary>
+<br>
+
+![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
+
+The landscape changes with the time of day and the seasons at your location, so you'll see morning light, a sunset or stars depending on when you look. If you have a weather entity in Home Assistant, it also shows the current weather, so you'll see rain on screen when it's raining outside.
+
+By default, the landscape comes up by itself after three minutes without music. You can change that or turn it off in the settings, and up on the remote brings it at any time.
+
+</details>
+
 ## The queue
 
 <table>
@@ -42,22 +56,6 @@ The background is light during the day and dark at night, and the picture slowly
 </table>
 
 With the queue off, the album cover stands on its own and the last line names the next song. As a list, the songs to come line up beside the cover, which needs Music Assistant, and Cover Flow shows the covers in your queue side by side. You switch between them in the quick settings.
-
-## Landscape
-
-![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
-
-The landscape is a cozy natural scene with a small player in the corner. Press up on the remote to go straight to it, or turn it on in the quick settings.
-
-<details>
-<summary><b>More about the landscape</b></summary>
-<br>
-
-The landscape changes with the time of day and the seasons at your location, so you'll see morning light, a sunset or stars depending on when you look. If you have a weather entity in Home Assistant, it also shows the current weather, so you'll see rain on screen when it's raining outside.
-
-By default, the landscape comes up by itself after three minutes without music. You can change that or turn it off in the settings.
-
-</details>
 
 ## Devices
 
