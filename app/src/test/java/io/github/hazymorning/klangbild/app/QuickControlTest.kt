@@ -240,25 +240,38 @@ class QuickControlTest {
     }
 
     @Test
-    fun `the lyrics entry shows with Music Assistant and a song, says whether this one has words, and OK turns it on and off`() {
+    fun `the lyrics entry shows with Music Assistant and a song, says On quietly for a song without words, and OK turns it on and off`() {
         val song = TrackInfo("Song", listOf("A"), durationMs = 200_000L)
         ui = ui.copy(screen = Screen.Stage(song, PlayerStatus.PLAYING, null))
         quick.open(menuOpen = false)
         // Without Music Assistant's own link, no words can come: no entry.
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
-        fun lyricsValue() = rows().first { it.item == QuickItem.LYRICS }.value
+        fun lyricsRow() = rows().first { it.item == QuickItem.LYRICS }
+        fun lyricsValue() = lyricsRow().value
         assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS).inOrder()
         assertThat(lyricsValue()).isEqualTo("Off")
         quick.move(+2)
         quick.change()
         assertThat(lyrics).isTrue()
-        // Not known yet: on. Known to have none: none. With words: on.
+        // Not known yet: on. Known to have none: still on, said quietly. With words: on.
         assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isFalse()
         ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, null)))
-        assertThat(lyricsValue()).isEqualTo("None")
+        assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isTrue()
+        // OK on the quiet On turns the words off, and on again (still quiet: this song has none).
+        quick.change()
+        assertThat(lyrics).isFalse()
+        assertThat(lyricsValue()).isEqualTo("Off")
+        assertThat(lyricsRow().muted).isFalse()
+        quick.change()
+        assertThat(lyrics).isTrue()
+        assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isTrue()
         ui = ui.copy(source = ui.source.copy(lyrics = SongLyrics(song.key, Lrc.parse("[00:01.00]Eins\n[00:05.00]Zwei"))))
         assertThat(lyricsValue()).isEqualTo("On")
+        assertThat(lyricsRow().muted).isFalse()
         quick.change()
         assertThat(lyrics).isFalse()
         assertThat(lyricsValue()).isEqualTo("Off")

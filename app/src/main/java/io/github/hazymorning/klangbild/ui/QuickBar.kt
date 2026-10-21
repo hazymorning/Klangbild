@@ -94,8 +94,9 @@ object QuickGrid {
  * The quick settings along the bottom edge: they rise a little and fade in when down is
  * pressed, and sink back when they close. Each entry is its name in the quiet ink with its value
  * under it; the chosen one is lit from below by the same soft band of light as the menu's
- * chosen line, its words at full strength (no frame, no chip, no icon). The entries keep their
- * places whatever their values say, so nothing jumps while a value changes.
+ * chosen line, its words at full strength (no frame, no chip, no icon). A value that holds but
+ * has nothing to show now stands in a quieter ink. The entries keep their places whatever their
+ * values say, so nothing jumps while a value changes.
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier) {
@@ -131,6 +132,21 @@ internal class QuickColors(
     val value: Color,
     val valueFocus: Color,
 ) {
+    /**
+     * A value that holds but has nothing to show now (the song's words on, for a song without
+     * them): as quiet as the names. No ink of its own: the screen keeps its few levels.
+     */
+    val valueMuted: Color get() = label
+
+    /**
+     * A value's ink: full while its entry is chosen. A [muted] one stays quiet, and chosen it is
+     * no brighter than another value at rest, as a dimmed line in the menu is.
+     */
+    fun valueInk(focused: Boolean, muted: Boolean): Color = when {
+        muted -> if (focused) value else valueMuted
+        else -> if (focused) valueFocus else value
+    }
+
     companion object {
         fun of(appearance: Appearance): QuickColors {
             fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
@@ -222,7 +238,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
             key(row.key) {
                 val focused = i == cursor
                 val labelColor by animateColorAsState(if (focused) colors.labelFocus else colors.label, tween(240, easing = Motion.Dimmer), label = "quick-label")
-                val valueColor by animateColorAsState(if (focused) colors.valueFocus else colors.value, tween(240, easing = Motion.Dimmer), label = "quick-value")
+                val valueColor by animateColorAsState(colors.valueInk(focused, row.muted), tween(240, easing = Motion.Dimmer), label = "quick-value")
                 val left = lefts[i]
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.

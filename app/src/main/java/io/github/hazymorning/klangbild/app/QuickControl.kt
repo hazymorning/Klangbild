@@ -122,7 +122,8 @@ internal class QuickControl(private val host: ControllerHost) {
                 host.recompute()
             }
             QuickItem.LANDSCAPE -> toggleLandscape()
-            // On and off, at once: the stage changes its text as it does for a new song.
+            // On and off, at once: the stage changes its text as it does for a new song. A quiet On
+            // (a song without words) goes off too.
             QuickItem.LYRICS -> host.settings.let { s -> host.applySettings(s.copy(lyrics = !s.lyrics)) }
             QuickItem.FAVORITE -> addFavorite()
             QuickItem.LIGHTS -> {
@@ -385,7 +386,8 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /**
      * The lyrics entry for [track]: only for a song, while Music Assistant (where the words come
-     * from) is connected. None while it is on and Music Assistant has no synced words for the song.
+     * from) is connected. While it is on and Music Assistant has no synced words for the song (or
+     * the song has no length for them to follow), NONE: still On, said quietly.
      */
     private fun lyricsChoice(track: TrackInfo): LyricsChoice? {
         if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null

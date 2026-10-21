@@ -96,7 +96,10 @@ class LyricsStageTest {
 
     @Test fun arabic() = shot("arabic", Fixtures.lyricsModel(Fixtures.track(SyntheticCover.TERRACOTTA), Fixtures.lyrics(Catalog.arabicLyrics), position = { 15_000L }))
 
-    /** The quick settings' Lyrics entry over the words, and its None for a song without them. */
+    /**
+     * The quick settings' Lyrics entry over the words, and its quiet On for a song without them,
+     * chosen and at rest.
+     */
     @Test
     fun quickSettings() {
         fun quick(focus: QuickItem, lyrics: LyricsChoice, t: Texts): QuickState {
@@ -111,7 +114,24 @@ class LyricsStageTest {
                 }
             }
         }
-        captureRoboImage("build/screenshots/lyrics/quick_none_en.png") {
+        val noWords = Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = Fixtures.spiegel)
+        captureRoboImage("build/screenshots/lyrics/quick_muted.png") {
+            Fixtures.Still {
+                Box(Modifier.fillMaxSize()) {
+                    Stage(noWords)
+                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                }
+            }
+        }
+        captureRoboImage("build/screenshots/lyrics/quick_muted_rest.png") {
+            Fixtures.Still {
+                Box(Modifier.fillMaxSize()) {
+                    Stage(noWords)
+                    QuickBar(quick(QuickItem.QUEUE, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                }
+            }
+        }
+        captureRoboImage("build/screenshots/lyrics/quick_muted_en.png") {
             Fixtures.Still(en) {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(Fixtures.night, next = Fixtures.spiegel, t = en, appearance = Appearance.LIGHT))
