@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
@@ -56,13 +57,18 @@ class ScenesTest {
             scenes.frame = Frame(screen, flow = true)
             scenes.prepare(track, look)
             assertThat(scenes.pending(track)).isTrue()
+            // Cover Flow's scene is really waiting for its cover.
+            withTimeout(5_000) { while (asked.get() == 0) delay(5) }
             // Back to the single cover while Cover Flow's scene still waits for its cover.
             scenes.frame = Frame(screen, flow = false)
             assertThat(scenes.pending(track)).isFalse()
             val made = CompletableDeferred<ArtworkScene>()
+            val start = System.nanoTime()
             scenes.prepare(track, look) { made.complete(it) }
             assertThat(scenes.pending(track)).isTrue()
             val scene = withTimeout(30_000) { made.await() }
+            // It never waited for the cover the scene left behind was still waiting for.
+            assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(Scenes.COVER_TIMEOUT_MS)
             assertThat(scenes.ready(track, look)).isSameInstanceAs(scene)
             assertThat(scenes.pending(track)).isFalse()
             // The cover was asked for again, and its first ask let go.

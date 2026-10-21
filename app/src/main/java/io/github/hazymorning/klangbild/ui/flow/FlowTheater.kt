@@ -355,7 +355,8 @@ private fun resting(flow: FlowData): List<CardMotion> = flow.cards.mapIndexed { 
  * screen's right go first.
  *
  * When the strip takes a [newLook], a card in both strips goes over from its texture before to
- * its new one.
+ * its new one. In a new look of the same song (a better cover, the other wall) nothing rolls or
+ * moves: cards that come, go or change places fade where they stand.
  */
 private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry, newLook: Boolean): Plan {
     val oldPos = HashMap<Long, Float>()
@@ -376,7 +377,8 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
     val lastStaying = staying.maxOfOrNull { now(it.id) } ?: Float.NEGATIVE_INFINITY
     val continues = staying.all { was(it.id)!! > 0f && now(it.id) == was(it.id)!! + shift } &&
         arriving.all { it.id in oldPos || now(it.id) > lastStaying }
-    val rolling = (if (continues) arriving.filter { it.id !in oldPos } else arriving).mapTo(HashSet()) { it.id }
+    val soft = kind == FlowChange.SOFT || kind == FlowChange.WALL
+    val rolling = if (soft) HashSet() else (if (continues) arriving.filter { it.id !in oldPos } else arriving).mapTo(HashSet()) { it.id }
     // How far the arriving cards roll: the first one (nearest the middle) starts just out of sight.
     val run = arriving.filter { it.id in rolling }.minOfOrNull { now(it.id) }?.let { FlowGeometry.EDGE - it }
     // Cards on the arriving side that make way (they leave, or roll in again).
@@ -396,7 +398,6 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
     }
     // Something rolls in where cards must make way: they go first; and so does the room the text
     // column makes, or the cards it moves into.
-    val soft = kind == FlowChange.SOFT || kind == FlowChange.WALL
     val clearMs = if (!soft && ((run != null && clearing) || roomFirst || leaveFirst)) Motion.FLOW_CLEAR_MS else 0
     val textEnd = if (kind == FlowChange.MOVE) clearMs + Motion.FLOW_TEXT_IN_MS + TextLine.NEXT.stagger + Motion.TEXT_LINE_MS else 0
     val timeline = Timeline(clearMs, turnMs, max(clearMs + turnMs, textEnd), roomFirst = roomFirst && !soft)
@@ -409,17 +410,18 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
         val from = was(e.id)
         out += when {
             e.id in rolling -> CardMotion(e.id, card, dir * (to + run!!), dir * to, move = turn, rolls = true)
-            from != null -> CardMotion(e.id, card, dir * from, dir * to, move = turn, was = oldCards.getValue(e.id).takeIf { newLook && it !== card })
+            from != null && (!soft || from == to) -> CardMotion(e.id, card, dir * from, dir * to, move = turn, was = oldCards.getValue(e.id).takeIf { newLook && it !== card })
             else -> CardMotion(e.id, card, dir * to, dir * to, fromAlpha = 0f, fade = turn)
         }
     }
     for (e in old.cards) {
-        if (e.id in newPos && e.id !in rolling) continue
+        val moved = soft && e.id in newPos && was(e.id) != now(e.id)
+        if (e.id in newPos && e.id !in rolling && !moved) continue
         val card = e.scene.card!!
         val from = was(e.id)!!
         // A card on the screen's right that leaves before the text column moves into its place.
         val beforeColumn = leaveFirst && oldPos.getValue(e.id) > 0f
-        out += if (from > 0f || beforeColumn) {
+        out += if (from > 0f || beforeColumn || soft) {
             // Makes way where it stands, first if something rolls in behind it. The farther
             // cards go a little sooner, so two leaving cards do not show through each other.
             val clear = timeline.clear

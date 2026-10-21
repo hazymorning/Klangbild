@@ -506,11 +506,14 @@ UI words are given in English with the German in parentheses where it matters.
   half-size copy against shimmer, since HWUI has no mipmaps). While a card turns between its two
   copies, or the strip takes a new look (a better cover, a song of the same card whose cover
   differs, the other wall: one strip, each card going over from its texture before), the card
-  is the mix of its textures laid over the wall as one: what lies beneath is darkened once by
-  the card, then each texture adds its share (DST_OUT, then ADD; no layer), and textures of
-  different shapes (a mirror image only on the dark wall, a round plate and a square cover)
-  are mixed in a small layer of the card's own. So the half-transparent mirror image never
-  counts twice (until 2026.10 the copies were laid over one another, the mirror image grew
+  is the mix of its textures laid over the wall as one. A card's own two copies on the dark wall:
+  what lies beneath is darkened once by the card, then each copy adds its share (DST_OUT, then
+  ADD; no layer); on paper (no mirror image, an opaque print) the full copy goes beneath just
+  strong enough that the half one laid over leaves the card at its alpha. Textures of two
+  different cards (a new look: another cover, which may have clear parts, or the other wall) are
+  mixed in a small layer of the card's own, now and then for a moment; each texture is lit as on
+  the wall it was made for, and in a new look of the same song cards that come, go or change
+  places fade where they stand. So the half-transparent mirror image never counts twice (until 2026.10 the copies were laid over one another, the mirror image grew
   denser as a card turned and fell back in one frame, and a new look came up over the old strip
   with the same jump as it landed; `FlowMirrorTest`). Side cards at 55% / 40%, and on
   the dark wall a much lighter card steps back further beside a dark middle one, coming forward
@@ -580,8 +583,8 @@ UI words are given in English with the German in parentheses where it matters.
   0.9 s after the last press so none in between shows, List only with Music Assistant connected;
   chosen over the landscape, it leaves it; while the way chosen is on its way, from the press
   until the stage shows it, its value waits in the name's ink and a soft band of its own ink, 64
-  dp, passes over it in 1.2 s, then rests 0.4 s; a pass that has begun always ends, and the
-  menu's chosen Queue line does the same; over the clock, the setup page or trouble nothing is
+  dp, passes over it in 1.2 s, then rests 0.4 s; a pass that has begun always ends; the menu's
+  chosen Queue line shimmers too, waiting in the ink of a name at rest; over the clock, the setup page or trouble nothing is
   made, so nothing shimmers (`QueueSwitch`, `Shimmer`)), Landscape On / Off (at once), Lyrics On
   / Off (only with Music Assistant connected and a song on stage; while this song has no synced
   words it still says On, in the name's ink and chosen no brighter than another value at rest,
