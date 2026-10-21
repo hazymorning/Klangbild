@@ -26,7 +26,8 @@ button under the first paragraph, which downloads the newest APK at once
 the poll's banner under the note (`poll.png`, `poll-light.png`: the landscape's mountains faint
 behind a veil, at night from the README's landscape and by day from `LandscapeGalleryTest`'s summer
 noon, the question on the left and a button on the right, the one picture with words of its own,
-as the user asked). No mockup carries text of its own. The first picture (the TV alone in the middle of its wall, the promo
+as the user asked; screens up to 640 px wide get `poll-small.png` and `poll-small-light.png`, the
+button under the question, since on a phone the wide one's words shrank to a few pixels). No mockup carries text of its own. The first picture (the TV alone in the middle of its wall, the promo
 film's song on it: "Klangbild" by hazymorning over the tagline, "Essential Mix, Vol. 1" up next)
 and the button come in a light and a dark version, switched by the reader's theme (`<picture>` with
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as

@@ -924,57 +924,65 @@ def download_buttons():
     download_button(light=True)
 
 
-def poll_banner(light=False, top=0.225, sides=(0.08, 0.965), veil=(0.30, 0.62)):
-    """The slim banner under the note that asks whether the landscape should stay and leads to its
-    poll: the landscape's mountains behind a veil, at night for dark pages (the README's landscape)
-    and the same place by day for light ones, the question on the left and a button on the right.
-    The README shows it at the column's width, about 840 px, so it is drawn at 1800. The band starts
-    at [top] of the render and runs between [sides], which keep the moon whole beside the button
-    (only a fir's tip comes in at the corner); [veil] is how much of the landscape shows at the
-    left and the right."""
-    W, H = 1800, 240
+def poll_banner(light=False, small=False, veil=(0.30, 0.62)):
+    """The banner under the note that asks whether the landscape should stay and leads to its poll:
+    the landscape's mountains behind a veil, at night for dark pages (the README's landscape) and
+    the same place by day for light ones. The wide one, the question on the left and the button on
+    the right, is seen at about 840 px, so it is drawn at 1800. On a phone its words would shrink to
+    a few pixels, so screens up to 640 px wide get the [small] one, the button under the question,
+    seen at about 330 px and drawn at 1080. Each takes the band of the render that keeps the moon
+    whole and clear of the words (in the wide one only a fir's tip comes in at the corner); [veil]
+    is how much of the landscape shows at the left and the right."""
+    pad = 76
+    if small:
+        # Seen at about 19 and 14 px on a phone; the button's words take that optical size.
+        title_size, size, optical, bh, inset, r, hair = 66, 48, 14, 116, 58, 34, 3
+        W, H = 1080, int(round(2 * pad + 0.70 * title_size + 60 + bh))
+        left, right, top = 0.2, 0.772, 0.23
+    else:
+        # Seen at about 26 and 18 px; the button's words take that optical size.
+        title_size, size, optical, bh, inset, r, hair = 56, 38, 18, 100, 54, 22, 2
+        W, H = 1800, 240
+        left, right, top = 0.08, 0.965, 0.225
     src = os.path.join(ROOT, "app", "build", "screenshots", "landscape", "gallery", "2_summer_2_noon.png") if light \
         else os.path.join(RENDERS, "landscape.png")
     render = Image.open(src).convert("RGB")
     rw, rh = render.size
-    x0, x1, y0 = sides[0] * rw, sides[1] * rw, top * rh
+    x0, x1, y0 = left * rw, right * rw, top * rh
     band = render.resize((W, H), Image.LANCZOS, box=(x0, y0, x1, y0 + (x1 - x0) * H / W))
     land = np.asarray(band, dtype=np.float64)
-    # The veil: the landscape shows a little more toward the button than behind the question.
+    # The veil: the landscape shows a little more toward the right than behind the question.
     base = np.array([250.0, 251.0, 253.0]) if light else np.array([9.0, 13.0, 26.0])
     x = (np.arange(W) + 0.5) / W
     k = (veil[0] + (veil[1] - veil[0]) * x)[None, :, None]
     img = base + (land - base) * k
-    pad = 76
-    title, title_cap = text_mask("Should the landscape stay?", "jost.ttf", 56, 440, tracking=-0.005, kern=True)
-    paste(img, title, pad, int(round(H / 2 - 0.70 * 56 / 2)) - title_cap, (12, 24, 52) if light else (242, 246, 252))
-    # The button, built like the download button: rounded a fifth of its height, its words centered on
-    # it. They are seen at about 18 px on the page, so DM Sans takes that optical size.
-    size = 38
-    label, label_cap = text_mask("Vote in the poll", "dmsans.ttf", size, 520, optical=18, kern=True)
-    bh = 100
-    bw = ink_width(label) + 2 * 54
-    bx, by = W - pad - bw, (H - bh) // 2
+    title, title_cap = text_mask("Should the landscape stay?", "jost.ttf", title_size, 440, tracking=-0.005, kern=True)
+    title_top = pad if small else H / 2 - 0.70 * title_size / 2
+    paste(img, title, pad, int(round(title_top)) - title_cap, (12, 24, 52) if light else (242, 246, 252))
+    # The button, built like the download button: rounded a fifth of its height, its words centered on it.
+    label, label_cap = text_mask("Vote in the poll", "dmsans.ttf", size, 520, optical=optical, kern=True)
+    bw = ink_width(label) + 2 * inset
+    bx, by = (pad, int(round(pad + 0.70 * title_size + 60))) if small else (W - pad - bw, (H - bh) // 2)
     button = rounded_box(H, W, (bx, by, bx + bw, by + bh), bh * 0.22)[..., None]
     fill, words = (np.array(NAVY, dtype=np.float64), (242, 246, 252)) if light else (np.array([238.0, 243.0, 250.0]), (12, 24, 52))
     img = img * (1 - button) + fill * button
     paste(img, label, bx + (bw - ink_width(label)) // 2, int(round(by + bh / 2 - 0.70 * size / 2)) - label_cap, words)
     # The banner's own corners and a hairline round it, so it stands apart from the page.
-    r = 22
     shape = rounded_box(H, W, (0, 0, W, H), r)
-    edge = (shape - rounded_box(H, W, (2, 2, W - 2, H - 2), r - 2))[..., None]
+    edge = (shape - rounded_box(H, W, (hair, hair, W - hair, H - hair), r - hair))[..., None]
     line = np.array(NAVY, dtype=np.float64) if light else np.array([150.0, 170.0, 205.0])
     img = img * (1 - edge * 0.16) + line * edge * 0.16
     rgba = np.dstack([np.clip(img, 0, 255), shape * 255]).astype(np.uint8)
     os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "poll-light.png" if light else "poll.png")
+    path = os.path.join(OUT, "poll" + ("-small" if small else "") + ("-light" if light else "") + ".png")
     Image.fromarray(rgba, "RGBA").save(path, optimize=True)
     print(path, os.path.getsize(path) // 1024, "KB", f"{W}x{H}")
 
 
 def poll_banners():
-    poll_banner()
-    poll_banner(light=True)
+    for small in (False, True):
+        poll_banner(small=small)
+        poll_banner(light=True, small=small)
 
 
 if __name__ == "__main__":
