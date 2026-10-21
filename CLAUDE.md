@@ -6,13 +6,16 @@ The UI speaks English (default) and German (`values-de`); code, comments, the RE
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
 Klangbild is and what it does, how the queue can show, the landscape in one line as the placeholder
-it is (its picture folded away under "More about the landscape"), the devices it runs on (Android TV 9 or later; folded
+it is (its fold, "More about the landscape", holds its picture and the plan: a modern audio
+visualizer that suits a living room takes its place once the right approach is found, nothing
+promised about how), the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
-pictures (the first one, day and night, the queue's three ways) and what it does; setup (its
-three steps folded inside it), devices, the remote, contributing and privacy are each one line
-to click under "More" (the badge's `#devices` anchor stands before devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
+first picture and what it does, with the day and night picture; the queue (its three pictures
+inside its fold), setup (its three steps folded inside it), devices, the remote, contributing and
+privacy are each one line to click under "More" (the badge's `#devices` anchor stands before
+devices). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue template says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
@@ -25,7 +28,7 @@ and the button come in a light and a dark version, switched by the reader's them
 they are by day; at night the dark wall with
 the lights in the cover's colors. The mockups stay calm and real, as a photograph of a room would
 be: the lights' colors soft on a matte wall, no colorful backgrounds; the queue's three ways side
-by side (the landscape's picture only in its fold), one after another on the same evening, in one cozy room
+by side in its fold (the landscape's picture only in its own), one after another on the same evening, in one cozy room
 worked out in 3D on a deep winter night (the queue off with a song on its cover colors, the queue
 as a list on the dark wall, Cover Flow; the landscape with stars, a thin moon and the campfire), a
 lamp's
@@ -48,6 +51,13 @@ pictures: effort goes into the app, not into documents.
   why something is the way it is when that helps. These notes are terse because they are a
   reference; nothing written for people should sound like them. On the TV, where room is tight,
   lines stay short, but they are still whole, natural sentences.
+- A word limit is kept by leaving things out, never by squeezing what stays. Every sentence is
+  one a person would say out loud: no clipped or telegraphic lines, no row of short sentences
+  that each tick off a fact, no sentence tacked on to deliver one ("You switch between them in
+  the quick settings."), no parts of the screen that act like people ("the last line names the
+  next song"), no stiff or odd wording that only machine-written text has. The user hates that
+  style: in the README it tells a first-time visitor that nobody cared, and the whole project
+  loses its first impression. Read every sentence aloud before it goes in.
 - No emoji, no em dashes, no dashes as punctuation, no exclamation marks, no bold for emphasis,
   no marketing words (seamless, effortless, elevate, delightful, immersive, robust, powerful,
   crafted), no filler, no poetic fragments. Commit subjects under 60 characters, PR descriptions
