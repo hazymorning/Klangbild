@@ -10,7 +10,7 @@ feature it is (its fold, "The landscape" under "More", holds its picture and wha
 short note (GitHub's `> [!NOTE]`, four sentences, the first in bold as the user asked) on the two phases: the now playing screen,
 practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
 day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
-the Discussions and linking the poll (discussion #51) where anyone who would like the landscape to stay can say so, the devices it runs on (Android TV 9 or later; folded
+the Discussions and linking the poll (discussion #51) where anyone who would like the landscape to stay can say so, a slim banner under it asking the same and leading there, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
 Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
@@ -22,8 +22,11 @@ wishes and questions to the Discussions. The README's pictures are mockups in `d
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
 button under the first paragraph, which downloads the newest APK at once
-(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`). No
-mockup carries text of its own. The first picture (the TV alone in the middle of its wall, the promo
+(`releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`), and
+the poll's banner under the note (`poll.png`, `poll-light.png`: the landscape's mountains faint
+behind a veil, at night from the README's landscape and by day from `LandscapeGalleryTest`'s summer
+noon, the question on the left and a button on the right, the one picture with words of its own,
+as the user asked). No mockup carries text of its own. The first picture (the TV alone in the middle of its wall, the promo
 film's song on it: "Klangbild" by hazymorning over the tagline, "Essential Mix, Vol. 1" up next)
 and the button come in a light and a dark version, switched by the reader's theme (`<picture>` with
 `prefers-color-scheme`): by day the light wall in daylight with the lights behind the TV off, as
@@ -94,7 +97,7 @@ python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what 
 ./gradlew :app:lintRelease                                     # Android Lint: every warning fails
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
-python3 tools/make_readme_pictures.py                          # README mockups + download button (Pillow, numpy)
+python3 tools/make_readme_pictures.py                          # README mockups, download button, poll banner (Pillow, numpy; names like poll_banners make only those)
 ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's film from the promo film's MP4 (kept outside the repository)
 ```
 
