@@ -16,8 +16,9 @@ decides, said without more certainty than there is), setup with an optional thir
 Home Assistant open it (and, at the step that chooses the speaker, a `> [!IMPORTANT]` note that a
 speaker Music Assistant plays on mostly shows up twice and only Music Assistant's entity brings
 its queue and lyrics, since people pick the wrong one), the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
-first picture and what it does, with the day and night picture; the queue (its three pictures
-inside its fold), the landscape, setup (its three steps folded inside it), device support, the
+first picture and what it does (this TV playing over Sendspin in one sentence), with the day and
+night picture; the queue (its three pictures inside its fold), the TV as a speaker (only what the
+release notes claim), the landscape, setup (its three steps folded inside it), device support, the
 remote, contributing and privacy are each one line to click under "More" (the badge's `#devices`
 anchor stands before device support). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:

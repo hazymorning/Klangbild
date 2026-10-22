@@ -15,7 +15,7 @@ When you're listening to music at home, the TV usually just sits there. Switched
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. It can also let the TV play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
+Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. Through Sendspin, the TV can also play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
 
 During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
@@ -50,6 +50,14 @@ During the day the background is light, and at night it turns dark. Since the TV
 </table>
 
 Press the down button on the remote to open the quick settings, where you can choose how much of your queue you see. The list only works once you've added Music Assistant during setup, and until then Cover Flow mostly shows the covers of songs you've already heard.
+
+</details>
+
+<details>
+<summary><b>The TV as a speaker</b></summary>
+<br>
+
+With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name and keeps playing even while Klangbild is closed.
 
 </details>
 
