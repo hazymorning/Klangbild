@@ -54,7 +54,11 @@ the banner, the icons and the button, never scaled from a bitmap. Release notes 
 easy to scan and in everyday words: a small heading for each kind of change there is (`### New`,
 `### Better`, `### Bug fixes`), under it a few short points a user understands at once, nothing
 technical. As short as the release allows; up to 300 words only when a release needs them and every
-one is well spent. `docs/` holds only the notes of the releases on GitHub and the README's
+one is well spent. They never speak to the reader (no "you", no "your") and stay humble: no hype,
+no exact claims ("more precisely", never "to a fraction of a second"), and only what is sure to
+work; whatever the user is not sure of yet stays out, even when it was built (2026.10.5 left out
+the screen switching to the TV's own music and "This TV" on the setup page).
+`docs/` holds only the notes of the releases on GitHub and the README's
 pictures: effort goes into the app, not into documents.
 
 ## Writing rules (texts in both languages, the setup page, comments, docs, commits, PRs)
