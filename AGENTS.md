@@ -24,22 +24,26 @@ notes, CI and every other document are English. The README stays short (about 70
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
 Klangbild is and what it does, how the queue can show, the landscape in one line as the working
 feature it is (its fold, "Landscape" under "More", holds its picture and what it shows), then a
-short note (GitHub's `> [!NOTE]`, four sentences, the first in bold as the user asked) on the two phases: the now playing screen,
+short note (GitHub's `> [!NOTE]`, four sentences in the user's own easygoing voice, the first in
+bold on a line of its own as the user asked, so no word hangs after it, and a no-break space keeping
+its last two words together) on the two phases: the now playing screen,
 practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
 day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
 the Discussions and linking the poll (discussion #51) where anyone who would like the landscape to stay can say so, a slim banner under it asking the same and leading there, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
-Home Assistant open it (and, at the step that chooses the speaker, a `> [!IMPORTANT]` note that a
+Home Assistant open it (and, at the step that chooses the speaker, a note marked Important that a
 speaker Music Assistant plays on mostly shows up twice and only Music Assistant's entity brings
-its queue and lyrics, since people pick the wrong one), the remote (and that its buttons can be changed), a note on contributing (ideas in the Discussions, bugs in the issues, no pull requests from others), privacy and the license. It reads short and tidy: upfront only the
+its queue and lyrics, since people pick the wrong one), the remote (and, as a tip under its table, that its buttons can be changed), a friendly note on contributing (ideas in the Discussions, bugs in the issues), privacy and the license. It is a passion project and never sounds cocky: a line saying pull requests from others weren't accepted read that way and went. GitHub draws its alert boxes only outside folds (inside one, `> [!TIP]` shows as those very words), so a note in a fold is a plain quote with its word in bold on a line of its own (Important, Tip). It reads short and tidy: upfront only the
 first picture and what it does (this TV playing over Sendspin in one sentence), with the day and
 night picture. Under "More" each part is one line to click, in the order a newcomer needs them:
 the devices it runs on, setup (its three steps folded inside it), the remote, the queue (its three
 pictures inside its fold), Sendspin (only what the release notes claim), the landscape,
 contributing and privacy (the badge's `#devices` anchor stands before the devices). Their titles
-are about equally wide, since the user loves balance: Which TVs, Setting it up, TV remote, Your
-queue, Sendspin, Landscape, Contributing, Your privacy, and the setup's three steps alike. Leave a
+are about equally wide, since the user loves balance: Compatibility, Setting it up, TV remote, The
+queue, Sendspin, Landscape, Contributing, Data privacy, and the setup's three steps alike, never a
+personal "your" in them ("Your queue" read as odd). After the last step a `<br>` leaves the room
+below it that the other folds have. Leave a
 feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
