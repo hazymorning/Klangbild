@@ -940,7 +940,7 @@ UI words are given in English with the German in parentheses where it matters.
   show. "This TV" at the top of the setup page's list follows it alone (`EntityId.THIS_TV`),
   and its own entity is left out of that list; while it does, Play here stays on (the menu's OK
   opens the setup, where another speaker is chosen first, and a launch extra cannot switch it
-  off), and its explanation still says what keeps the TV from playing. Tested end to end against aiosendspin 10.2.0; never verified on a TV.
+  off), and its explanation still says what keeps the TV from playing. Tested end to end against aiosendspin 10.2.0, and in daily use on the user's own TV, where it plays well.
 - **The sound feed** (`sound/`, `SoundSelection`; for the visualizer of the second phase, shown
   nowhere yet but in the debug overlay's meter): for each short stretch, loudness, four bands and
   onset, the latest beat Music Assistant knows, when it is heard on the monotonic clock, and how
