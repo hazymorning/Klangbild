@@ -17,7 +17,7 @@ When you're listening to music at home, the TV usually just sits there. Switched
 
 Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. Through Sendspin, the TV can also play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
 
-During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
+During the day the background is light, and at night it turns dark.
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
@@ -34,7 +34,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 <summary><b>Compatibility</b></summary>
 <br>
 
-Klangbild runs on TVs and boxes with Android TV 9 or later.
+Klangbild runs on TVs and boxes with Android TV 9 or later. Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 **Streaming sticks with Fire OS or Vega OS**
 
