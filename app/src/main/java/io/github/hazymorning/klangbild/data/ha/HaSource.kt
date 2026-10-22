@@ -314,7 +314,9 @@ class HaSource(
         val key = player?.track?.let { TrackMatch.key(it) }
         if (key != null) queue.follow(key, player)
 
-        val enriched = player?.let { queue.enrich(it) }
+        // One estimate of Home Assistant's clock for the whole state: the position is published on it.
+        val skew = connection.clockSkew.offsetMs
+        val enriched = player?.let { queue.enrich(it, skew) }
         val sun = entities[sunEntity]?.number("elevation")
         val weather = weatherEntities.firstNotNullOfOrNull { entities[it] }
         // The other speakers of a group are followed too, for their names, and so are the
@@ -337,7 +339,7 @@ class HaSource(
             next = queue.nextOf(currentQueue, key),
             sunElevation = sun ?: _state.value.sunElevation,
             receivedAtMs = receivedAt,
-            skewMs = connection.clockSkew.offsetMs,
+            skewMs = skew,
             linkDownSinceMs = linkDownSince,
             group = player?.let { groupOf(it, others.map { id -> entities[id]?.string("friendly_name") }, currentQueue) }
                 ?.let { g -> if (isEverywhere(g, entities)) g.copy(everywhere = true) else g },

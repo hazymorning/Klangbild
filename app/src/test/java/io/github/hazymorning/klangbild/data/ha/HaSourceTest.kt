@@ -961,5 +961,60 @@ class HaSourceTest {
             ma.close()
         }
     }
+    @Test
+    fun `a Music Assistant song's position comes from its queue to a fraction of a second while Home Assistant agrees`() = runBlocking {
+        // Home Assistant: 61 s, a second ago, in whole seconds.
+        val reportedAtMs = System.currentTimeMillis() - 1_000
+        player = """{"media_title":"Erstes Lied","media_artist":"A","app_id":"music_assistant","mass_player_type":"player",
+            "media_position":61,"media_position_updated_at":"${java.time.Instant.ofEpochMilli(reportedAtMs)}","media_duration":200}"""
+        queueAnswer = { queueOf(item("Erstes Lied", "erstes"), null) }
+        // Music Assistant's clock runs 100 s behind this one; its queue is a quarter of a second ahead of
+        // Home Assistant, to the millisecond, and says where it stood half a second before it answers.
+        var ahead = 0.25
+        var answeredAt = 0L
+        val ma = MockWebServer()
+        ma.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                maCommands += command
+                val local = System.currentTimeMillis()
+                val maNow = local / 1_000.0 - 100
+                return MockResponse.Builder().body(
+                    when (command) {
+                        "time" -> "$maNow"
+                        "player_queues/items" -> "[${maItem("Erstes Lied")}]"
+                        "player_queues/get" -> {
+                            answeredAt = local
+                            val elapsed = 61 + ahead + (local - 500 - reportedAtMs) / 1_000.0
+                            """{"queue_id":"q1","current_index":0,"items":1,"current_item":${maItem("Erstes Lied")},"next_item":null,
+                                "state":"playing","elapsed_time":$elapsed,"elapsed_time_last_updated":${maNow - 0.5},"playback_speed":1.0}"""
+                        }
+                        else -> "[]"
+                    },
+                ).build()
+            }
+        }
+        ma.start()
+        try {
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            s.start()
+            val precise = withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs.let { at -> at != null && at != reportedAtMs } } }
+            val p = precise.player!!
+            assertThat(maCommands).contains("time")
+            // Valid half a second before Music Assistant answered, on Home Assistant's clock (here this one's).
+            assertThat(precise.skewMs).isEqualTo(0L)
+            assertThat(p.positionAtEpochMs!! - (answeredAt - 500)).isIn(com.google.common.collect.Range.closed(-50L, 50L))
+            // A quarter of a second ahead of Home Assistant's whole seconds, as Music Assistant says, as
+            // closely as its clock is known (half a round trip).
+            val home = 61_000 + (p.positionAtEpochMs - reportedAtMs)
+            assertThat(p.positionMs!! - home).isIn(com.google.common.collect.Range.closed(200L, 300L))
+            // Music Assistant far from Home Assistant (a jump it has not told yet): Home Assistant's stays.
+            ahead = -50.0
+            withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs == reportedAtMs } }
+            assertThat(s.state.value.player!!.positionMs).isEqualTo(61_000L)
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
 }
-

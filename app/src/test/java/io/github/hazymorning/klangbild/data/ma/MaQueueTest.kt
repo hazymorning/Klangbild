@@ -156,4 +156,16 @@ class MaQueueTest {
         // A station is no song.
         assertThat(MaQueue.window(songs, offset = 0, currentIndex = 1, baseUrl = base).nextSong).isNull()
     }
+
+    @Test
+    fun `the queue says where it stands in its item to the millisecond, on its own clock`() {
+        val queue = Json.parseToJsonElement(
+            """{"state":"playing","elapsed_time":61.25,"elapsed_time_last_updated":1792630000.125,"playback_speed":1.5}""",
+        ).jsonObject
+        assertThat(MaQueue.position(queue)).isEqualTo(QueuePosition(elapsedMs = 61_250, atMs = 1_792_630_000_125, speed = 1.5f, playing = true))
+        val paused = Json.parseToJsonElement("""{"state":"paused","elapsed_time":3,"elapsed_time_last_updated":1792630000,"playback_speed":40}""").jsonObject
+        assertThat(MaQueue.position(paused)).isEqualTo(QueuePosition(elapsedMs = 3_000, atMs = 1_792_630_000_000, speed = 1f, playing = false))
+        assertThat(MaQueue.position(Json.parseToJsonElement("""{"state":"playing"}""").jsonObject)).isNull()
+    }
 }
+

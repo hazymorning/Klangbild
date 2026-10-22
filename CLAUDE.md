@@ -218,13 +218,16 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 every 15 s while a song plays, since Home Assistant hears nothing of a queue
                 changed mid-song (and a song moved further down keeps the next one and the
                 count): what comes next and the cards to come, published when they change; its
-                word holds for that song only), TrackMatch (one
+                word holds for that song only; the position from that same answer, to a fraction
+                of a second, on Music Assistant's clock as its `time` command gives it, while it
+                agrees with Home Assistant's), TrackMatch (one
                 song in two descriptions), StationPictures (a station's song: the best picture on
                 offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
                 `metadata/get_track_lyrics` on a client of its own with a long timeout;
-                `player_queues/get`: the queue as it stands, its next item always up to date;
-                `players/all`: the player around a Sendspin client),
+                `player_queues/get`: the queue as it stands, its next item always up to date, and
+                where it stands in it; `time`: its clock; `players/all`: the player around a
+                Sendspin client),
                 MaQueue (queue items around the current one → QueueWindow with the current item's
                 speed, the current and next songs' URIs and the words they bring; books' authors,
                 episodes' shows, chapters; pictures via imageproxy), MaLyrics (the words of the song
@@ -495,7 +498,11 @@ UI words are given in English with the German in parentheses where it matters.
 - **Progress:** a classic bar: 4 dp, round ends, no knob, track 16%, fill at the artist's
   level, elapsed left, the track's length right (only one number ticks). Refreshed about 30
   times a second aligned to frames, on its own layer; jumps > 1.5 s glide in 350 ms; paused,
-  the fill dims. Hidden by setting (beside the song's words always), back on a key press.
+  the fill dims. Hidden by setting (beside the song's words always), back on a key press. A Music
+  Assistant player's position comes from Music Assistant's queue once it has been asked (every
+  15 s while a song plays), to a fraction of a second where Home Assistant has whole seconds, as
+  long as the two agree within 1.5 s; a jump Home Assistant has heard of wins until the queue
+  tells it too.
 - **Per frame only cheap work:** blur, palette, resampling and glow happen once per track in
   `SceneBuilder`; animations only change alpha, transform and color filters, read in draw
   lambdas.

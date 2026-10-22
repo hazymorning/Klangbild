@@ -10,7 +10,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -80,6 +82,10 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
             id.takeIf { it == clientId || outputs?.any { (it as? JsonObject)?.get("output_protocol_id").string() == clientId } == true }
         }
     }
+
+    /** Music Assistant's own clock (`time`, its wall clock in seconds), for its queue's times. */
+    suspend fun serverTime(): Double =
+        (command("time", JsonObject(emptyMap())) as? JsonPrimitive)?.doubleOrNull ?: throw IOException("Unexpected answer to time")
 
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {

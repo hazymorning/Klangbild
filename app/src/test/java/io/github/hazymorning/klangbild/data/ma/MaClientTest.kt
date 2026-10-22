@@ -96,5 +96,12 @@ class MaClientTest {
         server.enqueue(MockResponse.Builder().body("""[{"player_id":"Q2xpZW50SWQ"}]""").build())
         assertThat(client.playerOf("Q2xpZW50SWQ")).isEqualTo("Q2xpZW50SWQ")
     }
+
+    @Test
+    fun `its clock is asked with the time command`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("1792630000.125").build())
+        assertThat(client.serverTime()).isEqualTo(1_792_630_000.125)
+        assertThat(Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content).isEqualTo("time")
+    }
 }
 
