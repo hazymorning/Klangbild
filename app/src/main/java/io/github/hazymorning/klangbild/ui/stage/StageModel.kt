@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.Texts
+import kotlin.math.roundToInt
 
 /**
  * Everything the stage draws for one track. Time-dependent values are providers so that
@@ -90,6 +91,15 @@ object StageTexts {
         status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR)
         else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
+
+    /**
+     * Whether the volume is always shown: as [always] says, except for this TV's own speaker
+     * ([own]) at full volume, which is how it stays while the TV's own volume, which the app
+     * cannot see, sets what is heard; "100%" would say nothing true there. Turned down in Music
+     * Assistant, its volume shows again.
+     */
+    fun volumeAlways(always: Boolean, own: Boolean, level: Float?): Boolean =
+        always && !(own && level != null && (level * 100f).roundToInt() >= 100)
 
     /** "Pauses at 11:10 PM": when the sleep timer pauses the music. */
     fun sleep(atMs: Long, t: Texts, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String =

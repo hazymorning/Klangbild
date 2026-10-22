@@ -301,7 +301,9 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = stageScreen?.track?.kind?.spoken == true
     val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
-    val lead = StageTexts.lead(status, muted, ui.volumeFlash, volume, group, volumeAlways = display.volume == VolumeDisplay.ALWAYS, t = t, pace = pace)
+    val own = ui.source.speaker != null && ui.source.speaker == ui.source.ownSpeaker
+    val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
+    val lead = StageTexts.lead(status, muted, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     val statusLine = StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
     // A station has no next song to tell (what its queue holds next is another station).

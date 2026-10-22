@@ -877,7 +877,8 @@ UI words are given in English with the German in parentheses where it matters.
   under 5 ms); each 10 ms block placed by the output's timestamps (none from before the start,
   stalls and frames never written refused), at once on a start, a clear, a gap or an underrun,
   else a frame at a time outside 100 µs (±100 ppm held within 1 ms, `PlaybackTest`); the volume
-  is a gain ((v/100)^1.5, 20 ms ramp), since CEC pins the system volume; the output delay (0 to
+  is a gain ((v/100)^1.5, 20 ms ramp), since CEC pins the system volume (at 100% the status line
+  leaves it out, since the TV's own volume, which the app cannot see, sets what is heard); the output delay (0 to
   5000 ms) is kept. The audio thread runs at urgent audio priority and allocates nothing per
   chunk. Another app taking the TV's sound for a moment silences it in time underneath, for good
   makes it leave its group; the TV waking or an HDMI device coming or going puts it in place
