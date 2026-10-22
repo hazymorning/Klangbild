@@ -22,7 +22,8 @@ During the day the background is light, and at night it turns dark. Since the TV
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
 > [!NOTE]
-> **Klangbild is being built in two phases** and the first is almost finished. The second is a modern music visualizer, calm and tasteful rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
+> **Klangbild is being built in two&nbsp;phases.**<br>
+> The first one, the now playing screen, is almost done. Next comes a music visualizer that's calm and tasteful rather than psychedelic, and one day it will take the landscape's place. Ideas are always welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, just say so in the&nbsp;[poll](https://github.com/hazymorning/Klangbild/discussions/51).
 
 <a href="https://github.com/hazymorning/Klangbild/discussions/51"><picture><source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/screenshots/poll-small.png"><source media="(max-width: 640px)" srcset="docs/screenshots/poll-small-light.png"><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/poll.png"><img src="docs/screenshots/poll-light.png" alt="Should the landscape stay? Vote in the poll"></picture></a>
 
@@ -30,7 +31,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 
 <a name="devices"></a>
 <details>
-<summary><b>Which TVs</b></summary>
+<summary><b>Compatibility</b></summary>
 <br>
 
 Klangbild runs on TVs and boxes with Android TV 9 or later.
@@ -61,7 +62,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 
 The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
-> [!IMPORTANT]
+> **Important**<br>
 > If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
 
 </details>
@@ -88,6 +89,7 @@ actions:
 The two entity IDs are only examples, so put in the ones for your own speaker and TV.
 
 </details>
+<br>
 
 </details>
 
@@ -102,12 +104,13 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-In the settings you can change what some of the buttons do, for example to have up and down change the volume.
+> **Tip**<br>
+> In the settings you can change what some of the buttons do, for example to have up and down change the volume.
 
 </details>
 
 <details>
-<summary><b>Your queue</b></summary>
+<summary><b>The queue</b></summary>
 <br>
 
 <table>
@@ -156,10 +159,11 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 <br>
 
 Klangbild is a small project made for the joy of it, and it's meant to be a calm picture of the music in the room rather than another media player. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
+
 </details>
 
 <details>
-<summary><b>Your privacy</b></summary>
+<summary><b>Data privacy</b></summary>
 <br>
 
 Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant.
