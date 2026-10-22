@@ -23,7 +23,7 @@ The UI speaks English (default) and German (`values-de`); code, comments, the RE
 notes, CI and every other document are English. The README stays short (about 700 words, the longer
 parts folded away in `<details>`) and is written like everything else (see the writing rules): what
 Klangbild is and what it does, how the queue can show, the landscape in one line as the working
-feature it is (its fold, "The landscape" under "More", holds its picture and what it shows), then a
+feature it is (its fold, "Landscape" under "More", holds its picture and what it shows), then a
 short note (GitHub's `> [!NOTE]`, four sentences, the first in bold as the user asked) on the two phases: the now playing screen,
 practically finished, and a modern music visualizer, calm rather than psychedelic, that will one
 day take the landscape's place (nothing promised about how or when); it ends by welcoming ideas in
@@ -34,10 +34,13 @@ Home Assistant open it (and, at the step that chooses the speaker, a `> [!IMPORT
 speaker Music Assistant plays on mostly shows up twice and only Music Assistant's entity brings
 its queue and lyrics, since people pick the wrong one), the remote (and that its buttons can be changed), a note on contributing (ideas in the Discussions, bugs in the issues, no pull requests from others), privacy and the license. It reads short and tidy: upfront only the
 first picture and what it does (this TV playing over Sendspin in one sentence), with the day and
-night picture; the queue (its three pictures inside its fold), the TV as a speaker (only what the
-release notes claim), the landscape, setup (its three steps folded inside it), device support, the
-remote, contributing and privacy are each one line to click under "More" (the badge's `#devices`
-anchor stands before device support). Leave a feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
+night picture. Under "More" each part is one line to click, in the order a newcomer needs them:
+the devices it runs on, setup (its three steps folded inside it), the remote, the queue (its three
+pictures inside its fold), Sendspin (only what the release notes claim), the landscape,
+contributing and privacy (the badge's `#devices` anchor stands before the devices). Their titles
+are about equally wide, since the user loves balance: Which TVs, Setting it up, TV remote, Your
+queue, Sendspin, Landscape, Contributing, Your privacy, and the setup's three steps alike. Leave a
+feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
