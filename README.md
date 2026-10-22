@@ -74,7 +74,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 </details>
 
 <details>
-<summary><b>Setup & automation</b></summary>
+<summary><b>Setup & Automation</b></summary>
 <br>
 
 You need Home Assistant and a TV or box with Android TV 9 or later.
