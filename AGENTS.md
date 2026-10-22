@@ -2,18 +2,14 @@
 
 ## What Klangbild is
 
-Klangbild is a decoration for the room, a calm picture of the music that plays, and not a media
+Klangbild is a decoration for the room, a calm picture of the music that plays, and not a generic media
 player. There are enough media players already. The design is the whole point of Klangbild and the
 reason it exists.
 
 Every change makes this one design better and keeps to its standard. Nothing turns it toward a
 player, so there are no buttons or other controls on the screen (the remote works without anything
-to point at), no second layout or look to choose from, and nothing that outweighs the cover.
-Something worth showing, like which features are on, finds its place in the design as it is, the
-status line for example, and meets the same standard as everything else.
-
-When a request goes against this, whoever makes it, say so before building anything, explain why
-and suggest what would fit instead. Ideas from other people start in the Discussions.
+to point at) and nothing that outweighs the cover.
+Something which is added meets the same standard as everything else.
 
 ## The project
 
