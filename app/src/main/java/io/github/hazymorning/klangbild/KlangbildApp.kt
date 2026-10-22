@@ -64,6 +64,7 @@ class AppGraph(context: Context) {
         scope, http, tokenHttp, settings, localizer,
         speaker = speakerHub.status,
         pairingToken = { speakerHub.speaker?.pairingToken },
+        ownSound = { speakerHub.speaker?.sound },
     )
 
     /** What the speaker keeps (its key, its pairings), opened when it is first needed. */

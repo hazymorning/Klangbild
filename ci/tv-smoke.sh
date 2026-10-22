@@ -103,12 +103,14 @@ if ! grep -q "subscribe_trigger" smoke/fake_ha.log || ! grep -q "rest /api/state
   exit 1
 fi
 if [ "$SPEAKER_OK" != skipped ]; then
-  if [ "$SPEAKER_OK" != 0 ] || ! grep -q "^STREAM_ENDED" smoke/sendspin.log; then
+  # Ready means encrypted, let in and its clock in step; then the stream went to it and ended.
+  if [ "$SPEAKER_OK" != 0 ] || ! grep -q "^PLAYER_READY" smoke/sendspin.log || ! grep -q "^STREAM_ENDED" smoke/sendspin.log; then
     echo "The speaker did not take its stream from the Sendspin server:"
     cat smoke/sendspin.log
     exit 1
   fi
-  echo "The speaker took a stream from the Sendspin server."
+  echo "The speaker took a stream from the Sendspin server:"
+  grep -E "^(PLAYER_READY|STREAM_|SENT_CHUNKS|CLIENT_DISCONNECTED)" smoke/sendspin.log
 fi
 if ! grep -q "get_config" smoke/fake_ha.log; then
   echo "Note: Klangbild did not ask Home Assistant where it stands."

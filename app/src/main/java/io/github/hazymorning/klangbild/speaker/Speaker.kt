@@ -16,6 +16,7 @@ import io.github.hazymorning.klangbild.sendspin.PlayerState
 import io.github.hazymorning.klangbild.sendspin.Session
 import io.github.hazymorning.klangbild.sendspin.SessionEnd
 import io.github.hazymorning.klangbild.sendspin.Transport
+import io.github.hazymorning.klangbild.sound.PcmSound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,7 +41,8 @@ class SpeakerIdentity(val name: String, val productName: String?, val manufactur
  * when a song is skipped, and the output stays warm for that).
  *
  * Everything the session reports comes on the connection's thread and is handed on at once:
- * audio into the queue, the clock to the playback, the rest to [status] and the store.
+ * audio into the queue, the clock to the playback, the beats to [sound], the rest to [status]
+ * and the store.
  */
 class Speaker(
     private val scope: CoroutineScope,
@@ -64,6 +66,13 @@ class Speaker(
     private val queue = ChunkQueue(QUEUE_SECONDS * PcmFormat.RATE)
     val playback: Playback = Playback(sinkFactory { playbackResync() }, queue, nowUs)
     private val delays = ArrivalDelays()
+
+    /** What this TV plays, as a sound feed: measured on its way to the output, while someone reads it. */
+    val sound = PcmSound(PcmFormat.RATE)
+
+    init {
+        playback.tap = Playback.PcmTap { pcm, frames, heardUs -> sound.played(pcm, frames, heardUs) }
+    }
 
     @Volatile private var memory: SpeakerMemory? = null
     @Volatile private var records: List<PairingRecord> = emptyList()
@@ -157,14 +166,17 @@ class Speaker(
             manufacturer = identity.manufacturer,
             softwareVersion = identity.softwareVersion,
             bufferCapacity = BUFFER_SECONDS * (PcmFormat.RATE / CHUNKS_PER_SECOND * PcmFormat.FRAME_BYTES + 13) * CHUNKS_PER_SECOND,
-            beats = false,
-            beatBufferCapacity = 0,
+            beats = true,
+            beatBufferCapacity = BEAT_BUFFER_BYTES,
         )
         val c = SpeakerConnection(SpeakerConnection.client(http), scope, url, { transport, ended -> newSession(transport, key, m.pairingPsk, hello, ended) })
         connection = c
         Log.i(TAG, "Speaker connecting to Music Assistant")
         c.start()
-        c.link.collect { link -> _status.update { it.copy(link = link) } }
+        c.link.collect { link ->
+            if (link == SpeakerLink.CONNECTED && _status.value.link != SpeakerLink.CONNECTED) Log.i(TAG, "Speaker connected to Music Assistant")
+            _status.update { it.copy(link = link) }
+        }
     }
 
     private fun newSession(transport: Transport, key: KeyPair, pairingPsk: ByteArray, hello: Hello, ended: (SessionEnd, String) -> Unit): Session {
@@ -244,10 +256,14 @@ class Speaker(
             queue.add(timestampUs, bytes, offset, length / PcmFormat.FRAME_BYTES)
         }
 
-        override fun clear() = playback.clear()
+        override fun clear() {
+            playback.clear()
+            sound.cleared()
+        }
 
         override fun streamEnd() {
             playback.clear()
+            sound.cleared()
             keepOpenUntilUs = nowUs() + KEEP_OPEN_US
             streaming = false
             _status.update { it.copy(playing = false) }
@@ -273,9 +289,12 @@ class Speaker(
 
         override fun group(playing: Boolean, groupId: String, name: String) = Unit
 
-        override fun beat(timestampUs: Long, downbeat: Boolean) = Unit
+        override fun beat(timestampUs: Long, downbeat: Boolean) {
+            // Stamped, like the audio, with when it is heard.
+            playback.clock?.let { sound.beat(it.clientTime(timestampUs), downbeat) }
+        }
 
-        override fun beatsCleared() = Unit
+        override fun beatsCleared() = sound.beatsCleared()
 
         override fun paired(record: PairingRecord) {
             records = listOf(record) + records.filter { it.serverId != record.serverId }
@@ -307,6 +326,9 @@ class Speaker(
 
         /** The queue holds a little more, for a lowered output delay. */
         const val QUEUE_SECONDS = 12
+
+        /** Room for the beats Music Assistant sends ahead (10 bytes each, up to 3 s ahead). */
+        const val BEAT_BUFFER_BYTES = 4_096
 
         /** Music Assistant sends 25 ms chunks: the capacity counts their headers too. */
         const val CHUNKS_PER_SECOND = 40

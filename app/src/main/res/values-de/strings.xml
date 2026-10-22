@@ -270,6 +270,9 @@
     <string name="speaker_notification">Music Assistant kann hier spielen.</string>
 
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d Bilder/s · langsamstes %2$s ms · %3$d zu spät</string>
+    <string name="debug_sound_exact">Genaue Zeit</string>
+    <string name="debug_sound_close">Ungefähre Zeit</string>
+    <string name="debug_sound_none">Kein Klang</string>
     <string name="page_title">Klangbild einrichten</string>
     <string name="page_subtitle">Einrichtung für den Fernseher</string>
     <string name="page_code_heading">Code</string>

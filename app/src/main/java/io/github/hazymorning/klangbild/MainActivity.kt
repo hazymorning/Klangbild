@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     FrameStats.attach(window)
                     onDispose { FrameStats.detach(window) }
                 }
-                DebugOverlay()
+                DebugOverlay(controller.sound)
             }
         }
     }

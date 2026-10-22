@@ -293,6 +293,10 @@
 
     <!-- Frame statistics (debug overlay): a readout with units, not a sentence that needs plurals -->
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d frames/s · slowest %2$s ms · %3$d late</string>
+    <!-- The sound feed in the debug overlay: how exactly its times are known -->
+    <string name="debug_sound_exact">Exact timing</string>
+    <string name="debug_sound_close">Close timing</string>
+    <string name="debug_sound_none">No sound</string>
     <!-- The setup page on the phone -->
     <string name="page_title">Set up Klangbild</string>
     <string name="page_subtitle">Setup for the TV</string>

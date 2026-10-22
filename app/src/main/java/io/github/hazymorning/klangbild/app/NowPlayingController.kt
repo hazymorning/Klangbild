@@ -29,6 +29,7 @@ import io.github.hazymorning.klangbild.data.ha.HaConfig
 import io.github.hazymorning.klangbild.data.ha.HaSource
 import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.data.ma.MaClient
+import io.github.hazymorning.klangbild.data.ma.MilkdropSound
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.CoverStrip
 import io.github.hazymorning.klangbild.domain.FieldClock
@@ -63,6 +64,7 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupServer
+import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Texts
@@ -226,9 +228,16 @@ class NowPlayingController(
     private val speaker: StateFlow<SpeakerStatus> = MutableStateFlow(SpeakerStatus()),
     /** The code Music Assistant pairs this TV with, while it plays as a speaker (for the setup page). */
     private val pairingToken: () -> String? = { null },
+    /** What this TV plays, as a sound feed, while it plays as a speaker. */
+    ownSound: () -> SoundFeed? = { null },
 ) {
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui.asStateFlow()
+
+    private val soundSelection = SoundSelection(ownSound)
+
+    /** What the music shown does, moment by moment, for the visualizer to come (today the debug overlay's meter). */
+    val sound: SoundFeed get() = soundSelection
 
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
@@ -378,13 +387,18 @@ class NowPlayingController(
             setupServer.info.collect { info -> synchronized(this@NowPlayingController) { _ui.value = _ui.value.copy(setup = info) } }
         }
         textsJob = scope.launch { localizer.texts.collect { recompute() } }
+        speakerJob = scope.launch {
+            speaker.collect { status -> synchronized(this@NowPlayingController) { soundSelection.update(_ui.value.source, status) } }
+        }
     }
 
     private var textsJob: Job? = null
+    private var speakerJob: Job? = null
 
     private fun stop() {
         settingsJob?.cancel()
         textsJob?.cancel()
+        speakerJob?.cancel()
         ticker?.cancel()
         setupJob?.cancel()
         setupServer.stop()
@@ -692,6 +706,7 @@ class NowPlayingController(
         strip.clear()
         lastLyrics = null
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
+        soundSelection.useMilkdrop(if (s.hasMusicAssistant) MilkdropSound(tokenHttp, scope, s.maUrl!!, s.maToken!!) else null)
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
         val newSource: NowPlayingSource? =
@@ -743,6 +758,7 @@ class NowPlayingController(
         }
         if (st.link != _ui.value.source.link) Log.i(TAG, "Link: ${st.link}")
         _ui.value = _ui.value.copy(source = st)
+        soundSelection.update(st, speaker.value)
         recompute()
     }
 

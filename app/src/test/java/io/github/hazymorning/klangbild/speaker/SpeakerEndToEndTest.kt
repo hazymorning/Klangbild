@@ -3,9 +3,12 @@ package io.github.hazymorning.klangbild.speaker
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.common.collect.Range
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.domain.SpeakerLink
+import io.github.hazymorning.klangbild.sound.SoundFrame
+import io.github.hazymorning.klangbild.sound.SoundTiming
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -70,7 +73,17 @@ class SpeakerEndToEndTest {
             assertThat(speaker.status.value.link).isEqualTo(SpeakerLink.CONNECTED)
             assertThat(speaker.status.value.clientId).isNotNull()
             assertThat(speaker.pairingToken).startsWith("SP:0")
+            // Its own playback as a sound feed: what is heard now, timed by the output.
+            speaker.sound.reading(true)
             await("STREAM_STARTED")
+            val heard = SoundFrame()
+            val heardBy = System.nanoTime() + 5_000_000_000L
+            // The silence before the music's first moment is heard too: what counts is the music.
+            fun music() = speaker.sound.read(System.nanoTime() / 1_000, heard) && heard.bands.sum() > 0f
+            while (!music() && System.nanoTime() < heardBy) Thread.sleep(20)
+            assertThat(heard.bands.sum()).isGreaterThan(0f)
+            assertThat(heard.timing).isEqualTo(SoundTiming.EXACT)
+            assertThat(System.nanoTime() / 1_000 - heard.timeUs).isIn(Range.closed(0L, 40_000L))
             await("COMMAND")
             await("STREAM_ENDED")
             // Playing while the stream ran, quiet once it ended.

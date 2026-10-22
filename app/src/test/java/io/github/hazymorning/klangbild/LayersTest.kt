@@ -15,21 +15,22 @@ class LayersTest {
         "art" to setOf(),
         "color" to setOf(),
         "json" to setOf(),
+        "sound" to setOf(),
         "math" to setOf(),
         "text" to setOf(),
         // Sendspin, the protocol of Music Assistant's speakers, in plain Kotlin.
         "sendspin" to setOf("json"),
         "domain" to setOf("json", "text"),
-        "data" to setOf("domain", "json"),
+        "data" to setOf("domain", "json", "sendspin", "sound"),
         "config" to setOf("color", "data", "domain", "json", "text"),
         "landscape" to setOf("color", "math"),
         "render" to setOf("art", "color", "domain", "math"),
         "lights" to setOf("color", "config", "data", "domain", "landscape", "math", "render"),
         // This TV as a speaker: its connection, its memory, its playback.
-        "speaker" to setOf("config", "data", "domain", "json", "sendspin"),
+        "speaker" to setOf("config", "data", "domain", "json", "sendspin", "sound"),
         "setup" to setOf("config", "data", "domain", "json", "render", "text"),
-        "app" to setOf("color", "config", "data", "domain", "landscape", "lights", "math", "render", "setup", "text"),
-        "ui" to setOf("app", "color", "config", "domain", "landscape", "math", "render", "setup", "text"),
+        "app" to setOf("color", "config", "data", "domain", "landscape", "lights", "math", "render", "setup", "sound", "text"),
+        "ui" to setOf("app", "color", "config", "domain", "landscape", "math", "render", "setup", "sound", "text"),
         // The screensaver is an entry point too: it reaches the wiring in the root package.
         "dream" to setOf("app", "render", "ui", ROOT),
     )

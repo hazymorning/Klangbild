@@ -177,8 +177,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 ## Architecture (data source → state model → UI)
 
 The packages build on each other in one direction, and `LayersTest` keeps it so: math, json,
-color, text and art below everything; domain (the app's model and rules) on them; data (Home
-Assistant and Music Assistant) on domain; config (the settings, their store and menus) on data;
+color, text, art and sound below everything; domain (the app's model and rules) on them; data (Home
+Assistant and Music Assistant) on domain, sendspin and sound; config (the settings, their store and menus) on data;
 render, landscape and lights; sendspin (the protocol, on json alone) and speaker (this TV as a
 speaker, on config, data, domain and sendspin); app (the controller); ui on top. MainActivity,
 KlangbildApp (the wiring) and SpeakerService stand in the root package and may use everything.
@@ -230,7 +230,12 @@ data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a 
                 episodes' shows, chapters; pictures via imageproxy), MaLyrics (the words of the song
                 that plays and the one up next: from the queue item, else asked, one song at a
                 time, the one that plays first; kept by URI; a call for a song no longer playing
-                or next canceled, its answer dropped; a version without the call: none)
+                or next canceled, its answer dropped; a version without the call: none),
+                MilkdropSound (another speaker's sound from the MilkDrop plugin's relay, optional
+                and off by default in Music Assistant: `/milkdrop_visualizer?player=<queue>` with
+                the token as its first message, 1024-sample mono windows stamped on the server's own
+                clock, through a TimeFilter of its own; the rate told by the windows' spacing;
+                beats; close; only while read; none without the plugin)
 data/           NowPlayingSource, LightBridge (what the lights need from Home Assistant), ArtworkLoader (size limits; the token only
                 to Home Assistant's host, through a client without redirects; a larger rendition
                 guessed from the address gets a short try and is not asked again for a while
@@ -265,6 +270,14 @@ color/          Oklab, CoverPalette (k-means in Oklab → ScenePalette, inks, bo
                 (LIGHT / DARK, by the sun), Contrast (WCAG luminance and contrast ratio)
 math/           smoothstep, Rnd (a random source with a fixed seed), hash64 / hashUnit
 json/           string(): a JSON string, or null for anything else
+sound/          The sound feed for the visualizer to come: SoundFeed (what is heard at a moment on the
+                monotonic clock, read only while someone reads), SoundFrame (loudness, four bands,
+                onset, the latest beat and downbeat, SoundTiming: exact, close or none),
+                SoundAnalyzer + Fft (1024-sample Hann windows: A-weighted loudness and bands on
+                Sendspin's -60 dB to full scale, spectral flux against its recent mean; nothing
+                allocated per window), SoundTimeline (frames and beats ahead of time, read as they
+                come due), PcmSound (this TV's own playback, measured on the audio thread every 512
+                samples while read, exact)
 render/         StageGrid (the grid: the single cover's, or Cover Flow's with `flow`), ScreenSpec, RectDp, QrCode, PrintShape (the print's
                 outline: rounded square or disc), CoverField (cover colors: ground + soft pools in
                 the cover's colors, the veil with text shade) + FieldMotion (where each pool stands
@@ -317,6 +330,8 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 frame lets go of the builds for the one left), Thumbs
                 (the list's small covers at their exact size, made ahead, one at a time after the
                 scenes; a cover that took too long stands in as its figure and is asked again),
+                SoundSelection (the one sound feed: this TV's own playback while the music shown
+                plays here, the MilkDrop feed for Music Assistant's other speakers, none otherwise)
                 (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer,
                 SpeakerHub; SpeakerService beside them)
 config/         Settings (+ QueueDisplay (Off / List / Cover Flow), DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
@@ -354,7 +369,8 @@ speaker/        SpeakerConnection (ws://<Music Assistant host>:8927/sendspin thr
                 repeated against drift; volume ramps, output delay, silence while another app has
                 the sound), AudioSink + AudioTrackSink (48 kHz 16-bit stereo, timestamps, routing),
                 ArrivalDelays (the min_buffer_ms asked for), Speaker (all of it, an audio thread at
-                urgent priority while a stream plays and 30 s after)
+                urgent priority while a stream plays and 30 s after; its playback and Music
+                Assistant's beats (visualizer@v1, beats only) as a PcmSound)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
@@ -387,7 +403,9 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 MenuScreen (+ MenuGrid; two levels), QuickBar (+ QuickGrid; a long row glides),
                 Shimmer (a value whose choice is on its way: a band of its ink passing over it),
                 RestScreen, SetupScreen, Changes (`playChange`, `RisingText`: one change at a time, hurrying,
-                held lines), DebugOverlay, landscape/ (Landscape: bake ahead of time on a thread of low
+                held lines), DebugOverlay (frame timing, and the sound feed's meter: its timing in
+                words, bars for loudness, bands and onset, a dot on each beat; read and drawn only
+                while it shows), landscape/ (Landscape: bake ahead of time on a thread of low
                 priority, the picture on screen on a thread of its own, never the shared ones; 20 fps tick, season cross-fade, the weather as its `WeatherGlide` has it;
                 LandscapeWaiting: words over a bar while the first bake goes, WaitingPace keeping the
                 bar's pace even; PaperView: sky, far
@@ -847,6 +865,14 @@ UI words are given in English with the German in parentheses where it matters.
   show. "This TV" at the top of the setup page's list follows it alone (`EntityId.THIS_TV`),
   and its own entity is left out of that list. Tested end to end against aiosendspin 10.2.0;
   never verified on a TV.
+- **The sound feed** (`sound/`, `SoundSelection`; for the visualizer of the second phase, shown
+  nowhere yet but in the debug overlay's meter): for each short stretch, loudness, four bands and
+  onset, the latest beat Music Assistant knows, when it is heard on the monotonic clock, and how
+  exactly that is known. This TV's own playback is measured from the samples on their way to the
+  output (exact); another Music Assistant speaker's from the MilkDrop plugin's relay (close: as
+  close as Music Assistant knows that player's position; none without the plugin); anything
+  else has none. One analysis for both, cheap enough for the box; nothing is measured, asked or
+  connected while nobody reads it, and the meter draws frames only while the overlay shows.
 - **Music Assistant** is optional: without it Klangbild works from Home Assistant alone; with
   it (address + long-lived token on the setup page, checked before storing) the cover flow
   shows the whole queue and the album line its year.
