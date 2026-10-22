@@ -37,11 +37,12 @@ internal class OwnSpeaker(
 
     fun start() {
         job = scope.launch {
-            // Looked for once Home Assistant's registry is there, so the first try is not wasted.
+            // Looked for again from the start once Home Assistant's registry is there; until then
+            // each try reads the registry itself, so a first read that failed is made good.
             combine(speaker.map { it.clientId }, connection.registry.map { it != null }) { id, ready -> id to ready }
                 .distinctUntilChanged()
-                .collectLatest { (id, ready) ->
-                    if (id == null) set(null) else if (ready) find(id)
+                .collectLatest { (id, _) ->
+                    if (id == null) set(null) else find(id)
                 }
         }
     }

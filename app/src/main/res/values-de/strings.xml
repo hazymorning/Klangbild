@@ -188,7 +188,7 @@
     <string name="about_play_here_too_old">Damit dieser Fernseher spielen kann, braucht Music Assistant die Version 2.10.7 oder neuer.</string>
     <string name="about_play_here_too_new">Dein Music Assistant ist neuer als diese Version von Klangbild. Sobald Klangbild aktualisiert ist, spielt dieser Fernseher wieder.</string>
     <string name="about_play_here_refused">Music Assistant hat diesen Fernseher nicht hereingelassen. Du kannst ihn dort mit dem Code von der Einrichtung am Handy koppeln.</string>
-    <string name="about_play_here_no_key">Dieser Fernseher kann seinen Schlüssel für Music Assistant gerade nicht öffnen. Schalte „Hier abspielen“ aus und wieder ein, um es noch einmal zu versuchen.</string>
+    <string name="about_play_here_no_key">Dieser Fernseher kann seinen Schlüssel für Music Assistant gerade nicht öffnen, deshalb kann er noch nicht spielen. Klangbild versucht es weiter.</string>
 
     <string name="quick_queue">Warteschlange</string>
     <string name="quick_landscape">Landschaft</string>

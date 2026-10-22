@@ -209,5 +209,8 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followed)).isTrue()
         assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, on)).isFalse()
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(), en)).contains("choose another speaker")
+        // What keeps it from playing is still said then.
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).contains("2.10.7")
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(speaker = SpeakerLink.NO_KEY), en)).contains("keeps trying")
     }
 }

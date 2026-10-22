@@ -65,6 +65,9 @@ class HaSourceTest {
     /** The entity registry as listed for display. */
     private var registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"}]"""
 
+    /** How many reads of the registry Home Assistant answers with an error before it answers. */
+    @Volatile private var registryErrors = 0
+
     /** This TV's own speaker in Home Assistant: its state and attributes, and the subscriptions that follow entities. */
     private var tvState = "idle"
     private var tv = """{"friendly_name":"Fernseher","supported_features":17413}"""
@@ -133,7 +136,12 @@ class HaSourceTest {
                 }
                 "config/entity_registry/get_entries" ->
                     ok("""{"media_player.wz":{"entity_id":"media_player.wz","unique_id":"mass_wz"},"media_player.tv":{"entity_id":"media_player.tv","unique_id":"up1a2b3c4d"}}""")
-                "config/entity_registry/list_for_display" -> ok("""{"entity_categories":{},"entities":$registry}""")
+                "config/entity_registry/list_for_display" -> if (registryErrors > 0) {
+                    registryErrors--
+                    webSocket.send("""{"id":$id,"type":"result","success":false,"error":{"code":"unknown_error","message":"busy"}}""")
+                } else {
+                    ok("""{"entity_categories":{},"entities":$registry}""")
+                }
                 "get_config" -> ok("""{"latitude":52.52,"longitude":13.4,"unit_system":{"temperature":"°C"}}""")
                 "unsubscribe_events" -> ok()
                 "call_service" -> {
@@ -968,6 +976,26 @@ class HaSourceTest {
             ma.close()
         }
     }
+    @Test
+    fun `this TV is found also when Home Assistant's first answer about its registry fails`() = runBlocking {
+        registryErrors = 1
+        registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"},{"ei":"media_player.tv","pl":"music_assistant","di":"d2"}]"""
+        tvState = "playing"
+        tv = """{"friendly_name":"Fernseher","media_title":"Hier","media_artist":"B"}"""
+        val ma = speakerServer()
+        try {
+            val speaker = MutableStateFlow(SpeakerStatus(SpeakerLink.CONNECTED, clientId = "Q2xpZW50SWQ"))
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), entity = EntityId.THIS_TV, speaker = speaker)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Hier" } }
+            assertThat(registryErrors).isEqualTo(0)
+            assertThat(s.state.value.speaker).isEqualTo("media_player.tv")
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
     @Test
     fun `a Music Assistant song's position comes from its queue to a fraction of a second while Home Assistant agrees`() = runBlocking {
         // Home Assistant: 61 s, a second ago, in whole seconds.

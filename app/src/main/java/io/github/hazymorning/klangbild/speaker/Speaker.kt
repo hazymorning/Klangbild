@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.speaker
 import android.os.Process
 import android.os.SystemClock
 import android.util.Log
+import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.sendspin.B64
@@ -59,6 +60,8 @@ class Speaker(
     /** Readies the audio thread (a high priority). */
     private val audioThreadSetup: () -> Unit = { Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO) },
     private val random: SecureRandom = SecureRandom(),
+    /** How long to wait before asking the keystore again for a key it could not open. */
+    private val keyRetry: () -> Backoff = { Backoff(KEY_FIRST_RETRY_MS, KEY_LAST_RETRY_MS) },
 ) {
     private val _status = MutableStateFlow(SpeakerStatus(link = SpeakerLink.CONNECTING))
     val status: StateFlow<SpeakerStatus> = _status.asStateFlow()
@@ -113,7 +116,7 @@ class Speaker(
             return PairingToken.of(key.publicKey, psk)
         }
 
-    /** Loads what the speaker keeps and connects; without its key it stays away and says so. */
+    /** Loads what the speaker keeps and connects; until its key opens it stays away and says so. */
     fun start() {
         synchronized(lifecycle) {
             if (running) return
@@ -158,14 +161,7 @@ class Speaker(
     fun outputChanged() = playback.resync()
 
     private suspend fun connect() {
-        val m = store.load()
-        memory = m
-        val key = m.identity
-        if (key == null || m.pairingPsk == null) {
-            Log.w(TAG, "The speaker's key cannot be opened at the moment; it stays away")
-            _status.value = SpeakerStatus(link = SpeakerLink.NO_KEY)
-            return
-        }
+        val (m, key, psk) = keyed()
         if (!running) return
         records = m.records
         volume = m.volume
@@ -184,7 +180,7 @@ class Speaker(
             beats = true,
             beatBufferCapacity = BEAT_BUFFER_BYTES,
         )
-        val c = SpeakerConnection(SpeakerConnection.client(http), scope, url, { transport, ended -> newSession(transport, key, m.pairingPsk, hello, ended) })
+        val c = SpeakerConnection(SpeakerConnection.client(http), scope, url, { transport, ended -> newSession(transport, key, psk, hello, ended) })
         // A stop that came meanwhile leaves no connection behind.
         synchronized(lifecycle) {
             if (!running) return
@@ -195,6 +191,27 @@ class Speaker(
         c.link.collect { link ->
             if (link == SpeakerLink.CONNECTED && _status.value.link != SpeakerLink.CONNECTED) Log.i(TAG, "Speaker connected to Music Assistant")
             _status.update { it.copy(link = link) }
+        }
+    }
+
+    /**
+     * What the speaker keeps, with its key and pairing PSK, once the keystore opens them: asked
+     * again, less and less often, while it refuses. The key is never replaced, since a new one
+     * would be a new speaker in Music Assistant.
+     */
+    private suspend fun keyed(): Triple<SpeakerMemory, KeyPair, ByteArray> {
+        val wait = keyRetry()
+        while (true) {
+            val m = store.load()
+            memory = m
+            val key = m.identity
+            val psk = m.pairingPsk
+            if (key != null && psk != null) return Triple(m, key, psk)
+            if (_status.value.link != SpeakerLink.NO_KEY) {
+                Log.w(TAG, "The speaker's key cannot be opened at the moment; it stays away and tries again")
+                _status.value = SpeakerStatus(link = SpeakerLink.NO_KEY)
+            }
+            delay(wait.nextDelayMs())
         }
     }
 
@@ -382,6 +399,10 @@ class Speaker(
         const val KEEP_OPEN_US = 30_000_000L
 
         const val WATCH_MS = 2_000L
+
+        /** A key the keystore refused is asked for again after this long at first, then less and less often. */
+        const val KEY_FIRST_RETRY_MS = 5_000L
+        const val KEY_LAST_RETRY_MS = 5 * 60_000L
 
         /**
          * A gap this long between the monotonic clock and the one that counts sleep: the device

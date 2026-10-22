@@ -209,7 +209,8 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 while music plays on it (SpeakerSwitch), on the same connection, the commands,
                 the queue and `player` going to the speaker shown), OwnSpeaker (this TV's own
                 entity: its Sendspin id → Music Assistant's player around it (`players/all`) →
-                the registry's unique id; asked again with a backoff), QueueReader (the queue
+                the registry's unique id; asked again with a backoff, and from the start once the
+                registry is there), QueueReader (the queue
                 around the song that plays, retargeted when another speaker shows: MA
                 queue (one read at a time, only for MA players with a queue) + the optional MA
                 queue window; a Music Assistant song published once its queue has described it;
@@ -375,9 +376,10 @@ speaker/        SpeakerConnection (ws://<Music Assistant host>:8927/sendspin thr
                 ArrivalDelays (the min_buffer_ms asked for), MonoClock (the monotonic clock in µs
                 as a plain long: nothing boxed on the audio path, where "no time" is a sentinel,
                 never null), Speaker (all of it, an audio thread at urgent priority while a stream
-                plays and 30 s after; playing only while its group plays; volume, mute and output
-                delay kept one write at a time; its playback and Music Assistant's beats
-                (visualizer@v1, beats only) as a PcmSound)
+                plays and 30 s after; a key the keystore refuses asked for again, less and less
+                often; playing only while its group plays; volume, mute and output delay kept one
+                write at a time; its playback and Music Assistant's beats (visualizer@v1, beats
+                only) as a PcmSound)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
@@ -876,7 +878,7 @@ UI words are given in English with the German in parentheses where it matters.
   show. "This TV" at the top of the setup page's list follows it alone (`EntityId.THIS_TV`),
   and its own entity is left out of that list; while it does, Play here stays on (the menu's OK
   opens the setup, where another speaker is chosen first, and a launch extra cannot switch it
-  off). Tested end to end against aiosendspin 10.2.0; never verified on a TV.
+  off), and its explanation still says what keeps the TV from playing. Tested end to end against aiosendspin 10.2.0; never verified on a TV.
 - **The sound feed** (`sound/`, `SoundSelection`; for the visualizer of the second phase, shown
   nowhere yet but in the debug overlay's meter): for each short stretch, loudness, four bands and
   onset, the latest beat Music Assistant knows, when it is heard on the monotonic clock, and how

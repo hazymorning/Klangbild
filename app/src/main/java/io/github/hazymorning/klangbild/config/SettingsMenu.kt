@@ -337,19 +337,22 @@ object SettingsMenu {
         MenuEntry.LANGUAGE -> t[R.string.about_language]
     }
 
-    /** What playing here does, or, while it is on, what keeps it from playing. */
+    /**
+     * What playing here does, or, while it is on, what keeps it from playing: that comes first,
+     * also while this TV is the speaker followed.
+     */
     @StringRes
     private fun playHere(s: Settings, speaker: SpeakerLink): Int = when {
         !s.hasMusicAssistant -> R.string.about_play_here_set_up
         !s.tvSpeaker -> R.string.about_play_here_off
-        followsThisTv(s) -> R.string.about_play_here_followed
         else -> when (speaker) {
             SpeakerLink.UNREACHABLE -> R.string.about_play_here_unreachable
             SpeakerLink.TOO_OLD -> R.string.about_play_here_too_old
             SpeakerLink.TOO_NEW -> R.string.about_play_here_too_new
             SpeakerLink.REFUSED -> R.string.about_play_here_refused
             SpeakerLink.NO_KEY -> R.string.about_play_here_no_key
-            SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED -> R.string.about_play_here_on
+            SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED ->
+                if (followsThisTv(s)) R.string.about_play_here_followed else R.string.about_play_here_on
         }
     }
 
