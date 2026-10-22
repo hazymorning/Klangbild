@@ -16,12 +16,20 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
 class SpeakerStoreTest {
-    /** Seals by reversing behind a mark; [opening] off plays a keystore that refuses. */
+    /**
+     * Seals by reversing behind a mark; [opening] off plays a keystore that refuses to open,
+     * [sealing] off one that cannot seal (the value is kept as it is).
+     */
     private class FakeBox : SecretBox {
         var opening = true
+        var sealing = true
         val sealed = mutableListOf<String>()
-        override fun seal(plain: String) = ("sealed:" + plain.reversed()).also { sealed += it }
-        override fun open(stored: String): String? = if (!opening) null else stored.removePrefix("sealed:").reversed()
+        override fun seal(plain: String) = if (!sealing) plain else ("sealed:" + plain.reversed()).also { sealed += it }
+        override fun open(stored: String): String? = when {
+            isPlain(stored) -> stored
+            !opening -> null
+            else -> stored.removePrefix("sealed:").reversed()
+        }
         override fun isPlain(stored: String) = !stored.startsWith("sealed:")
     }
 
@@ -68,6 +76,40 @@ class SpeakerStoreTest {
         assertThat(records.first().psk).isEqualTo(ByteArray(32) { 5 })
         store.forget("server5")
         assertThat(store.load().records.map { it.serverId }).doesNotContain("server5")
+    }
+
+    @Test
+    fun `what had to be kept unsealed is sealed once the keystore can`(): Unit = runBlocking {
+        val box = FakeBox()
+        box.sealing = false
+        val store = storeWith(box)
+        val key = store.load().identity!!.publicKey
+        store.remember(PairingRecord("server1", ByteArray(32) { 1 }))
+        assertThat(box.sealed).isEmpty()
+        box.sealing = true
+        val back = store.load()
+        assertThat(back.identity!!.publicKey).isEqualTo(key)
+        assertThat(back.records.single().serverId).isEqualTo("server1")
+        // The identity, the pairing PSK and the records, each once.
+        assertThat(box.sealed).hasSize(3)
+        store.load()
+        assertThat(box.sealed).hasSize(3)
+    }
+
+    @Test
+    fun `records that cannot be opened are kept, unless a new pairing takes their place`(): Unit = runBlocking {
+        val box = FakeBox()
+        val store = storeWith(box)
+        store.remember(PairingRecord("server1", ByteArray(32) { 1 }))
+        box.opening = false
+        store.used("server1")
+        store.forget("server1")
+        box.opening = true
+        assertThat(store.load().records.map { it.serverId }).containsExactly("server1")
+        box.opening = false
+        store.remember(PairingRecord("server2", ByteArray(32) { 2 }))
+        box.opening = true
+        assertThat(store.load().records.map { it.serverId }).containsExactly("server2")
     }
 
     @Test

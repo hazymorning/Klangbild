@@ -25,7 +25,7 @@ class ChunkQueueTest {
         assertThat(q.nextTimeUs(48_000)).isEqualTo(2_625)
         assertThat(q.take(out, 30, 100)).isEqualTo(50)
         assertThat((0 until 80).map { out[2 * it].toInt() }).isEqualTo((60 until 140).toList())
-        assertThat(q.nextTimeUs(48_000)).isNull()
+        assertThat(q.nextTimeUs(48_000)).isEqualTo(ChunkQueue.NONE)
     }
 
     @Test

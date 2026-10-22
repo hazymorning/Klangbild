@@ -114,6 +114,9 @@ internal class QueueReader(
     @Volatile private var maClock: Long? = null
     private var maClockAt = 0L
 
+    /** Music Assistant knows no `time` command: its clock is not asked again. */
+    @Volatile private var maClockUnknown = false
+
     /** Music Assistant's queue was last read at this time, for what it was then (id, place, next). */
     private var windowReadAt = 0L
     private var windowFor: Triple<String?, Int?, String?>? = null
@@ -275,8 +278,12 @@ internal class QueueReader(
      */
     private fun position(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot {
         val track = p.track ?: return p
-        val m = maPosition?.takeIf { it.key == TrackMatch.key(track) && it.position.playing } ?: return p
-        if (p.status != PlayerStatus.PLAYING) return p
+        if (p.status != PlayerStatus.PLAYING) {
+            // A pause ends what Music Assistant last said; its next read says where it stands.
+            maPosition = null
+            return p
+        }
+        val m = maPosition?.takeIf { it.key == TrackMatch.key(track) } ?: return p
         // The moment Music Assistant's position was valid, on Home Assistant's clock.
         val at = m.position.atMs - skewMs
         val reported = p.positionMs
@@ -380,7 +387,7 @@ internal class QueueReader(
         val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } }
         if (songKey != key) return
         val moved = position != null && position != maPosition?.takeIf { it.key == key }?.position
-        if (position != null) maPosition = MaPosition(key, position)
+        if (position != null) maPosition = MaPosition(key, position).takeIf { position.playing }
         if (same && (read == null || read == window)) {
             // Only where the song stands has moved on.
             if (moved) publish()
@@ -399,6 +406,7 @@ internal class QueueReader(
      * few round trips) and again after [MA_CLOCK_MS]; null while it cannot be told.
      */
     private suspend fun clockOf(client: MaClient): Long? {
+        if (maClockUnknown) return null
         val known = maClock
         if (known != null && now() - maClockAt < MA_CLOCK_MS) return known
         var best: Long? = null
@@ -409,6 +417,9 @@ internal class QueueReader(
                 client.serverTime()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
+            } catch (_: MaUnknownCommandException) {
+                maClockUnknown = true
+                return null
             } catch (_: Exception) {
                 return known
             }

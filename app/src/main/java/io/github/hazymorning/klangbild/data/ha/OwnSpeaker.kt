@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
  * (`players/all`, from a few seconds after the speaker first connects), and Home Assistant's
  * entity registry knows that player's entity by its unique id
  * (`config/entity_registry/get_entries`, open to every user). Until both have it, they are asked
- * again, less and less often. A speaker switched off has none.
+ * again, less and less often (at most a couple of minutes apart). A speaker switched off has none.
  */
 internal class OwnSpeaker(
     private val scope: CoroutineScope,
@@ -36,9 +37,12 @@ internal class OwnSpeaker(
 
     fun start() {
         job = scope.launch {
-            speaker.map { it.clientId }.distinctUntilChanged().collectLatest { id ->
-                if (id == null) set(null) else find(id)
-            }
+            // Looked for once Home Assistant's registry is there, so the first try is not wasted.
+            combine(speaker.map { it.clientId }, connection.registry.map { it != null }) { id, ready -> id to ready }
+                .distinctUntilChanged()
+                .collectLatest { (id, ready) ->
+                    if (id == null) set(null) else if (ready) find(id)
+                }
         }
     }
 
@@ -90,6 +94,6 @@ internal class OwnSpeaker(
     companion object {
         /** Music Assistant names a new speaker's player about 15 seconds after it first connects. */
         const val FIRST_RETRY_MS = 15_000L
-        const val LAST_RETRY_MS = 10 * 60_000L
+        const val LAST_RETRY_MS = 2 * 60_000L
     }
 }

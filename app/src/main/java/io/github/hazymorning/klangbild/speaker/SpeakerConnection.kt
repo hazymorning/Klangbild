@@ -29,6 +29,7 @@ import okhttp3.WebSocketListener
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The speaker's connection to Music Assistant (client-initiated, connection.md): a WebSocket to
@@ -58,10 +59,6 @@ class SpeakerConnection(
 
     @Volatile private var session: Session? = null
 
-    /** Why the last session ended, for the log (never a secret). */
-    @Volatile var lastEnd: String? = null
-        private set
-
     fun start() {
         if (loop != null) return
         loop = scope.launch { runLoop() }
@@ -85,11 +82,6 @@ class SpeakerConnection(
         wakeUp.trySend(Unit)
     }
 
-    /** Asks the session for a burst of time messages now (the device just woke up). */
-    fun burstNow() {
-        session?.burst()
-    }
-
     private suspend fun runLoop() {
         val backoff = backoffFactory()
         while (scope.isActive) {
@@ -103,7 +95,6 @@ class SpeakerConnection(
             } finally {
                 session = null
             }
-            lastEnd = "$end: $detail"
             val waitMs = when (end) {
                 SessionEnd.GOODBYE -> return
                 SessionEnd.OLD_SERVER -> {
@@ -133,20 +124,22 @@ class SpeakerConnection(
     /** One connection, from opening the socket to the session's end. */
     private suspend fun runSession(connected: () -> Unit): Pair<SessionEnd, String> = coroutineScope {
         val done = CompletableDeferred<Pair<SessionEnd, String>>()
-        var socket: WebSocket? = null
+        // Set by whichever comes first: the socket opening on OkHttp's thread, or newWebSocket returning here.
+        val socket = AtomicReference<WebSocket?>(null)
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean = socket?.send(text) == true
-            override fun sendBinary(bytes: ByteArray): Boolean = socket?.send(bytes.toByteString()) == true
+            override fun sendText(text: String): Boolean = socket.get()?.send(text) == true
+            override fun sendBinary(bytes: ByteArray): Boolean = socket.get()?.send(bytes.toByteString()) == true
             override fun close() {
                 // A close frame after whatever is queued (a goodbye), never cutting it off.
-                socket?.close(NORMAL_CLOSURE, null)
+                socket.get()?.close(NORMAL_CLOSURE, null)
             }
         }
         val s = newSession(transport) { end, detail -> done.complete(end to detail) }
         session = s
         val request = Request.Builder().url(url).build()
-        socket = http.newWebSocket(request, object : WebSocketListener() {
+        val opened = http.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                socket.compareAndSet(null, webSocket)
                 s.start()
             }
 
@@ -162,13 +155,14 @@ class SpeakerConnection(
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 webSocket.close(1000, null)
-                s.onClosed()
+                s.onClosed(byServer = true)
             }
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = s.onClosed()
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = s.onClosed(byServer = true)
 
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = s.onClosed()
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = s.onClosed(byServer = false)
         })
+        socket.compareAndSet(null, opened)
         try {
             // The handshake, the hellos and the activation within a while, or the attempt ends.
             val active = withTimeoutOrNull(handshakeTimeoutMs) {
@@ -177,7 +171,7 @@ class SpeakerConnection(
             }
             if (active == null) {
                 transport.close()
-                s.onClosed()
+                s.onClosed(byServer = false)
             } else if (!done.isCompleted) {
                 connected()
                 _link.value = SpeakerLink.CONNECTED

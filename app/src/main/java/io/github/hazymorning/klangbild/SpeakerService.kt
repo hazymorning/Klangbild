@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.provider.Settings.Global
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.speaker.AudioTrackSink
+import io.github.hazymorning.klangbild.speaker.MonoClock
 import io.github.hazymorning.klangbild.speaker.Speaker
 import io.github.hazymorning.klangbild.speaker.SpeakerConnection
 import io.github.hazymorning.klangbild.speaker.SpeakerIdentity
@@ -85,7 +86,8 @@ class SpeakerService : Service() {
             AudioManager.AUDIOFOCUS_GAIN -> speaker.soundTaken(false)
             AudioManager.AUDIOFOCUS_LOSS -> {
                 speaker.soundTaken(true, lasting = true)
-                abandonFocus()
+                // Asked for again when music next starts here.
+                synchronized(this@SpeakerService) { abandonFocus() }
             }
             else -> speaker.soundTaken(true)
         }
@@ -130,7 +132,7 @@ class SpeakerService : Service() {
             store = graph.speakerStore,
             url = url,
             identity = identity(),
-            sinkFactory = { routed -> AudioTrackSink({ System.nanoTime() / 1_000 }, routed) },
+            sinkFactory = { routed -> AudioTrackSink(MonoClock.SYSTEM, routed) },
         )
         hub.speaker = speaker
         speaker.start()
@@ -171,8 +173,9 @@ class SpeakerService : Service() {
             .setWillPauseWhenDucked(true)
             .setOnAudioFocusChangeListener(focusChanged)
             .build()
-        focus = request
         val granted = getSystemService(AudioManager::class.java).requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        // Refused (another app holds the sound): quiet, and asked for again when music next starts here.
+        if (granted) focus = request
         hub.speaker?.soundTaken(!granted)
     }
 

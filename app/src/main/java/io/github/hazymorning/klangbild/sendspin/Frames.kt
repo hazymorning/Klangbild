@@ -8,8 +8,6 @@ object MessageId {
     const val JSON = 0
     const val FRAGMENT = 1
     const val AUDIO = 4
-    const val VISUALIZER_FIRST = 16
-    const val VISUALIZER_LAST = 23
     const val BEAT = 17
 
     /** An audio chunk's header: the id, the timestamp (int64) and `send_ahead` (uint32). */

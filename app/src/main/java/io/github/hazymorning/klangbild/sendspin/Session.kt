@@ -130,7 +130,6 @@ class Session(
     private val reassembler = Reassembler(MAX_MESSAGE) { it == MessageId.JSON || it == MessageId.AUDIO || it == MessageId.BEAT }
 
     private var prologue = ByteArray(0)
-    private var name: String? = null
 
     /** The long-term PSK just handed to the server, kept once it says it has stored it. */
     private var pendingRecord: PairingRecord? = null
@@ -163,8 +162,6 @@ class Session(
      * group (the playback waits for the clock meanwhile).
      */
     private var available = false
-
-    val serverName: String? @Synchronized get() = name
 
     /** Opens the conversation with `client/init`. */
     @Synchronized
@@ -210,6 +207,9 @@ class Session(
                 MessageId.AUDIO -> audio(whole, arrivalUs)
                 MessageId.BEAT -> beat(whole)
             }
+        } catch (_: OldServerException) {
+            // A re-handshake in an older version's form: the server changed underneath.
+            end(SessionEnd.BROKEN, "re-handshake message without psk_category")
         } catch (e: ProtocolException) {
             end(SessionEnd.BROKEN, e.message ?: "protocol")
         } catch (e: NoiseException) {
@@ -217,13 +217,17 @@ class Session(
         }
     }
 
-    /** The connection went away underneath. */
+    /**
+     * The connection went away underneath: closed by the server ([byServer]), or lost (a failure,
+     * a timeout).
+     */
     @Synchronized
-    fun onClosed() {
-        when (step) {
-            Step.OVER -> Unit
-            // Music Assistant before 2.10 closes at once on a client/init it does not know.
-            Step.INIT_SENT -> end(SessionEnd.OLD_SERVER, "closed before server/init")
+    fun onClosed(byServer: Boolean) {
+        when {
+            step == Step.OVER -> Unit
+            // Music Assistant before 2.10 closes at once on a client/init it does not know; a
+            // connection lost meanwhile says nothing about the server's version.
+            step == Step.INIT_SENT && byServer -> end(SessionEnd.OLD_SERVER, "closed before server/init")
             else -> end(SessionEnd.LOST, "connection closed")
         }
     }
@@ -357,12 +361,15 @@ class Session(
         when (step) {
             Step.AWAIT_HELLO -> {
                 if (m.type != "server/hello") throw ProtocolException("expected server/hello, got ${m.type.take(40)}")
-                name = m.string("name")
                 send(Outgoing.clientHello(hello))
                 step = Step.AWAIT_ACTIVATE
                 return
             }
-            Step.AWAIT_ACTIVATE -> if (m.type != "server/activate") throw ProtocolException("expected server/activate, got ${m.type.take(40)}")
+            Step.AWAIT_ACTIVATE -> if (m.type != "server/activate") {
+                // Answers to what went out before a re-handshake may still come; nothing else counts until the activation.
+                if (m.type == "server/time") time(m, arrivalUs)
+                return
+            }
             else -> Unit
         }
         // During a re-handshake only its second half and the activation under the new keys come.
@@ -421,7 +428,7 @@ class Session(
         // A role added needs its state: sent now, or once the clock has settled. The clock is
         // set going with the first role (a connection only for pairing needs none).
         if ((newRoles - old).isNotEmpty()) stateSent = false
-        if (roles.isNotEmpty() && bursts == 0 && burstLeft == 0) burst() else if (!stateSent && synced && roles.isNotEmpty()) sendState()
+        if (roles.isNotEmpty() && bursts == 0 && burstLeft == 0) burst() else if (stateOwed()) sendState()
     }
 
     private fun refuse() {
@@ -450,14 +457,20 @@ class Session(
             bursts++
             listener.clock(if (synced) filter.snapshot() else null)
         }
-        // Available once the clock can be trusted: the first client/state says so.
-        if (!stateSent && synced && roles.isNotEmpty()) sendState()
+        // Available once the clock can be trusted: a client/state says so.
+        if (stateOwed()) sendState()
     }
 
     private fun sendTime() {
         burstSentUs = nowUs()
         send(Outgoing.clientTime(burstSentUs))
     }
+
+    /**
+     * A client/state is owed: none since a role came, or none yet saying the speaker is available
+     * now that the clock can be trusted (a command answered before then said it was not).
+     */
+    private fun stateOwed() = synced && roles.isNotEmpty() && (!stateSent || !available)
 
     private fun sendState() {
         val player = if (Roles.PLAYER in roles) listener.playerState() else null

@@ -53,7 +53,7 @@ class Speaker(
     private val identity: SpeakerIdentity,
     /** The audio output, told how to report a change of route. */
     private val sinkFactory: (routed: () -> Unit) -> AudioSink,
-    private val nowUs: () -> Long = { System.nanoTime() / 1_000 },
+    private val monotonic: MonoClock = MonoClock.SYSTEM,
     /** How long the device has slept in all, in microseconds (the monotonic clock stands still meanwhile). */
     private val sleptUs: () -> Long = ::sleptSoFarUs,
     /** Readies the audio thread (a high priority). */
@@ -64,7 +64,7 @@ class Speaker(
     val status: StateFlow<SpeakerStatus> = _status.asStateFlow()
 
     private val queue = ChunkQueue(QUEUE_SECONDS * PcmFormat.RATE)
-    val playback: Playback = Playback(sinkFactory { playbackResync() }, queue, nowUs)
+    private val playback: Playback = Playback(sinkFactory { playbackResync() }, queue, monotonic)
     private val delays = ArrivalDelays()
 
     /** What this TV plays, as a sound feed: measured on its way to the output, while someone reads it. */
@@ -79,6 +79,17 @@ class Speaker(
     @Volatile private var connection: SpeakerConnection? = null
     @Volatile private var session: Session? = null
     private var jobs = emptyList<Job>()
+
+    /** What a player keeps across restarts, as last told: written one after another, the latest last. */
+    private data class Kept(val volume: Int, val muted: Boolean, val outputDelayMs: Int)
+
+    private val kept = MutableStateFlow<Kept?>(null)
+
+    /** Starting and stopping, and the connection they make and end, change together. */
+    private val lifecycle = Any()
+
+    /** Music Assistant says the group plays (`group/update`); a stream that starts says so too. */
+    @Volatile private var groupPlaying = true
 
     @Volatile private var volume = SpeakerStore.DEFAULT_VOLUME
     @Volatile private var muted = false
@@ -104,19 +115,23 @@ class Speaker(
 
     /** Loads what the speaker keeps and connects; without its key it stays away and says so. */
     fun start() {
-        if (running) return
-        running = true
-        jobs = listOf(scope.launch { connect() }, scope.launch { watch() })
+        synchronized(lifecycle) {
+            if (running) return
+            running = true
+            jobs = listOf(scope.launch { connect() }, scope.launch { watch() }, scope.launch { keep() })
+        }
         thread = Thread({ audioLoop() }, "Klangbild speaker").also { it.start() }
     }
 
     /** Disconnects with `client/goodbye` ([reason]) and lets the output go. */
     fun stop(reason: String) {
-        if (!running) return
-        running = false
-        connection?.stop(reason)
-        connection = null
-        jobs.forEach { it.cancel() }
+        synchronized(lifecycle) {
+            if (!running) return
+            running = false
+            connection?.stop(reason)
+            connection = null
+            jobs.forEach { it.cancel() }
+        }
         lock.withLock {
             streaming = false
             streamCame.signalAll()
@@ -170,9 +185,13 @@ class Speaker(
             beatBufferCapacity = BEAT_BUFFER_BYTES,
         )
         val c = SpeakerConnection(SpeakerConnection.client(http), scope, url, { transport, ended -> newSession(transport, key, m.pairingPsk, hello, ended) })
-        connection = c
+        // A stop that came meanwhile leaves no connection behind.
+        synchronized(lifecycle) {
+            if (!running) return
+            connection = c
+            c.start()
+        }
         Log.i(TAG, "Speaker connecting to Music Assistant")
-        c.start()
         c.link.collect { link ->
             if (link == SpeakerLink.CONNECTED && _status.value.link != SpeakerLink.CONNECTED) Log.i(TAG, "Speaker connected to Music Assistant")
             _status.update { it.copy(link = link) }
@@ -180,7 +199,7 @@ class Speaker(
     }
 
     private fun newSession(transport: Transport, key: KeyPair, pairingPsk: ByteArray, hello: Hello, ended: (SessionEnd, String) -> Unit): Session {
-        val s = Session(transport, key, pairingPsk, { records }, hello, Listener(ended), nowUs, random)
+        val s = Session(transport, key, pairingPsk, { records }, hello, Listener(ended), monotonic::nowUs, random)
         session = s
         return s
     }
@@ -197,7 +216,7 @@ class Speaker(
                 playback.resync()
             }
             slept = now
-            val buffer = delays.minBufferMs(nowUs())
+            val buffer = delays.minBufferMs(monotonic.nowUs())
             if (buffer != minBufferMs) {
                 minBufferMs = buffer
                 session?.stateChanged()
@@ -207,11 +226,30 @@ class Speaker(
 
     private fun playbackResync(): Unit = playback.resync()
 
+    /** Writes what a player keeps as it changes, one write after another, so the latest is the one kept. */
+    private suspend fun keep() {
+        kept.collect { k ->
+            if (k == null) return@collect
+            store.setVolume(k.volume, k.muted)
+            store.setOutputDelay(k.outputDelayMs)
+        }
+    }
+
+    private fun remember() {
+        kept.value = Kept(volume, muted, outputDelayMs)
+    }
+
+    /** Whether music plays here: a stream runs and its group plays. */
+    private fun playingNow() {
+        val playing = streaming && groupPlaying
+        _status.update { if (it.playing == playing) it else it.copy(playing = playing) }
+    }
+
     /** The audio thread: plays while a stream runs and a while after it, waits otherwise. */
     private fun audioLoop() {
         audioThreadSetup()
         while (running) {
-            val wanted = streaming || nowUs() < keepOpenUntilUs
+            val wanted = streaming || monotonic.nowUs() < keepOpenUntilUs
             if (!wanted) {
                 playback.close()
                 lock.withLock {
@@ -246,7 +284,8 @@ class Speaker(
                 streaming = true
                 streamCame.signalAll()
             }
-            _status.update { it.copy(playing = true) }
+            groupPlaying = true
+            playingNow()
         }
 
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
@@ -264,30 +303,33 @@ class Speaker(
         override fun streamEnd() {
             playback.clear()
             sound.cleared()
-            keepOpenUntilUs = nowUs() + KEEP_OPEN_US
+            keepOpenUntilUs = monotonic.nowUs() + KEEP_OPEN_US
             streaming = false
-            _status.update { it.copy(playing = false) }
+            playingNow()
         }
 
         override fun volume(volume: Int) {
             this@Speaker.volume = volume
             playback.setVolume(volume, muted)
-            scope.launch { store.setVolume(volume, muted) }
+            remember()
         }
 
         override fun mute(muted: Boolean) {
             this@Speaker.muted = muted
             playback.setVolume(volume, muted)
-            scope.launch { store.setVolume(volume, muted) }
+            remember()
         }
 
         override fun outputDelay(ms: Int) {
             outputDelayMs = ms
             playback.outputDelayUs = ms * 1_000L
-            scope.launch { store.setOutputDelay(ms) }
+            remember()
         }
 
-        override fun group(playing: Boolean, groupId: String, name: String) = Unit
+        override fun group(playing: Boolean, groupId: String, name: String) {
+            groupPlaying = playing
+            playingNow()
+        }
 
         override fun beat(timestampUs: Long, downbeat: Boolean) {
             // Stamped, like the audio, with when it is heard.
@@ -341,16 +383,33 @@ class Speaker(
 
         const val WATCH_MS = 2_000L
 
-        /** A gap this long between the monotonic clock and the one that counts sleep: the device slept. */
-        const val SLEEP_US = 5_000L
+        /**
+         * A gap this long between the monotonic clock and the one that counts sleep: the device
+         * slept. Far above what reading the two clocks can be off by, far below a real sleep.
+         */
+        const val SLEEP_US = 100_000L
         const val OPEN_RETRY_MS = 1_000L
 
-        /** Time spent asleep so far: the boot clock runs through sleep, the monotonic one does not. */
+        /**
+         * Time spent asleep so far: the boot clock runs through sleep, the monotonic one does not.
+         * Of a few readings the one taken most quickly counts, so a thread held up between two
+         * reads never looks like a sleep.
+         */
         fun sleptSoFarUs(): Long {
-            val before = System.nanoTime()
-            val boot = SystemClock.elapsedRealtimeNanos()
-            val after = System.nanoTime()
-            return (boot - (before + after) / 2) / 1_000
+            var best = Long.MAX_VALUE
+            var slept = 0L
+            repeat(CLOCK_READS) {
+                val before = System.nanoTime()
+                val boot = SystemClock.elapsedRealtimeNanos()
+                val after = System.nanoTime()
+                if (after - before < best) {
+                    best = after - before
+                    slept = (boot - (before + after) / 2) / 1_000
+                }
+            }
+            return slept
         }
+
+        private const val CLOCK_READS = 3
     }
 }

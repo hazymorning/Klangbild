@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.MediaKind
+import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,10 +101,16 @@ class HaSourceTest {
         ha.close()
     }
 
+    /** What Home Assistant says the player does. */
+    private var playerStatus = "playing"
+
+    /** When Home Assistant says the player's state changed (a moment in the past by default). */
+    private var stamp: () -> String = { "2026-10-10T18:00:%02d+00:00".format(changes++ % 60) }
+
     @Synchronized
     private fun playerState(attributes: JsonObject): String {
-        val time = "2026-10-10T18:00:%02d+00:00".format(changes++ % 60)
-        return """{"entity_id":"media_player.wz","state":"playing","attributes":$attributes,
+        val time = stamp()
+        return """{"entity_id":"media_player.wz","state":"$playerStatus","attributes":$attributes,
             "last_changed":"$time","last_updated":"$time","context":{"id":"x","parent_id":null,"user_id":null}}"""
     }
 
@@ -972,6 +979,7 @@ class HaSourceTest {
         // Home Assistant, to the millisecond, and says where it stood half a second before it answers.
         var ahead = 0.25
         var answeredAt = 0L
+        var maState = "playing"
         val ma = MockWebServer()
         ma.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -987,7 +995,7 @@ class HaSourceTest {
                             answeredAt = local
                             val elapsed = 61 + ahead + (local - 500 - reportedAtMs) / 1_000.0
                             """{"queue_id":"q1","current_index":0,"items":1,"current_item":${maItem("Erstes Lied")},"next_item":null,
-                                "state":"playing","elapsed_time":$elapsed,"elapsed_time_last_updated":${maNow - 0.5},"playback_speed":1.0}"""
+                                "state":"$maState","elapsed_time":$elapsed,"elapsed_time_last_updated":${maNow - 0.5},"playback_speed":1.0}"""
                         }
                         else -> "[]"
                     },
@@ -1008,6 +1016,23 @@ class HaSourceTest {
             // closely as its clock is known (half a round trip).
             val home = 61_000 + (p.positionAtEpochMs - reportedAtMs)
             assertThat(p.positionMs!! - home).isIn(com.google.common.collect.Range.closed(200L, 300L))
+            // A pause lets go of Music Assistant's position: playing again, Home Assistant's stands
+            // until Music Assistant says it plays too. Its states are stamped with this clock's time
+            // now, as Home Assistant's would be: their stamps tell Klangbild how its clock stands.
+            stamp = { java.time.Instant.now().toString() }
+            maState = "paused"
+            playerStatus = "paused"
+            report()
+            withTimeout(5_000) { s.state.first { it.player?.status == PlayerStatus.PAUSED } }
+            playerStatus = "playing"
+            report()
+            withTimeout(5_000) { s.state.first { it.player?.status == PlayerStatus.PLAYING } }
+            repeat(3) {
+                assertThat(s.state.value.player!!.positionAtEpochMs).isEqualTo(reportedAtMs)
+                delay(300)
+            }
+            maState = "playing"
+            withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs.let { at -> at != null && at != reportedAtMs } } }
             // Music Assistant far from Home Assistant (a jump it has not told yet): Home Assistant's stays.
             ahead = -50.0
             withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs == reportedAtMs } }

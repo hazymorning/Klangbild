@@ -44,9 +44,9 @@ data class QueueNow(val index: Int?, val current: TrackInfo?, val next: TrackInf
 
 /**
  * Where Music Assistant's queue stands in its current item: [elapsedMs] in the item's own time at
- * [atMs] on Music Assistant's clock (its wall clock), running at [speed] while [playing].
+ * [atMs] on Music Assistant's clock (its wall clock), moving on while [playing].
  */
-data class QueuePosition(val elapsedMs: Long, val atMs: Long, val speed: Float, val playing: Boolean)
+data class QueuePosition(val elapsedMs: Long, val atMs: Long, val playing: Boolean)
 
 /** Reads Music Assistant's queue items (`player_queues/items`). */
 object MaQueue {
@@ -97,11 +97,9 @@ object MaQueue {
     fun position(queue: JsonObject): QueuePosition? {
         val elapsed = (queue["elapsed_time"] as? JsonPrimitive)?.doubleOrNull ?: return null
         val updated = (queue["elapsed_time_last_updated"] as? JsonPrimitive)?.doubleOrNull ?: return null
-        val speed = (queue["playback_speed"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it in MIN_SPEED..MAX_SPEED } ?: 1.0
         return QueuePosition(
             elapsedMs = (elapsed * 1_000).roundToLong(),
             atMs = (updated * 1_000).roundToLong(),
-            speed = speed.toFloat(),
             playing = queue.string("state") == "playing",
         )
     }

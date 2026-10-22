@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.config
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
@@ -202,5 +203,11 @@ class SettingsMenuTest {
         assertThat(said[SpeakerLink.CONNECTED]).isEqualTo(said[SpeakerLink.CONNECTING])
         // What keeps it from playing is said only while it is on.
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, withMa, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).doesNotContain("2.10.7")
+        // While this TV is the speaker followed, it stays on here: OK opens the setup instead.
+        val followed = on.copy(entityId = EntityId.THIS_TV)
+        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, followed, +1)).isNull()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followed)).isTrue()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, on)).isFalse()
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(), en)).contains("choose another speaker")
     }
 }

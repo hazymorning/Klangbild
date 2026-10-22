@@ -105,7 +105,8 @@ object LaunchExtras {
                 "close", "beenden" -> out = out.copy(sleepAction = SleepAction.CLOSE)
             }
         }
-        boolOf(extras[TV_SPEAKER])?.let { out = out.copy(tvSpeaker = it) }
+        // While this TV is the speaker followed, it keeps playing here (another is chosen on the phone first).
+        boolOf(extras[TV_SPEAKER])?.let { on -> if (on || out.entityId != EntityId.THIS_TV) out = out.copy(tvSpeaker = on) }
         boolOf(extras[CLOCK])?.let { out = out.copy(showClock = it) }
         boolOf(extras[PROGRESS_BAR])?.let { out = out.copy(showProgressBar = it) }
         boolOf(extras[NEXT])?.let { out = out.copy(showNext = it) }

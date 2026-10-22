@@ -26,8 +26,8 @@ import kotlin.math.pow
 class Playback(
     private val sink: AudioSink,
     val queue: ChunkQueue,
-    /** The local clock in microseconds (monotonic, the clock of the output's timestamps). */
-    private val nowUs: () -> Long,
+    /** The local clock (monotonic, the clock of the output's timestamps). */
+    private val monotonic: MonoClock,
 ) {
     private val rate = sink.rate
     private val block = ShortArray(BLOCK * 2)
@@ -71,10 +71,6 @@ class Playback(
 
     /** Times the audio was put in place at once (a start, a clear, an underrun, a large error). */
     @Volatile var resyncs = 0L
-        private set
-
-    /** The latest error between what plays and what should, in microseconds (positive: early). */
-    @Volatile var lastErrorUs = 0.0
         private set
 
     /** Sets the volume (0 to 100) and mute; the change is ramped over [RAMP_FRAMES]. */
@@ -153,9 +149,9 @@ class Playback(
         val start = presentationUs()
         val c = clock
         var filled = 0
-        if (start != null && c != null) filled = fill(c.serverTime(start + outputDelayUs))
+        if (start != NONE && c != null) filled = fill(c.serverTime(start + outputDelayUs))
         if (filled < BLOCK) block.fill(0, filled * 2, BLOCK * 2)
-        if (start != null) tap?.played(block, BLOCK, start + outputDelayUs)
+        if (start != NONE) tap?.played(block, BLOCK, start + outputDelayUs)
         applyGain()
         val n = sink.write(block, BLOCK)
         if (n < 0) return false
@@ -167,12 +163,12 @@ class Playback(
         hasTimestamp = false
         advancing = 0
         lastTsFrame = 0
-        trustFromUs = nowUs()
+        trustFromUs = monotonic.nowUs()
     }
 
-    /** When the next frame written will leave the device, by the output's timestamps that can be trusted; null while there are none. */
-    private fun presentationUs(): Long? {
-        val now = nowUs()
+    /** When the next frame written will leave the device, by the output's timestamps that can be trusted; [NONE] while there are none. */
+    private fun presentationUs(): Long {
+        val now = monotonic.nowUs()
         if (sink.timestamp(ts) && ts.timeUs >= trustFromUs && ts.frame > 0) {
             val moved = (ts.frame - lastTsFrame).toInt()
             val pending = (written - ts.frame).toInt()
@@ -199,7 +195,7 @@ class Playback(
             forgetTimestamps()
             realign = true
         }
-        if (!hasTimestamp) return null
+        if (!hasTimestamp) return NONE
         return lastTsTimeUs + (written - lastTsFrame).toInt() * 1_000_000L / rate
     }
 
@@ -211,13 +207,14 @@ class Playback(
             errorKnown = false
             // Late audio goes; audio still to come waits behind silence.
             while (true) {
-                val t = queue.nextTimeUs(rate) ?: break
+                val t = queue.nextTimeUs(rate)
+                if (t == ChunkQueue.NONE) break
                 val late = framesOf(target - t)
                 if (late <= 0) break
                 queue.skip(late.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
             }
             val t = queue.nextTimeUs(rate)
-            if (t == null) {
+            if (t == ChunkQueue.NONE) {
                 realign = true
                 return 0
             }
@@ -231,7 +228,7 @@ class Playback(
             resyncs++
         } else {
             val t = queue.nextTimeUs(rate)
-            if (t == null) {
+            if (t == ChunkQueue.NONE) {
                 realign = true
                 return 0
             }
@@ -242,7 +239,6 @@ class Playback(
             } else {
                 error += (e - error) * ERROR_SMOOTHING
             }
-            lastErrorUs = error
             if (abs(error) > RESYNC_US) {
                 realign = true
                 return fill(target)
@@ -267,18 +263,20 @@ class Playback(
             }
         }
         while (filled < BLOCK) {
-            val before = queue.nextTimeUs(rate) ?: break
+            val before = queue.nextTimeUs(rate)
+            if (before == ChunkQueue.NONE) break
             val n = queue.take(block, filled, BLOCK - filled)
             if (n == 0) break
             filled += n
             // A gap between chunks (a chunk that never came) is put right by aligning anew.
-            val next = queue.nextTimeUs(rate) ?: break
+            val next = queue.nextTimeUs(rate)
+            if (next == ChunkQueue.NONE) break
             if (abs(next - (before + n * 1_000_000L / rate)) > GAP_US) {
                 realign = true
                 break
             }
         }
-        if (filled < BLOCK && queue.nextTimeUs(rate) == null) realign = true
+        if (filled < BLOCK && queue.nextTimeUs(rate) == ChunkQueue.NONE) realign = true
         return filled
     }
 
@@ -311,6 +309,9 @@ class Playback(
     }
 
     companion object {
+        /** No time known. */
+        private const val NONE = Long.MIN_VALUE
+
         /** 10 ms at 48 kHz: the unit of writing, and of correcting. */
         const val BLOCK = 480
 

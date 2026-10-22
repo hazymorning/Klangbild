@@ -20,7 +20,7 @@ import android.os.Looper
  * consumed stand in for them; that leaves out what lies beyond the mixer, so it is a last resort.
  */
 class AudioTrackSink(
-    private val nowUs: () -> Long,
+    private val clock: MonoClock,
     /** The output went elsewhere (another device, the same one again): its timing starts anew. */
     private val routed: () -> Unit,
 ) : AudioSink {
@@ -75,7 +75,7 @@ class AudioTrackSink(
         }
         track = t
         underrunBase = t.underrunCount
-        lastStampUs = nowUs()
+        lastStampUs = clock.nowUs()
         return true
     }
 
@@ -87,7 +87,7 @@ class AudioTrackSink(
 
     override fun timestamp(out: SinkTimestamp): Boolean {
         val t = track ?: return false
-        val now = nowUs()
+        val now = clock.nowUs()
         if (t.getTimestamp(stamp)) {
             lastStampUs = now
             // The count keeps only 32 bits; the playback compares counts in 32 bits too.
@@ -114,7 +114,7 @@ class AudioTrackSink(
             // A track that cannot be paused or played any more fails its next write, which ends it.
         }
         underrunBase = t.underrunCount
-        lastStampUs = nowUs()
+        lastStampUs = clock.nowUs()
     }
 
     override fun close() {

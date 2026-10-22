@@ -31,9 +31,6 @@ class ChunkQueue(capacityFrames: Int, private val maxChunks: Int = MAX_CHUNKS) {
     @Volatile var overflows = 0
         private set
 
-    /** Adding side: frames waiting, as far as it can tell. */
-    val queuedFrames: Long get() = frameHead - frameTail
-
     /**
      * Adding side: a chunk of [frames] stereo frames in little-endian 16-bit PCM at [offset] of
      * [bytes], to be played from server time [serverUs]. False when it does not fit.
@@ -67,12 +64,12 @@ class ChunkQueue(capacityFrames: Int, private val maxChunks: Int = MAX_CHUNKS) {
     }
 
     /**
-     * Taking side: the server time of the next frame to take, or null when nothing waits. Carries
-     * out a clear asked for meanwhile.
+     * Taking side: the server time of the next frame to take, or [NONE] when nothing waits.
+     * Carries out a clear asked for meanwhile.
      */
-    fun nextTimeUs(rate: Int): Long? {
+    fun nextTimeUs(rate: Int): Long {
         skipCleared()
-        if (chunkTail == chunkHead) return null
+        if (chunkTail == chunkHead) return NONE
         val slot = (chunkTail % maxChunks).toInt()
         return chunkTime[slot] + offsetInChunk * 1_000_000L / rate
     }
@@ -127,5 +124,8 @@ class ChunkQueue(capacityFrames: Int, private val maxChunks: Int = MAX_CHUNKS) {
     companion object {
         /** Music Assistant sends chunks of 15 to 150 ms; this many cover the whole ring at the shortest. */
         const val MAX_CHUNKS = 2_048
+
+        /** No time: nothing waits. */
+        const val NONE = Long.MIN_VALUE
     }
 }

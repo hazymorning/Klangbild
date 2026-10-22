@@ -3,7 +3,9 @@ package io.github.hazymorning.klangbild.data.ma
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.sendspin.ClockMap
+import io.github.hazymorning.klangbild.sendspin.Outgoing
 import io.github.hazymorning.klangbild.sendspin.TimeFilter
+import io.github.hazymorning.klangbild.sendspin.int64
 import io.github.hazymorning.klangbild.sound.SoundAnalyzer
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
@@ -23,7 +25,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -168,7 +169,7 @@ class MilkdropSound(
                                 "error" -> return heard
                             }
                         }
-                        is Event.Binary -> if (authorized && binary(event.bytes)) heard = true
+                        is Event.Binary -> if (authorized && binary(event.bytes.toByteArray())) heard = true
                     }
                 }
             } finally {
@@ -176,10 +177,8 @@ class MilkdropSound(
             }
         }
 
-        private fun timeMessage() = buildJsonObject {
-            put("type", "client/time")
-            putJsonObject("payload") { put("client_transmitted", nowUs()) }
-        }.toString()
+        /** The relay takes Sendspin's `client/time` as it is. */
+        private fun timeMessage() = Outgoing.clientTime(nowUs()).encode()
 
         /** A `server/time` answer taken into the clock filter; whether it was taken. */
         private fun time(msg: JsonObject): Boolean {
@@ -195,10 +194,10 @@ class MilkdropSound(
         }
 
         /** A waveform window or a beat; whether it was music that could be timed. */
-        private fun binary(bytes: ByteString): Boolean {
+        private fun binary(bytes: ByteArray): Boolean {
             val c = clock ?: return false
             if (bytes.size < HEADER) return false
-            val stampUs = int64(bytes, 1)
+            val stampUs = bytes.int64(1)
             return when (bytes[0].toInt() and 0xff) {
                 WAVEFORM -> bytes.size >= HEADER + WINDOW && window(bytes, c.clientTime(stampUs), stampUs)
                 BEAT -> {
@@ -210,7 +209,7 @@ class MilkdropSound(
         }
 
         /** One window whose last sample is heard at [lastHeardUs] ([stampUs] on the server's clock); whether it was measured. */
-        private fun window(bytes: ByteString, lastHeardUs: Long, stampUs: Long): Boolean {
+        private fun window(bytes: ByteArray, lastHeardUs: Long, stampUs: Long): Boolean {
             // The relay names no sample rate: windows follow each other without a gap, so the time
             // between two tells it, and it is one of the rates music comes in.
             val gap = stampUs - lastStampUs
@@ -267,12 +266,5 @@ class MilkdropSound(
 
         const val RETRY_MS = 5_000L
         const val LAST_RETRY_MS = 5 * 60_000L
-
-        /** A big-endian 64-bit number at [at]. */
-        private fun int64(bytes: ByteString, at: Int): Long {
-            var v = 0L
-            for (i in 0 until 8) v = (v shl 8) or (bytes[at + i].toLong() and 0xff)
-            return v
-        }
     }
 }

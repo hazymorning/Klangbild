@@ -268,6 +268,31 @@ class SessionTest {
     }
 
     @Test
+    fun `a command before the clock settles still leaves it available once it has`() {
+        val server = Server()
+        server.onMessage = { m -> if (m.type == "client/hello") server.activate(listOf("playback"), listOf(Roles.PLAYER)) }
+        val s = session(server)
+        s.start()
+        pump(server, s)
+        assertThat(s.synced).isFalse()
+        server.send(Message.of("server/command", buildJsonObject {
+            putJsonObject("player") {
+                put("command", "volume")
+                put("volume", 30)
+            }
+        }))
+        pump(server, s)
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isFalse()
+        repeat(Session.SYNC_BURSTS - 1) {
+            now += 300_000
+            s.burst()
+            pump(server, s)
+        }
+        assertThat(s.synced).isTrue()
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isTrue()
+    }
+
+    @Test
     fun `a stream plays its chunks and obeys the server's commands`() {
         val (server, s) = connect()
         server.send(Message.of("stream/start", buildJsonObject {
@@ -400,9 +425,18 @@ class SessionTest {
             val s = session(server)
             s.start()
             pump(server, s)
-            if (server.closeNow) s.onClosed()
+            if (server.closeNow) s.onClosed(byServer = true)
             assertThat(ended).isEqualTo(expected)
         }
+        // A connection lost on the way, before the server could answer, says nothing of its version.
+        ended = null
+        val server = Server()
+        server.greet = { srv -> srv.closeNow = true }
+        val s = session(server)
+        s.start()
+        pump(server, s)
+        s.onClosed(byServer = false)
+        assertThat(ended).isEqualTo(SessionEnd.LOST)
     }
 
     @Test

@@ -67,6 +67,11 @@ class SpeakerStore(private val store: DataStore<Preferences>, private val secret
         store.edit { p ->
             if (Keys.identity !in p) p[Keys.identity] = seal(KeyPair.generate(random).privateKey)
             if (Keys.pairingPsk !in p) p[Keys.pairingPsk] = seal(ByteArray(Noise.KEY_BYTES).also(random::nextBytes))
+            // Stored while the keystore could not seal them: sealed now, if it can.
+            for (key in listOf(Keys.identity, Keys.pairingPsk, Keys.records)) {
+                val stored = p[key] ?: continue
+                if (secrets.isPlain(stored)) secrets.open(stored)?.let { p[key] = secrets.seal(it) }
+            }
         }
         val p = store.data.first()
         return SpeakerMemory(
@@ -92,9 +97,10 @@ class SpeakerStore(private val store: DataStore<Preferences>, private val secret
 
     /**
      * Keeps [record] first, replacing one for the same server; beyond [MAX_RECORDS] the least
-     * recently used goes. Records that cannot be opened are given up for it.
+     * recently used goes. Records that cannot be opened at the moment are given up for it: a
+     * pairing just made counts more.
      */
-    suspend fun remember(record: PairingRecord) = editRecords { list -> listOf(record) + list.filter { it.serverId != record.serverId } }
+    suspend fun remember(record: PairingRecord) = editRecords(giveUpUnreadable = true) { list -> listOf(record) + list.filter { it.serverId != record.serverId } }
 
     /** Moves the record of [serverId] first: it was just used. */
     suspend fun used(serverId: String) = editRecords { list ->
@@ -105,9 +111,11 @@ class SpeakerStore(private val store: DataStore<Preferences>, private val secret
     /** Forgets the record of [serverId] (the server unpaired). */
     suspend fun forget(serverId: String) = editRecords { list -> list.filter { it.serverId != serverId } }
 
-    private suspend fun editRecords(change: (List<PairingRecord>) -> List<PairingRecord>) {
+    /** Changes the records; ones that cannot be opened at the moment stay as they are, unless [giveUpUnreadable]. */
+    private suspend fun editRecords(giveUpUnreadable: Boolean = false, change: (List<PairingRecord>) -> List<PairingRecord>) {
         store.edit { p ->
-            val now = p[Keys.records]?.let(::records).orEmpty()
+            val stored = p[Keys.records]
+            val now = if (stored == null) emptyList() else records(stored) ?: if (giveUpUnreadable) emptyList() else return@edit
             val next = change(now).take(MAX_RECORDS)
             writeRecords(p, next)
         }

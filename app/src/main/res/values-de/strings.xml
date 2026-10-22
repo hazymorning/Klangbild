@@ -183,11 +183,12 @@
     <string name="about_play_here_set_up">Mit Music Assistant kann dieser Fernseher Musik synchron mit deinen anderen Lautsprechern spielen. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_play_here_off">Music Assistant kann auch auf diesem Fernseher Musik abspielen, synchron mit deinen anderen Lautsprechern. Schaltest du es ein, erscheint der Fernseher dort unter seinem eigenen Namen.</string>
     <string name="about_play_here_on">Dieser Fernseher ist einer der Lautsprecher von Music Assistant und spielt weiter, auch wenn Klangbild geschlossen ist. Beginnt hier Musik, zeigt Klangbild sie.</string>
+    <string name="about_play_here_followed">Klangbild folgt diesem Fernseher, deshalb spielt er hier weiter. Um das auszuschalten, wähle zuerst am Handy einen anderen Lautsprecher. OK zeigt den QR-Code.</string>
     <string name="about_play_here_unreachable">Music Assistant antwortet gerade nicht auf Port 8927, deshalb kann dieser Fernseher noch nicht spielen. Klangbild versucht es weiter.</string>
     <string name="about_play_here_too_old">Damit dieser Fernseher spielen kann, braucht Music Assistant die Version 2.10.7 oder neuer.</string>
     <string name="about_play_here_too_new">Dein Music Assistant ist neuer als diese Version von Klangbild. Sobald Klangbild aktualisiert ist, spielt dieser Fernseher wieder.</string>
     <string name="about_play_here_refused">Music Assistant hat diesen Fernseher nicht hereingelassen. Du kannst ihn dort mit dem Code von der Einrichtung am Handy koppeln.</string>
-    <string name="about_play_here_no_key">Dieser Fernseher kann seinen Schlüssel für Music Assistant gerade nicht öffnen. Schalte Hier abspielen aus und wieder ein, um es noch einmal zu versuchen.</string>
+    <string name="about_play_here_no_key">Dieser Fernseher kann seinen Schlüssel für Music Assistant gerade nicht öffnen. Schalte „Hier abspielen“ aus und wieder ein, um es noch einmal zu versuchen.</string>
 
     <string name="quick_queue">Warteschlange</string>
     <string name="quick_landscape">Landschaft</string>

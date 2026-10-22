@@ -180,7 +180,7 @@ The packages build on each other in one direction, and `LayersTest` keeps it so:
 color, text, art and sound below everything; domain (the app's model and rules) on them; data (Home
 Assistant and Music Assistant) on domain, sendspin and sound; config (the settings, their store and menus) on data;
 render, landscape and lights; sendspin (the protocol, on json alone) and speaker (this TV as a
-speaker, on config, data, domain and sendspin); app (the controller); ui on top. MainActivity,
+speaker, on config, data, domain, json, sendspin and sound); app (the controller); ui on top. MainActivity,
 KlangbildApp (the wiring) and SpeakerService stand in the root package and may use everything.
 
 ```
@@ -361,7 +361,8 @@ sendspin/       Sendspin, Music Assistant's protocol for synchronized audio (the
                 commands), TimeFilter (the spec's two-dimensional Kalman filter, as the reference
                 has it), Session (client/init to the stream: handshake, re-handshake, pairing,
                 bursts of 8 time messages, available only once synced, leave, goodbye; an older
-                or newer Music Assistant told apart)
+                or newer Music Assistant told apart: only a server that closes before it answers
+                counts as older, a connection lost on the way is lost)
 speaker/        SpeakerConnection (ws://<Music Assistant host>:8927/sendspin through the client
                 without redirects; backoff, a try at once on wake), SpeakerStore (the key and the
                 pairings sealed, in a store of their own; an identity that cannot be opened is
@@ -371,9 +372,12 @@ speaker/        SpeakerConnection (ws://<Music Assistant host>:8927/sendspin thr
                 put in place at once on a start, a clear, a gap or an underrun, a frame dropped or
                 repeated against drift; volume ramps, output delay, silence while another app has
                 the sound), AudioSink + AudioTrackSink (48 kHz 16-bit stereo, timestamps, routing),
-                ArrivalDelays (the min_buffer_ms asked for), Speaker (all of it, an audio thread at
-                urgent priority while a stream plays and 30 s after; its playback and Music
-                Assistant's beats (visualizer@v1, beats only) as a PcmSound)
+                ArrivalDelays (the min_buffer_ms asked for), MonoClock (the monotonic clock in µs
+                as a plain long: nothing boxed on the audio path, where "no time" is a sentinel,
+                never null), Speaker (all of it, an audio thread at urgent priority while a stream
+                plays and 30 s after; playing only while its group plays; volume, mute and output
+                delay kept one write at a time; its playback and Music Assistant's beats
+                (visualizer@v1, beats only) as a PcmSound)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
@@ -870,8 +874,9 @@ UI words are given in English with the German in parentheses where it matters.
   plays, stopped it gives the screen back after 4 s (`SpeakerSwitch`); the keys, the volume, the
   queue and a button's `player` act on what shows, and another speaker's volume is no change to
   show. "This TV" at the top of the setup page's list follows it alone (`EntityId.THIS_TV`),
-  and its own entity is left out of that list. Tested end to end against aiosendspin 10.2.0;
-  never verified on a TV.
+  and its own entity is left out of that list; while it does, Play here stays on (the menu's OK
+  opens the setup, where another speaker is chosen first, and a launch extra cannot switch it
+  off). Tested end to end against aiosendspin 10.2.0; never verified on a TV.
 - **The sound feed** (`sound/`, `SoundSelection`; for the visualizer of the second phase, shown
   nowhere yet but in the debug overlay's meter): for each short stretch, loudness, four bands and
   onset, the latest beat Music Assistant knows, when it is heard on the monotonic clock, and how

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
 import com.google.common.truth.Truth.assertThat
+import io.github.hazymorning.klangbild.domain.EntityId
 import org.junit.Test
 
 class LaunchExtrasTest {
@@ -84,6 +85,9 @@ class LaunchExtrasTest {
         assertThat(LaunchExtras.hasStoredExtras(mapOf("tv_speaker" to true))).isTrue()
         // A page in the TV's browser cannot make it a speaker.
         assertThat(LaunchExtras.fromLink(mapOf("tv_speaker" to "on"))).doesNotContainKey("tv_speaker")
+        // While this TV is the speaker followed, an extra cannot take it away.
+        val followed = Settings(entityId = EntityId.THIS_TV, tvSpeaker = true)
+        assertThat(LaunchExtras.applyTo(followed, mapOf("tv_speaker" to false)).tvSpeaker).isTrue()
     }
 
     @Test

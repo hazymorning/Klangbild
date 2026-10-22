@@ -302,9 +302,8 @@ class HaSource(
         }
         linkDownSince = if (link == LinkState.CONNECTED) null else (linkDownSince ?: t)
 
-        follow(entities, t)
+        var player = follow(entities, t)
         val entity = speakerShown?.let { entities[it] }
-        var player = entity?.let { PlayerParser.player(it, config.baseUrl) }
         if (player != null && player != lastSnapshot) {
             receivedAt = t
             lastSnapshot = player
@@ -368,17 +367,20 @@ class HaSource(
 
     /**
      * Which speaker shows ([speakerShown]): the one chosen, or this TV's own while music plays on it
-     * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue.
+     * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue. Returns what
+     * the speaker shown plays.
      */
-    private fun follow(entities: Map<String, EntityState>, t: Long) {
+    private fun follow(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
         val ownId = own?.entity
         val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
         val here = ownId?.takeIf { it != chosen }
+        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
+        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
         val showsOwn = if (here == null) {
             switch.reset()
             false
         } else {
-            switch.update(entities[here]?.let { PlayerParser.player(it, config.baseUrl) }, chosen?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }, t)
+            switch.update(herePlayer, chosenPlayer, t)
         }
         // Stopped, it stays a moment: the state is published once more when that is over.
         val back = switch.backAt
@@ -398,6 +400,7 @@ class HaSource(
             lastSnapshot = null
             queue.retarget()
         }
+        return if (showsOwn) herePlayer else chosenPlayer
     }
 
     /** This state with the player, its queue and its time as [shown] has them, and the speaker they belong to. */

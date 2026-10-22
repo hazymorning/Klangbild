@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.config
 import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
@@ -123,6 +124,15 @@ object SettingsMenu {
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         else -> false
     }
+
+    /**
+     * Whether Klangbild follows this TV's own speaker ("This TV" on the setup page): then it keeps
+     * playing here, and another speaker is chosen on the phone first.
+     */
+    fun followsThisTv(s: Settings): Boolean = s.entityId == EntityId.THIS_TV && s.tvSpeaker
+
+    /** Whether OK on [e] opens the setup: what needs setting up first, and playing here while this TV is the speaker followed. */
+    fun opensSetup(e: MenuEntry, s: Settings): Boolean = needsSetup(e, s) || (e == MenuEntry.PLAY_HERE && followsThisTv(s))
 
     /** A line's label; the two connection lines are named after what they connect to. */
     fun label(e: MenuEntry, t: Texts): String = when (e) {
@@ -332,6 +342,7 @@ object SettingsMenu {
     private fun playHere(s: Settings, speaker: SpeakerLink): Int = when {
         !s.hasMusicAssistant -> R.string.about_play_here_set_up
         !s.tvSpeaker -> R.string.about_play_here_off
+        followsThisTv(s) -> R.string.about_play_here_followed
         else -> when (speaker) {
             SpeakerLink.UNREACHABLE -> R.string.about_play_here_unreachable
             SpeakerLink.TOO_OLD -> R.string.about_play_here_too_old
@@ -371,7 +382,7 @@ object SettingsMenu {
      * The settings after one step of [e]: [direction] -1 (left) or +1 (right, OK). Left and
      * right stop at the ends of a scale, OK ([wrap]) goes round. Switches simply flip. Null for
      * the lines that are no setting (the connections, the sleep timer, the language) and for the
-     * lines that need something set up first ([needsSetup]: OK sets it up).
+     * lines that need something set up first ([opensSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
@@ -383,7 +394,7 @@ object SettingsMenu {
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
-        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) null else s.copy(tvSpeaker = !s.tvSpeaker)
+        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant || followsThisTv(s)) null else s.copy(tvSpeaker = !s.tvSpeaker)
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
         MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null
