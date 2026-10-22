@@ -104,7 +104,6 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-> **Tip**<br>
 > In the settings you can change what some of the buttons do, for example to have up and down change the volume.
 
 </details>
