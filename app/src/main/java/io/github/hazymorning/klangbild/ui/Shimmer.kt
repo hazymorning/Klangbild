@@ -41,8 +41,11 @@ import kotlin.math.sin
  * always ends, so even the shortest wait shows one whole pass and nothing flickers.
  */
 object Shimmer {
-    /** The band's width (dp): the word's own ink in its middle, falling off as cos² to either side. */
-    const val BAND_DP = 64f
+    /**
+     * The band's width (dp): the word's own ink in its middle, falling off as cos² to either side.
+     * 64 dp in the first beta lit only two letters at a time and read as too faint.
+     */
+    const val BAND_DP = 96f
 
     /** One pass, from the band's right edge at the word's start to its left edge at the word's end. */
     const val PASS_MS = 1_200L

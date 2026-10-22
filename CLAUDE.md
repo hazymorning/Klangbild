@@ -675,8 +675,8 @@ UI words are given in English with the German in parentheses where it matters.
   edge, rising 22 dp as it fades in, where the key points: Queue (Off / List / Cover Flow, taken
   0.9 s after the last press so none in between shows, List only with Music Assistant connected;
   chosen over the landscape, it leaves it; while the way chosen is on its way, from the press
-  until the stage shows it, its value waits in the name's ink and a soft band of its own ink, 64
-  dp, passes over it in 1.2 s, then rests 0.4 s; a pass that has begun always ends; the menu's
+  until the stage shows it, its value waits in the name's ink and a soft band of its own ink, 96
+  dp (64 lit only two letters and read as too faint), passes over it in 1.2 s, then rests 0.4 s; a pass that has begun always ends; the menu's
   chosen Queue line shimmers too, waiting in the ink of a name at rest; over the clock, the setup page or trouble nothing is
   made, so nothing shimmers (`QueueSwitch`, `Shimmer`)), Landscape On / Off (at once), Lyrics On
   / Off (only with Music Assistant connected and a song on stage; while this song has no synced
