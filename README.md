@@ -19,7 +19,7 @@ Klangbild works with any media player in Home Assistant and shows the album cove
 
 During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
-![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
+![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
 > [!NOTE]
 > **Klangbild is being built in two phases** and the first is almost finished. The second is a modern music visualizer, calm and tasteful rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
@@ -157,7 +157,7 @@ In the settings you can change what some of the buttons do, for example to have 
 <summary><b>Contributing</b></summary>
 <br>
 
-Klangbild is a small project made for the joy of it, and any help is welcome. A bug fix or a translation can go straight into a pull request, while bigger ideas, like bringing it to another kind of TV, are easier to talk over in a discussion first.
+Klangbild is a small project made for the joy of it, and it's meant to be a calm picture of the music in the room rather than another media player. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues). Pull requests from others aren't accepted, so the design stays all of a piece.
 
 </details>
 
