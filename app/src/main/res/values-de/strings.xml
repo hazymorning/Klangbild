@@ -16,7 +16,7 @@
     <string name="section_remote">Fernbedienung</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
-    <string name="about_section_picture">Wie das Bild aussieht: Warteschlange, hell oder dunkel, Farben und Bewegung.</string>
+    <string name="about_section_picture">Wie das Bild aussieht: Layout, Warteschlange, hell oder dunkel, Farben und Bewegung.</string>
     <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt und der Songtext.</string>
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_landscape">Wann die Landschaft aus Papier kommt und wo ihr Mini-Player sitzt.</string>
@@ -25,6 +25,7 @@
     <string name="about_section_system">Home Assistant, Music Assistant und die Sprache.</string>
 
     <string name="entry_queue">Warteschlange</string>
+    <string name="entry_layout">Layout</string>
     <string name="entry_appearance">Erscheinungsbild</string>
     <string name="entry_clock">Uhrzeit</string>
     <string name="entry_progress">Fortschrittsbalken</string>
@@ -52,6 +53,8 @@
 
     <string name="queue_list">Liste</string>
     <string name="queue_flow">Cover Flow</string>
+    <string name="layout_classic">Klassisch</string>
+    <string name="layout_player">Player</string>
     <string name="appearance_auto">Automatisch</string>
     <string name="appearance_light">Hell</string>
     <string name="appearance_dark">Dunkel</string>
@@ -102,6 +105,9 @@
     <string name="about_queue_list">Die nächsten Titel als Liste neben dem Cover.</string>
     <string name="about_queue_list_set_up">Die nächsten Titel als Liste neben dem Cover. Dafür braucht es Music Assistant: Ohne nennt die letzte Zeile nur den nächsten Titel.</string>
     <string name="about_queue_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt.</string>
+    <string name="about_layout_classic">Der Titel, der Interpret und der Fortschrittsbalken neben dem Cover.</string>
+    <string name="about_layout_player">Wie ein Musikplayer: der Fortschrittsbalken über den ganzen Bildschirm, mit Tasten für den Songtext und die Einstellungen. Mit Songtext rückt der Titel unter das Cover.</string>
+    <string name="about_layout_player_queue">Wie ein Musikplayer, aber nur, solange die Warteschlange aus ist. Cover Flow und die Liste behalten ihr eigenes Aussehen.</string>
     <string name="about_appearance_auto">Tagsüber hell, von Sonnenuntergang bis Sonnenaufgang dunkel, nach dem Stand der Sonne in Home Assistant.</string>
     <string name="about_appearance_light">Immer hell: heller Hintergrund, dunkle Schrift.</string>
     <string name="about_appearance_dark">Immer dunkel: dunkler Hintergrund, helle Schrift.</string>

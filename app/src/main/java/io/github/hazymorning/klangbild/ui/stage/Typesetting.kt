@@ -82,6 +82,10 @@ class StageStyles(palette: ScenePalette) {
     /** "Up next" differs from what follows by weight alone. */
     val nextLead = SpanStyle(fontWeight = FontWeight(560))
 
+    /** The player's grid: the song's title under the cover (the title face at its smallest), and its artist under it. */
+    val captionTitle = titleType(24f, 430, ink, lineHeight = 28f).text()
+    val captionArtist = textType(17f, 500, muted, lineHeight = 22f).text()
+
     private fun TextStyle.text() = merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
 
     companion object {
@@ -186,7 +190,8 @@ private fun planText(
         if (version != null) rest += Gaps.VERSION * d + cap(normal.version(step.size))
         rest += Gaps.ARTIST * d + cap(normal.artist)
         if (t.album != null || model.year != null || model.chapter != null) rest += Gaps.ALBUM * d + cap(normal.album)
-        if (model.line != null || (model.progress && model.durationMs != null)) {
+        // In the player's grid the bar stands across the screen, apart from the block.
+        if (!layout.player && (model.line != null || (model.progress && model.durationMs != null))) {
             rest += Gaps.BOTTOM * d + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(normal.label)
         }
         return layout.art * BLOCK_SHARE * d - rest

@@ -242,6 +242,38 @@ class QuickControlTest {
     }
 
     @Test
+    fun `the player's buttons choose between the words and the settings, and down again opens the whole row`() {
+        val song = TrackInfo("Song", listOf("A"), durationMs = 200_000L)
+        ui = ui.copy(screen = Screen.Stage(song, PlayerStatus.PLAYING, null))
+        // Without Music Assistant no words can come: only the way into the settings stands there.
+        assertThat(quick.buttons(ui.screen, landscape = false).rows.map { it.item }).containsExactly(QuickItem.SETTINGS)
+        ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
+        val resting = quick.buttons(ui.screen, landscape = false)
+        assertThat(resting.rows.map { it.item }).containsExactly(QuickItem.LYRICS, QuickItem.SETTINGS).inOrder()
+        assertThat(resting.cursor).isEqualTo(-1)
+        // Down chooses among them, on the first; the row along the bottom edge stays away.
+        quick.open(menuOpen = false, buttons = true)
+        assertThat(quick.isCompact).isTrue()
+        assertThat(quick.state(ui.screen, landscape = false)!!.compact).isTrue()
+        assertThat(quick.buttons(ui.screen, landscape = false).cursor).isEqualTo(0)
+        quick.change()
+        assertThat(lyrics).isTrue()
+        quick.move(+1)
+        quick.move(+1)
+        assertThat(quick.buttons(ui.screen, landscape = false).cursor).isEqualTo(1)
+        // Down again: the whole row, the cursor still on the settings.
+        quick.expand()
+        val row = quick.state(ui.screen, landscape = false)!!
+        assertThat(row.compact).isFalse()
+        assertThat(row.rows.map { it.item }).contains(QuickItem.QUEUE)
+        assertThat(row.rows[row.cursor].item).isEqualTo(QuickItem.SETTINGS)
+        assertThat(quick.buttons(ui.screen, landscape = false).cursor).isEqualTo(-1)
+        quick.change()
+        assertThat(menuOpened).isEqualTo(1)
+        assertThat(quick.isOpen).isFalse()
+    }
+
+    @Test
     fun `the lyrics entry shows with Music Assistant and a song, says On quietly for a song without words, and OK turns it on and off`() {
         val song = TrackInfo("Song", listOf("A"), durationMs = 200_000L)
         ui = ui.copy(screen = Screen.Stage(song, PlayerStatus.PLAYING, null))

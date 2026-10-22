@@ -27,8 +27,11 @@ data class Look(val appearance: Appearance, val wallTint: Float, val coverField:
             (appearance == Appearance.DARK && !coverField || scene.wallTint == wallTint)
 }
 
-/** What scenes are built for: the screen, and Cover Flow's grid or the cover's own. Another frame means new scenes. */
-data class Frame(val screen: ScreenSpec, val flow: Boolean)
+/**
+ * What scenes are built for: the screen, and Cover Flow's grid, the player's or the cover's own.
+ * Another frame means new scenes.
+ */
+data class Frame(val screen: ScreenSpec, val flow: Boolean, val player: Boolean = false)
 
 /**
  * Prepares the stage's scenes (cover, palette, light; see [SceneBuilder]) off the main thread,
@@ -142,6 +145,7 @@ class Scenes(
                 appearance = look.appearance,
                 wallTint = look.wallTint,
                 flow = frame.flow,
+                player = frame.player,
                 coverField = look.coverField,
             )
         }

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.color.Appearance
@@ -41,6 +42,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.render.ArtworkScene
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -300,7 +302,10 @@ internal fun TextLayer(
         val version = measurables[2].measure(c)
         val artist = measurables[3].measure(c)
         val album = measurables[4].measure(c)
-        val bottom = measurables[5].measure(cBottom)
+        // In the player's grid the bar (or a line in its place) stands across the screen.
+        val player = layout.player
+        val barW = (layout.barWidth * density).roundToInt()
+        val bottom = measurables[5].measure(if (player) Constraints(minWidth = barW, maxWidth = barW) else cBottom)
         val nextLine = measurables[6].measure(c)
         fun px(dp: Float) = (dp * density).roundToInt()
         fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
@@ -320,7 +325,7 @@ internal fun TextLayer(
         text(version, plan.versionStyle, Gaps.VERSION)
         text(artist, plan.artistStyle, Gaps.ARTIST)
         text(album, block.album, Gaps.ALBUM)
-        if (bottom.height > 0) {
+        if (bottom.height > 0 && !player) {
             // The bar block measures from the bar's top to the labels' baseline; a line of
             // text in its place is aligned by its own cap height.
             val isText = bottomLine != null
@@ -346,10 +351,13 @@ internal fun TextLayer(
         val top = (layout.textCenter * density).roundToInt() - blockH / 2
         // The last line's descenders end where the column ends.
         val footer = (layout.footerBottom * density - styles.next.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val barLeft = (layout.barLeft * density).roundToInt()
+        val across = if (player) acrossTop(bottom, bottomLine != null, layout, styles, this) else 0
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
             parts.forEachIndexed { i, part -> part.p.place(x + part.dx, top + capY[i] - part.capTop) }
+            if (player && bottom.height > 0) bottom.place(barLeft, across)
             if (nextLine.height > 0) {
                 val b = nextLine[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: nextLine.height
                 nextLine.place(x, footer - b)
@@ -358,6 +366,21 @@ internal fun TextLayer(
     }
 }
 
+
+/**
+ * The player's grid: the top (px) of what stands in the progress bar's place across the screen
+ * ([p], measured as wide as the bar). The bar's block ends at its times' baseline, which stands
+ * on [StageGrid.timesBaseline]; a line of words in its place has its cap height where the bar's
+ * top would be.
+ */
+internal fun acrossTop(p: Placeable, isText: Boolean, layout: StageGrid, styles: StageStyles, d: Density): Int {
+    val times = (layout.timesBaseline * d.density).roundToInt()
+    if (!isText) return times - p.height
+    val cap = with(d) { (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() }
+    val barTop = times - with(d) { ((BAR_THICKNESS + BAR_LABEL_GAP) * density).roundToInt() + (styles.time.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() }
+    val first = p[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: p.height
+    return barTop + cap - first
+}
 
 /**
  * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays

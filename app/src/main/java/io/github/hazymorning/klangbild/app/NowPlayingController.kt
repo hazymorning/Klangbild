@@ -132,8 +132,11 @@ data class MenuState(
     val section: MenuSection? = null,
 )
 
-/** The quick menu while it is open: its lines and the one the cursor is on. */
-data class QuickState(val rows: List<QuickRow>, val cursor: Int)
+/**
+ * The quick menu while it is open: its lines and the one the cursor is on (none: -1). [compact]:
+ * only the player's buttons, which stand on the stage, not the row along the bottom edge.
+ */
+data class QuickState(val rows: List<QuickRow>, val cursor: Int, val compact: Boolean = false)
 
 /** Everything the UI renders. */
 data class UiState(
@@ -193,6 +196,8 @@ data class UiState(
     val partyCode: String? = null,
     /** The quick settings have never been opened: the stage may tell how (arrow down) for a moment. */
     val downHint: Boolean = false,
+    /** The player's buttons under the progress bar, while the stage is laid out as a player. */
+    val buttons: QuickState? = null,
 )
 
 /** The landscape while it shows: what plays (for the mini player), where the label sits, and the weather it shows. */
@@ -612,8 +617,17 @@ class NowPlayingController(
 
     val quickOpen: Boolean get() = quick.isOpen
 
-    /** Opens the quick settings (down on the remote), on how the queue shows. */
-    fun openQuick() = quick.open(menu.isOpen)
+    /**
+     * Opens the quick settings (down on the remote), on how the queue shows; while the stage shows
+     * as a player, its buttons on the first of them.
+     */
+    fun openQuick() {
+        val ui = _ui.value
+        quick.open(menu.isOpen, buttons = ui.buttons != null && ui.screen is Screen.Stage && ui.landscape == null && ui.stage?.scene?.layout?.player == true)
+    }
+
+    /** Down while the quick settings are open: from the player's buttons to the whole row, else they close. */
+    fun quickDown() = if (quick.isCompact) quick.expand() else quick.close()
 
     /** Closes the quick settings (up, back, after a while alone); a queue's choice still waiting is taken now. */
     fun closeQuick() = quick.close()
@@ -636,6 +650,11 @@ class NowPlayingController(
             // waits in the dark. Off and the list share the cover's scenes.
             scenes.frame = scenes.frame.copy(flow = flow)
             strip.clear()
+        }
+        if (s.player != scenes.frame.player) {
+            // The player's grid has a smaller cover: its scenes are made anew, and what shows
+            // stays until the first of them is ready, then the two cross.
+            scenes.frame = scenes.frame.copy(player = s.player)
         }
         if (_ui.value.queue != s.queue) {
             queueSwitch.chosen(s.queue)
@@ -815,7 +834,7 @@ class NowPlayingController(
         val quickState = quick.state(decision.screen, landscape != null)
         // After the clock, the setup page or the landscape, another song (or the same one on a new
         // wall, or to or from Cover Flow) waits for its own scene.
-        val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage, landscape != null)
+        val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, { look.fits(it) && it.layout.player == s.player }, stage, landscape != null)
         val decided = previous.copy(
             screen = decision.screen,
             keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
@@ -838,7 +857,8 @@ class NowPlayingController(
                 ValueText.of(v, e?.state, e?.attributes, src.precision[v.entity], src.temperatureUnit, texts, t)
             },
             partyCode = quick.partyCode.takeIf { party },
-            downHint = !s.quickSeen && !s.volumeKeys && stage != null && menuState == null && quickState == null && landscape == null,
+            downHint = !s.quickSeen && !s.volumeKeys && !s.player && stage != null && menuState == null && quickState == null && landscape == null,
+            buttons = if (s.player && stage != null) quick.buttons(decision.screen, landscape != null) else null,
             stage = previous.stage.takeUnless { stale },
             flow = previous.flow.takeUnless { stale },
         )

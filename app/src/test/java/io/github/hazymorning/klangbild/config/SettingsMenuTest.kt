@@ -140,6 +140,23 @@ class SettingsMenuTest {
     }
 
     @Test
+    fun `the layout is classic or a player's, which needs the queue off`() {
+        val s = Settings()
+        assertThat(SettingsMenu.value(MenuEntry.LAYOUT, s, MenuContext(), de)).isEqualTo("Klassisch")
+        val player = SettingsMenu.step(MenuEntry.LAYOUT, s, +1)!!
+        assertThat(player.layout).isEqualTo(StageLayout.PLAYER)
+        assertThat(player.player).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.LAYOUT, player, MenuContext(), de)).isEqualTo("Player")
+        assertThat(SettingsMenu.step(MenuEntry.LAYOUT, player, +1)!!.layout).isEqualTo(StageLayout.PLAYER)
+        assertThat(SettingsMenu.step(MenuEntry.LAYOUT, player, +1, wrap = true)!!.layout).isEqualTo(StageLayout.CLASSIC)
+        // Cover Flow and the list keep their own grids, and the line says so.
+        val flow = player.copy(queue = QueueDisplay.FLOW)
+        assertThat(flow.player).isFalse()
+        assertThat(SettingsMenu.description(MenuEntry.LAYOUT, flow, MenuContext(), de))
+            .isNotEqualTo(SettingsMenu.description(MenuEntry.LAYOUT, player, MenuContext(), de))
+    }
+
+    @Test
     fun `sections stay together in menu order`() {
         val sections = SettingsMenu.entries.map { it.section }
         assertThat(sections).isInOrder(compareBy<MenuSection> { it.ordinal })
@@ -156,7 +173,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactlyElementsIn(SettingsMenu.entries).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
+            MenuEntry.QUEUE, MenuEntry.LAYOUT, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         ).inOrder()
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.LANGUAGE).inOrder()
     }

@@ -29,6 +29,8 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.app.LandscapeUi
+import io.github.hazymorning.klangbild.app.QuickState
+import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
@@ -48,6 +50,7 @@ import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
+import io.github.hazymorning.klangbild.ui.stage.PlayerButtons
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
@@ -177,7 +180,8 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         // its dark ground); the settings menu lies over everything. Both come and go on their own.
         // While the queue's way just chosen is being made, their Queue value shimmers.
         val preparing = ui.queueComing != null
-        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance, preparing = preparing)
+        // While only the player's buttons are chosen among, they light on the stage instead.
+        QuickBarOverlay(ui.quick?.takeUnless { it.compact }, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance, preparing = preparing)
         MenuOverlay(ui.menu, ui.appearance, preparing = preparing)
     }
 }
@@ -327,8 +331,9 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             // The queue as a list: "Up next" over it says how much follows.
             val list = s.queue?.takeIf { lyrics == null }
             // The hint takes the place of what comes next (beside the song's words the song stays,
-            // over the list what it holds).
-            val tip = hint && lyrics == null && list == null
+            // over the list what it holds). A player has its buttons on the stage instead.
+            val playerGrid = s.scene.layout.player
+            val tip = hint && lyrics == null && list == null && !playerGrid
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -337,7 +342,8 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 // Read for this song by name: the player reports the next a moment before the screen shows it.
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
                 year = s.track.year.takeIf { display.album },
-                progress = if (lyrics != null) peek else display.progressBar || peek,
+                // A player's bar stands across the screen, apart from the words: it shows as set.
+                progress = if (lyrics != null && !playerGrid) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[R.string.hint_down]
@@ -373,7 +379,8 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // The bar shows when its length is known and nothing stands in its place, by setting or for a
     // moment (beside the song's words only for a moment).
     val showsLyrics = stage.lyrics != null
-    val barShown = (if (showsLyrics) peek else display.progressBar || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
+    val playerGrid = stage.scene.layout.player
+    val barShown = (if (showsLyrics && !playerGrid) peek else display.progressBar || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
     // One tick for the bar, the colors and the words, so they are redrawn in the same frames. With
     // nothing to redraw, or with the settings covering the stage, it stops.
     val tick = rememberStageTick(
@@ -383,4 +390,11 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
         theater(status, modelFor, { intensity }, linkDown)
     }
+    // The player's buttons stand on the stage, apart from the song: they come with the player's
+    // grid and go with it, and stay through a change of songs.
+    val buttons = ui.buttons?.takeIf { playerGrid }
+    val kept = remember { arrayOfNulls<Pair<QuickState, ArtworkScene>>(1) }
+    if (buttons != null) kept[0] = buttons to stage.scene
+    val buttonsShown by animateFloatAsState(if (buttons != null) 1f else 0f, tween(Motion.SOFT_SWAP_MS, easing = Motion.Sine), label = "player-buttons")
+    kept[0]?.takeIf { buttonsShown > 0f }?.let { (b, scene) -> PlayerButtons(b, scene, alpha = { buttonsShown }) }
 }

@@ -42,6 +42,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val volumeKeys = booleanPreferencesKey("volume_keys")
         val appearance = stringPreferencesKey("appearance")
         val queue = stringPreferencesKey("queue")
+        val layout = stringPreferencesKey("stage_layout")
 
         /** The view of versions before the queue's setting: SINGLE or FLOW. Read once, then removed. */
         val formerView = stringPreferencesKey("view")
@@ -116,6 +117,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             volumeKeys = p[Keys.volumeKeys] ?: defaults.volumeKeys,
             appearance = enumOr(p[Keys.appearance], defaults.appearance),
             queue = p[Keys.queue]?.let { enumOr(it, defaults.queue) } ?: queueOfView(p[Keys.formerView]),
+            layout = enumOr(p[Keys.layout], defaults.layout),
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
             maUrl = p[Keys.maUrl],
             maToken = p[Keys.maToken]?.let(secrets::open),
@@ -159,6 +161,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         p[Keys.volumeKeys] = s.volumeKeys
         p[Keys.appearance] = s.appearance.name
         p[Keys.queue] = s.queue.name
+        p[Keys.layout] = s.layout.name
         p.remove(Keys.formerView)
         p[Keys.lyrics] = s.lyrics
         putOrRemove(Keys.maUrl, s.maUrl)

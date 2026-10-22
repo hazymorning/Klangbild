@@ -184,14 +184,15 @@ class MainActivity : ComponentActivity() {
     /**
      * Keys while the quick settings are open (a row along the bottom edge): left and right choose
      * one, OK (on release) changes it or does what it says; down again closes the row, as does
-     * up, which moves away from it; Menu opens the settings. False lets the key through (media
-     * keys, back).
+     * up, which moves away from it; Menu opens the settings. While only the player's buttons are
+     * chosen among, down again opens the whole row. False lets the key through (media keys, back).
      */
     private fun quickKey(keyCode: Int): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> controller.quickMove(-1)
             KeyEvent.KEYCODE_DPAD_RIGHT -> controller.quickMove(+1)
-            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> controller.closeQuick()
+            KeyEvent.KEYCODE_DPAD_UP -> controller.closeQuick()
+            KeyEvent.KEYCODE_DPAD_DOWN -> controller.quickDown()
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> controller.touchQuick()
             KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
                 controller.closeQuick()

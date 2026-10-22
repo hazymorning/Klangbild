@@ -24,6 +24,7 @@ enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
 /** One setting, in its group's order; [label] is 0 for a line named after what it connects to. */
 enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     QUEUE(MenuSection.PICTURE, R.string.entry_queue),
+    LAYOUT(MenuSection.PICTURE, R.string.entry_layout),
     APPEARANCE(MenuSection.PICTURE, R.string.entry_appearance),
     BACKGROUND(MenuSection.PICTURE, R.string.entry_background),
     INTENSITY(MenuSection.PICTURE, R.string.entry_intensity),
@@ -135,6 +136,7 @@ object SettingsMenu {
 
     fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
         MenuEntry.QUEUE -> queueValue(s.queue, t)
+        MenuEntry.LAYOUT -> t[if (s.layout == StageLayout.PLAYER) R.string.layout_player else R.string.layout_classic]
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
@@ -226,6 +228,13 @@ object SettingsMenu {
                 QueueDisplay.OFF -> R.string.about_queue_off
                 QueueDisplay.LIST -> if (s.hasMusicAssistant) R.string.about_queue_list else R.string.about_queue_list_set_up
                 QueueDisplay.FLOW -> R.string.about_queue_flow
+            },
+        ]
+        MenuEntry.LAYOUT -> t[
+            when {
+                s.layout == StageLayout.CLASSIC -> R.string.about_layout_classic
+                s.queue == QueueDisplay.OFF -> R.string.about_layout_player
+                else -> R.string.about_layout_player_queue
             },
         ]
         MenuEntry.APPEARANCE -> t[
@@ -354,6 +363,7 @@ object SettingsMenu {
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
+        MenuEntry.LAYOUT -> s.copy(layout = move(LAYOUT_ORDER, s.layout, direction, wrap))
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
@@ -454,6 +464,7 @@ object SettingsMenu {
 
     /** From quiet to present: left means less, right means more. */
     val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST, QueueDisplay.FLOW)
+    private val LAYOUT_ORDER = listOf(StageLayout.CLASSIC, StageLayout.PLAYER)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)

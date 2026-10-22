@@ -32,11 +32,32 @@ package io.github.hazymorning.klangbild.render
  * middle one: the middle cover is 300 dp with its center 303 dp from the left, so the strip's
  * outer edge (255 dp beside it, see [FlowGeometry]) keeps 48 dp from the screen's edge. That is
  * as much as the column (from 598 dp) keeps on the right.
+ *
+ * The player's grid ([player]) lays the stage out as a music player does: a smaller cover
+ * (290 dp) high on the left, as far from the top edge as the buttons stand from the bottom edge,
+ * the column beside it as wide as the room allows, and below them the progress bar across the
+ * screen from margin to margin with the buttons under its right end. While the song's words take
+ * the column, the song's title and artist stand under the cover.
+ *
+ *  ┌──────────────────────────────────────────────────────────┐
+ *  │        ╭───────────╮      21:47 · Everywhere              │  ← 44 dp from the top
+ *  │        │  artwork  │      words, the line sung now         │
+ *  │        ╰───────────╯      in the middle                    │
+ *  │        Title                                               │
+ *  │        Artist                                              │
+ *  │        ━━━━━━━━━━━━━━━━━━━━━━━━━━──────────────────────     │
+ *  │        1:35                                     4:11       │
+ *  │                                   [ Lyrics On ][ Settings ]│  ← 44 dp from the bottom
+ *  └──────────────────────────────────────────────────────────┘
  */
-data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
+data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val player: Boolean = false) {
     private val sx = screen.widthDp / 960f
     private val sy = screen.heightDp / 540f
-    private val grid = if (flow) FLOW else SINGLE
+    private val grid = when {
+        flow -> FLOW
+        player -> PLAYER
+        else -> SINGLE
+    }
 
     /** Left margin before the artwork, and after the column on the right. */
     val margin = grid.margin * sx
@@ -44,7 +65,9 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
 
     /** Side of the artwork's square. */
     val art = grid.art * sy
-    val artTop = (screen.heightDp - art) / 2f
+
+    /** The artwork's top edge: centered, or in the player's grid as far from the top as the buttons from the bottom. */
+    val artTop = if (player && !flow) PLAYER_EDGE * sy else (screen.heightDp - art) / 2f
     val artRect: RectDp get() = RectDp(margin, artTop, art, art)
 
     /** Space between artwork and text. */
@@ -67,6 +90,20 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
     /** The small cover of a row in the queue's list (dp): as tall as the row's two lines, from cap height to baseline. */
     val rowCover get() = ROW_COVER * art / SINGLE.art
 
+    /** Player: where the song's title under the cover has its cap height (dp). */
+    val captionTop get() = artTop + art + CAPTION_GAP * sy
+
+    /** Player: the progress bar's left end and its width (dp), across the screen from margin to margin. */
+    val barLeft get() = margin
+    val barWidth get() = screen.widthDp - margin - rightMargin
+
+    /** Player: the buttons' row, its lower edge as far from the bottom as the artwork from the top (dp). */
+    val buttonsBottom get() = screen.heightDp - PLAYER_EDGE * sy
+    val buttonsTop get() = buttonsBottom - BUTTON_HEIGHT * sy
+
+    /** Player: the baseline of the progress bar's times, above the buttons (dp). */
+    val timesBaseline get() = buttonsTop - TIMES_GAP * sy
+
     /** Margins, artwork and gap at 960 × 540 dp: the single cover's, or Cover Flow's. */
     private class Grid(val margin: Float, val art: Float, val gap: Float, val rightMargin: Float)
 
@@ -79,6 +116,19 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
 
         private val SINGLE = Grid(margin = 88f, art = 368f, gap = ART_TEXT_GAP, rightMargin = 88f)
         private val FLOW = Grid(margin = 153f, art = 300f, gap = 145f, rightMargin = 48f)
+        private val PLAYER = Grid(margin = 88f, art = 290f, gap = ART_TEXT_GAP, rightMargin = 88f)
+
+        /** Player: the artwork's room above it and the buttons' room below them (dp at 960 × 540). */
+        const val PLAYER_EDGE = 44f
+
+        /** Player: a button's height (dp at 960 × 540). */
+        const val BUTTON_HEIGHT = 36f
+
+        /** Player: from the artwork's bottom edge to the title's cap height under it (dp at 960 × 540). */
+        const val CAPTION_GAP = 22f
+
+        /** Player: from the times' baseline down to the buttons (dp at 960 × 540). */
+        const val TIMES_GAP = 14f
 
         /** Corner radius of square artwork (dp at 960 × 540, for the single cover's 368 dp). */
         const val RADIUS = 8f

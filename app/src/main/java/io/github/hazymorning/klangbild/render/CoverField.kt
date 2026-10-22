@@ -367,12 +367,7 @@ object CoverField {
         val w = screen.widthDp + 2 * over
         val h = screen.heightDp + 2 * over
         val px = IntArray(VEIL_W * VEIL_H)
-        // The text block's area: from the status line to "Up next", the column's width (in Cover
-        // Flow from the farthest left it can stand).
-        val tx0 = textLeft(layout) - 16f
-        val tx1 = layout.columnLeft + layout.columnWidth + 8f
-        val ty0 = layout.statusTop - 20f
-        val ty1 = layout.footerBottom + 13f
+        val areas = textAreas(layout)
         val pr = Oklab.srgbToLinear(field.base shr 16)
         val pg = Oklab.srgbToLinear(field.base shr 8)
         val pb = Oklab.srgbToLinear(field.base)
@@ -380,10 +375,14 @@ object CoverField {
             val py = (y + 0.5f) * h / VEIL_H - over
             for (x in 0 until VEIL_W) {
                 val ppx = (x + 0.5f) * w / VEIL_W - over
-                // The text's shade: full over the block, fading out softly around it.
-                val dx = max(max(tx0 - ppx, ppx - tx1), 0f)
-                val dy = max(max(ty0 - py, py - ty1), 0f)
-                val text = scrim * exp(-(dx * dx + dy * dy) / (2f * TEXT_SCRIM_SIGMA * TEXT_SCRIM_SIGMA))
+                // The text's shade: full over the text, fading out softly around it.
+                var near = Float.MAX_VALUE
+                for (a in areas) {
+                    val dx = max(max(a[0] - ppx, ppx - a[2]), 0f)
+                    val dy = max(max(a[1] - py, py - a[3]), 0f)
+                    near = minOf(near, dx * dx + dy * dy)
+                }
+                val text = scrim * exp(-near / (2f * TEXT_SCRIM_SIGMA * TEXT_SCRIM_SIGMA))
                 // field × keep + color × alpha. In the dark the shade takes light away; on paper it
                 // brightens toward the ground.
                 val darken = if (dark) text else 0f
@@ -402,6 +401,18 @@ object CoverField {
             }
         }
         return Bitmap.createBitmap(px, VEIL_W, VEIL_H, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * Where text stands (dp: left, top, right, bottom). The text block from the status line to
+     * "Up next", the column's width (in Cover Flow from the farthest left it can stand); in the
+     * player's grid also the song under the cover, the bar and the buttons across the screen.
+     */
+    private fun textAreas(layout: StageGrid): List<FloatArray> {
+        val column = floatArrayOf(textLeft(layout) - 16f, layout.statusTop - 20f, layout.columnLeft + layout.columnWidth + 8f, layout.footerBottom + 13f)
+        if (!layout.player) return listOf(column)
+        val across = floatArrayOf(layout.barLeft - 16f, layout.captionTop - 20f, layout.barLeft + layout.barWidth + 8f, layout.buttonsBottom + 8f)
+        return listOf(column, across)
     }
 
     /**
@@ -425,20 +436,27 @@ object CoverField {
         val screen = layout.screen
         val out = FloatArray(3)
         var worst = if (field.dark) 0f else 1f
-        val u0 = textLeft(layout) / screen.widthDp
-        val u1 = (layout.columnLeft + layout.columnWidth) / screen.widthDp
-        val v0 = layout.statusTop / screen.heightDp
-        val v1 = layout.footerBottom / screen.heightDp
+        // Where the text stands, without the margins the shade fades out over.
+        val areas = buildList {
+            add(floatArrayOf(textLeft(layout), layout.statusTop, layout.columnLeft + layout.columnWidth, layout.footerBottom))
+            if (layout.player) add(floatArrayOf(layout.barLeft, layout.captionTop, layout.barLeft + layout.barWidth, layout.buttonsBottom))
+        }
         val places = FloatArray(field.blobs.size * FieldModel.STRIDE)
         var t = 0.0
         while (t < SCRIM_HORIZON_S) {
             FieldModel.places(field, t, places)
-            for (i in 0..GRID_U) for (j in 0..GRID_V) {
-                val u = u0 + (u1 - u0) * i / GRID_U.toFloat()
-                val v = v0 + (v1 - v0) * j / GRID_V.toFloat()
-                FieldModel.color(field, u, v, places, out)
-                val y = 0.2126f * toLinear(out[0]) + 0.7152f * toLinear(out[1]) + 0.0722f * toLinear(out[2])
-                worst = if (field.dark) max(worst, y) else min(worst, y)
+            for (a in areas) {
+                val u0 = a[0] / screen.widthDp
+                val u1 = a[2] / screen.widthDp
+                val v0 = a[1] / screen.heightDp
+                val v1 = a[3] / screen.heightDp
+                for (i in 0..GRID_U) for (j in 0..GRID_V) {
+                    val u = u0 + (u1 - u0) * i / GRID_U.toFloat()
+                    val v = v0 + (v1 - v0) * j / GRID_V.toFloat()
+                    FieldModel.color(field, u, v, places, out)
+                    val y = 0.2126f * toLinear(out[0]) + 0.7152f * toLinear(out[1]) + 0.0722f * toLinear(out[2])
+                    worst = if (field.dark) max(worst, y) else min(worst, y)
+                }
             }
             t += SCRIM_STEP_S
         }

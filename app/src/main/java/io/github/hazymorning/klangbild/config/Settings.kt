@@ -97,6 +97,23 @@ enum class QueueDisplay {
 /** Where the music's label sits in the landscape. */
 enum class MiniPlayer { LEFT, RIGHT, OFF }
 
+/**
+ * How the stage is laid out around the single cover: the song beside it, or as a music player
+ * lays it out, with the progress bar across the screen and buttons under it.
+ */
+enum class StageLayout {
+    /** The song beside the cover, the progress bar under the song. */
+    CLASSIC,
+
+    /**
+     * A smaller cover high on the left, the progress bar across the screen and buttons for the
+     * lyrics and the settings under it. While the song's words take the column, its title and
+     * artist stand under the cover. Only while the queue is off: Cover Flow and the list keep
+     * their own grids.
+     */
+    PLAYER,
+}
+
 /** The color lights behind the TV (Home Assistant light entities), from the left; any may be missing. */
 data class RoomLights(val left: String? = null, val center: String? = null, val right: String? = null) {
     /** Each light once, from the left. */
@@ -153,6 +170,8 @@ data class Settings(
     val appearance: AppearanceMode = AppearanceMode.AUTO,
     /** How the queue shows: not at all, as a list, or as Cover Flow. */
     val queue: QueueDisplay = QueueDisplay.OFF,
+    /** How the stage is laid out around the single cover. */
+    val layout: StageLayout = StageLayout.CLASSIC,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
     /** Music Assistant itself (optional): for the whole queue in Cover Flow. */
@@ -212,6 +231,9 @@ data class Settings(
     val isConfigured: Boolean get() = !haUrl.isNullOrBlank() && haCredentials != null && !entityId.isNullOrBlank()
 
     val hasMusicAssistant: Boolean get() = !maUrl.isNullOrBlank() && !maToken.isNullOrBlank()
+
+    /** The stage is laid out as a player: chosen, and the queue off (Cover Flow and the list have grids of their own). */
+    val player: Boolean get() = layout == StageLayout.PLAYER && queue == QueueDisplay.OFF
 
     /**
      * [haUrl] set to [url] with [credentials]. Credentials only ever go to the address they were

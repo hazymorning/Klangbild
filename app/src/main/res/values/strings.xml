@@ -25,7 +25,7 @@
     <string name="section_remote">Remote</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
-    <string name="about_section_picture">How the picture looks: the queue, light or dark, colors and motion.</string>
+    <string name="about_section_picture">How the picture looks: the layout, the queue, light or dark, colors and motion.</string>
     <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next and the lyrics.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
@@ -35,6 +35,7 @@
 
     <!-- Settings menu: lines -->
     <string name="entry_queue">Queue</string>
+    <string name="entry_layout">Layout</string>
     <string name="entry_appearance">Appearance</string>
     <string name="entry_clock">Clock</string>
     <string name="entry_progress">Progress bar</string>
@@ -63,6 +64,8 @@
     <!-- Settings menu: values -->
     <string name="queue_list">List</string>
     <string name="queue_flow">Cover Flow</string>
+    <string name="layout_classic">Classic</string>
+    <string name="layout_player">Player</string>
     <string name="appearance_auto">Automatic</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
@@ -116,6 +119,9 @@
     <string name="about_queue_list">The next tracks as a list beside the cover.</string>
     <string name="about_queue_list_set_up">The next tracks as a list beside the cover. It needs Music Assistant: without it, the last line names only the next track.</string>
     <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts.</string>
+    <string name="about_layout_classic">The title, the artist and the progress bar beside the cover.</string>
+    <string name="about_layout_player">Like a music player: the progress bar across the screen, with buttons for the lyrics and the settings. With the lyrics on, the title moves under the cover.</string>
+    <string name="about_layout_player_queue">Like a music player, but only while the queue is off. Cover Flow and the list keep their own look.</string>
     <string name="about_appearance_auto">Light by day, dark from sunset to sunrise, by the sun’s position in Home Assistant.</string>
     <string name="about_appearance_light">Always light: a light background, dark type.</string>
     <string name="about_appearance_dark">Always dark: a dark background, light type.</string>

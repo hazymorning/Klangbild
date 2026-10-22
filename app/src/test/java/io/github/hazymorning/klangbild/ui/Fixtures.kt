@@ -67,10 +67,11 @@ object Fixtures {
         appearance: Appearance = Appearance.DARK,
         flow: Boolean = false,
         coverField: Boolean = false,
+        player: Boolean = false,
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
         val bmp = cover?.let { SyntheticCovers.render(it) }
-        return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, flow = flow, coverField = coverField)
+        return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, flow = flow, coverField = coverField, player = player)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */

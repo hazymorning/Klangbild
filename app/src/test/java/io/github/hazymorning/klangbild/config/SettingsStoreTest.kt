@@ -82,6 +82,7 @@ class SettingsStoreTest {
             volumeKeys = true,
             appearance = AppearanceMode.DARK,
             queue = QueueDisplay.LIST,
+            layout = StageLayout.PLAYER,
             lyrics = true,
             maUrl = "http://192.168.1.5:8095",
             maToken = "ma-token",
