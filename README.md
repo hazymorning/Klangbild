@@ -22,7 +22,7 @@ During the day the background is light, and at night it turns dark. Since the TV
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
 > [!NOTE]
-> **Klangbild is being built in two phases.** The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
+> **Klangbild is being built in two phases.** The first is almost finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
 
 <a href="https://github.com/hazymorning/Klangbild/discussions/51"><picture><source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/screenshots/poll-small.png"><source media="(max-width: 640px)" srcset="docs/screenshots/poll-small-light.png"><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/poll.png"><img src="docs/screenshots/poll-light.png" alt="Should the landscape stay? Vote in the poll"></picture></a>
 
