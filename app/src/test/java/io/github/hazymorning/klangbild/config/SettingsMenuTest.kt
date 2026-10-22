@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.SleepChoice
+import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.text.TestTexts
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,8 +86,9 @@ class SettingsMenuTest {
             MenuContext(LinkState.AUTH_FAILED, ma = MaLink.AUTH_FAILED),
             MenuContext(sleep = SleepChoice.MIN_30, sleepAt = 1_791_483_667_000L),
             MenuContext(sleep = SleepChoice.ITEM_END, kind = MediaKind.PODCAST),
+            MenuContext(LinkState.CONNECTED, ma = MaLink.CONNECTED, speaker = SpeakerLink.TOO_OLD),
         )
-        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withLights, withValues)) {
+        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(tvSpeaker = true), withLights, withValues)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
             // (the system keeps it), and the lights and the values until they are set up.
             val needs = setOfNotNull(
@@ -94,6 +96,7 @@ class SettingsMenuTest {
                 MenuEntry.OFF_LIGHTS.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
+                MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
             val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE) + needs
             for (ctx in contexts) {
@@ -158,7 +161,9 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
             MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         ).inOrder()
-        assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.LANGUAGE).inOrder()
+        assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
+            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE,
+        ).inOrder()
     }
 
     @Test
@@ -174,5 +179,28 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, on, MenuContext(), de)).isEqualTo("An")
         assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).last().dimmed).isFalse()
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+    }
+
+    @Test
+    fun `playing here is a setting that needs Music Assistant, and says what keeps it from playing`() {
+        val row = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.SYSTEM).first { it.entry == MenuEntry.PLAY_HERE }
+        assertThat(row.label).isEqualTo("Hier abspielen")
+        assertThat(row.value).isEqualTo("Nur mit Music\u00A0Assistant")
+        assertThat(row.dimmed).isTrue()
+        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, configured, +1)).isNull()
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        assertThat(withMa.tvSpeaker).isFalse()
+        val on = SettingsMenu.step(MenuEntry.PLAY_HERE, withMa, +1)!!
+        assertThat(on.tvSpeaker).isTrue()
+        assertThat(on.speakerOn).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.PLAY_HERE, on, MenuContext(), de)).isEqualTo("An")
+        val en = TestTexts.english()
+        assertThat(SettingsMenu.label(MenuEntry.PLAY_HERE, en)).isEqualTo("Play here")
+        val said = SpeakerLink.entries.associateWith { SettingsMenu.description(MenuEntry.PLAY_HERE, on, MenuContext(speaker = it), en) }
+        assertThat(said[SpeakerLink.TOO_OLD]).contains("2.10.7")
+        assertThat(said[SpeakerLink.UNREACHABLE]).contains("8927")
+        assertThat(said[SpeakerLink.CONNECTED]).isEqualTo(said[SpeakerLink.CONNECTING])
+        // What keeps it from playing is said only while it is on.
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, withMa, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).doesNotContain("2.10.7")
     }
 }

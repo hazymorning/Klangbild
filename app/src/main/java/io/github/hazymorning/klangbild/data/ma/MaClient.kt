@@ -65,6 +65,22 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
         command("players/add_currently_playing_to_favorites", buildJsonObject { put("player_id", playerId) })
     }
 
+    /**
+     * The id of the player Music Assistant plays to through the Sendspin client [clientId]
+     * (`players/all`): the player around it, which lists it among its outputs, or the client
+     * itself. Null while Music Assistant has none (it names a new speaker's player a few
+     * seconds after it first connects).
+     */
+    suspend fun playerOf(clientId: String): String? {
+        val players = command("players/all", JsonObject(emptyMap())) as? JsonArray ?: throw IOException("Unexpected answer to players/all")
+        return players.firstNotNullOfOrNull { e ->
+            val p = e as? JsonObject ?: return@firstNotNullOfOrNull null
+            val id = p["player_id"].string() ?: return@firstNotNullOfOrNull null
+            val outputs = p["output_protocols"] as? JsonArray
+            id.takeIf { it == clientId || outputs?.any { (it as? JsonObject)?.get("output_protocol_id").string() == clientId } == true }
+        }
+    }
+
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {
         if (command("player_queues/all", JsonObject(emptyMap())) is JsonArray) MaLink.CONNECTED else MaLink.UNREACHABLE

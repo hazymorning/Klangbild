@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
+import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
 
@@ -49,13 +50,14 @@ enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
     SLEEP_ACTION(MenuSection.TIMER, R.string.entry_sleep_action),
     CONNECTION(MenuSection.SYSTEM, 0),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, 0),
+    PLAY_HERE(MenuSection.SYSTEM, R.string.entry_play_here),
     LANGUAGE(MenuSection.SYSTEM, R.string.entry_language),
 }
 
 /**
  * What the menu needs to know besides the settings: the connections and the wall as they are
- * now, the sleep timer ([sleep], pausing at [sleepAt]), what kind of thing plays, and the
- * language chosen.
+ * now, the sleep timer ([sleep], pausing at [sleepAt]), what kind of thing plays, the language
+ * chosen, and how this TV stands as a speaker ([speaker]).
  */
 data class MenuContext(
     val link: LinkState? = null,
@@ -65,6 +67,7 @@ data class MenuContext(
     val sleepAt: Long? = null,
     val kind: MediaKind? = null,
     val language: AppLanguage = AppLanguage.SYSTEM,
+    val speaker: SpeakerLink = SpeakerLink.OFF,
 )
 
 /**
@@ -110,11 +113,12 @@ object SettingsMenu {
         MenuRow(e, label(e, t), value(e, s, ctx, t), description(e, s, ctx, t), level(e, s), dimmed = needsSetup(e, s))
 
     /**
-     * Whether [e] cannot work until something is set up on the phone: lyrics without Music
-     * Assistant, the lights and the values while none are chosen. OK opens the setup.
+     * Whether [e] cannot work until something is set up on the phone: lyrics and playing here
+     * without Music Assistant, the lights and the values while none are chosen. OK opens the
+     * setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
-        MenuEntry.LYRICS -> !s.hasMusicAssistant
+        MenuEntry.LYRICS, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         else -> false
@@ -217,6 +221,7 @@ object SettingsMenu {
                 else -> R.string.connecting
             },
         ]
+        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[R.string.needs_music_assistant] else onOff(s.tvSpeaker, t)
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
     }
 
@@ -318,7 +323,23 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) R.string.about_sleep_action_close else R.string.about_sleep_action_release]
         MenuEntry.CONNECTION -> t[if (!s.isConfigured) R.string.about_connection_set_up else R.string.about_connection]
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) R.string.about_ma_set_up else R.string.about_ma]
+        MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
         MenuEntry.LANGUAGE -> t[R.string.about_language]
+    }
+
+    /** What playing here does, or, while it is on, what keeps it from playing. */
+    @StringRes
+    private fun playHere(s: Settings, speaker: SpeakerLink): Int = when {
+        !s.hasMusicAssistant -> R.string.about_play_here_set_up
+        !s.tvSpeaker -> R.string.about_play_here_off
+        else -> when (speaker) {
+            SpeakerLink.UNREACHABLE -> R.string.about_play_here_unreachable
+            SpeakerLink.TOO_OLD -> R.string.about_play_here_too_old
+            SpeakerLink.TOO_NEW -> R.string.about_play_here_too_new
+            SpeakerLink.REFUSED -> R.string.about_play_here_refused
+            SpeakerLink.NO_KEY -> R.string.about_play_here_no_key
+            SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED -> R.string.about_play_here_on
+        }
     }
 
     /** What "Intensity" does: with the cover's colors how strong they are, else how the cover lights the wall. */
@@ -362,6 +383,7 @@ object SettingsMenu {
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
+        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) null else s.copy(tvSpeaker = !s.tvSpeaker)
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
         MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null

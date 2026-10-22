@@ -46,6 +46,7 @@ class MenuControlTest {
         override val source: NowPlayingSource? = null
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
+        override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
         override fun recompute() {
             recomputed++
         }

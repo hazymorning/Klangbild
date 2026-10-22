@@ -99,6 +99,7 @@ python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what 
 ./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
 python3 tools/make_readme_pictures.py                          # README mockups, download button, poll banner (Pillow, numpy; names like poll_banners make only those)
+./gradlew :app:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=venv/bin/python   # the speaker against aiosendspin 10.2.0 (python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0')
 ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's film from the promo film's MP4 (kept outside the repository)
 ```
 
@@ -130,9 +131,15 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   speaks only the documented commands. With it running locally,
   `-Pklangbild.fakeHa=http://127.0.0.1:8123` lets `FirstLaunchTest` talk to it for a few
   minutes. The app logs its connection steps with the tag `Klangbild`, never a token.
+- The speaker's end-to-end tests (`SendspinEndToEndTest`, `SpeakerEndToEndTest`) play from the
+  server Music Assistant 2.10.7 runs, aiosendspin 10.2.0, started on this machine by
+  `ci/sendspin_server.py`, and check every sample; they run only with
+  `-Pklangbild.sendspin=<a Python with aiosendspin>`, as CI does. The smoke test plays a stream
+  from it on the emulator, which has no sound.
 - Run Gradle with a UTF-8 locale (`export LC_ALL=C.UTF-8`): test names and data hold umlauts.
 - CI runs three jobs side by side: the release APK (the emulator smoke test and the key
-  rotation checks start from it), all tests with their pictures, and lint. A release waits for
+  rotation checks start from it), all tests with their pictures (aiosendspin installed for the
+  speaker's end-to-end tests), and lint. A release waits for
   all of them. A push or pull request that changes only the texts and
   pictures around the app (README, CLAUDE.md, LICENSE, `docs/`, `tools/`, `.claude/`, the issue
   templates) runs nothing; tags and manual runs always run everything. The emulator jobs fetch
@@ -172,8 +179,9 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 The packages build on each other in one direction, and `LayersTest` keeps it so: math, json,
 color, text and art below everything; domain (the app's model and rules) on them; data (Home
 Assistant and Music Assistant) on domain; config (the settings, their store and menus) on data;
-render, landscape and lights; app (the controller); ui on top. MainActivity and KlangbildApp
-(the wiring) stand in the root package and may use everything.
+render, landscape and lights; sendspin (the protocol, on json alone) and speaker (this TV as a
+speaker, on config, data, domain and sendspin); app (the controller); ui on top. MainActivity,
+KlangbildApp (the wiring) and SpeakerService stand in the root package and may use everything.
 
 ```
 data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client id → 30 minute access
@@ -182,7 +190,8 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 state trigger for the followed entities, or subscribe_events state_changed for users
                 who are not administrators; states read over REST when a subscription starts; a
                 second swappable trigger for group members and lights via watch(); get_config;
-                config/entity_registry/list_for_display (+ a sensor's display precision);
+                config/entity_registry/list_for_display (+ a sensor's display precision), read
+                again on request; config/entity_registry/get_entries (unique ids, for every user);
                 call_service (+ the call's context id);
                 ping, backoff), EntityStore (state objects, never replaced by older ones, each
                 state's context), PlayerParser (entity + MA get_queue; MediaKind from the MA URI,
@@ -196,7 +205,12 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 button by its translation key, the entities of one's own followed (the buttons',
                 their conditions', the values') with their precision and Home Assistant's
                 temperature unit, a button run (a script with its variables and `player`), the
-                lights' states and calls), QueueReader (the queue around the song that plays: MA
+                lights' states and calls; this TV's own speaker shown instead of the one chosen
+                while music plays on it (SpeakerSwitch), on the same connection, the commands,
+                the queue and `player` going to the speaker shown), OwnSpeaker (this TV's own
+                entity: its Sendspin id → Music Assistant's player around it (`players/all`) →
+                the registry's unique id; asked again with a backoff), QueueReader (the queue
+                around the song that plays, retargeted when another speaker shows: MA
                 queue (one read at a time, only for MA players with a queue) + the optional MA
                 queue window; a Music Assistant song published once its queue has described it;
                 the words of the song that plays, found by the URI Home Assistant names as what
@@ -209,7 +223,8 @@ data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client i
                 offer wins and holds)
 data/ma/        MaClient (Music Assistant's own API, optional: POST /api with a long-lived token;
                 `metadata/get_track_lyrics` on a client of its own with a long timeout;
-                `player_queues/get`: the queue as it stands, its next item always up to date),
+                `player_queues/get`: the queue as it stands, its next item always up to date;
+                `players/all`: the player around a Sendspin client),
                 MaQueue (queue items around the current one → QueueWindow with the current item's
                 speed, the current and next songs' URIs and the words they bring; books' authors,
                 episodes' shows, chapters; pictures via imageproxy), MaLyrics (the words of the song
@@ -232,7 +247,10 @@ domain/         TrackInfo (+ pictureKey and sceneKey: a station's song by its pi
                 chapters, labels, jumps), SleepTimer (minutes or an end reached by playing),
                 FieldClock (the color field's own time, shared by screen and lights), SunClock (the
                 sun by the local clock, without `sun.sun`), LandscapePolicy (when the landscape takes
-                the screen), EntityId (what an entity id looks like), ValueText (a value of one's
+                the screen), EntityId (what an entity id looks like; THIS_TV, the setup page's
+                stand-in for this TV's own speaker), SpeakerLink + SpeakerStatus (how this TV stands
+                as a speaker), SpeakerSwitch (when its own speaker takes the screen and gives it
+                back), ValueText (a value of one's
                 own in words: precision, unit, on and off, a time of day), SourceState (what a source
                 knows: LinkState, MaLink, EntityState), QuickAction (+ ActionKind) and Condition (a
                 button of one's own and when it shows), OwnValue, Lyrics (Lrc: LRC read tolerantly, tidied or raw, plain words none;
@@ -299,9 +317,10 @@ app/            NowPlayingController (single source of truth → StateFlow<UiSta
                 frame lets go of the builds for the one left), Thumbs
                 (the list's small covers at their exact size, made ahead, one at a time after the
                 scenes; a cover that took too long stands in as its figure and is asked again),
-                (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer)
+                (KlangbildApp/AppGraph in the root package: http, tokenHttp without redirects, localizer,
+                SpeakerHub; SpeakerService beside them)
 config/         Settings (+ QueueDisplay (Off / List / Cover Flow), DisplayOptions, VolumeDisplay, Intensity, AppearanceMode, BackgroundMode,
-                MotionLevel, RoomLights, RoomLightBrightness), SettingsStore (DataStore, written whole
+                MotionLevel, RoomLights, RoomLightBrightness, tvSpeaker and speakerOn), SettingsStore (DataStore, written whole
                 in one step; tokens sealed by SecretBox: AES-GCM with a key in the Android keystore;
                 `migrate` at the start brings an earlier version's store up to date: its tokens
                 sealed, its view (SINGLE or FLOW) moved to the queue's own key, touching nothing
@@ -315,11 +334,33 @@ config/         Settings (+ QueueDisplay (Off / List / Cover Flow), DisplayOptio
                 its entries), OwnValues (the values in the status line as stored),
                 LaunchExtras (am start extras and klangbild:// links: English names and values, those
                 of earlier versions still taken (`window_view` for the landscape, `view` for the
-                queue), the German ones)
+                queue), the German ones; `tv_speaker` an extra, never a link)
+sendspin/       Sendspin, Music Assistant's protocol for synchronized audio (the spec's main, as
+                aiosendspin 10.2.0 in Music Assistant 2.10.7 speaks it): Noise (KKpsk2 over
+                BouncyCastle's lightweight X25519, ChaCha20-Poly1305, SHA-256 and HMAC; no provider
+                registered), Keys (client id, Sentinel and pairing PSKs, the SP:0 pairing token),
+                Frames (transport messages, fragments), Messages (the JSON envelope, hello, state,
+                commands), TimeFilter (the spec's two-dimensional Kalman filter, as the reference
+                has it), Session (client/init to the stream: handshake, re-handshake, pairing,
+                bursts of 8 time messages, available only once synced, leave, goodbye; an older
+                or newer Music Assistant told apart)
+speaker/        SpeakerConnection (ws://<Music Assistant host>:8927/sendspin through the client
+                without redirects; backoff, a try at once on wake), SpeakerStore (the key and the
+                pairings sealed, in a store of their own; an identity that cannot be opened is
+                never replaced; output delay, volume, mute), ChunkQueue (timed PCM, filled by the
+                connection, emptied by the audio thread, nothing allocated), Playback (10 ms blocks
+                at the moment the server meant: the output's timestamps trusted once they move on,
+                put in place at once on a start, a clear, a gap or an underrun, a frame dropped or
+                repeated against drift; volume ramps, output delay, silence while another app has
+                the sound), AudioSink + AudioTrackSink (48 kHz 16-bit stereo, timestamps, routing),
+                ArrivalDelays (the min_buffer_ms asked for), Speaker (all of it, an audio thread at
+                urgent priority while a stream plays and 30 s after)
 setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home Assistant's login
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
-                fields), SetupPage (HTML in the language shown; entities chosen by searching),
+                fields; this TV's own speaker left out of the list, where "This TV" stands for it;
+                the pairing code only through the API), SetupPage (HTML in the language shown;
+                entities chosen by searching),
                 SetupServer (+ discovery; Host, Origin and content type checked, a few
                 connections at a time, slow ones closed, only while the setup screen shows and
                 the TV has an address of its own, tried again until it has; a request that has
@@ -662,7 +703,7 @@ UI words are given in English with the German in parentheses where it matters.
   row glides the same way. Values are words, changes apply at once (left and right clamp, OK
   wraps; right held on a group opens it once, and changes nothing in it until pressed again),
   closes itself after 60 s. Every setting is always there: one that cannot work until
-  something is set up on the phone (Lyrics without Music Assistant: "Needs Music Assistant"; the
+  something is set up on the phone (Lyrics and Play here without Music Assistant: "Needs Music Assistant"; the
   lights and the values while none are chosen: "Set up") is dimmed, never brighter when chosen
   than another line at rest, its explanation says what it needs, and OK opens the setup. Options
   show or hide parts, choose how the queue shows, the wall and the language, and dim the light; no
@@ -674,7 +715,7 @@ UI words are given in English with the German in parentheses where it matters.
   paused, While playing, Mini player: Bottom left / Bottom right / Off), Remote (Control music,
   Up and down: Landscape, menu / Volume, Audiobooks, podcasts: Jump / Change track), Timer
   (Sleep timer, Turn off after, When turning off: Close app / Screen saver), System (Home
-  Assistant, Music Assistant, Language: System language / English / Deutsch). Label + value fit
+  Assistant, Music Assistant, Play here: On / Off, Language: System language / English / Deutsch). Label + value fit
   the 352 dp column on one line in both languages (`LanguageTest` measures every value).
 - **Language:** English is the default, German in `values-de`. The menu's Language line uses
   Android's per-app language (`LocaleManager` from API 33, where the choice also shows in the
@@ -778,6 +819,34 @@ UI words are given in English with the German in parentheses where it matters.
   tried again (each try counts as a failed login there). Tokens are sealed at rest, only ever
   go to the address they were made for, never follow a redirect and are never logged; a new
   address without its credentials drops the old ones; a replaced sign-in is revoked.
+- **This TV as a speaker** (`sendspin/`, `speaker/`, `SpeakerService`; System: Play here (Hier
+  abspielen), off by default, dimmed with "Needs Music Assistant" without it; the setup page: a
+  checkbox in Music Assistant's section, the pairing code folded beneath it while the speaker
+  runs): the TV becomes one of Music Assistant's speakers over Sendspin, connecting to the
+  address it already has on port 8927 (8095's /sendspin is the web player's), PCM 48 kHz 16-bit
+  stereo only, encrypted (Noise KKpsk2) and offering unpaired access, so Music Assistant 2.10.7
+  takes it without a pairing step; an older one is told apart and the menu's explanation says
+  what it needs. It is named as the TV is (its device name), never like a web or app player
+  (Music Assistant hides those). Its key is made once and kept: a new one would be a new speaker
+  in Music Assistant and a new entity in Home Assistant. A foreground service of the media
+  playback kind runs it while the setting is on, from the moment Klangbild is opened (Android
+  starts none by itself after a reboot), with or without the screen; with the setting off
+  nothing of it runs, no service, thread or connection (`SpeakerServiceTest`), and every
+  picture stays as it was. `available` only once the clock filter has settled (3 bursts, error
+  under 5 ms); each 10 ms block placed by the output's timestamps (none from before the start,
+  stalls and frames never written refused), at once on a start, a clear, a gap or an underrun,
+  else a frame at a time outside 100 µs (±100 ppm held within 1 ms, `PlaybackTest`); the volume
+  is a gain ((v/100)^1.5, 20 ms ramp), since CEC pins the system volume; the output delay (0 to
+  5000 ms) is kept. The audio thread runs at urgent audio priority and allocates nothing per
+  chunk. Another app taking the TV's sound for a moment silences it in time underneath, for good
+  makes it leave its group; the TV waking or an HDMI device coming or going puts it in place
+  anew. Music that starts on it shows instead of the chosen speaker, on the same connection
+  (`OwnSpeaker` finds its entity for every user): paused it stays unless the chosen speaker
+  plays, stopped it gives the screen back after 4 s (`SpeakerSwitch`); the keys, the volume, the
+  queue and a button's `player` act on what shows, and another speaker's volume is no change to
+  show. "This TV" at the top of the setup page's list follows it alone (`EntityId.THIS_TV`),
+  and its own entity is left out of that list. Tested end to end against aiosendspin 10.2.0;
+  never verified on a TV.
 - **Music Assistant** is optional: without it Klangbild works from Home Assistant alone; with
   it (address + long-lived token on the setup page, checked before storing) the cover flow
   shows the whole queue and the album line its year.

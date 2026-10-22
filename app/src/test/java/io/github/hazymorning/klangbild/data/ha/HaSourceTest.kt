@@ -3,7 +3,11 @@ package io.github.hazymorning.klangbild.data.ha
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.data.ma.MaClient
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.MediaKind
+import io.github.hazymorning.klangbild.domain.SpeakerLink
+import io.github.hazymorning.klangbild.domain.SpeakerStatus
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +64,11 @@ class HaSourceTest {
     /** The entity registry as listed for display. */
     private var registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"}]"""
 
+    /** This TV's own speaker in Home Assistant: its state and attributes, and the subscriptions that follow entities. */
+    private var tvState = "idle"
+    private var tv = """{"friendly_name":"Fernseher","supported_features":17413}"""
+    private val triggers = CopyOnWriteArrayList<Pair<String, String>>()
+
     @Before
     fun setUp() {
         ha = MockWebServer()
@@ -69,6 +78,7 @@ class HaSourceTest {
                 return when {
                     path == "/api/websocket" -> MockResponse.Builder().webSocketUpgrade(FakeHa()).build()
                     path == "/api/states/media_player.wz" -> MockResponse.Builder().body(playerState(Json.parseToJsonElement(player).jsonObject)).build()
+                    path == "/api/states/media_player.tv" -> MockResponse.Builder().body(tvJson()).build()
                     path == "/api/states/input_boolean.party" -> MockResponse.Builder().body(
                         """{"entity_id":"input_boolean.party","state":"on","attributes":{},"last_changed":"2026-10-10T18:00:00+00:00",
                             "last_updated":"2026-10-10T18:00:00+00:00","context":{"id":"y","parent_id":null,"user_id":null}}""",
@@ -111,8 +121,11 @@ class HaSourceTest {
                 "auth" -> webSocket.send("""{"type":"auth_ok","ha_version":"2026.10.0"}""")
                 "subscribe_trigger" -> {
                     if (subscription == null) subscription = id
+                    triggers += id!! to msg["trigger"]!!.jsonObject["entity_id"].toString()
                     ok()
                 }
+                "config/entity_registry/get_entries" ->
+                    ok("""{"media_player.wz":{"entity_id":"media_player.wz","unique_id":"mass_wz"},"media_player.tv":{"entity_id":"media_player.tv","unique_id":"up1a2b3c4d"}}""")
                 "config/entity_registry/list_for_display" -> ok("""{"entity_categories":{},"entities":$registry}""")
                 "get_config" -> ok("""{"latitude":52.52,"longitude":13.4,"unit_system":{"temperature":"°C"}}""")
                 "unsubscribe_events" -> ok()
@@ -152,8 +165,49 @@ class HaSourceTest {
 
     private fun queueCalls() = calls.count { it["service"]?.jsonPrimitive?.content == "get_queue" }
 
+    private fun tvJson(): String {
+        val time = "2026-10-10T18:01:%02d+00:00".format(changes++ % 60)
+        return """{"entity_id":"media_player.tv","state":"$tvState","attributes":$tv,
+            "last_changed":"$time","last_updated":"$time","context":{"id":"t","parent_id":null,"user_id":null}}"""
+    }
+
+    /** Home Assistant reports this TV's own speaker anew, on the subscription that follows it. */
+    private fun reportTv(state: String, title: String?) {
+        tvState = state
+        tv = if (title == null) {
+            """{"friendly_name":"Fernseher","supported_features":17413}"""
+        } else {
+            """{"friendly_name":"Fernseher","supported_features":17413,"media_title":"$title","media_artist":"B"}"""
+        }
+        val id = triggers.last { "media_player.tv" in it.second }.first
+        sockets.last().send(
+            """{"id":$id,"type":"event","event":{"variables":{"trigger":{"platform":"state","entity_id":"media_player.tv",
+                "from_state":null,"to_state":${tvJson()}}},"context":null}}""",
+        )
+    }
+
+    /** A stand-in Music Assistant that names the player around this TV's speaker (`Q2xpZW50SWQ`). */
+    private fun speakerServer() = MockWebServer().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                maCommands += command
+                return MockResponse.Builder().body(
+                    when (command) {
+                        "players/all" -> """[{"player_id":"up1a2b3c4d","output_protocols":[{"output_protocol_id":"Q2xpZW50SWQ"}]}]"""
+                        "party/player" -> "null"
+                        else -> "[]"
+                    },
+                ).build()
+            }
+        }
+        start()
+    }
+
     private fun source(
         ma: MaClient? = null,
+        entity: String = "media_player.wz",
+        speaker: kotlinx.coroutines.flow.StateFlow<SpeakerStatus>? = null,
         refreshMs: Long = 60_000L,
         partyMs: Long = HaSource.PARTY_MS,
         detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
@@ -163,7 +217,7 @@ class HaSourceTest {
         http,
         scope,
         HaConfig(HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good"))),
-        "media_player.wz",
+        entity,
         ma = ma,
         queueRefreshMs = refreshMs,
         partyMs = partyMs,
@@ -171,6 +225,9 @@ class HaSourceTest {
         detailsWaitMs = detailsWaitMs,
         queueSettleMs = queueSettleMs,
         maQueueMs = maQueueMs,
+        speaker = speaker,
+        ownRetryMs = 50L,
+        ownBackMs = 300L,
     )
 
     @Test
@@ -833,4 +890,76 @@ class HaSourceTest {
         assertThat(kmh(10.0, "mph")).isWithin(0.01).of(16.09)
         assertThat(kmh(10.0, "furlongs")).isNull()
     }
+
+    @Test
+    fun `music on this TV shows instead of the chosen speaker, on the same connection, and the chosen one comes back`() = runBlocking {
+        registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"},{"ei":"media_player.tv","pl":"music_assistant","di":"d2"}]"""
+        val ma = speakerServer()
+        try {
+            val speaker = MutableStateFlow(SpeakerStatus(SpeakerLink.CONNECTED, clientId = "Q2xpZW50SWQ"))
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), speaker = speaker)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Erstes Lied" } }
+            withTimeout(5_000) { s.state.first { it.ownSpeaker == "media_player.tv" } }
+            assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
+            assertThat(maCommands).contains("players/all")
+            // Nothing plays here yet: the chosen speaker stays.
+            withTimeout(5_000) { while (triggers.none { "media_player.tv" in it.second }) delay(20) }
+            delay(300)
+            assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
+
+            reportTv("playing", "Hier")
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Hier" } }
+            assertThat(s.state.value.speaker).isEqualTo("media_player.tv")
+            assertThat(s.state.value.player?.friendlyName).isEqualTo("Fernseher")
+            // The volume keys and every other command go to what shows.
+            s.send(io.github.hazymorning.klangbild.data.RemoteCommand.VOLUME_UP)
+            withTimeout(5_000) { while (calls.none { it["service"]?.jsonPrimitive?.content == "volume_up" }) delay(20) }
+            assertThat(calls.first { it["service"]?.jsonPrimitive?.content == "volume_up" }["target"].toString()).isEqualTo("""{"entity_id":"media_player.tv"}""")
+
+            // Paused while the chosen speaker plays, the chosen one comes back; music here again
+            // takes the screen again, and once it has stopped the chosen speaker comes back after a moment.
+            reportTv("paused", "Hier")
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Erstes Lied" } }
+            assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
+            reportTv("playing", "Wieder hier")
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Wieder hier" } }
+            reportTv("idle", null)
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Erstes Lied" } }
+            assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
+            assertThat(sockets).hasSize(1)
+
+            // Switched off: this TV is no speaker any more.
+            speaker.value = SpeakerStatus()
+            withTimeout(5_000) { s.state.first { it.ownSpeaker == null } }
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `this TV chosen as the speaker shows its own once it is found, and nothing before`() = runBlocking {
+        registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"},{"ei":"media_player.tv","pl":"music_assistant","di":"d2"}]"""
+        tvState = "playing"
+        tv = """{"friendly_name":"Fernseher","media_title":"Hier","media_artist":"B"}"""
+        val ma = speakerServer()
+        try {
+            val speaker = MutableStateFlow(SpeakerStatus(SpeakerLink.CONNECTING))
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), entity = EntityId.THIS_TV, speaker = speaker)
+            s.start()
+            withTimeout(5_000) { s.state.first { it.link == io.github.hazymorning.klangbild.domain.LinkState.CONNECTED } }
+            delay(300)
+            assertThat(s.state.value.player).isNull()
+            assertThat(s.state.value.entityMissing).isFalse()
+            assertThat(triggers.first().second).doesNotContain(EntityId.THIS_TV)
+            speaker.value = SpeakerStatus(SpeakerLink.CONNECTED, clientId = "Q2xpZW50SWQ")
+            withTimeout(5_000) { s.state.first { it.player?.track?.title == "Hier" } }
+            assertThat(s.state.value.speaker).isEqualTo("media_player.tv")
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
 }
+

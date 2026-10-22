@@ -57,10 +57,14 @@ class AppGraph(context: Context) {
     /** The words in the language chosen: the system's, or one from the menu. */
     val localizer = Localizer(context.applicationContext, PlatformLanguageStore(context.applicationContext))
 
-    val controller = NowPlayingController(scope, http, tokenHttp, settings, localizer)
-
     /** This TV's speaker while its service runs ([SpeakerService]). */
     val speakerHub = SpeakerHub()
+
+    val controller = NowPlayingController(
+        scope, http, tokenHttp, settings, localizer,
+        speaker = speakerHub.status,
+        pairingToken = { speakerHub.speaker?.pairingToken },
+    )
 
     /** What the speaker keeps (its key, its pairings), opened when it is first needed. */
     val speakerStore: SpeakerStore by lazy { SpeakerStore(app, KeystoreSecretBox()) }

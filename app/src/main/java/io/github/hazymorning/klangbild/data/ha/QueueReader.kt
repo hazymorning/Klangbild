@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 internal class QueueReader(
     private val scope: CoroutineScope,
     private val connection: HaConnection,
-    private val playerEntity: String,
+    /** The speaker whose queue is read: the one shown (none while "This TV" is not found yet). */
+    private val entity: () -> String?,
     private val baseUrl: String,
     private val ma: MaClient?,
     private val now: () -> Long,
@@ -137,6 +138,23 @@ internal class QueueReader(
         queueJob?.cancel()
         awaitEnd?.cancel()
         lyrics?.stop()
+    }
+
+    /**
+     * Another speaker shows (this TV's own, or back to the one chosen): what was read belongs to
+     * the one before, and its read under way is canceled (called under the [lock]).
+     */
+    fun retarget() {
+        queueJob?.cancel()
+        awaitEnd?.cancel()
+        queue = null
+        window = null
+        queueForKey = null
+        songKey = null
+        maNext = null
+        queueWorks = null
+        awaited = null
+        windowFor = null
     }
 
     /** The song [key] plays on [player]: a new one starts its queue's read (called under the [lock]). */
@@ -346,8 +364,9 @@ internal class QueueReader(
         if (!force && queueForKey == key) return
         delay(350) // let a burst of state changes settle
         if (songKey != key) return
+        val target = entity() ?: return
         val response = try {
-            connection.callService("music_assistant", "get_queue", playerEntity, returnResponse = true)
+            connection.callService("music_assistant", "get_queue", target, returnResponse = true)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -357,7 +376,7 @@ internal class QueueReader(
         // No answer (a source without a queue, like a streaming app playing on the speaker directly):
         // nothing is known to follow. A periodic refresh that fails keeps what is known.
         val again = force && queueForKey == key
-        val parsed = response?.let { PlayerParser.queue(it, playerEntity, baseUrl) }
+        val parsed = response?.let { PlayerParser.queue(it, target, baseUrl) }
         if (parsed == null && again) return
         // Music Assistant's queue is read again only when something moved, or for spoken word,
         // whose speed can change at any time.

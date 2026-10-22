@@ -64,6 +64,7 @@ class SeekingTest {
         override val source: NowPlayingSource = this@SeekingTest.source
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
+        override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
         override fun recompute() = Unit
         override fun showMenu() = Unit
         override fun openMenu() = Unit

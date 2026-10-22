@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.data.NowPlayingSource
@@ -14,6 +15,9 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
+import io.github.hazymorning.klangbild.domain.SpeakerStatus
+import io.github.hazymorning.klangbild.domain.SpeakerSwitch
+import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.LightBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -34,11 +38,16 @@ import okhttp3.OkHttpClient
  * the entities of one's own, enriched with what its queue says ([QueueReader]: what comes next,
  * full-size artwork, with Music Assistant itself the whole queue and the words of the song).
  * Remote commands go out only where the player supports them.
+ *
+ * While this TV plays as a speaker ([speaker]), its own entity ([OwnSpeaker]) is followed too,
+ * and music that starts on it shows instead of the chosen speaker until it has stopped
+ * ([SpeakerSwitch]), on the same connection.
  */
 class HaSource(
     http: OkHttpClient,
     private val scope: CoroutineScope,
     private val config: HaConfig,
+    /** The speaker chosen: an entity, or [EntityId.THIS_TV] for this TV's own. */
     private val playerEntity: String,
     private val sunEntity: String = "sun.sun",
     private val now: () -> Long = System::currentTimeMillis,
@@ -57,6 +66,12 @@ class HaSource(
     queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
     /** How often Music Assistant itself is asked what comes next while a song plays (shorter in tests). */
     maQueueMs: Long = QueueReader.MA_QUEUE_MS,
+    /** This TV as a speaker, as far as it plays (with Music Assistant set up). */
+    speaker: StateFlow<SpeakerStatus>? = null,
+    /** How long the first wait is before Music Assistant and Home Assistant are asked again for this TV's own speaker (shorter in tests). */
+    ownRetryMs: Long = OwnSpeaker.FIRST_RETRY_MS,
+    /** How long this TV's own speaker shows after its music has stopped (shorter in tests). */
+    ownBackMs: Long = SpeakerSwitch.BACK_MS,
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
@@ -71,8 +86,23 @@ class HaSource(
     /** The queue a party of Music Assistant's Party plugin plays to, while its guests may join. */
     @Volatile private var partyQueue: String? = null
 
+    /** This TV's own speaker, once it plays and Home Assistant has it. */
+    private val own: OwnSpeaker? = if (ma != null && speaker != null) {
+        OwnSpeaker(scope, connection, ma, speaker, { Backoff(ownRetryMs, OwnSpeaker.LAST_RETRY_MS) }) { publish(connection.status.value, connection.entities.value) }
+    } else {
+        null
+    }
+    private val switch = SpeakerSwitch(ownBackMs)
+
+    /** The speaker shown: the one chosen, or this TV's own while music plays on it; none while "This TV" is chosen and not found. */
+    @Volatile private var speakerShown: String? = playerEntity.takeIf { it != EntityId.THIS_TV }
+
+    /** Publishes once more when this TV's own speaker gives the screen back. */
+    private var backJob: Job? = null
+    private var backAt: Long? = null
+
     private val queue = QueueReader(
-        scope, connection, playerEntity, config.baseUrl, ma, now,
+        scope, connection, { speakerShown }, config.baseUrl, ma, now,
         latest = { lastSnapshot }, shown = { _state.value.player }, lock = this,
         queueRefreshMs = queueRefreshMs, detailsWaitMs = detailsWaitMs, queueSettleMs = queueSettleMs, maQueueMs = maQueueMs,
     ) { publish(connection.status.value, connection.entities.value) }
@@ -119,7 +149,8 @@ class HaSource(
             ActionKind.TOGGLE -> "toggle"
         }
         val data = if (domain == "script") {
-            buildJsonObject { put("variables", JsonObject(mapOf("player" to JsonPrimitive(playerEntity)) + action.variables)) }
+            val player = speakerShown?.let { mapOf("player" to JsonPrimitive(it)) }.orEmpty()
+            buildJsonObject { put("variables", JsonObject(player + action.variables)) }
         } else {
             null
         }
@@ -144,17 +175,20 @@ class HaSource(
     }
 
     override fun start() {
-        connection.start(config, listOf(playerEntity, sunEntity) + weatherEntities)
+        connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity) + weatherEntities)
         collector = scope.launch {
             combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
                 .collect { (st, ents) -> publish(st, ents) }
         }
         partyPoller = ma?.let { client -> scope.launch { followParty(client) } }
         queue.start()
+        own?.start()
     }
 
     override fun stop() {
         collector?.cancel()
+        own?.stop()
+        backJob?.cancel()
         queue.stop()
         partyPoller?.cancel()
         connection.stop()
@@ -200,7 +234,8 @@ class HaSource(
     override suspend fun send(command: RemoteCommand) {
         val p = lastSnapshot ?: return
         val service = serviceFor(command, p) ?: return
-        attempt { connection.callService("media_player", service, playerEntity) }
+        val entity = speakerShown ?: return
+        attempt { connection.callService("media_player", service, entity) }
     }
 
     /**
@@ -233,7 +268,7 @@ class HaSource(
      */
     private fun favoriteButton(): String? {
         val registry = connection.registry.value ?: return null
-        val device = registry.firstOrNull { it.entityId == playerEntity }?.deviceId ?: return null
+        val device = registry.firstOrNull { it.entityId == speakerShown }?.deviceId ?: return null
         return registry.firstOrNull {
             it.deviceId == device && it.platform == MA_PLATFORM && it.translationKey == FAVORITE_KEY && it.entityId.startsWith("button.")
         }?.entityId
@@ -241,15 +276,17 @@ class HaSource(
 
     override suspend fun shuffle(on: Boolean): Boolean {
         if (lastSnapshot?.abilities?.shuffle != true) return false
+        val entity = speakerShown ?: return false
         val data = buildJsonObject { put("shuffle", on) }
-        return attempt { connection.callService("media_player", "shuffle_set", playerEntity, data = data) }
+        return attempt { connection.callService("media_player", "shuffle_set", entity, data = data) }
     }
 
     /** Plays on from [positionMs] in the item's own time (`seek_position` in seconds). */
     override suspend fun seek(positionMs: Long) {
         if (lastSnapshot?.abilities?.seek != true) return
+        val entity = speakerShown ?: return
         val data = buildJsonObject { put("seek_position", positionMs.coerceAtLeast(0) / 1000.0) }
-        attempt { connection.callService("media_player", "media_seek", playerEntity, data = data) }
+        attempt { connection.callService("media_player", "media_seek", entity, data = data) }
     }
 
     /** Called from the status/entity collector and after queue refreshes, serialized. */
@@ -265,7 +302,8 @@ class HaSource(
         }
         linkDownSince = if (link == LinkState.CONNECTED) null else (linkDownSince ?: t)
 
-        val entity = entities[playerEntity]
+        follow(entities, t)
+        val entity = speakerShown?.let { entities[it] }
         var player = entity?.let { PlayerParser.player(it, config.baseUrl) }
         if (player != null && player != lastSnapshot) {
             receivedAt = t
@@ -282,7 +320,7 @@ class HaSource(
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
         val others = player?.groupMembers.orEmpty()
-        val follow = others.toSet() + lightIds + ownIds + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
+        val follow = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
         if (follow != watched) {
             watched = follow
             connection.watch(watched)
@@ -295,7 +333,7 @@ class HaSource(
         val fresh = SourceState(
             link = link,
             player = enriched,
-            entityMissing = status == HaStatus.Connected && entity == null && playerEntity in connection.missing.value,
+            entityMissing = status == HaStatus.Connected && entity == null && speakerShown in connection.missing.value,
             next = queue.nextOf(currentQueue, key),
             sunElevation = sun ?: _state.value.sunElevation,
             receivedAtMs = receivedAt,
@@ -319,13 +357,50 @@ class HaSource(
             temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
             lyrics = enriched?.track?.let { queue.lyricsOf(it, entity, currentWindow) },
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
+            speaker = speakerShown,
+            ownSpeaker = own?.entity,
         )
         // Until the new song is described, what was shown stays: the song before it, all of it.
         _state.value = if (player != null && key != null && queue.awaitsDetails(player, key, t)) fresh.showing(_state.value) else fresh
     }
 
-    /** This state with the player, its queue and its time as [shown] has them. */
+    /**
+     * Which speaker shows ([speakerShown]): the one chosen, or this TV's own while music plays on it
+     * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue.
+     */
+    private fun follow(entities: Map<String, EntityState>, t: Long) {
+        val ownId = own?.entity
+        val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
+        val here = ownId?.takeIf { it != chosen }
+        val showsOwn = if (here == null) {
+            switch.reset()
+            false
+        } else {
+            switch.update(entities[here]?.let { PlayerParser.player(it, config.baseUrl) }, chosen?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }, t)
+        }
+        // Stopped, it stays a moment: the state is published once more when that is over.
+        val back = switch.backAt
+        if (back != backAt) {
+            backAt = back
+            backJob?.cancel()
+            backJob = back?.let { at ->
+                scope.launch {
+                    delay((at - now()).coerceAtLeast(0))
+                    publish(connection.status.value, connection.entities.value)
+                }
+            }
+        }
+        val next = if (showsOwn) here else chosen
+        if (next != speakerShown) {
+            speakerShown = next
+            lastSnapshot = null
+            queue.retarget()
+        }
+    }
+
+    /** This state with the player, its queue and its time as [shown] has them, and the speaker they belong to. */
     private fun SourceState.showing(shown: SourceState) = copy(
+        speaker = shown.speaker,
         player = shown.player,
         receivedAtMs = shown.receivedAtMs,
         next = shown.next,

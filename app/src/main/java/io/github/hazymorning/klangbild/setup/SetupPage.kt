@@ -4,6 +4,7 @@ import io.github.hazymorning.klangbild.R
 import io.github.hazymorning.klangbild.config.OwnValues
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -28,6 +29,7 @@ object SetupPage {
             .replace("__MAX_VALUES__", OwnValues.MAX.toString())
             .replace("__MAX_VALUE_NAME__", OwnValues.MAX_NAME.toString())
             .replace("__MAX_SLEEP__", Settings.MAX_SLEEP_MINUTES.toString())
+            .replace("__THIS_TV__", EntityId.THIS_TV)
             .replace("__SCRIPT_TEXTS__", script)
         for ((key, value) in words) page = page.replace("{{$key}}", escape(value))
         return page
@@ -76,6 +78,10 @@ object SetupPage {
         "maHint" to R.string.page_ma_hint,
         "maTokenPlaceholder" to R.string.page_ma_token_placeholder,
         "maTokenHint" to R.string.page_ma_token_hint,
+        "tvSpeaker" to R.string.page_tv_speaker,
+        "tvSpeakerHint" to R.string.page_tv_speaker_hint,
+        "pairToggle" to R.string.page_pair_toggle,
+        "pairHint" to R.string.page_pair_hint,
         "lightsHeading" to R.string.page_lights_heading,
         "lightsHint" to R.string.page_lights_hint,
         "lightsEmpty" to R.string.page_lights_empty,
@@ -98,6 +104,8 @@ object SetupPage {
     /** Words the page's script shows as it goes. */
     private val SCRIPT_TEXTS = listOf(
         "noSpeakers" to R.string.page_no_speakers,
+        "thisTv" to R.string.page_this_tv,
+        "thisTvMeta" to R.string.page_this_tv_meta,
         "noLights" to R.string.page_no_lights,
         "left" to R.string.page_light_left,
         "center" to R.string.page_light_center,
@@ -266,6 +274,13 @@ object SetupPage {
     <label for="maToken">{{tokenLabel}}</label>
     <textarea id="maToken" placeholder="{{maTokenPlaceholder}}" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
     <p class="hint">{{maTokenHint}}</p>
+    <label class="row"><input id="tvSpeaker" type="checkbox"> {{tvSpeaker}}</label>
+    <p class="hint">{{tvSpeakerHint}}</p>
+    <details id="pairBox" class="hidden">
+      <summary>{{pairToggle}}</summary>
+      <textarea id="pairCode" readonly aria-label="{{pairToggle}}"></textarea>
+      <p class="hint">{{pairHint}}</p>
+    </details>
   </section>
 
   <section>
@@ -305,6 +320,9 @@ object SetupPage {
   const ${'$'} = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   let hasToken = false;
+  // The speakers Home Assistant offers, once found; "This TV" goes before them while the TV plays for Music Assistant.
+  let speakers = null;
+  const THIS_TV = '__THIS_TV__';
   let lights = { lightsLeft: '', lightsCenter: '', lightsRight: '' };
   let lightsShown = false;
   let weather = '';
@@ -335,8 +353,10 @@ object SetupPage {
     if (res.status === 403) { ${'$'}('codeBox').classList.remove('hidden'); }
     return data;
   }
-  function renderSpeakers(list, selected) {
+  function renderSpeakers(selected) {
     const box = ${'$'}('speakers'); box.textContent = '';
+    const tv = ${'$'}('tvSpeaker').checked ? [{ id: THIS_TV, name: T.thisTv, meta: T.thisTvMeta }] : [];
+    const list = tv.concat(speakers);
     if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
     list.forEach((sp) => {
       const row = document.createElement('label'); row.className = 'speaker';
@@ -345,7 +365,7 @@ object SetupPage {
       const text = document.createElement('div');
       const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
       const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state;
+      meta.textContent = sp.meta || (sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state);
       text.append(name, meta); row.append(r, text); box.append(row);
     });
   }
@@ -593,6 +613,8 @@ object SetupPage {
     actions = (s.actions || []).map((a) => ({ name: a.name || '', entity: a.entity || '', variables: a.variables || {}, when: a.when || null }));
     values = (s.values || []).map((v) => ({ name: v.name || '', entity: v.entity || '', attribute: v.attribute || '' }));
     if (s.hasMaToken) ${'$'}('maToken').placeholder = T.tokenKept;
+    ${'$'}('tvSpeaker').checked = !!s.tvSpeaker;
+    if (s.pairingToken) { ${'$'}('pairCode').value = s.pairingToken; ${'$'}('pairBox').classList.remove('hidden'); }
     if (params.get('signin') === 'failed') show('haStatus', T.signInFailed, 'bad');
     else if (s.auth === 'signin') show('haStatus', T.signedIn, 'good');
     else if (hasToken) show('haStatus', T.withToken, 'good');
@@ -615,7 +637,8 @@ object SetupPage {
       const r = await api('/api/discover', { url: ${'$'}('url').value, token: ${'$'}('token').value });
       if (!r.ok) { status(r.message || T.failed, 'bad'); return; }
       ${'$'}('url').value = r.url;
-      renderSpeakers(r.speakers, ${'$'}('entity').value);
+      speakers = r.speakers;
+      renderSpeakers(${'$'}('entity').value);
       renderLights(r.lights || []);
       renderWeather(r.weather || []);
       actionOptions = r.actions || [];
@@ -634,7 +657,7 @@ object SetupPage {
         url: ${'$'}('url').value, token: ${'$'}('token').value, entity: ${'$'}('entity').value.trim(),
         sleepMinutes: parseInt(${'$'}('sleep').value, 10), sleepAction: action,
         clock: ${'$'}('clock').checked, remote: ${'$'}('remote').checked,
-        maUrl: ${'$'}('maUrl').value, maToken: ${'$'}('maToken').value };
+        maUrl: ${'$'}('maUrl').value, maToken: ${'$'}('maToken').value, tvSpeaker: ${'$'}('tvSpeaker').checked };
       // The weather once the page has listed it, or when it was chosen: a stored entity the page could not list stays.
       const w = ${'$'}('weather').value;
       if (weatherShown || w !== '' || weather === '') body.weather = w;
@@ -663,6 +686,10 @@ object SetupPage {
   ${'$'}('save').onclick = save;
   ${'$'}('addAction').onclick = addAction;
   ${'$'}('addValue').onclick = addValue;
+  ${'$'}('tvSpeaker').onchange = () => {
+    if (!${'$'}('tvSpeaker').checked && ${'$'}('entity').value.trim() === THIS_TV) ${'$'}('entity').value = '';
+    if (speakers) renderSpeakers(${'$'}('entity').value);
+  };
   ${'$'}('code').oninput = () => { if (code().length === 6) load(); };
   if (params.has('signin')) history.replaceState(null, '', '/');
   load();

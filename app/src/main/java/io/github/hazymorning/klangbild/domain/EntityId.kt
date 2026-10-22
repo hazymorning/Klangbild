@@ -11,4 +11,10 @@ object EntityId {
 
     /** A weather entity (`weather.forecast_home`). */
     fun isWeather(s: String): Boolean = s.startsWith("weather.") && isValid(s)
+
+    /**
+     * The speaker chosen as "This TV" on the setup page: this TV's own speaker in Music
+     * Assistant, whatever its entity turns out to be. Without a dot, it is no entity id.
+     */
+    const val THIS_TV = "this_tv"
 }

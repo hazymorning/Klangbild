@@ -182,6 +182,9 @@ class OptionsTest {
         MenuScreen(menu(MenuEntry.CONNECTION, Settings(), MenuContext(LinkState.UNCONFIGURED)))
     }
 
+    /** Playing here without Music Assistant: dimmed, it says what it needs. */
+    @Test fun menuPlayHereNeeds() = shot("menu_play_here_needs") { MenuScreen(menu(MenuEntry.PLAY_HERE)) }
+
     /**
      * A sequence of frames on the test's own clock. The menu's light is made off the main thread on
      * the real clock, so here it is made at once, as in a still: every run shows the same frames.

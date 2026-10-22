@@ -43,6 +43,8 @@ import io.github.hazymorning.klangbild.domain.ScreenDecision
 import io.github.hazymorning.klangbild.domain.ScreenStateMachine
 import io.github.hazymorning.klangbild.domain.SmoothedPosition
 import io.github.hazymorning.klangbild.domain.SongLyrics
+import io.github.hazymorning.klangbild.domain.SpeakerLink
+import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -220,6 +222,10 @@ class NowPlayingController(
     /** The words in the language chosen, and where the choice is kept. */
     private val localizer: Localizer,
     private val now: () -> Long = System::currentTimeMillis,
+    /** This TV as a speaker in Music Assistant, while its service runs. */
+    private val speaker: StateFlow<SpeakerStatus> = MutableStateFlow(SpeakerStatus()),
+    /** The code Music Assistant pairs this TV with, while it plays as a speaker (for the setup page). */
+    private val pairingToken: () -> String? = { null },
 ) {
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -265,6 +271,7 @@ class NowPlayingController(
         override val ui: UiState get() = _ui.value
         override val source: NowPlayingSource? get() = this@NowPlayingController.source
         override val texts: Texts get() = localizer.texts.value
+        override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
         override var language: AppLanguage
             get() = localizer.language
             set(value) {
@@ -318,6 +325,8 @@ class NowPlayingController(
         exchange = { url, code, clientId -> HaAuth.exchangeCode(tokenHttp, url, code, clientId) },
         revoke = { url, refreshToken -> HaAuth.revoke(tokenHttp, url, refreshToken) },
         checkMa = { url, token -> MaClient(tokenHttp, url, token).check() },
+        ownSpeaker = { _ui.value.source.ownSpeaker },
+        pairingToken = pairingToken,
         maGuess = {
             val track = _ui.value.source.player?.track
             MaClient.addressIn(track?.artworkUrl) ?: MaClient.addressIn(track?.artworkFallbackUrl)
@@ -686,7 +695,7 @@ class NowPlayingController(
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
         val newSource: NowPlayingSource? =
-            newAuth?.let { HaSource(tokenHttp, scope, HaConfig(it), s.entityId!!, s.sunEntity, now, ma, s.weatherEntities) }
+            newAuth?.let { HaSource(tokenHttp, scope, HaConfig(it), s.entityId!!, s.sunEntity, now, ma, s.weatherEntities, speaker = speaker) }
         source = newSource
         if (newSource == null) {
             _ui.value = _ui.value.copy(source = SourceState(LinkState.UNCONFIGURED))
@@ -724,7 +733,9 @@ class NowPlayingController(
             // A jump with the remote holds until Home Assistant reports the new place (or another item).
             smooth.onReport(p?.track?.key, seeking.onReport(st, raw, t), t)
         }
-        // A new volume (set here, on a phone or anywhere else) is shown for a moment.
+        // A new volume (set here, on a phone or anywhere else) is shown for a moment; another
+        // speaker shown (this TV's own, or back) has a volume of its own, which is no change.
+        if (st.speaker != _ui.value.source.speaker) lastVolume = null
         val volume = p?.volume?.let { it to p.muted }
         if (volume != null) {
             if (lastVolume != null && volume != lastVolume) volumeFlashUntil = t + VOLUME_FLASH_MS
