@@ -42,6 +42,12 @@ data class QueueSong(val uri: String, val item: JsonObject, val lyrics: String?,
  */
 data class QueueNow(val index: Int?, val current: TrackInfo?, val next: TrackInfo?, val nextId: String?, val items: Int?)
 
+/**
+ * Where Music Assistant's queue stands in its current item: [elapsedMs] in the item's own time at
+ * [atMs] on Music Assistant's clock (its wall clock), moving on while [playing].
+ */
+data class QueuePosition(val elapsedMs: Long, val atMs: Long, val playing: Boolean)
+
 /** Reads Music Assistant's queue items (`player_queues/items`). */
 object MaQueue {
     /**
@@ -80,6 +86,21 @@ object MaQueue {
             next = next?.let { track(it, baseUrl) },
             nextId = next?.string("queue_item_id"),
             items = (queue["items"] as? JsonPrimitive)?.intOrNull,
+        )
+    }
+
+    /**
+     * Where [queue] (`player_queues/get`) stands in its current item: its elapsed time, in its
+     * own time to the fraction of a second, as it was at a moment of Music Assistant's clock;
+     * null when it does not say.
+     */
+    fun position(queue: JsonObject): QueuePosition? {
+        val elapsed = (queue["elapsed_time"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        val updated = (queue["elapsed_time_last_updated"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        return QueuePosition(
+            elapsedMs = (elapsed * 1_000).roundToLong(),
+            atMs = (updated * 1_000).roundToLong(),
+            playing = queue.string("state") == "playing",
         )
     }
 

@@ -25,6 +25,8 @@ import io.github.hazymorning.klangbild.ui.DebugOverlay
 import io.github.hazymorning.klangbild.ui.FrameStats
 import io.github.hazymorning.klangbild.ui.KlangbildRoot
 import io.github.hazymorning.klangbild.ui.RootHooks
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -50,6 +52,15 @@ class MainActivity : ComponentActivity() {
         })
         // The composition lives while the activity is visible (see onStart/onStop).
         setContentView(ComposeView(this).also { view = it })
+        // This TV as a speaker: its service starts while Klangbild is in sight (Android lets a
+        // media service start only then) and ends itself when the setting goes off.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                graph.settings.settings.map { it.speakerOn }.distinctUntilChanged().collect { on ->
+                    if (on) startForegroundService(Intent(this@MainActivity, SpeakerService::class.java))
+                }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 controller.ui.collect { ui ->
@@ -78,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     FrameStats.attach(window)
                     onDispose { FrameStats.detach(window) }
                 }
-                DebugOverlay()
+                DebugOverlay(controller.sound)
             }
         }
     }

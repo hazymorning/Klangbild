@@ -11,6 +11,7 @@ datastore = "1.2.1"
 okhttp = "5.5.0"
 zxing = "3.5.4"
 suncalc = "3.11"
+bouncycastle = "1.86"
 profileinstaller = "1.4.1"
 junit = "4.13.2"
 truth = "1.4.5"
@@ -43,6 +44,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 suncalc = { module = "org.shredzone.commons:commons-suncalc", version.ref = "suncalc" }
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }

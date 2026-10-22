@@ -15,7 +15,7 @@ When you're listening to music at home, the TV usually just sits there. Switched
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
+Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. It can also let the TV play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
 
 During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
@@ -84,6 +84,9 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 <br>
 
 The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
+
+> [!IMPORTANT]
+> If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
 
 </details>
 

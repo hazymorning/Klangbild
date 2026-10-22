@@ -137,7 +137,7 @@ object QuickMenu {
             FavoriteState.NONE -> R.string.favorite_add
             FavoriteState.BUSY -> R.string.favorite_adding
             FavoriteState.DONE -> R.string.favorite_added
-            FavoriteState.FAILED -> R.string.favorite_failed
+            FavoriteState.FAILED -> R.string.action_failed
         },
     ]
 

@@ -106,7 +106,8 @@ sealed interface DiscoverResult {
  *    asks for it with the code; the callback must bring back the random state of that one
  *    request, within [SIGN_IN_MS]. Its tokens never reach the browser.
  *  - Stored tokens are never sent back to the browser, and credentials are only kept for the
- *    address they were made for.
+ *    address they were made for. The code Music Assistant pairs this TV with is given only to a
+ *    call with the code, never written into the page itself.
  *
  * @param texts the words in the language shown.
  * @param clientId the client id Home Assistant knows this TV by: the setup page's own address.
@@ -115,6 +116,9 @@ sealed interface DiscoverResult {
  * @param revoke revokes a refresh token that is no longer needed (best effort).
  * @param checkMa tries an address and token of Music Assistant (optional, for the whole queue).
  * @param maGuess Music Assistant's address as far as the TV can tell (from its picture links).
+ * @param ownSpeaker this TV's own speaker in Home Assistant, while it plays as one: left out of the
+ *   list, where "This TV" stands for it.
+ * @param pairingToken the code Music Assistant pairs this TV with, while it plays as a speaker.
  */
 class SetupHandler(
     private val settings: () -> Settings,
@@ -126,6 +130,8 @@ class SetupHandler(
     private val revoke: suspend (url: String, refreshToken: String) -> Unit = { _, _ -> },
     private val checkMa: suspend (url: String, token: String) -> MaLink = { _, _ -> MaLink.UNREACHABLE },
     private val maGuess: () -> String? = { null },
+    private val ownSpeaker: () -> String? = { null },
+    private val pairingToken: () -> String? = { null },
     private val random: SecureRandom = SecureRandom(),
     private val now: () -> Long = System::currentTimeMillis,
     /** A wrong code is answered only after this long: guessing a code takes days, not minutes. */
@@ -229,6 +235,8 @@ class SetupHandler(
                 put("remote", s.remoteControl)
                 put("maUrl", s.maUrl ?: maGuess() ?: "")
                 put("hasMaToken", !s.maToken.isNullOrBlank())
+                put("tvSpeaker", s.tvSpeaker)
+                put("pairingToken", pairingToken() ?: "")
                 put("lightsLeft", s.roomLights.left ?: "")
                 put("lightsCenter", s.roomLights.center ?: "")
                 put("lightsRight", s.roomLights.right ?: "")
@@ -302,7 +310,8 @@ class SetupHandler(
                 put("ok", true)
                 put("url", url)
                 put("speakers", buildJsonArray {
-                    r.speakers.forEach { sp ->
+                    val own = ownSpeaker()
+                    r.speakers.filter { it.entityId != own }.forEach { sp ->
                         add(buildJsonObject {
                             put("id", sp.entityId)
                             put("name", sp.name)
@@ -390,8 +399,11 @@ class SetupHandler(
                 MaLink.UNREACHABLE -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_unreachable]))
             }
         }
-        val entity = body.string("entity")?.trim()?.takeIf { EntityId.isValid(it) }
+        val tvSpeaker = body.bool("tvSpeaker") ?: current.tvSpeaker
+        val entity = body.string("entity")?.trim()?.takeIf { EntityId.isValid(it) || it == EntityId.THIS_TV }
             ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_speaker]))
+        // "This TV" follows the TV's own speaker, which needs Music Assistant and the TV playing for it.
+        if (entity == EntityId.THIS_TV && !(tvSpeaker && withMa.hasMusicAssistant)) return MiniHttp.Response.json(400, error(t[R.string.setup_error_this_tv]))
         val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
         if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
@@ -436,6 +448,7 @@ class SetupHandler(
         val updated = withMa.copy(
             weatherEntity = weather,
             entityId = entity,
+            tvSpeaker = tvSpeaker,
             sleepAfterMinutes = minutes,
             sleepAction = action,
             showClock = body.bool("clock") ?: current.showClock,

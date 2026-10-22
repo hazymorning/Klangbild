@@ -10,8 +10,10 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
 import io.github.hazymorning.klangbild.app.NowPlayingController
+import io.github.hazymorning.klangbild.config.KeystoreSecretBox
 import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.data.ha.LocalNetwork
+import io.github.hazymorning.klangbild.speaker.SpeakerStore
 import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.PlatformLanguageStore
 import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
@@ -26,6 +28,8 @@ import java.util.concurrent.TimeUnit
 
 /** Manual dependency graph. The app is small enough not to need a DI framework. */
 class AppGraph(context: Context) {
+    private val app = context.applicationContext
+
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val http: OkHttpClient = OkHttpClient.Builder()
@@ -53,7 +57,18 @@ class AppGraph(context: Context) {
     /** The words in the language chosen: the system's, or one from the menu. */
     val localizer = Localizer(context.applicationContext, PlatformLanguageStore(context.applicationContext))
 
-    val controller = NowPlayingController(scope, http, tokenHttp, settings, localizer)
+    /** This TV's speaker while its service runs ([SpeakerService]). */
+    val speakerHub = SpeakerHub()
+
+    val controller = NowPlayingController(
+        scope, http, tokenHttp, settings, localizer,
+        speaker = speakerHub.status,
+        pairingToken = { speakerHub.speaker?.pairingToken },
+        ownSound = { speakerHub.speaker?.sound },
+    )
+
+    /** What the speaker keeps (its key, its pairings), opened when it is first needed. */
+    val speakerStore: SpeakerStore by lazy { SpeakerStore(app, KeystoreSecretBox()) }
 
     init {
         // What an earlier version stored is brought up to date now rather than on the next change.
@@ -105,6 +120,7 @@ class KlangbildApp : Application() {
             object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     graph.controller.networkAvailable()
+                    graph.speakerHub.speaker?.retryNow()
                 }
             },
         )

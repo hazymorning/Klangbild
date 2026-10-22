@@ -22,7 +22,7 @@
     <string name="about_section_landscape">Wann die Landschaft aus Papier kommt und wo ihr Mini-Player sitzt.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
     <string name="about_section_timer">Der Sleep-Timer und wann sich Klangbild ausschaltet.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant und die Sprache.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, die Wiedergabe hier und die Sprache.</string>
 
     <string name="entry_queue">Warteschlange</string>
     <string name="entry_appearance">Erscheinungsbild</string>
@@ -49,6 +49,7 @@
     <string name="entry_sleep_after">Ausschalten nach</string>
     <string name="entry_sleep_action">Beim Ausschalten</string>
     <string name="entry_language">Sprache</string>
+    <string name="entry_play_here">Hier abspielen</string>
 
     <string name="queue_list">Liste</string>
     <string name="queue_flow">Cover Flow</string>
@@ -179,6 +180,15 @@
     <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt die Liste die nächsten Titel, Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
     <string name="about_ma">Die Liste zeigt die nächsten Titel, Cover Flow die ganze Warteschlange. OK zeigt den QR-Code. Am Handy änderst du Adresse und Token.</string>
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
+    <string name="about_play_here_set_up">Mit Music Assistant kann dieser Fernseher Musik synchron mit deinen anderen Lautsprechern spielen. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
+    <string name="about_play_here_off">Music Assistant kann auch auf diesem Fernseher Musik abspielen, synchron mit deinen anderen Lautsprechern. Schaltest du es ein, erscheint der Fernseher dort unter seinem eigenen Namen.</string>
+    <string name="about_play_here_on">Dieser Fernseher ist einer der Lautsprecher von Music Assistant und spielt weiter, auch wenn Klangbild geschlossen ist. Beginnt hier Musik, zeigt Klangbild sie.</string>
+    <string name="about_play_here_followed">Klangbild folgt diesem Fernseher, deshalb spielt er hier weiter. Um das auszuschalten, wähle zuerst am Handy einen anderen Lautsprecher. OK zeigt den QR-Code.</string>
+    <string name="about_play_here_unreachable">Music Assistant antwortet gerade nicht auf Port 8927, deshalb kann dieser Fernseher noch nicht spielen. Klangbild versucht es weiter.</string>
+    <string name="about_play_here_too_old">Damit dieser Fernseher spielen kann, braucht Music Assistant die Version 2.10.7 oder neuer.</string>
+    <string name="about_play_here_too_new">Dein Music Assistant ist neuer als diese Version von Klangbild. Sobald Klangbild aktualisiert ist, spielt dieser Fernseher wieder.</string>
+    <string name="about_play_here_refused">Music Assistant hat diesen Fernseher nicht hereingelassen. Du kannst ihn dort mit dem Code von der Einrichtung am Handy koppeln.</string>
+    <string name="about_play_here_no_key">Dieser Fernseher kann seinen Schlüssel für Music Assistant gerade nicht öffnen, deshalb kann er noch nicht spielen. Klangbild versucht es weiter.</string>
 
     <string name="quick_queue">Warteschlange</string>
     <string name="quick_landscape">Landschaft</string>
@@ -192,7 +202,6 @@
     <string name="favorite_add">Hinzufügen</string>
     <string name="favorite_adding">Hinzufügen …</string>
     <string name="favorite_added">Hinzugefügt</string>
-    <string name="favorite_failed">Nicht gefunden</string>
     <string name="action_run">Ausführen</string>
     <string name="action_activate">Aktivieren</string>
     <string name="action_press">Drücken</string>
@@ -257,7 +266,13 @@
     <string name="setup_in_browser">oder im Browser:</string>
     <string name="setup_no_network">Keine Netzwerkverbindung</string>
 
+    <string name="speaker_channel">Musik auf diesem Fernseher</string>
+    <string name="speaker_notification">Music Assistant kann hier spielen.</string>
+
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d Bilder/s · langsamstes %2$s ms · %3$d zu spät</string>
+    <string name="debug_sound_exact">Genaue Zeit</string>
+    <string name="debug_sound_close">Ungefähre Zeit</string>
+    <string name="debug_sound_none">Kein Klang</string>
     <string name="page_title">Klangbild einrichten</string>
     <string name="page_subtitle">Einrichtung für den Fernseher</string>
     <string name="page_code_heading">Code</string>
@@ -271,6 +286,7 @@
     <string name="page_token_hint">In Home Assistant: Profil → Sicherheit → Langlebige Zugangstoken → Token erstellen.</string>
     <string name="page_find">Lautsprecher suchen</string>
     <string name="page_speaker_heading">2 · Lautsprecher</string>
+    <string name="page_speakers_twice">Viele Lautsprecher stehen hier doppelt. Wähle den mit Music Assistant markierten, denn nur der bringt die Warteschlange und den Songtext mit.</string>
     <string name="page_speakers_empty">Erst Home Assistant verbinden, dann erscheinen hier die Lautsprecher.</string>
     <string name="page_entity_label">oder Entität direkt eingeben</string>
     <string name="page_entity_placeholder">media_player.wohnzimmer</string>
@@ -286,6 +302,12 @@
     <string name="page_ma_hint">Für die Warteschlange: Mit Music Assistant zeigt die Liste, was als Nächstes kommt, und Cover Flow alles, was lief und was kommt.</string>
     <string name="page_ma_token_placeholder">Aus Music Assistant</string>
     <string name="page_ma_token_hint">In Music Assistant unter Einstellungen → Profil ein langlebiges Zugangstoken erstellen. Leer lassen, wenn du es nicht brauchst.</string>
+    <string name="page_tv_speaker">Musik von Music Assistant auf diesem Fernseher abspielen</string>
+    <string name="page_tv_speaker_hint">Dieser Fernseher erscheint dann in Music Assistant als Lautsprecher unter seinem Namen und spielt synchron mit deinen anderen Lautsprechern, auch wenn Klangbild geschlossen ist.</string>
+    <string name="page_pair_toggle">Kopplungscode</string>
+    <string name="page_pair_hint">Nur nötig, wenn Music Assistant verlangt, diesen Fernseher zu koppeln: Gib dort diesen Code ein.</string>
+    <string name="page_this_tv">Dieser Fernseher</string>
+    <string name="page_this_tv_meta">Was Music Assistant auf diesem Fernseher abspielt</string>
     <string name="page_lights_heading">5 · Licht (freiwillig)</string>
     <string name="page_lights_hint">Deine Lichter leuchten in den Farben des Covers. Klangbild merkt sich, wie sie vorher waren, und stellt das nach der Musik wieder her.</string>
     <string name="page_lights_empty">Erst Home Assistant verbinden, dann erscheinen hier die Lichter.</string>
@@ -356,6 +378,7 @@
     <string name="setup_error_ma_token">Bitte das Zugangstoken von Music Assistant einfügen oder die Adresse leeren.</string>
     <string name="setup_error_ma_rejected">Music Assistant hat das Zugangstoken abgelehnt.</string>
     <string name="setup_error_ma_unreachable">Music Assistant antwortet nicht unter dieser Adresse. Bitte prüfen oder die Adresse leeren, dann geht es ohne.</string>
+    <string name="setup_error_this_tv">Dieser Fernseher kann nur der Lautsprecher sein, während er Musik von Music Assistant abspielt.</string>
     <string name="setup_error_speaker">Bitte einen Lautsprecher auswählen.</string>
     <string name="setup_error_sleep">Die Ruhezeit muss zwischen 1 und 720 Minuten liegen.</string>
     <string name="setup_error_lights">Bitte nur Lichter wählen.</string>

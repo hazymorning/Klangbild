@@ -10,7 +10,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -64,6 +66,26 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
     suspend fun favoriteNowPlaying(playerId: String) {
         command("players/add_currently_playing_to_favorites", buildJsonObject { put("player_id", playerId) })
     }
+
+    /**
+     * The id of the player Music Assistant plays to through the Sendspin client [clientId]
+     * (`players/all`): the player around it, which lists it among its outputs, or the client
+     * itself. Null while Music Assistant has none (it names a new speaker's player a few
+     * seconds after it first connects).
+     */
+    suspend fun playerOf(clientId: String): String? {
+        val players = command("players/all", JsonObject(emptyMap())) as? JsonArray ?: throw IOException("Unexpected answer to players/all")
+        return players.firstNotNullOfOrNull { e ->
+            val p = e as? JsonObject ?: return@firstNotNullOfOrNull null
+            val id = p["player_id"].string() ?: return@firstNotNullOfOrNull null
+            val outputs = p["output_protocols"] as? JsonArray
+            id.takeIf { it == clientId || outputs?.any { (it as? JsonObject)?.get("output_protocol_id").string() == clientId } == true }
+        }
+    }
+
+    /** Music Assistant's own clock (`time`, its wall clock in seconds), for its queue's times. */
+    suspend fun serverTime(): Double =
+        (command("time", JsonObject(emptyMap())) as? JsonPrimitive)?.doubleOrNull ?: throw IOException("Unexpected answer to time")
 
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {

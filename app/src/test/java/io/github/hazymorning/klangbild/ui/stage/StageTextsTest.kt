@@ -50,6 +50,16 @@ class StageTextsTest {
     }
 
     @Test
+    fun `this TV's own speaker at full volume leaves its volume out, turned down it shows`() {
+        assertThat(StageTexts.volumeAlways(always = true, own = true, level = 1f)).isFalse()
+        assertThat(StageTexts.volumeAlways(always = true, own = true, level = 0.996f)).isFalse()
+        assertThat(StageTexts.volumeAlways(always = true, own = true, level = 0.4f)).isTrue()
+        assertThat(StageTexts.volumeAlways(always = true, own = true, level = null)).isTrue()
+        assertThat(StageTexts.volumeAlways(always = true, own = false, level = 1f)).isTrue()
+        assertThat(StageTexts.volumeAlways(always = false, own = false, level = 0.4f)).isFalse()
+    }
+
+    @Test
     fun `what comes next, and its title alone`() {
         val next = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
         assertThat(StageTexts.next(next, de)).isEqualTo("Spiegel im Spiegel · Arvo Pärt")

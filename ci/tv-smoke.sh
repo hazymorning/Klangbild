@@ -2,9 +2,10 @@
 # Starts a stand-in Home Assistant on the host (ci/fake_ha.py), installs the release APK on
 # the running Android TV emulator, points it at that server with launch extras and walks
 # through the main states: playing, a key press that shows hidden parts, the settings menu,
-# a track change, new extras while running, the quick settings and the landscape. Checks
-# that the app is still alive and never crashed. Leaves screenshots, logcat and gfxinfo in
-# smoke/.
+# a track change, new extras while running, the quick settings and the landscape. With
+# SENDSPIN_PYTHON set (a Python with aiosendspin), the TV then plays as a speaker from a
+# Sendspin server on the host. Checks that the app is still alive and never crashed. Leaves
+# screenshots, logcat and gfxinfo in smoke/.
 set -u
 APK="$1"
 PKG=io.github.hazymorning.klangbild
@@ -69,6 +70,19 @@ adb shell input keyevent KEYCODE_BACK
 sleep 5
 adb exec-out screencap -p > smoke/8-back-to-stage.png
 
+# This TV as a speaker: the server Music Assistant 2.10.7 runs (aiosendspin, ci/sendspin_server.py)
+# waits on the host. With the setting on, the speaker's service connects to it from the
+# emulator and takes a stream (the emulator has no sound) while the app goes on.
+SPEAKER_OK=skipped
+if [ -n "${SENDSPIN_PYTHON:-}" ]; then
+  "$SENDSPIN_PYTHON" -I "$HERE/sendspin_server.py" --port 8927 --timeout 90 --play-seconds 8 --end --linger 10 > smoke/sendspin.log 2>&1 &
+  SPEAKER=$!
+  adb shell am start -n "$PKG/.MainActivity" --es ma_url http://10.0.2.2:8095 --es ma_token smoke --es tv_speaker on
+  wait "$SPEAKER"
+  SPEAKER_OK=$?
+  adb exec-out screencap -p > smoke/9-speaker.png
+fi
+
 PID="$(adb shell pidof "$PKG" | tr -d '\r')"
 adb logcat -d > smoke/logcat.txt
 adb shell dumpsys gfxinfo "$PKG" > smoke/gfxinfo.txt || true
@@ -87,6 +101,16 @@ if ! grep -q "subscribe_trigger" smoke/fake_ha.log || ! grep -q "rest /api/state
   echo "Klangbild did not connect to the stand-in Home Assistant:"
   cat smoke/fake_ha.log
   exit 1
+fi
+if [ "$SPEAKER_OK" != skipped ]; then
+  # Ready means encrypted, let in and its clock in step; then the stream went to it and ended.
+  if [ "$SPEAKER_OK" != 0 ] || ! grep -q "^PLAYER_READY" smoke/sendspin.log || ! grep -q "^STREAM_ENDED" smoke/sendspin.log; then
+    echo "The speaker did not take its stream from the Sendspin server:"
+    cat smoke/sendspin.log
+    exit 1
+  fi
+  echo "The speaker took a stream from the Sendspin server:"
+  grep -E "^(PLAYER_READY|STREAM_|SENT_CHUNKS|CLIENT_DISCONNECTED)" smoke/sendspin.log
 fi
 if ! grep -q "get_config" smoke/fake_ha.log; then
   echo "Note: Klangbild did not ask Home Assistant where it stands."

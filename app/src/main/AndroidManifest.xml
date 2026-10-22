@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- This TV as a speaker: a foreground service that plays media. Both are normal permissions. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- No signature permission of the app's own: after the key rotation an update that declares
          one again is refused (the original key has no permission capability in the lineage).
@@ -57,6 +60,12 @@
                 <data android:scheme="klangbild" />
             </intent-filter>
         </activity>
+
+        <!-- This TV as a speaker in Music Assistant, while the setting is on (see SpeakerService). -->
+        <service
+            android:name=".SpeakerService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Optional system screen saver; some TVs let it be chosen only with ADB (see KlangbildDream). -->
         <service

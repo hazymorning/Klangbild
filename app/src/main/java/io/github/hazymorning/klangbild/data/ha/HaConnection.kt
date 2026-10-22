@@ -155,6 +155,29 @@ class HaConnection(
         _missing.value = emptySet()
     }
 
+    /**
+     * The unique ids the entity registry has for [ids] (`config/entity_registry/get_entries`,
+     * open to every user): for a Music Assistant speaker, its player's id in Music Assistant.
+     * Throws when Home Assistant cannot say.
+     */
+    suspend fun uniqueIds(ids: List<String>): Map<String, String> {
+        val s = session ?: error("not connected")
+        val answer = s.command(handshakeTimeoutMs) { id ->
+            buildJsonObject {
+                put("id", id)
+                put("type", "config/entity_registry/get_entries")
+                put("entity_ids", buildJsonArray { ids.forEach { add(JsonPrimitive(it)) } })
+            }
+        } as? JsonObject ?: throw IOException("Unexpected answer to get_entries")
+        return answer.mapNotNull { (entity, entry) -> ((entry as? JsonObject)?.string("unique_id"))?.let { entity to it } }.toMap()
+    }
+
+    /** Reads the entity registry as listed for display again ([registry]): an entity Home Assistant has added since. */
+    suspend fun refreshRegistry() {
+        val s = session ?: return
+        registryOf(optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } })?.let { _registry.value = it }
+    }
+
     /** Skip the remaining backoff (the network just came back, say). */
     fun retryNow() {
         wakeUp.trySend(Unit)

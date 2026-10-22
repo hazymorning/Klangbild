@@ -82,4 +82,26 @@ class MaClientTest {
         assertThat(MaClient.addressIn("https://i.scdn.co/image/ab67616d0000b273abc")).isNull()
         assertThat(MaClient.addressIn(null)).isNull()
     }
+
+    @Test
+    fun `the player around this TV's speaker is found by its output, or is the speaker itself`() = runBlocking {
+        val players = """[{"player_id":"media_player_kitchen","output_protocols":[]},
+            {"player_id":"up1a2b3c4d","type":"player","output_protocols":[{"output_protocol_id":"other"},{"output_protocol_id":"Q2xpZW50SWQ"}]}]"""
+        server.enqueue(MockResponse.Builder().body(players).build())
+        assertThat(client.playerOf("Q2xpZW50SWQ")).isEqualTo("up1a2b3c4d")
+        assertThat(Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content).isEqualTo("players/all")
+        // Not named yet (the first seconds after the speaker first connects).
+        server.enqueue(MockResponse.Builder().body("""[{"player_id":"media_player_kitchen"}]""").build())
+        assertThat(client.playerOf("Q2xpZW50SWQ")).isNull()
+        server.enqueue(MockResponse.Builder().body("""[{"player_id":"Q2xpZW50SWQ"}]""").build())
+        assertThat(client.playerOf("Q2xpZW50SWQ")).isEqualTo("Q2xpZW50SWQ")
+    }
+
+    @Test
+    fun `its clock is asked with the time command`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("1792630000.125").build())
+        assertThat(client.serverTime()).isEqualTo(1_792_630_000.125)
+        assertThat(Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content).isEqualTo("time")
+    }
 }
+

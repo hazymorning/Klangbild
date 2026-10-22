@@ -39,6 +39,10 @@ class SetupHandlerTest {
     private var now = 1_000_000L
     private var exchangeFails = false
 
+    /** This TV's own speaker in Home Assistant, and its pairing code, while it plays as a speaker. */
+    private var own: String? = null
+    private var pairing: String? = null
+
     private val clientId = "http://192.168.1.23:8765/"
 
     /** What saving also does: on the TV it ends the setup. */
@@ -72,6 +76,8 @@ class SetupHandlerTest {
             maAnswer
         },
         maGuess = { "http://192.168.1.5:8095" },
+        ownSpeaker = { own },
+        pairingToken = { pairing },
         random = SecureRandom(),
         now = { now },
         wrongCodeDelayMs = 0L,
@@ -176,6 +182,37 @@ class SetupHandlerTest {
         assertThat(post("/api/save", """{$base,"maUrl":""}""").status).isEqualTo(200)
         assertThat(stored.maUrl).isNull()
         assertThat(stored.maToken).isNull()
+    }
+
+    @Test
+    fun `this TV plays as a speaker once ticked, and then it can be the speaker followed`() {
+        val base = """"code":"${handler.code}","url":"192.168.1.5:8123","token":"""""
+        // "This TV" needs Music Assistant and the TV playing for it.
+        assertThat(post("/api/save", """{$base,"entity":"this_tv","tvSpeaker":true}""").status).isEqualTo(400)
+        assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"192.168.1.5:8095","maToken":"ma-secret","tvSpeaker":true}""").status).isEqualTo(200)
+        assertThat(stored.tvSpeaker).isTrue()
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["tvSpeaker"]!!.jsonPrimitive.content).isEqualTo("true")
+        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095","tvSpeaker":false}""").status).isEqualTo(400)
+        assertThat(stored.entityId).isEqualTo("media_player.wz")
+        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095","tvSpeaker":true}""").status).isEqualTo(200)
+        assertThat(stored.entityId).isEqualTo("this_tv")
+        assertThat(stored.speakerOn).isTrue()
+        // A page that does not know the checkbox leaves it as it was.
+        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095"}""").status).isEqualTo(200)
+        assertThat(stored.tvSpeaker).isTrue()
+    }
+
+    @Test
+    fun `the pairing code is given only with the code, and the TV's own speaker is left out of the list`() {
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["pairingToken"]!!.jsonPrimitive.content).isEmpty()
+        pairing = "SP:0PAIRINGCODE"
+        assertThat(post("/api/state", """{"code":"999999"}""").status).isEqualTo(403)
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["pairingToken"]!!.jsonPrimitive.content).isEqualTo("SP:0PAIRINGCODE")
+        assertThat(String(get("/").body)).doesNotContain("SP:0PAIRINGCODE")
+        fun speakers() = json(post("/api/discover", """{"code":"${handler.code}","url":"192.168.1.5:8123","token":""}"""))["speakers"].toString()
+        assertThat(speakers()).contains("media_player.wz")
+        own = "media_player.wz"
+        assertThat(speakers()).isEqualTo("[]")
     }
 
     @Test

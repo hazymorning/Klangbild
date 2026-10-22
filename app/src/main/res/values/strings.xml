@@ -31,7 +31,7 @@
     <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when Klangbild turns off.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant, the language.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, playing here and the language.</string>
 
     <!-- Settings menu: lines -->
     <string name="entry_queue">Queue</string>
@@ -59,6 +59,7 @@
     <string name="entry_sleep_after">Turn off after</string>
     <string name="entry_sleep_action">When turning off</string>
     <string name="entry_language">Language</string>
+    <string name="entry_play_here">Play here</string>
 
     <!-- Settings menu: values -->
     <string name="queue_list">List</string>
@@ -193,6 +194,15 @@
     <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
     <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
+    <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>
+    <string name="about_play_here_off">Music Assistant can play music on this TV too, in time with your other speakers. Once you turn it on, this TV shows up there under its own name.</string>
+    <string name="about_play_here_on">This TV is one of Music Assistant’s speakers and keeps playing while Klangbild is closed. When music starts here, Klangbild shows it.</string>
+    <string name="about_play_here_followed">This TV is the speaker Klangbild follows, so it keeps playing here. To turn it off, choose another speaker on your phone first. OK shows the QR code.</string>
+    <string name="about_play_here_unreachable">Music Assistant doesn’t answer on port 8927 right now, so this TV can’t play yet. Klangbild keeps trying.</string>
+    <string name="about_play_here_too_old">To play on this TV, Music Assistant needs version 2.10.7 or later.</string>
+    <string name="about_play_here_too_new">Your Music Assistant is newer than this version of Klangbild. Once Klangbild is updated, this TV plays again.</string>
+    <string name="about_play_here_refused">Music Assistant didn’t let this TV in. You can pair it there with the code from the setup page on your phone.</string>
+    <string name="about_play_here_no_key">This TV can’t open its key for Music Assistant at the moment, so it can’t play yet. Klangbild keeps trying.</string>
 
     <!-- Quick settings -->
     <string name="quick_queue">Queue</string>
@@ -207,7 +217,6 @@
     <string name="favorite_add">Add</string>
     <string name="favorite_adding">Adding…</string>
     <string name="favorite_added">Added</string>
-    <string name="favorite_failed">Not found</string>
     <!-- The quick settings' own buttons (set up on the phone): what OK does, and how it went -->
     <string name="action_run">Run</string>
     <string name="action_activate">Activate</string>
@@ -278,8 +287,16 @@
     <string name="setup_in_browser">or in a browser: </string>
     <string name="setup_no_network">No network connection</string>
 
+    <!-- This TV as a speaker: the notification its service always has -->
+    <string name="speaker_channel">Music on this TV</string>
+    <string name="speaker_notification">Music Assistant can play here.</string>
+
     <!-- Frame statistics (debug overlay): a readout with units, not a sentence that needs plurals -->
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d frames/s · slowest %2$s ms · %3$d late</string>
+    <!-- The sound feed in the debug overlay: how exactly its times are known -->
+    <string name="debug_sound_exact">Exact timing</string>
+    <string name="debug_sound_close">Close timing</string>
+    <string name="debug_sound_none">No sound</string>
     <!-- The setup page on the phone -->
     <string name="page_title">Set up Klangbild</string>
     <string name="page_subtitle">Setup for the TV</string>
@@ -294,6 +311,7 @@
     <string name="page_token_hint">In Home Assistant: Profile → Security → Long-lived access tokens → Create token.</string>
     <string name="page_find">Find speakers</string>
     <string name="page_speaker_heading">2 · Speaker</string>
+    <string name="page_speakers_twice">Many speakers show up here twice. Choose the one marked Music Assistant, since only that one brings the queue and the lyrics.</string>
     <string name="page_speakers_empty">Connect Home Assistant first, then the speakers show here.</string>
     <string name="page_entity_label">or enter the entity directly</string>
     <string name="page_entity_placeholder">media_player.living_room</string>
@@ -309,6 +327,12 @@
     <string name="page_ma_hint">For the queue: with Music Assistant, the list shows what comes next, and Cover Flow all of it, what played and what comes.</string>
     <string name="page_ma_token_placeholder">From Music Assistant</string>
     <string name="page_ma_token_hint">Create a long-lived access token in Music Assistant under Settings → Profile. Leave it empty if you don’t need it.</string>
+    <string name="page_tv_speaker">Play music from Music Assistant on this TV</string>
+    <string name="page_tv_speaker_hint">This TV then shows up in Music Assistant as a speaker under its own name and plays in time with your other speakers, also while Klangbild is closed.</string>
+    <string name="page_pair_toggle">Pairing code</string>
+    <string name="page_pair_hint">Only needed if Music Assistant asks to pair this TV: enter this code there.</string>
+    <string name="page_this_tv">This TV</string>
+    <string name="page_this_tv_meta">What Music Assistant plays on this TV</string>
     <string name="page_lights_heading">5 · Lights (optional)</string>
     <string name="page_lights_hint">Your lights glow in the cover’s colors. Klangbild remembers how they were and restores them after the music.</string>
     <string name="page_lights_empty">Connect Home Assistant first, then the lights show here.</string>
@@ -380,6 +404,7 @@
     <string name="setup_error_ma_token">Please paste Music Assistant’s access token, or clear the address.</string>
     <string name="setup_error_ma_rejected">Music Assistant rejected the access token.</string>
     <string name="setup_error_ma_unreachable">Music Assistant doesn’t answer at this address. Please check it, or clear the address to go without.</string>
+    <string name="setup_error_this_tv">This TV can be the speaker only while it plays music from Music Assistant.</string>
     <string name="setup_error_speaker">Please choose a speaker.</string>
     <string name="setup_error_sleep">The time must be between 1 and 720 minutes.</string>
     <string name="setup_error_lights">Please pick only lights.</string>
