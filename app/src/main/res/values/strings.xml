@@ -312,6 +312,7 @@
     <string name="page_token_hint">In Home Assistant: Profile → Security → Long-lived access tokens → Create token.</string>
     <string name="page_find">Find speakers</string>
     <string name="page_speaker_heading">2 · Speaker</string>
+    <string name="page_speakers_twice">Many speakers show up here twice. Choose the one marked Music Assistant, since only that one brings the queue and the lyrics.</string>
     <string name="page_speakers_empty">Connect Home Assistant first, then the speakers show here.</string>
     <string name="page_entity_label">or enter the entity directly</string>
     <string name="page_entity_placeholder">media_player.living_room</string>

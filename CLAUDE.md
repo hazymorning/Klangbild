@@ -13,7 +13,9 @@ day take the landscape's place (nothing promised about how or when); it ends by 
 the Discussions and linking the poll (discussion #51) where anyone who would like the landscape to stay can say so, a slim banner under it asking the same and leading there, the devices it runs on (Android TV 9 or later; folded
 away, streaming sticks with a system of their own, where the Android it is built on most likely
 decides, said without more certainty than there is), setup with an optional third step that lets
-Home Assistant open it, the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
+Home Assistant open it (and, at the step that chooses the speaker, a `> [!IMPORTANT]` note that a
+speaker Music Assistant plays on mostly shows up twice and only Music Assistant's entity brings
+its queue and lyrics, since people pick the wrong one), the remote (and that its buttons can be changed), an open invitation to contribute, privacy and the license. It reads short and tidy: upfront only the
 first picture and what it does, with the day and night picture; the queue (its three pictures
 inside its fold), the landscape, setup (its three steps folded inside it), device support, the
 remote, contributing and privacy are each one line to click under "More" (the badge's `#devices`
@@ -390,6 +392,8 @@ setup/          MiniHttp, SetupHandler (one-time code, the sign-in through Home 
                 page: state, callback, code exchange, revocation of what is not kept; API, tokens
                 bound to their address, the own buttons and values, every entity and the scripts'
                 fields; this TV's own speaker left out of the list, where "This TV" stands for it;
+                Music Assistant's speakers first, and while there are any a line saying to choose
+                one of those, since a speaker mostly shows up twice;
                 the pairing code only through the API), SetupPage (HTML in the language shown;
                 entities chosen by searching),
                 SetupServer (+ discovery; Host, Origin and content type checked, a few

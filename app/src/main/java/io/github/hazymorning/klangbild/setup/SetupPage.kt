@@ -65,6 +65,7 @@ object SetupPage {
         "find" to R.string.page_find,
         "speakerHeading" to R.string.page_speaker_heading,
         "speakersEmpty" to R.string.page_speakers_empty,
+        "speakersTwice" to R.string.page_speakers_twice,
         "entityLabel" to R.string.page_entity_label,
         "entityPlaceholder" to R.string.page_entity_placeholder,
         "generalHeading" to R.string.page_general_heading,
@@ -252,6 +253,7 @@ object SetupPage {
 
   <section>
     <h2>{{speakerHeading}}</h2>
+    <p class="hint" id="speakersTwice" hidden>{{speakersTwice}}</p>
     <div class="speakers" id="speakers"><p class="hint">{{speakersEmpty}}</p></div>
     <label for="entity">{{entityLabel}}</label>
     <input id="entity" type="text" placeholder="{{entityPlaceholder}}" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -356,7 +358,9 @@ object SetupPage {
   function renderSpeakers(selected) {
     const box = ${'$'}('speakers'); box.textContent = '';
     const tv = ${'$'}('tvSpeaker').checked ? [{ id: THIS_TV, name: T.thisTv, meta: T.thisTvMeta }] : [];
-    const list = tv.concat(speakers);
+    const list = tv.concat(speakers || []);
+    // A speaker Music Assistant plays on is mostly there twice: its own entity and Music Assistant's.
+    ${'$'}('speakersTwice').hidden = !(speakers || []).some((sp) => sp.ma);
     if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
     list.forEach((sp) => {
       const row = document.createElement('label'); row.className = 'speaker';

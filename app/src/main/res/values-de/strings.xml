@@ -287,6 +287,7 @@
     <string name="page_token_hint">In Home Assistant: Profil → Sicherheit → Langlebige Zugangstoken → Token erstellen.</string>
     <string name="page_find">Lautsprecher suchen</string>
     <string name="page_speaker_heading">2 · Lautsprecher</string>
+    <string name="page_speakers_twice">Viele Lautsprecher stehen hier doppelt. Wähle den mit Music Assistant markierten, denn nur der bringt die Warteschlange und den Songtext mit.</string>
     <string name="page_speakers_empty">Erst Home Assistant verbinden, dann erscheinen hier die Lautsprecher.</string>
     <string name="page_entity_label">oder Entität direkt eingeben</string>
     <string name="page_entity_placeholder">media_player.wohnzimmer</string>
