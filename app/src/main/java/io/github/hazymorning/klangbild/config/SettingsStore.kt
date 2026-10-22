@@ -48,6 +48,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         val lyrics = booleanPreferencesKey("lyrics")
         val maUrl = stringPreferencesKey("ma_url")
         val maToken = stringPreferencesKey("ma_token")
+        val tvSpeaker = booleanPreferencesKey("tv_speaker")
         val background = stringPreferencesKey("background")
         val motion = stringPreferencesKey("motion")
         val lightsLeft = stringPreferencesKey("bars_left")
@@ -119,6 +120,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
             maUrl = p[Keys.maUrl],
             maToken = p[Keys.maToken]?.let(secrets::open),
+            tvSpeaker = p[Keys.tvSpeaker] ?: defaults.tvSpeaker,
             background = enumOr(p[Keys.background], defaults.background),
             motion = enumOr(p[Keys.motion], defaults.motion),
             roomLights = RoomLights(p[Keys.lightsLeft], p[Keys.lightsCenter], p[Keys.lightsRight]),
@@ -163,6 +165,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         p[Keys.lyrics] = s.lyrics
         putOrRemove(Keys.maUrl, s.maUrl)
         putSecret(Keys.maToken, s.maToken)
+        p[Keys.tvSpeaker] = s.tvSpeaker
         p[Keys.background] = s.background.name
         p[Keys.motion] = s.motion.name
         putOrRemove(Keys.lightsLeft, s.roomLights.left)

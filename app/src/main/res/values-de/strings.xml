@@ -257,6 +257,9 @@
     <string name="setup_in_browser">oder im Browser:</string>
     <string name="setup_no_network">Keine Netzwerkverbindung</string>
 
+    <string name="speaker_channel">Musik auf diesem Fernseher</string>
+    <string name="speaker_notification">Music Assistant kann hier spielen.</string>
+
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d Bilder/s · langsamstes %2$s ms · %3$d zu spät</string>
     <string name="page_title">Klangbild einrichten</string>
     <string name="page_subtitle">Einrichtung für den Fernseher</string>

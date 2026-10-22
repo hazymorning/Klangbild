@@ -115,10 +115,23 @@ class Speaker(
         _status.update { SpeakerStatus(link = SpeakerLink.OFF, clientId = it.clientId) }
     }
 
-    /** The network came back: try at once. */
+    /** The network came back, or the TV woke up: try at once. */
     fun retryNow() {
         connection?.retryNow()
     }
+
+    /**
+     * Another app takes the TV's sound: for a moment ([lasting] false) the speaker only goes
+     * quiet, in time underneath; for good it also leaves its group, so Music Assistant stops
+     * playing here. It plays again once the sound is back, or a new stream starts.
+     */
+    fun soundTaken(taken: Boolean, lasting: Boolean = false) {
+        playback.silence(taken)
+        if (taken && lasting) session?.leave()
+    }
+
+    /** The output's timing can no longer be trusted (an HDMI device came or went): put in place anew. */
+    fun outputChanged() = playback.resync()
 
     private suspend fun connect() {
         val m = store.load()

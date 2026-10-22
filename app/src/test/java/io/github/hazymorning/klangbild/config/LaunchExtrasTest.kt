@@ -77,6 +77,16 @@ class LaunchExtrasTest {
     }
 
     @Test
+    fun `the TV as a speaker is switched by an extra, never by a link`() {
+        val on = LaunchExtras.applyTo(Settings(), mapOf("tv_speaker" to "on"))
+        assertThat(on.tvSpeaker).isTrue()
+        assertThat(LaunchExtras.applyTo(on, mapOf("tv_speaker" to false)).tvSpeaker).isFalse()
+        assertThat(LaunchExtras.hasStoredExtras(mapOf("tv_speaker" to true))).isTrue()
+        // A page in the TV's browser cannot make it a speaker.
+        assertThat(LaunchExtras.fromLink(mapOf("tv_speaker" to "on"))).doesNotContainKey("tv_speaker")
+    }
+
+    @Test
     fun `a link may set display options, never the connection`() {
         val extras = LaunchExtras.fromLink(
             mapOf("light" to "dezent", "album" to "aus", "ha_url" to "http://evil", "token" to "x", "entity" to "media_player.x", "setup" to "true"),

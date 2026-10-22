@@ -278,6 +278,10 @@
     <string name="setup_in_browser">or in a browser: </string>
     <string name="setup_no_network">No network connection</string>
 
+    <!-- This TV as a speaker: the notification its service always has -->
+    <string name="speaker_channel">Music on this TV</string>
+    <string name="speaker_notification">Music Assistant can play here.</string>
+
     <!-- Frame statistics (debug overlay): a readout with units, not a sentence that needs plurals -->
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d frames/s · slowest %2$s ms · %3$d late</string>
     <!-- The setup page on the phone -->

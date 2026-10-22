@@ -258,6 +258,15 @@ class Session(
         if (step == Step.ACTIVE && stateSent) sendState()
     }
 
+    /**
+     * Leaves the group with `client/leave` (messaging.md): something else on the TV took its
+     * sound, and the server stops playing here rather than on in a group that no longer hears it.
+     */
+    @Synchronized
+    fun leave() {
+        if (step == Step.ACTIVE) send(Outgoing.leave())
+    }
+
     /** Ends the session with `client/goodbye` ([reason] as the spec names it). */
     @Synchronized
     fun goodbye(reason: String) {

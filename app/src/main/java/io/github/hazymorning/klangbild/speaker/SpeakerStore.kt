@@ -48,7 +48,9 @@ class SpeakerMemory(
  * like the tokens; each value is written on its own, so one that cannot be opened is never lost
  * by writing another.
  */
-class SpeakerStore(private val context: Context, private val secrets: SecretBox, private val random: SecureRandom = SecureRandom()) {
+class SpeakerStore(private val store: DataStore<Preferences>, private val secrets: SecretBox, private val random: SecureRandom = SecureRandom()) {
+    constructor(context: Context, secrets: SecretBox) : this(context.speakerStore, secrets)
+
     private object Keys {
         val identity = stringPreferencesKey("identity")
         val pairingPsk = stringPreferencesKey("pairing_psk")
@@ -62,11 +64,11 @@ class SpeakerStore(private val context: Context, private val secrets: SecretBox,
 
     /** The memory, the identity and the pairing PSK made on first use. */
     suspend fun load(): SpeakerMemory {
-        context.speakerStore.edit { p ->
+        store.edit { p ->
             if (Keys.identity !in p) p[Keys.identity] = seal(KeyPair.generate(random).privateKey)
             if (Keys.pairingPsk !in p) p[Keys.pairingPsk] = seal(ByteArray(Noise.KEY_BYTES).also(random::nextBytes))
         }
-        val p = context.speakerStore.data.first()
+        val p = store.data.first()
         return SpeakerMemory(
             identity = p[Keys.identity]?.let(::open)?.takeIf { it.size == Noise.KEY_BYTES }?.let(KeyPair::of),
             pairingPsk = p[Keys.pairingPsk]?.let(::open)?.takeIf { it.size == Noise.KEY_BYTES },
@@ -78,11 +80,11 @@ class SpeakerStore(private val context: Context, private val secrets: SecretBox,
     }
 
     suspend fun setOutputDelay(ms: Int) {
-        context.speakerStore.edit { it[Keys.outputDelay] = ms.coerceIn(0, MAX_OUTPUT_DELAY_MS) }
+        store.edit { it[Keys.outputDelay] = ms.coerceIn(0, MAX_OUTPUT_DELAY_MS) }
     }
 
     suspend fun setVolume(volume: Int, muted: Boolean) {
-        context.speakerStore.edit {
+        store.edit {
             it[Keys.volume] = volume.coerceIn(0, 100)
             it[Keys.muted] = muted
         }
@@ -104,7 +106,7 @@ class SpeakerStore(private val context: Context, private val secrets: SecretBox,
     suspend fun forget(serverId: String) = editRecords { list -> list.filter { it.serverId != serverId } }
 
     private suspend fun editRecords(change: (List<PairingRecord>) -> List<PairingRecord>) {
-        context.speakerStore.edit { p ->
+        store.edit { p ->
             val now = p[Keys.records]?.let(::records).orEmpty()
             val next = change(now).take(MAX_RECORDS)
             writeRecords(p, next)

@@ -156,6 +156,8 @@ object Outgoing {
 
     fun goodbye(reason: String) = Message.of("client/goodbye", buildJsonObject { put("reason", reason) })
 
+    fun leave() = Message.of("client/leave")
+
     fun pairInit(pairingIndex: Int) = Message.of("client/pair-init", buildJsonObject { put("pairing_index", pairingIndex) })
 
     fun pairFinalize(longTermPsk: ByteArray) = Message.of("client/pair-finalize", buildJsonObject { put("long_term_psk", B64.encode(longTermPsk)) })

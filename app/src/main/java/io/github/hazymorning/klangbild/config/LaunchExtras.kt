@@ -7,7 +7,7 @@ import io.github.hazymorning.klangbild.domain.EntityId
 
 /**
  * `am start` extras. Configuration extras (`ha_url`, `token`, `ma_url`, `ma_token`, `entity`,
- * `sleep_minutes`, `sleep_action`, `clock` and the display options) are stored; `setup`,
+ * `sleep_minutes`, `sleep_action`, `clock`, `tv_speaker` and the display options) are stored; `setup`,
  * `debug` and `landscape` only apply to this launch. A new address without its token drops
  * the stored one: no other app on the TV can redirect a token to an address of its choosing.
  * Names and values are English; the German ones of earlier versions keep working.
@@ -22,6 +22,7 @@ object LaunchExtras {
     const val TOKEN = "token"
     const val MA_URL = "ma_url"
     const val MA_TOKEN = "ma_token"
+    const val TV_SPEAKER = "tv_speaker"
     const val ENTITY = "entity"
     const val SLEEP_MINUTES = "sleep_minutes"
     const val SLEEP_ACTION = "sleep_action"
@@ -68,7 +69,7 @@ object LaunchExtras {
     )
 
     private val stored = listOf(
-        HA_URL, TOKEN, MA_URL, MA_TOKEN, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY,
+        HA_URL, TOKEN, MA_URL, MA_TOKEN, TV_SPEAKER, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY,
         VOLUME_KEYS, REMOTE, APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_BRIGHTNESS,
         SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER, WEATHER,
     )
@@ -104,6 +105,7 @@ object LaunchExtras {
                 "close", "beenden" -> out = out.copy(sleepAction = SleepAction.CLOSE)
             }
         }
+        boolOf(extras[TV_SPEAKER])?.let { out = out.copy(tvSpeaker = it) }
         boolOf(extras[CLOCK])?.let { out = out.copy(showClock = it) }
         boolOf(extras[PROGRESS_BAR])?.let { out = out.copy(showProgressBar = it) }
         boolOf(extras[NEXT])?.let { out = out.copy(showNext = it) }

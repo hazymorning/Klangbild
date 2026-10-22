@@ -1,13 +1,15 @@
 package io.github.hazymorning.klangbild.speaker
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.sendspin.PairingRecord
 import kotlinx.coroutines.runBlocking
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
@@ -23,12 +25,15 @@ class SpeakerStoreTest {
         override fun isPlain(stored: String) = !stored.startsWith("sealed:")
     }
 
-    private val context: Context get() = ApplicationProvider.getApplicationContext()
+    @get:Rule val folder = TemporaryFolder()
+
+    /** A store of its own for each test, empty at first. */
+    private fun storeWith(box: SecretBox) = SpeakerStore(PreferenceDataStoreFactory.create { File(folder.root, "speaker.preferences_pb") }, box)
 
     @Test
     fun `the identity is made once and kept, sealed`(): Unit = runBlocking {
         val box = FakeBox()
-        val store = SpeakerStore(context, box)
+        val store = storeWith(box)
         val first = store.load()
         val again = store.load()
         assertThat(first.identity).isNotNull()
@@ -40,7 +45,7 @@ class SpeakerStoreTest {
     @Test
     fun `an identity that cannot be opened is never replaced`(): Unit = runBlocking {
         val box = FakeBox()
-        val store = SpeakerStore(context, box)
+        val store = storeWith(box)
         val key = store.load().identity!!.publicKey
         box.opening = false
         assertThat(store.load().identity).isNull()
@@ -55,7 +60,7 @@ class SpeakerStoreTest {
 
     @Test
     fun `pairing records are kept newest first and at most eight`(): Unit = runBlocking {
-        val store = SpeakerStore(context, FakeBox())
+        val store = storeWith(FakeBox())
         for (i in 1..10) store.remember(PairingRecord("server$i", ByteArray(32) { i.toByte() }))
         store.used("server5")
         val records = store.load().records
@@ -67,7 +72,7 @@ class SpeakerStoreTest {
 
     @Test
     fun `the output delay stays within what the spec allows`(): Unit = runBlocking {
-        val store = SpeakerStore(context, FakeBox())
+        val store = storeWith(FakeBox())
         store.setOutputDelay(9_000)
         assertThat(store.load().outputDelayMs).isEqualTo(5_000)
         store.setOutputDelay(-5)

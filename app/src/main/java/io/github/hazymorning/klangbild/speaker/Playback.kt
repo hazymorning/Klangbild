@@ -40,6 +40,9 @@ class Playback(
     @Volatile var outputDelayUs = 0L
 
     @Volatile private var targetGain = 1f
+    @Volatile private var volume = 100
+    @Volatile private var muted = false
+    @Volatile private var silenced = false
     private var gain = 1f
     private var rampTarget = 1f
     private var rampStep = 0f
@@ -76,8 +79,21 @@ class Playback(
 
     /** Sets the volume (0 to 100) and mute; the change is ramped over [RAMP_FRAMES]. */
     fun setVolume(volume: Int, muted: Boolean) {
-        targetGain = if (muted) 0f else gainOf(volume)
+        this.volume = volume
+        this.muted = muted
+        targetGain = gainNow()
     }
+
+    /**
+     * Silences the output here, whatever the server says (another app has the TV's sound for a
+     * moment); the audio goes on in time underneath, so it comes back where it belongs.
+     */
+    fun silence(silent: Boolean) {
+        silenced = silent
+        targetGain = gainNow()
+    }
+
+    private fun gainNow(): Float = if (muted || silenced) 0f else gainOf(volume)
 
     /**
      * Everything queued goes, and so does what the output still holds (a clear, the stream's

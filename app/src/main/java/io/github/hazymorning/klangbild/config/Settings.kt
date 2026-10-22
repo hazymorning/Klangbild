@@ -158,6 +158,8 @@ data class Settings(
     /** Music Assistant itself (optional): for the whole queue in Cover Flow. */
     val maUrl: String? = null,
     val maToken: String? = null,
+    /** This TV plays music from Music Assistant, as one of its speakers (needs Music Assistant). */
+    val tvSpeaker: Boolean = false,
     val background: BackgroundMode = BackgroundMode.WALL,
     val motion: MotionLevel = MotionLevel.OFF,
     /** The color lights behind the TV and how brightly they join in (by day; at night they dim on their own). */
@@ -212,6 +214,9 @@ data class Settings(
     val isConfigured: Boolean get() = !haUrl.isNullOrBlank() && haCredentials != null && !entityId.isNullOrBlank()
 
     val hasMusicAssistant: Boolean get() = !maUrl.isNullOrBlank() && !maToken.isNullOrBlank()
+
+    /** This TV plays as a speaker: switched on, and Music Assistant set up. */
+    val speakerOn: Boolean get() = tvSpeaker && hasMusicAssistant
 
     /**
      * [haUrl] set to [url] with [credentials]. Credentials only ever go to the address they were

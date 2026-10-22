@@ -20,6 +20,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -43,7 +44,11 @@ def emit(event: str, *args: object, **fields: object) -> None:
     """One event per line: EVENT [json] key=value ..."""
     parts = [event, *(json.dumps(a, separators=(",", ":")) for a in args)]
     parts += [f"{k}={v}" for k, v in fields.items()]
-    print(" ".join(parts), flush=True)
+    try:
+        print(" ".join(parts), flush=True)
+    except BrokenPipeError:
+        # The reader has gone (its test is over): what follows goes nowhere.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
 
 
 def report_client_state() -> None:

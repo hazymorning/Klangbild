@@ -293,8 +293,16 @@ jobs:
       - name: Download the Android TV ${{ matrix.version }} image
         run: bash ci/install-system-image.sh ${{ matrix.api }} android-tv x86
 
+      # The TV as a speaker plays from aiosendspin, the server Music Assistant 2.10.7 runs.
+      - name: Sendspin's reference server
+        run: |
+          python3 -m venv "$RUNNER_TEMP/sendspin"
+          "$RUNNER_TEMP/sendspin/bin/pip" install --quiet 'aiosendspin[server]==10.2.0'
+
       - name: Klangbild with a stand-in Home Assistant on Android TV ${{ matrix.version }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          SENDSPIN_PYTHON: ${{ runner.temp }}/sendspin/bin/python
         with:
           api-level: ${{ matrix.api }}
           target: android-tv
