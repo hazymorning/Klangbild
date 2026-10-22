@@ -166,7 +166,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Versions follow the calendar, the way Home Assistant's do, from the first release after 6.4.0
   on: the first release in a month is named after it (`v2026.11.0` for November 2026), and later
   releases that month count up the last number (`v2026.11.1`). A pre-release carries a hyphen
-  (`v2026.11.0-beta.1`). The old numbers ended with 6.4.0. Android decides about updates by
+  (`v2026.11.0-beta.1`) and goes up as a draft only the owner sees, published by hand on GitHub's
+  Releases page once tried. The old numbers ended with 6.4.0. Android decides about updates by
   `versionCode`, which only ever grows, so the new names cost installed copies nothing.
 - The "Tidy up" workflow (started by hand) keeps only the newest releases named by the calendar,
   ten by default, deletes the tags of the releases that go (and those left behind by a release

@@ -3,7 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    # A tag like v2026.11.0 publishes a release; one with a hyphen (v2026.11.0-beta.1) a pre-release.
+    # A tag like v2026.11.0 publishes a release; one with a hyphen (v2026.11.0-beta.1) a pre-release,
+    # kept as a draft that only the owner sees until it is published by hand on GitHub.
     tags: ["v*"]
     # A change to the texts and pictures around the app alone builds and tests nothing, since the
     # app stays the same. GitHub never applies path filters to tags, so a release always runs
@@ -454,8 +455,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Klangbild ${{ needs.apk.outputs.version_name }}
           body_path: docs/releases/${{ env.TAG }}.md
-          # Only a tag with a hyphen is a pre-release; every other one is the latest release.
+          # Only a tag with a hyphen is a pre-release; every other one is the latest release. A
+          # pre-release stays a draft until it is published by hand, so it can be tried first.
           prerelease: ${{ contains(env.TAG, '-') }}
+          draft: ${{ contains(env.TAG, '-') }}
           make_latest: ${{ !contains(env.TAG, '-') }}
           files: klangbild.apk
           fail_on_unmatched_files: true
