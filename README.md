@@ -62,7 +62,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 
 The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
-> [!IMPORTANT]
+> **Important**<br>
 > If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
 
 </details>
@@ -104,7 +104,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 
-> [!TIP]
+> **Tip**<br>
 > In the settings you can change what some of the buttons do, for example to have up and down change the volume.
 
 </details>
