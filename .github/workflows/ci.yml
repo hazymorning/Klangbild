@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    # A tag like v2026.11.0 publishes a release; one with a hyphen (v2026.11.0-beta.1) a pre-release,
-    # kept as a draft that only the owner sees until it is published by hand on GitHub.
+    # A tag like v2026.11.0 publishes a release. A beta (v2026.11.0-beta.1) comes from a manual run
+    # instead, as a draft that only the owner sees until it is published by hand on GitHub.
     tags: ["v*"]
     # A change to the texts and pictures around the app alone builds and tests nothing, since the
     # app stays the same. GitHub never applies path filters to tags, so a release always runs
@@ -29,7 +29,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Run on main: publish this commit as a release under this version tag (like v2026.11.0); empty only builds"
+        description: "Run on main: publish this commit as a release under this version tag (like v2026.11.0); a beta (v2026.11.0-beta.1) may run on any branch and becomes a draft; empty only builds"
         required: false
         default: ""
       measure:
@@ -413,10 +413,12 @@ jobs:
   release:
     name: GitHub release
     needs: [apk, tests, lint, smoke, rotation]
-    # A version tag, or a manual run on main with a version (the release then creates the tag).
+    # A version tag, or a manual run on main with a version (the release then creates the tag). A
+    # beta (a version with a hyphen) comes from a manual run on any branch and stays a draft only the
+    # owner sees; publishing it on GitHub creates its tag, whose own run builds but publishes nothing.
     if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release != '')
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.release != '' && (github.ref == 'refs/heads/main' || contains(inputs.release, '-')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
