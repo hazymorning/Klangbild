@@ -28,8 +28,86 @@ During the day the background is light, and at night it turns dark. Since the TV
 
 ## More
 
+<a name="devices"></a>
 <details>
-<summary><b>The queue</b></summary>
+<summary><b>Which TVs</b></summary>
+<br>
+
+Klangbild runs on TVs and boxes with Android TV 9 or later.
+
+**Streaming sticks with Fire OS or Vega OS**
+
+Many streaming sticks run Fire OS, which is built on Android, and the Android version underneath most likely decides whether Klangbild installs. Fire OS 7 and later are built on Android 9 or newer, which should be enough, though Klangbild hasn't been tried on one of those sticks yet. On Fire OS 6 and earlier it won't install, probably because their Android is too old. The newest sticks run Vega OS, which isn't Android at all, so Android apps most likely won't install on them.
+
+</details>
+
+<details>
+<summary><b>Setting it up</b></summary>
+<br>
+
+You need Home Assistant and a TV or box with Android TV 9 or later.
+
+<details>
+<summary><b>1. Install Klangbild on your TV</b></summary>
+<br>
+
+Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself. The easiest way is to open the release page in the free Downloader app, select the APK and allow installs from unknown sources when Android asks.
+
+</details>
+
+<details>
+<summary><b>2. Connect it to Home Assistant</b></summary>
+<br>
+
+The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
+
+> [!IMPORTANT]
+> If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
+
+</details>
+
+<details>
+<summary><b>3. Open it automatically (optional)</b></summary>
+<br>
+
+If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: media_player.living_room
+    to: playing
+actions:
+  - action: media_player.select_source
+    target:
+      entity_id: media_player.tv
+    data:
+      source: io.github.hazymorning.klangbild
+```
+
+The two entity IDs are only examples, so put in the ones for your own speaker and TV.
+
+</details>
+
+</details>
+
+<details>
+<summary><b>TV remote</b></summary>
+<br>
+
+| Button | Action |
+| --- | --- |
+| OK | Play or pause (hold to open the settings) |
+| Left / Right | Previous or next song |
+| Up | Switch to the landscape |
+| Down | Open the quick settings |
+
+In the settings you can change what some of the buttons do, for example to have up and down change the volume.
+
+</details>
+
+<details>
+<summary><b>Your queue</b></summary>
 <br>
 
 <table>
@@ -62,7 +140,7 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 </details>
 
 <details>
-<summary><b>The landscape</b></summary>
+<summary><b>Landscape</b></summary>
 <br>
 
 ![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
@@ -70,86 +148,6 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
-
-</details>
-
-<details>
-<summary><b>Setup & Automation</b></summary>
-<br>
-
-You need Home Assistant and a TV or box with Android TV 9 or later.
-
-<details>
-<summary><b>1. Install Klangbild on your TV</b></summary>
-<br>
-
-Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself. The easiest way is to open the release page in the free Downloader app, select the APK and allow installs from unknown sources when Android asks.
-
-</details>
-
-<details>
-<summary><b>2. Connect it to Home Assistant</b></summary>
-<br>
-
-The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
-
-> [!IMPORTANT]
-> If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
-
-</details>
-
-<details>
-<summary><b>3. Optional: let Home Assistant open Klangbild when the music starts</b></summary>
-<br>
-
-If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
-
-```yaml
-triggers:
-  - trigger: state
-    entity_id: media_player.living_room
-    to: playing
-actions:
-  - action: media_player.select_source
-    target:
-      entity_id: media_player.tv
-    data:
-      source: io.github.hazymorning.klangbild
-```
-
-The two entity IDs are only examples, so put in the ones for your own speaker and TV.
-
-</details>
-
-</details>
-
-<a name="devices"></a>
-<details>
-<summary><b>Device support</b></summary>
-<br>
-
-Klangbild runs on TVs and boxes with Android TV 9 or later.
-
-**Streaming sticks with Fire OS or Vega OS**
-
-Many streaming sticks run Fire OS, which is built on Android, and the Android version underneath most likely decides whether Klangbild installs. Fire OS 7 and later are built on Android 9 or newer, which should be enough, though Klangbild hasn't been tried on one of those sticks yet. On Fire OS 6 and earlier it won't install, probably because their Android is too old. The newest sticks run Vega OS, which isn't Android at all, so Android apps most likely won't install on them.
-
-</details>
-
-</details>
-
-<details>
-<summary><b>TV remote</b></summary>
-<br>
-
-| Button | Action |
-| --- | --- |
-| OK | Play or pause (hold to open the settings) |
-| Left / Right | Previous or next song |
-| Up | Switch to the landscape |
-| Down | Open the quick settings |
-
-In the settings you can change what some of the buttons do, for example to have up and down change the volume.
 
 </details>
 
@@ -162,7 +160,7 @@ Klangbild is a small project made for the joy of it, and it's meant to be a calm
 </details>
 
 <details>
-<summary><b>Privacy</b></summary>
+<summary><b>Your privacy</b></summary>
 <br>
 
 Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant.
