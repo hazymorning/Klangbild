@@ -604,7 +604,7 @@ class HaSourceTest {
         val s = source()
         s.start()
         withTimeout(5_000) { s.state.first { it.favorites } }
-        assertThat(s.favorite()).isTrue()
+        assertThat(s.favorite().isSuccess).isTrue()
         val press = calls.last { it["domain"]?.jsonPrimitive?.content == "button" }
         assertThat(press["service"]!!.jsonPrimitive.content).isEqualTo("press")
         assertThat(press["target"]!!.jsonObject["entity_id"]!!.jsonPrimitive.content).isEqualTo("button.wz_favorite_current_song")
@@ -618,7 +618,7 @@ class HaSourceTest {
         withTimeout(5_000) { s.state.first { it.player != null } }
         delay(300)
         assertThat(s.state.value.favorites).isFalse()
-        assertThat(s.favorite()).isFalse()
+        assertThat(s.favorite().isFailure).isTrue()
         s.stop()
     }
 

@@ -243,22 +243,25 @@ class HaSource(
      * Assistant ("Favorite current song"), else through Music Assistant itself. A station's song
      * is looked up as a song by Music Assistant; it fails when it cannot find one.
      */
-    override suspend fun favorite(): Boolean {
+    override suspend fun favorite(): Result<Unit> {
         val button = favoriteButton()
-        if (button != null) return attempt { connection.callService("button", "press", button) }
-        val client = ma ?: return false
-        val player = lastSnapshot?.activeQueue ?: return false
-        return attempt { client.favoriteNowPlaying(player) }
+        if (button != null) return tried { connection.callService("button", "press", button) }
+        val client = ma ?: return Result.failure(IllegalStateException("No favorite button and no Music Assistant"))
+        val player = lastSnapshot?.activeQueue ?: return Result.failure(IllegalStateException("No queue to favorite from"))
+        return tried { client.favoriteNowPlaying(player) }
     }
 
     /** Runs [block]; whether it worked. Only a cancellation passes. */
-    private suspend fun attempt(block: suspend () -> Unit): Boolean = try {
+    private suspend fun attempt(block: suspend () -> Unit): Boolean = tried(block).isSuccess
+
+    /** Runs [block]; what went wrong, if anything. Only a cancellation passes. */
+    private suspend fun tried(block: suspend () -> Unit): Result<Unit> = try {
         block()
-        true
+        Result.success(Unit)
     } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
-    } catch (_: Exception) {
-        false
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     /**

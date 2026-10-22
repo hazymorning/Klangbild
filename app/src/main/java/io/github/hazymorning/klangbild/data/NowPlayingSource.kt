@@ -15,8 +15,11 @@ interface NowPlayingSource {
     /** Plays on from [positionMs] in the item's own time. */
     suspend fun seek(positionMs: Long)
 
-    /** Adds what plays to Music Assistant's favorites (a station's song as the song); whether it worked. */
-    suspend fun favorite(): Boolean = false
+    /**
+     * Adds what plays to Music Assistant's favorites (a station's song as the song); what went
+     * wrong when it did not work.
+     */
+    suspend fun favorite(): Result<Unit> = Result.failure(UnsupportedOperationException("No favorites here"))
 
     /** Turns shuffle on or off; whether the call went out. */
     suspend fun shuffle(on: Boolean): Boolean = false

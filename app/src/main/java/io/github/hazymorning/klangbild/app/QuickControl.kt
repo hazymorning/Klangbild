@@ -16,6 +16,7 @@ import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import android.util.Log
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -224,7 +225,10 @@ internal class QuickControl(private val host: ControllerHost) {
         }
         host.recompute()
         host.scope.launch {
-            val ok = src.favorite()
+            val result = src.favorite()
+            val ok = result.isSuccess
+            // What Home Assistant or Music Assistant answered, for `adb logcat -s Klangbild`.
+            result.exceptionOrNull()?.let { Log.w(NowPlayingController.TAG, "Favorite failed: ${it.message ?: it.javaClass.simpleName}") }
             synchronized(host.lock) {
                 if (favorite?.first == track.key) favorite = track.key to if (ok) FavoriteState.DONE else FavoriteState.FAILED
             }
@@ -400,9 +404,12 @@ internal class QuickControl(private val host: ControllerHost) {
         return if ((known != null && known.lyrics == null) || track.durationMs == null) LyricsChoice.NONE else LyricsChoice.ON
     }
 
-    /** How far [track]'s way into the favorites has come: asked here, or known from Music Assistant. */
+    /**
+     * How far [track]'s way into the favorites has come: known from Music Assistant, else asked
+     * here. Music Assistant's word wins, so a song that became a favorite after all says so.
+     */
     private fun favoriteState(track: TrackInfo): FavoriteState =
-        favorite?.takeIf { it.first == track.key }?.second ?: if (track.favorite) FavoriteState.DONE else FavoriteState.NONE
+        if (track.favorite) FavoriteState.DONE else favorite?.takeIf { it.first == track.key }?.second ?: FavoriteState.NONE
 
     /**
      * What the quick settings need to know: by default what the screen shows now, while working out

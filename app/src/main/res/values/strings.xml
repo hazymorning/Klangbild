@@ -217,7 +217,6 @@
     <string name="favorite_add">Add</string>
     <string name="favorite_adding">Adding…</string>
     <string name="favorite_added">Added</string>
-    <string name="favorite_failed">Not found</string>
     <!-- The quick settings' own buttons (set up on the phone): what OK does, and how it went -->
     <string name="action_run">Run</string>
     <string name="action_activate">Activate</string>

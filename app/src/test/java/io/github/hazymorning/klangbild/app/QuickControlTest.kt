@@ -73,6 +73,10 @@ class QuickControlTest {
             return answer.await()
         }
 
+        /** What adding the song to the favorites comes to. */
+        var favoriteAnswer: Result<Unit> = Result.success(Unit)
+        override suspend fun favorite(): Result<Unit> = favoriteAnswer
+
         /** The link a party's guests open, as Music Assistant hands it out now; how often it was asked for. */
         var partyLink: String? = null
         var partyAsked = 0
@@ -184,6 +188,22 @@ class QuickControlTest {
         test.runCurrent()
         assertThat(source.ran).hasSize(2)
         assertThat(value(ungroup.entity)).isEqualTo("Failed")
+    }
+
+    @Test
+    fun `a favorite that failed says so, until Music Assistant counts the song as one`() {
+        ui = ui.copy(source = ui.source.copy(favorites = true))
+        source.favoriteAnswer = Result.failure(IllegalStateException("No current item to add to favorites"))
+        quick.open(menuOpen = false)
+        while (rows()[quick.state(ui.screen, landscape = false)!!.cursor].item != QuickItem.FAVORITE) quick.move(+1)
+        fun favorite() = rows().first { it.item == QuickItem.FAVORITE }.value
+        assertThat(favorite()).isEqualTo("Add")
+        quick.change()
+        test.runCurrent()
+        assertThat(favorite()).isEqualTo("Failed")
+        // Music Assistant's queue tells a moment later that the song is a favorite after all.
+        ui = ui.copy(screen = Screen.Stage(TrackInfo("Song", listOf("A"), favorite = true), PlayerStatus.PLAYING, null))
+        assertThat(favorite()).isEqualTo("Added")
     }
 
     @Test

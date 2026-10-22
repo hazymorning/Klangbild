@@ -682,7 +682,9 @@ UI words are given in English with the German in parentheses where it matters.
   / Off (only with Music Assistant connected and a song on stage; while this song has no synced
   words it still says On, in the name's ink and chosen no brighter than another value at rest,
   since a word of its own, "None" (Keiner), read as switched off until 2026.10; OK turns them
-  off), Party code On / Off (only while a party plays here), Favorite (with Music Assistant),
+  off), Party code On / Off (only while a party plays here), Favorite (with Music Assistant; a press
+  that comes back with an error says Failed and logs Home Assistant's answer, and once Music
+  Assistant counts the song as a favorite it says Added),
   Lights On / Off (off remembers the level), Shuffle On / Off (only where the player can
   shuffle; the sleep timer lives in the menu), then the own buttons, and last Settings: Open,
   the way into all settings. Left and right choose, OK changes, down, up or back close, 20 s

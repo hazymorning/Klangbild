@@ -202,7 +202,6 @@
     <string name="favorite_add">Hinzufügen</string>
     <string name="favorite_adding">Hinzufügen …</string>
     <string name="favorite_added">Hinzugefügt</string>
-    <string name="favorite_failed">Nicht gefunden</string>
     <string name="action_run">Ausführen</string>
     <string name="action_activate">Aktivieren</string>
     <string name="action_press">Drücken</string>
