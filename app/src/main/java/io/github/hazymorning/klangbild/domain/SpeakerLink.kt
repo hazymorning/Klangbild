@@ -25,3 +25,12 @@ enum class SpeakerLink {
     /** The speaker's own key cannot be opened at the moment (the keystore refused). */
     NO_KEY,
 }
+
+/** This TV's speaker as the rest of the app sees it. */
+data class SpeakerStatus(
+    val link: SpeakerLink = SpeakerLink.OFF,
+    /** The id Music Assistant knows the speaker by (its Sendspin `client_id`), once it has one. */
+    val clientId: String? = null,
+    /** Music plays on this TV now (its stream runs and its group plays). */
+    val playing: Boolean = false,
+)

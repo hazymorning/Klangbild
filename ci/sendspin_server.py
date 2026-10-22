@@ -136,7 +136,9 @@ async def scenario(args: argparse.Namespace, server: SendspinServer, connected: 
         push.prepare_audio(counter(frame, RATE // 10), AudioFormat(RATE, 16, CHANNELS))
         frame += RATE // 10
         await push.commit_audio()
-        await push.sleep_to_limit_buffer(1_000_000)
+        # Ahead of time, as Music Assistant produces (up to 30 s): a producer that falls behind
+        # the lead the client asks for makes the timeline jump forward.
+        await push.sleep_to_limit_buffer(5_000_000)
     if args.end:
         # Let the client play what it holds, then end the stream.
         end_us = max(push._channel_timing.values(), default=push.now_us())  # noqa: SLF001

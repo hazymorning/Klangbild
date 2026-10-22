@@ -24,6 +24,7 @@ import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 /**
  * The speaker's connection against the reference implementation Music Assistant runs: aiosendspin
@@ -83,8 +84,8 @@ class SendspinEndToEndTest {
         var end: ((SessionEnd, String) -> Unit)? = null
 
         override fun playerState() = PlayerState(volume, muted, delay, requiredLeadTimeMs = 500, minBufferMs = 300)
-        override fun clock(map: ClockMap) {
-            clock = map
+        override fun clock(map: ClockMap?) {
+            if (map != null) clock = map
         }
         override fun playerActive(active: Boolean) { events += "player $active" }
         override fun streamStart() { events += "start" }
@@ -171,11 +172,12 @@ class SendspinEndToEndTest {
                         assertThat(b.serverUs - a.serverUs).isEqualTo(a.frames * 1_000_000L / 48_000)
                     }
                 }
-                // Each came before it was due, by about the lead the server keeps: the clock maps the server's time right.
+                // Each came before it was due, by no more than the server keeps ahead (5 s, and the
+                // second it waits for the speaker to start): the clock maps the server's time right.
                 for (c in speaker.chunks) {
                     val ahead = c.dueUs!! - c.arrivalUs
                     assertThat(ahead).isGreaterThan(0L)
-                    assertThat(ahead).isLessThan(3_000_000L)
+                    assertThat(ahead).isLessThan(6_500_000L)
                 }
                 assertThat(speaker.events).containsAtLeast("player true", "start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end").inOrder()
                 // The commands came back in the speaker's state.
@@ -186,6 +188,61 @@ class SendspinEndToEndTest {
             assertThat(field(server.await("CLIENT_DISCONNECTED"), "goodbye_reason")).isEqualTo("shutdown")
             assertThat(server.await("DONE")).contains("exit_code=0")
         }
+    }
+
+    @Test
+    fun `its playback leaves the device when the synced clock says`() {
+        val speaker = Speaker()
+        val sink = RealTimeSink()
+        val playback = Playback(sink, ChunkQueue(48_000 * 12)) { System.nanoTime() / 1_000 }
+        playback.outputDelayUs = 50_000
+        // The session's clock and audio go to the playback as the speaker hands them on.
+        val feeding = object : Session.Listener by speaker {
+            override fun clock(map: ClockMap?) {
+                speaker.clock(map)
+                playback.clock = map
+            }
+            override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
+                speaker.audio(timestampUs, sendAheadUs, bytes, offset, length, arrivalUs)
+                playback.queue.add(timestampUs, bytes, offset, length / 4)
+            }
+            override fun clear() {
+                speaker.clear()
+                playback.clear()
+            }
+        }
+        assertThat(playback.open()).isTrue()
+        val writer = Thread {
+            while (!Thread.currentThread().isInterrupted) playback.step()
+        }.apply { start() }
+        Server("--play-seconds", "4", "--clear-after", "2", "--end", "--linger", "2").use { server ->
+            val port = field(server.await("READY"), "port")
+            val connection = SpeakerConnection(SpeakerConnection.client(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
+                speaker.end = ended
+                Session(transport, identity, pairingPsk, { speaker.records }, hello, feeding, { System.nanoTime() / 1_000 }, random)
+            })
+            connection.start()
+            try {
+                server.await("STREAM_ENDED")
+                server.await("SENT_CHUNKS")
+            } finally {
+                connection.stop("shutdown")
+                writer.interrupt()
+                writer.join()
+            }
+        }
+        val clock = speaker.clock!!
+        // Each run of samples is matched with its chunk: the one with its counter that was due nearest to when it played.
+        val errors = sink.runs().map { run ->
+            val errorsOfCandidates = speaker.chunks.filter { ((run.counter - it.firstFrame) and 0xffff) < it.frames }.map { c ->
+                val due = clock.clientTime(c.serverUs + ((run.counter - c.firstFrame) and 0xffff) * 1_000_000L / 48_000) - 50_000
+                run.atUs - due
+            }
+            run to errorsOfCandidates.minBy { abs(it) }
+        }
+        assertThat(sink.musicFrames).isGreaterThan(48_000 * 3)
+        // Every stretch played on time, within the player role's millisecond.
+        assertWithMessage("runs played off time").that(errors.filter { (_, e) -> e !in -1_000L..1_000L }.map { (r, e) -> "${r.counter}+${r.frames}: $e us" }).isEmpty()
     }
 
     @Test

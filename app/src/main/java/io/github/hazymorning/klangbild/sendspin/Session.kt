@@ -75,8 +75,8 @@ class Session(
         /** The player's state now (volume, mute, delay, timing), for `client/state`. */
         fun playerState(): PlayerState
 
-        /** The server's clock as the time filter has it after each burst. */
-        fun clock(map: ClockMap)
+        /** The server's clock as the time filter has it after each burst; null while it has not settled. */
+        fun clock(map: ClockMap?)
 
         /** The player role is active ([playing]: its stream may start), or not any more. */
         fun playerActive(active: Boolean)
@@ -157,6 +157,13 @@ class Session(
     /** Whether the time filter has settled enough to schedule playback. */
     val synced: Boolean @Synchronized get() = bursts >= SYNC_BURSTS && filter.errorUs < SYNC_ERROR_US
 
+    /**
+     * What `client/state` says of availability: true once the clock has settled, and then for
+     * the rest of the connection, so a wobble of the clock never takes the speaker out of its
+     * group (the playback waits for the clock meanwhile).
+     */
+    private var available = false
+
     val serverName: String? @Synchronized get() = name
 
     /** Opens the conversation with `client/init`. */
@@ -230,6 +237,19 @@ class Session(
         burstLeft = BURST
         burstBest = null
         sendTime()
+    }
+
+    /**
+     * The local clock stood still meanwhile (the device slept): the time filter starts afresh,
+     * with a burst at once. Until it has settled again, the playback waits for it.
+     */
+    @Synchronized
+    fun clockReset() {
+        filter.reset()
+        bursts = 0
+        burstLeft = 0
+        listener.clock(null)
+        burst()
     }
 
     /** The player's state changed here (volume by the TV, the output delay): the server hears of it. */
@@ -419,7 +439,7 @@ class Session(
         val chosen = burstBest ?: return
         if (filter.update(chosen.offset, chosen.maxError, burstBestAt)) {
             bursts++
-            listener.clock(filter.snapshot())
+            listener.clock(if (synced) filter.snapshot() else null)
         }
         // Available once the clock can be trusted: the first client/state says so.
         if (!stateSent && synced && roles.isNotEmpty()) sendState()
@@ -432,7 +452,8 @@ class Session(
 
     private fun sendState() {
         val player = if (Roles.PLAYER in roles) listener.playerState() else null
-        send(Outgoing.clientState(available = synced, player = player, beats = Roles.VISUALIZER in roles))
+        available = available || synced
+        send(Outgoing.clientState(available = available, player = player, beats = Roles.VISUALIZER in roles))
         stateSent = true
     }
 
@@ -549,7 +570,7 @@ class Session(
         const val BURST_STALL_US = 2_000_000L
 
         /** The clock counts as settled after this many bursts with an error below [SYNC_ERROR_US]. */
-        const val SYNC_BURSTS = 2
+        const val SYNC_BURSTS = 3
         const val SYNC_ERROR_US = 5_000.0
 
         /** The longest fragmented message kept: an audio chunk of 150 ms with room to spare. */

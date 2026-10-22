@@ -31,7 +31,9 @@ class SessionTest {
 
     private val listener = object : Session.Listener {
         override fun playerState() = PlayerState(volume = 40, muted = false, outputDelayMs = 0, requiredLeadTimeMs = 500, minBufferMs = 200)
-        override fun clock(map: ClockMap) { events += "clock" }
+        override fun clock(map: ClockMap?) {
+            if (map != null) events += "clock"
+        }
         override fun playerActive(active: Boolean) { events += "player $active" }
         override fun streamStart() { events += "start" }
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
@@ -235,12 +237,34 @@ class SessionTest {
         pump(server, s)
         assertThat(s.activated).isTrue()
         assertThat(s.playerRole).isTrue()
-        now += 300_000
-        s.burst()
-        pump(server, s)
+        repeat(Session.SYNC_BURSTS - 1) {
+            now += 300_000
+            s.burst()
+            pump(server, s)
+        }
         assertThat(s.synced).isTrue()
         assertThat(events).containsAtLeast("player false", "player true").inOrder()
         assertThat(server.fromClient.single { it.type == "client/state" }.bool("available")).isTrue()
+    }
+
+    @Test
+    fun `once available it stays so, and a clock that starts again waits for its bursts`() {
+        val (server, s) = connect()
+        val clocks = events.count { it == "clock" }
+        s.clockReset()
+        assertThat(s.synced).isFalse()
+        // The playback is told to wait: no clock until it has settled again.
+        pump(server, s)
+        assertThat(events.count { it == "clock" }).isEqualTo(clocks)
+        s.stateChanged()
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isTrue()
+        repeat(Session.SYNC_BURSTS) {
+            now += 300_000
+            s.burst()
+            pump(server, s)
+        }
+        assertThat(s.synced).isTrue()
+        assertThat(events.count { it == "clock" }).isGreaterThan(clocks)
     }
 
     @Test
