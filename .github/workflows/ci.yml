@@ -11,7 +11,7 @@ on:
     # everything, and so does a manual run.
     paths-ignore:
       - "README.md"
-      - "CLAUDE.md"
+      - "AGENTS.md"
       - "LICENSE"
       - "docs/**"
       - "tools/**"
@@ -20,7 +20,7 @@ on:
   pull_request:
     paths-ignore:
       - "README.md"
-      - "CLAUDE.md"
+      - "AGENTS.md"
       - "LICENSE"
       - "docs/**"
       - "tools/**"
