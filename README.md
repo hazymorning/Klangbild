@@ -117,11 +117,9 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 <summary><b>Device support</b></summary>
 <br>
 
-Klangbild runs on TVs and boxes with Android TV 9 or later. Versions 9 to 11 haven't been tried on a real TV yet, so if something looks wrong on one of them, please [open an issue](https://github.com/hazymorning/Klangbild/issues/new?template=bug_report.yml).
+Klangbild runs on TVs and boxes with Android TV 9 or later.
 
-<details>
-<summary><b>Streaming sticks with Fire OS or Vega OS</b></summary>
-<br>
+**Streaming sticks with Fire OS or Vega OS**
 
 Many streaming sticks run Fire OS, which is built on Android, and the Android version underneath most likely decides whether Klangbild installs. Fire OS 7 and later are built on Android 9 or newer, which should be enough, though Klangbild hasn't been tried on one of those sticks yet. On Fire OS 6 and earlier it won't install, probably because their Android is too old. The newest sticks run Vega OS, which isn't Android at all, so Android apps most likely won't install on them.
 
