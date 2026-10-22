@@ -1,7 +1,5 @@
 # Klangbild
 
-Klangbild is a now playing screen for Android TV that works with Home Assistant.
-
 [![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#devices)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
 
@@ -22,8 +20,6 @@ Klangbild works with any media player in Home Assistant and shows the album cove
 During the day the background is light, and at night it turns dark. Since the TV can stay on for hours, the whole picture also drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 ![The same song twice: on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
-
-There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 > [!NOTE]
 > **Klangbild is being built in two phases.** The first, the now playing screen, is practically finished. The second is a modern music visualizer, calm rather than psychedelic, which will one day take the landscape's place. Ideas are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, you can say so in the [poll](https://github.com/hazymorning/Klangbild/discussions/51).
@@ -62,6 +58,8 @@ Press the down button on the remote to open the quick settings, where you can ch
 <br>
 
 ![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
+
+There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
 
 You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
 
