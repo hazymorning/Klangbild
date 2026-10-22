@@ -84,6 +84,9 @@ pictures: effort goes into the app, not into documents.
   choose.
 - An English UI sentence is never longer than its German one (`LanguageTest` checks it).
 - Never name a brand of light, speaker, media player or TV device in texts, names or comments.
+- Whether a feature has been tried on a real device is internal: it stays in these notes and in
+  what Claude tells the user, never in the README, release notes, pull requests or discussions,
+  where it reads as if nothing had been tested. Public texts simply claim nothing unverified.
 - Music metadata keeps its typesetting (`TrackText`); dashes inside strings and test data are
   data. Never search and replace them blindly.
 - Before a release, grep for em dashes, dashes as punctuation and emoji.
