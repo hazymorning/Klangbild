@@ -9,9 +9,10 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isLessThanOrEqualTo
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
 import com.google.zxing.RGBLuminanceSource
@@ -21,11 +22,11 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.test.Test
 
 /**
  * A party's code where the cover stands, for the guests to scan from the couch. Read from
@@ -92,9 +93,9 @@ class PartyCodeTest {
                     partyCode = LINK,
                 )
             }
-            assertWithMessage(name).that(scan(bmp, single)).isEqualTo(LINK)
+            assertThat(scan(bmp, single), name = name).isEqualTo(LINK)
             // Above the code its card is plain: nothing of the cover shows through.
-            assertWithMessage("$name: above the code").that(spread(bmp, intArrayOf(single[0], single[1], single[2], single[1] + 40))).isAtMost(2)
+            assertThat(spread(bmp, intArrayOf(single[0], single[1], single[2], single[1] + 40)), name = "$name: above the code").isLessThanOrEqualTo(2)
         }
     }
 
@@ -113,8 +114,8 @@ class PartyCodeTest {
             val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, flow = true) }.toMap()
             val name = "flow_${wall.name.lowercase()}"
             val bmp = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
-            assertWithMessage(name).that(scan(bmp, middle)).isEqualTo(LINK)
-            assertWithMessage("$name: above the code").that(spread(bmp, intArrayOf(middle[0], middle[1], middle[2], middle[1] + 30))).isAtMost(2)
+            assertThat(scan(bmp, middle), name = name).isEqualTo(LINK)
+            assertThat(spread(bmp, intArrayOf(middle[0], middle[1], middle[2], middle[1] + 30)), name = "$name: above the code").isLessThanOrEqualTo(2)
         }
     }
 

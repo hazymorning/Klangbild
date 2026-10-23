@@ -10,9 +10,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
@@ -20,13 +22,11 @@ import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import org.junit.Rule
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import io.github.hazymorning.klangbild.domain.Catalog
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /**
  * The song's words in motion, as sequences of stills: the list gliding one line on, a break

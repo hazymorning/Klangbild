@@ -14,20 +14,24 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.art.SyntheticCover
-import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.Catalog
-import io.github.hazymorning.klangbild.ui.Fixtures
-import io.github.hazymorning.klangbild.ui.composeRule
+import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.landscape.LabelSide
 import io.github.hazymorning.klangbild.landscape.PaperMotif
+import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.ui.composeRule
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.test.Test
 
 /**
  * What stands beside the mini-player's cover is one block, exactly in the middle of the cover,
@@ -57,20 +61,20 @@ class LandscapeLabelTest {
                 val left = px(if (side == LabelSide.RIGHT) PaperMotif.LABEL_RIGHT_X else PaperMotif.LABEL_LEFT_X)
                 val coverSide = px(PaperMotif.LABEL_HEIGHT)
                 val cover = ink.blocks(left, left + coverSide).single()
-                assertWithMessage("$label: the cover's side").that(cover.second - cover.first + 1).isEqualTo(coverSide)
+                assertThat(cover.second - cover.first + 1, name = "$label: the cover's side").isEqualTo(coverSide)
                 // Beside the cover: the lines, then (for a song) the bar.
                 val beside = ink.blocks(left + coverSide + px(4f), 1920)
                 val lines = ink.lines(left + coverSide + px(4f), 1920, 0, 1080)
                 val withBar = track.durationMs != null
                 val texts = if (withBar) lines.dropLast(1) else lines
-                assertWithMessage("$label: what stands beside the cover").that(beside).hasSize(texts.size + if (withBar) 1 else 0)
-                assertWithMessage("$label: lines").that(texts).hasSize(if (track.artists.isEmpty()) 1 else 2)
+                assertThat(beside, name = "$label: what stands beside the cover").hasSize(texts.size + if (withBar) 1 else 0)
+                assertThat(texts, name = "$label: lines").hasSize(if (track.artists.isEmpty()) 1 else 2)
                 val top = texts.first().capTop
                 val bottom = if (withBar) beside.last().second else texts.last().baseline
                 val middle = (top + bottom + 1) / 2f
                 val coverMiddle = (cover.first + cover.second + 1) / 2f
-                assertWithMessage("$label: the block's middle (from $top to $bottom) on the cover's (${cover.first}–${cover.second})")
-                    .that(abs(middle - coverMiddle)).isAtMost(1f)
+                assertThat(abs(middle - coverMiddle), name = "$label: the block's middle (from $top to $bottom) on the cover's (${cover.first}–${cover.second})")
+                    .isLessThanOrEqualTo(1f)
             }
         }
     }

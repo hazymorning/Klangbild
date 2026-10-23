@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.landscape
 
-import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -21,7 +20,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.AlignmentLine
@@ -35,19 +33,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
+import io.github.hazymorning.klangbild.landscape.LabelSide
+import io.github.hazymorning.klangbild.landscape.PaperMotif
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.render.ImageOps
+import io.github.hazymorning.klangbild.render.imageBitmapOf
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.rememberFrames
 import io.github.hazymorning.klangbild.ui.rememberOffMain
 import io.github.hazymorning.klangbild.ui.stage.fitWords
+import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
-import io.github.hazymorning.klangbild.landscape.LabelSide
-import io.github.hazymorning.klangbild.landscape.PaperMotif
 import kotlin.math.roundToInt
 
 /** What the label on the near bank says: what plays (or played last), its cover's scene once it is ready, and whether it plays. */
@@ -98,10 +98,11 @@ private class LabelBox(side: LabelSide) {
 private fun MusicLabel(m: LabelText, side: LabelSide, inks: () -> IntArray, coverLight: () -> Float) {
     val box = remember(side) { LabelBox(side) }
     val density = LocalDensity.current.density
-    val others = texts()[R.string.artists_others]
+    val others = texts()[Strings.artistsOthers]
     val text = remember(m.track, others) { TrackText.from(m.track, others) }
-    val titleStyle = remember { titleType(TITLE_SP, 400) }
-    val artistStyle = remember { textType(ARTIST_SP, 460) }
+    val faces = faces()
+    val titleStyle = remember(faces) { faces.titleType(TITLE_SP, 400) }
+    val artistStyle = remember(faces) { faces.textType(ARTIST_SP, 460) }
     val measurer = rememberTextMeasurer(cacheSize = 8)
     val widthPx = (box.textWidth * density).roundToInt()
     val title = remember(text, widthPx) { fitWords(measurer, text.title, titleStyle, widthPx) }
@@ -175,13 +176,13 @@ private fun dimmer(k: Float) = ColorFilter.colorMatrix(
 )
 
 /** The cover at exactly [size] px (Lanczos, once per track): the GPU never scales it. */
-private fun miniCover(src: Bitmap, size: Int): ImageBitmap {
+private fun miniCover(src: ImageBitmap, size: Int): ImageBitmap {
     val w = src.width
     val h = src.height
     val px = IntArray(w * h)
-    src.getPixels(px, 0, w, 0, 0, w, h)
+    src.readPixels(px)
     val out = ImageOps.resize(px, w, h, size, size)
-    return Bitmap.createBitmap(out, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()
+    return imageBitmapOf(out, size, size)
 }
 
 private const val GAP = 18f

@@ -1,13 +1,5 @@
 package io.github.hazymorning.klangbild.ui.flow
 
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Matrix
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.RectF
-import android.graphics.Xfermode
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -15,17 +7,23 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FlowCard
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.WallGlow
+import io.github.hazymorning.klangbild.render.plainPaint
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.stage.coverScale
 import kotlin.math.abs
@@ -162,7 +160,6 @@ fun FlowStrip(
         }
         val dx = shift()
         drawIntoCanvas { canvas ->
-            val native = canvas.nativeCanvas
             for (o in 0 until n) {
                 val i = order[o]
                 val a = alphas[i]
@@ -190,7 +187,7 @@ fun FlowStrip(
                     tools.add(was, false, (1f - now) * (1f - half), filterBefore)
                     tools.add(was, true, (1f - now) * half, filterBefore)
                 }
-                mix(native, tools, a, snap = p == 0f)
+                mix(canvas, tools, a, snap = p == 0f)
             }
             // The sign facing the room in the middle card's place, crisp on whole pixels, lit as the middle card.
             val signBefore = old?.sign?.takeIf { it !== sign }
@@ -204,7 +201,7 @@ fun FlowStrip(
                 val signLights = if (sign != null && sign.appearance != appearance && lightsBefore != null) lightsBefore else lights
                 if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else come, signLights.filter(lit))
                 if (signBefore != null && lightsBefore != null) tools.add(signBefore, false, if (sign == null) 1f else 1f - come, lightsBefore.filter(lit))
-                mix(native, tools, covered, snap = true)
+                mix(canvas, tools, covered, snap = true)
             }
         }
         // The cards dissolve into the wall before the screen's edges (on an OLED the band stays
@@ -250,16 +247,16 @@ private fun stepBack(lightness: Float, middle: Float, position: Float, appearanc
 
 /** The cards' color filters on one wall, cached by step of light. */
 private class Lights(private val appearance: Appearance, private val paper: Int) {
-    private val cache = HashMap<Int, ColorMatrixColorFilter>()
+    private val cache = HashMap<Int, ColorFilter>()
 
-    fun filter(light: Float): ColorMatrixColorFilter {
+    fun filter(light: Float): ColorFilter {
         val step = (light * STEPS).roundToInt()
-        return cache.getOrPut(step) { ColorMatrixColorFilter(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
+        return cache.getOrPut(step) { ColorFilter.colorMatrix(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
     }
 }
 
 /**
- * Reused per strip: corners, matrix and paint, and the textures a card is mixed from this frame
+ * Reused per strip: corners, matrix and paints, and the textures a card is mixed from this frame
  * (at most four: its full and half-size texture, and those of its look before), so nothing is
  * allocated per frame.
  */
@@ -268,15 +265,14 @@ private class DrawTools {
     val dst = FloatArray(8)
     val src = FloatArray(8)
     val matrix = Matrix()
-    val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-    val bounds = RectF()
-    val beneath: Xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
-    val add: Xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+    val perspective = Perspective()
+    val paint = plainPaint()
+    val layer = plainPaint()
 
     val textures = arrayOfNulls<FlowCard>(4)
     val halves = BooleanArray(4)
     val weights = FloatArray(4)
-    val filters = arrayOfNulls<ColorMatrixColorFilter>(4)
+    val filters = arrayOfNulls<ColorFilter>(4)
     var count = 0
 
     fun clear() {
@@ -284,7 +280,7 @@ private class DrawTools {
     }
 
     /** Adds [card]'s texture (the half-size one if [half]) with its share [weight] of the mix, lit by [filter]. */
-    fun add(card: FlowCard, half: Boolean, weight: Float, filter: ColorMatrixColorFilter) {
+    fun add(card: FlowCard, half: Boolean, weight: Float, filter: ColorFilter) {
         if (weight <= 0f) return
         textures[count] = card
         halves[count] = half
@@ -309,7 +305,7 @@ private class DrawTools {
  * wall) are mixed in a small layer of the card's own, exactly whatever they hold. That happens
  * only now and then, for a moment.
  */
-private fun mix(canvas: android.graphics.Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
+private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
     val n = tools.count
     if (n == 0) return
     val first = tools.textures[0]!!
@@ -320,9 +316,9 @@ private fun mix(canvas: android.graphics.Canvas, tools: DrawTools, alpha: Float,
     var own = true
     for (j in 1 until n) if (tools.textures[j] !== first) own = false
     if (own && first.appearance == Appearance.DARK) {
-        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], mode = tools.beneath)
+        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], mode = BlendMode.DstOut)
         for (j in 0 until n) {
-            quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = tools.add)
+            quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = BlendMode.Plus)
         }
     } else if (own && n == 2) {
         // Full beneath at a(1 - h) / (1 - a h), half over at a h: together exactly a, for any a.
@@ -334,29 +330,33 @@ private fun mix(canvas: android.graphics.Canvas, tools: DrawTools, alpha: Float,
         quad(canvas, first, true, over, tools.filters[half]!!, tools, snap = false)
     } else {
         val d = tools.dst
-        val b = tools.bounds
-        b.set(min(min(d[0], d[2]), min(d[4], d[6])), min(min(d[1], d[3]), min(d[5], d[7])), max(max(d[0], d[2]), max(d[4], d[6])), max(max(d[1], d[3]), max(d[5], d[7])))
-        b.inset(-LAYER_MARGIN_PX, -LAYER_MARGIN_PX)
-        val layer = canvas.saveLayerAlpha(b, (alpha.coerceIn(0f, 1f) * 255f).roundToInt())
+        val bounds = Rect(
+            min(min(d[0], d[2]), min(d[4], d[6])) - LAYER_MARGIN_PX,
+            min(min(d[1], d[3]), min(d[5], d[7])) - LAYER_MARGIN_PX,
+            max(max(d[0], d[2]), max(d[4], d[6])) + LAYER_MARGIN_PX,
+            max(max(d[1], d[3]), max(d[5], d[7])) + LAYER_MARGIN_PX,
+        )
+        tools.layer.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt() / 255f
+        canvas.saveLayer(bounds, tools.layer)
         for (j in 0 until n) {
-            quad(canvas, tools.textures[j]!!, tools.halves[j], tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = if (j == 0) null else tools.add)
+            quad(canvas, tools.textures[j]!!, tools.halves[j], tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = if (j == 0) BlendMode.SrcOver else BlendMode.Plus)
         }
-        canvas.restoreToCount(layer)
+        canvas.restore()
     }
 }
 
-/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [tools].dst, blended by [mode] (laid over when null). */
+/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [tools].dst, blended by [mode]. */
 private fun quad(
-    canvas: android.graphics.Canvas,
+    canvas: Canvas,
     card: FlowCard,
     half: Boolean,
     alpha: Float,
-    filter: ColorMatrixColorFilter?,
+    filter: ColorFilter?,
     tools: DrawTools,
     snap: Boolean,
-    mode: Xfermode? = null,
+    mode: BlendMode = BlendMode.SrcOver,
 ) {
-    val bitmap = if (half) card.half else card.full
+    val image = if (half) card.half else card.full
     val scale = if (half) 0.5f else 1f
     val pad = FlowCard.PAD * scale
     val w = card.sidePx * scale
@@ -369,15 +369,20 @@ private fun quad(
     val m = tools.matrix
     if (snap) {
         // Facing the room, the card is drawn 1:1 on whole pixels, as crisp as the single cover.
-        m.setTranslate((tools.dst[0] - pad).roundToInt().toFloat(), (tools.dst[1] - pad).roundToInt().toFloat())
+        m.reset()
+        m[3, 0] = (tools.dst[0] - pad).roundToInt().toFloat()
+        m[3, 1] = (tools.dst[1] - pad).roundToInt().toFloat()
     } else {
-        m.setPolyToPoly(s, 0, tools.dst, 0, 4)
+        // A quad without area keeps the matrix before, as it always has.
+        tools.perspective.map(s, tools.dst, m)
     }
-    tools.paint.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt()
+    tools.paint.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt() / 255f
     tools.paint.colorFilter = filter
-    tools.paint.xfermode = mode
-    canvas.drawBitmap(bitmap, m, tools.paint)
-    tools.paint.xfermode = null
+    tools.paint.blendMode = mode
+    canvas.save()
+    canvas.concat(m)
+    canvas.drawImage(image, Offset.Zero, tools.paint)
+    canvas.restore()
 }
 
 /**

@@ -27,15 +27,16 @@ object EmojiText {
         var current: Boolean? = null
         var i = 0
         while (i < text.length) {
-            val cp = text.codePointAt(i)
+            val cp = Emoji.codePointAt(text, i)
             val e = isEmoji(cp)
             if (current != null && e != current) {
                 out += current to sb.toString()
-                sb.setLength(0)
+                sb.clear()
             }
             current = e
-            sb.appendCodePoint(cp)
-            i += Character.charCount(cp)
+            val next = i + Emoji.charCount(cp)
+            sb.appendRange(text, i, next)
+            i = next
         }
         if (current != null && sb.isNotEmpty()) out += current to sb.toString()
         return out

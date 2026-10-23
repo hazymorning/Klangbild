@@ -16,25 +16,27 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.google.common.truth.Truth.assertWithMessage
-import io.github.hazymorning.klangbild.ui.Fixtures
-import io.github.hazymorning.klangbild.ui.composeRule
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.landscape.CameraPose
 import io.github.hazymorning.klangbild.landscape.LabelSide
+import io.github.hazymorning.klangbild.landscape.LandscapeCamera
 import io.github.hazymorning.klangbild.landscape.PaperBake
 import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.SeasonShapes
 import io.github.hazymorning.klangbild.landscape.SkyMap
 import io.github.hazymorning.klangbild.landscape.SkyState
-import io.github.hazymorning.klangbild.landscape.LandscapeCamera
+import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.ui.composeRule
 import org.junit.Rule
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /**
  * The camera's journey: in every corner of its range, and with the screen's own drift against
@@ -93,7 +95,7 @@ class LandscapeCameraTest {
                     val px = IntArray(bmp.width * bmp.height)
                     bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
                     val bad = px.count { it == MAGENTA_ARGB }
-                    assertWithMessage("$side, zoom $zoom, view at $cx/$cy, drift $dx/$dy: background showing").that(bad).isEqualTo(0)
+                    assertThat(bad, name = "$side, zoom $zoom, view at $cx/$cy, drift $dx/$dy: background showing").isEqualTo(0)
                 }
             }
         }
@@ -115,7 +117,7 @@ class LandscapeCameraTest {
         // The right group of cut-outs (dp 730 to 850 across, 320 to 450 down; 2 px a dp).
         var changed = 0
         for (y in 640 until 900) for (x in 1460 until 1700) if (a.getPixel(x, y) != b.getPixel(x, y)) changed++
-        assertWithMessage("pixels that moved with the breeze").that(changed).isGreaterThan(40)
+        assertThat(changed, name = "pixels that moved with the breeze").isGreaterThan(40)
     }
 
     @Category(Pictures::class)

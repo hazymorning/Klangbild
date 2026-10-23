@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isGreaterThanOrEqualTo
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.contrastRatio
 import io.github.hazymorning.klangbild.color.relativeLuminance
@@ -19,10 +20,10 @@ import io.github.hazymorning.klangbild.ui.stage.FieldLayer
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * On the cover colors the quietest text keeps 4.5:1 against the lightest pixel the
@@ -64,9 +65,8 @@ class CoverFieldContrastTest {
             for (t in listOf(0.0, 47.0, 133.0, 260.0)) {
                 at = t
                 val worst = worstBehindText(scene, darkText = appearance == Appearance.LIGHT)
-                assertWithMessage("${track.title}, $appearance, t = $t")
-                    .that(contrastRatio(scene.palette.inkQuiet, worst))
-                    .isAtLeast(4.5f)
+                assertThat(contrastRatio(scene.palette.inkQuiet, worst), name = "${track.title}, $appearance, t = $t")
+                    .isGreaterThanOrEqualTo(4.5f)
             }
         }
     }

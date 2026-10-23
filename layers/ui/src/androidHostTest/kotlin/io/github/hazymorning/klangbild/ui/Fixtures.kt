@@ -6,21 +6,26 @@ import io.github.hazymorning.klangbild.app.AppFixtures
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.QueueList
 import io.github.hazymorning.klangbild.app.StageData
-import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.text.LocalTexts
+import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.text.TestTexts
+import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
+import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
-import io.github.hazymorning.klangbild.text.LocalTexts
-import io.github.hazymorning.klangbild.text.TestTexts
-import io.github.hazymorning.klangbild.text.Texts
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
+import io.github.hazymorning.klangbild.ui.theme.LocalFaces
+import io.github.hazymorning.klangbild.ui.theme.LocalGlyphs
+import io.github.hazymorning.klangbild.ui.theme.faces
 
 /**
  * The screens' test content: the controller's ([AppFixtures]), plus the stage's models and the
@@ -48,7 +53,7 @@ object Fixtures : AppFixtures() {
         linkDown: Boolean = false,
         values: List<String> = emptyList(),
     ): StageModel {
-        val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.R.string.artists_others])
+        val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers])
         return StageModel(
             scene = scene,
             text = if (album) text else text.copy(album = null),
@@ -80,12 +85,12 @@ object Fixtures : AppFixtures() {
         t: Texts = texts,
     ): StageModel {
         val chapter = io.github.hazymorning.klangbild.domain.ChapterPlace.at(track, position) { n ->
-            t.format(io.github.hazymorning.klangbild.text.R.string.chapter_number, n)
+            t.format(io.github.hazymorning.klangbild.text.Strings.chapterNumber, n)
         }
         val lead = StageTexts.lead(PlayerStatus.PLAYING, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, pace = pace)
         return StageModel(
             scene = scene(track, appearance = appearance, flow = flow, coverField = coverField),
-            text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.R.string.artists_others]),
+            text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers]),
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
             positionMs = { position },
@@ -120,7 +125,7 @@ object Fixtures : AppFixtures() {
         val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
         return StageModel(
             scene = scene,
-            text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.R.string.artists_others]),
+            text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers]),
             status = status,
             durationMs = track.durationMs,
             positionMs = position,
@@ -154,7 +159,7 @@ object Fixtures : AppFixtures() {
         album: Boolean = true,
     ): StageModel {
         val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
-        val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.R.string.artists_others])
+        val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers])
         return StageModel(
             scene = scene,
             text = if (album) text else text.copy(album = null),
@@ -177,7 +182,13 @@ object Fixtures : AppFixtures() {
     /** A still in [t]'s words. */
     @Composable
     fun Still(t: Texts, content: @Composable () -> Unit) {
-        CompositionLocalProvider(LocalStill provides true, LocalTexts provides t, content = content)
+        CompositionLocalProvider(LocalStill provides true, LocalTexts provides t, LocalFaces provides faces(), LocalGlyphs provides AndroidGlyphs, content = content)
+    }
+
+    /** [content] with the platform's glyphs, which the root takes from its hooks: the rest clock and the landscape's waiting line need them. */
+    @Composable
+    fun Glyphs(content: @Composable () -> Unit) {
+        CompositionLocalProvider(LocalGlyphs provides AndroidGlyphs, content = content)
     }
 
     /** The animated cover flow for one strip; what comes next is the card to the right. */

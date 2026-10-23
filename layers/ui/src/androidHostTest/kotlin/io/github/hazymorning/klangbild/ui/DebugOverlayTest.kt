@@ -4,14 +4,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /** The debug overlay's sound meter reads its feed only while it shows. */
 @RunWith(AndroidJUnit4::class)
@@ -45,7 +46,7 @@ class DebugOverlayTest {
     fun `the feed is read while the overlay shows, and let go with it`() {
         val feed = Steady()
         var shown by mutableStateOf(true)
-        compose.setContent { if (shown) DebugOverlay(feed) }
+        compose.setContent { if (shown) DebugOverlay(FrameStats.stats, feed) }
         compose.waitForIdle()
         assertThat(feed.readers).isEqualTo(1)
         shown = false

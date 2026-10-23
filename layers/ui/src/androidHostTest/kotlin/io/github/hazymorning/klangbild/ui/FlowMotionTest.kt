@@ -6,18 +6,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /**
  * The cover flow in motion, as sequences of stills: the next picture arriving (the strip

@@ -48,7 +48,7 @@ object Emoji {
     }
 
     /** The code point at [i] in [text]: a surrogate pair is one. */
-    private fun codePointAt(text: String, i: Int): Int {
+    fun codePointAt(text: String, i: Int): Int {
         val c = text[i]
         val next = text.getOrNull(i + 1)
         return if (c.isHighSurrogate() && next != null && next.isLowSurrogate()) pair(c, next) else c.code
@@ -64,5 +64,5 @@ object Emoji {
     private fun pair(high: Char, low: Char): Int = ((high.code - 0xD800) shl 10) + (low.code - 0xDC00) + 0x10000
 
     /** How many chars [cp] takes: two above the Basic Multilingual Plane. */
-    private fun charCount(cp: Int): Int = if (cp >= 0x10000) 2 else 1
+    fun charCount(cp: Int): Int = if (cp >= 0x10000) 2 else 1
 }

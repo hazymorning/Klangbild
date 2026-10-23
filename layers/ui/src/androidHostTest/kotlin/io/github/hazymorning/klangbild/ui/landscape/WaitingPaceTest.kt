@@ -1,9 +1,14 @@
 package io.github.hazymorning.klangbild.ui.landscape
 
-import com.google.common.collect.Range
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.landscape.BakeProgress
-import org.junit.Test
+import kotlin.test.Test
 
 class WaitingPaceTest {
     private val pace = WaitingPace()
@@ -26,10 +31,10 @@ class WaitingPaceTest {
         val a = run(2.0, BakeProgress(0.1f, 0.4f))
         val b = run(2.5, BakeProgress(0.1f, 0.4f))
         val c = run(3.0, BakeProgress(0.1f, 0.4f))
-        assertThat(b - a).isWithin(0.002f).of(0.05f)
-        assertThat(c - b).isWithin(0.002f).of(0.05f)
+        assertThat(b - a).isCloseTo(0.05f, 0.002f)
+        assertThat(c - b).isCloseTo(0.05f, 0.002f)
         // It stops at that part's end until the bake has come further.
-        assertThat(run(8.0, BakeProgress(0.1f, 0.4f))).isIn(Range.closed(0.39f, 0.4f))
+        assertThat(run(8.0, BakeProgress(0.1f, 0.4f))).isBetween(0.39f, 0.4f)
     }
 
     @Test
@@ -37,14 +42,14 @@ class WaitingPaceTest {
         val early = run(0.75, BakeProgress(0f, 0.1f))
         assertThat(early).isGreaterThan(0.02f)
         assertThat(early).isLessThan(0.05f)
-        assertThat(run(10.0, BakeProgress(0f, 0.1f))).isAtMost(0.1f)
+        assertThat(run(10.0, BakeProgress(0f, 0.1f))).isLessThanOrEqualTo(0.1f)
     }
 
     @Test
     fun `it never goes back, not even when a bake starts over`() {
         run(1.0, BakeProgress(0f, 0.2f))
         val before = run(4.0, BakeProgress(0.5f, 0.6f))
-        assertThat(run(6.0, BakeProgress(0f, 0.1f))).isAtLeast(before)
+        assertThat(run(6.0, BakeProgress(0f, 0.1f))).isGreaterThanOrEqualTo(before)
     }
 
     @Test

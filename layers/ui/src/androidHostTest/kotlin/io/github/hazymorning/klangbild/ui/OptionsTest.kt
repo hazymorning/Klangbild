@@ -1,7 +1,13 @@
 package io.github.hazymorning.klangbild.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Intensity
 import io.github.hazymorning.klangbild.config.MenuContext
@@ -15,17 +21,11 @@ import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.onRoot
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /** The adjustable parts: the speaker group in the status line, volume, hidden lines, light, menu. */
 @Category(Pictures::class)
@@ -186,7 +186,7 @@ class OptionsTest {
     @Test fun menuPlayHereNeeds() = shot("menu_play_here_needs") { MenuScreen(menu(MenuEntry.PLAY_HERE)) }
 
     /** The debug overlay's sound meter, as this TV's own playback feeds it, a downbeat just heard. */
-    @Test fun debugSoundMeter() = shot("debug_sound_meter") { DebugOverlay(DebugOverlayTest.Steady()) }
+    @Test fun debugSoundMeter() = shot("debug_sound_meter") { DebugOverlay(FrameStats.stats, DebugOverlayTest.Steady()) }
 
     /**
      * A sequence of frames on the test's own clock. The menu's light is made off the main thread on

@@ -3,15 +3,20 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.endsWith
+import assertk.assertions.isEmpty
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.ActionState
@@ -22,7 +27,6 @@ import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.QueueDisplay
-import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
@@ -33,6 +37,7 @@ import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.domain.SleepChoice
@@ -40,29 +45,31 @@ import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupPage
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.text.AppLanguage
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
+import io.github.hazymorning.klangbild.ui.theme.Faces
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.w3c.dom.Element
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.test.Test
 
 /**
  * Both languages, everywhere: every menu line, value and explanation, the quick settings, the
@@ -112,8 +119,8 @@ class LanguageTest {
 
     private fun assertEnglish(where: String, text: String?) {
         if (text == null) return
-        assertWithMessage("%s says \"%s\"", where, text).that(words(text).filter { it in germanOnly }).isEmpty()
-        assertWithMessage("%s says \"%s\"", where, text).that(text).doesNotContainMatch("[äöüÄÖÜß„]")
+        assertThat(words(text).filter { it in germanOnly }, name = "$where says \"$text\"").isEmpty()
+        assertThat(Regex("[äöüÄÖÜß„]").findAll(text).map { it.value }.toList(), name = "$where says \"$text\"").isEmpty()
     }
 
     // ---- what the menu can show ------------------------------------------------------------
@@ -177,9 +184,9 @@ class LanguageTest {
 
     @Test
     fun theMenuSaysNothingInGerman() {
-        assertEnglish("menu heading", en[R.string.menu_heading])
-        assertEnglish("menu hint", en[R.string.menu_hint])
-        assertEnglish("menu hint on the groups", en[R.string.menu_hint_groups])
+        assertEnglish("menu heading", en[Strings.menuHeading])
+        assertEnglish("menu hint", en[Strings.menuHint])
+        assertEnglish("menu hint on the groups", en[Strings.menuHintGroups])
         for (section in MenuSection.entries) {
             assertEnglish("section ${section.name}", en[section.title])
             assertEnglish("section ${section.name} explanation", en[section.about])
@@ -220,7 +227,7 @@ class LanguageTest {
         val next = TrackInfo("Spiegel im Spiegel", listOf("Tasmin Little", "Martin Roscoe", "Paul Weber"))
         assertEnglish("up next", StageTexts.next(next, en)?.removePrefix("Spiegel im Spiegel"))
         assertEnglish("lost link", StageTexts.line(true, next, en))
-        assertEnglish("chapter", en.format(R.string.chapter_number, 7))
+        assertEnglish("chapter", en.format(Strings.chapterNumber, 7))
         for (reason in RestReason.entries) {
             val lines = io.github.hazymorning.klangbild.ui.RestTexts.lines(reason, "Living room", "media_player.living_room", en)
             assertEnglish("rest $reason", lines.label)
@@ -260,7 +267,7 @@ class LanguageTest {
             val model = Fixtures.model(song, next = next, group = "Living room", t = en, linkDown = linkDown, scene = scene)
             shown += shownTexts { Stage(model) }.map { "stage" to it }
         }
-        assertWithMessage("texts found").that(shown.size).isAtLeast(10)
+        assertThat(shown.size, name = "texts found").isGreaterThanOrEqualTo(10)
         for ((where, text) in shown) assertEnglish(where, text)
     }
 
@@ -274,7 +281,7 @@ class LanguageTest {
             .replace(Regex("""<style.*?</style>""", RegexOption.DOT_MATCHES_ALL), " ")
         for (attribute in Regex("""(?:placeholder|aria-label|title|alt)="([^"]*)"""").findAll(visible)) assertEnglish("page attribute", attribute.groupValues[1])
         assertEnglish("page", visible.replace(Regex("<[^>]*>"), " "))
-        assertWithMessage("the page's language").that(html).contains("<html lang=\"en\">")
+        assertThat(html, name = "the page's language").contains("<html lang=\"en\">")
         // The lists the page shows: states and weather in English words.
         val found = SetupServer.parseSpeakers(
             """[{"entity_id":"media_player.a","state":"playing","attributes":{}},{"entity_id":"media_player.b","state":"buffering","attributes":{}},
@@ -289,23 +296,25 @@ class LanguageTest {
         val english = strings("values")
         val german = strings("values-de")
         val untranslatable = setOf("app_name", "language_english", "language_german")
-        assertWithMessage("texts without a German version").that(english.keys - german.keys - untranslatable).isEmpty()
-        assertWithMessage("German texts without an English one").that(german.keys - english.keys).isEmpty()
+        assertThat(english.keys - german.keys - untranslatable, name = "texts without a German version").isEmpty()
+        assertThat(german.keys - english.keys, name = "German texts without an English one").isEmpty()
         for ((name, text) in english) {
             assertEnglish("resource $name", text)
             val sentence = text.trimEnd().let { it.contains(' ') && (it.endsWith('.') || it.endsWith('?')) }
-            if (sentence) assertWithMessage("%s: \"%s\" against \"%s\"", name, text, german[name]).that(text.length).isAtMost(german.getValue(name).length)
+            if (sentence) assertThat(text.length, name = "$name: \"$text\" against \"${german[name]}\"").isLessThanOrEqualTo(german.getValue(name).length)
         }
     }
 
     // ---- fit -------------------------------------------------------------------------------
 
     private lateinit var measurer: TextMeasurer
+    private lateinit var faces: Faces
     private var density = 1f
 
     private fun measuring() {
         compose.setContent {
             measurer = rememberTextMeasurer()
+            faces = faces()
             density = LocalDensity.current.density
         }
         compose.waitForIdle()
@@ -317,14 +326,14 @@ class LanguageTest {
     fun everyMenuLineFitsTheColumnInBothLanguages() {
         measuring()
         val column = StageGrid(ScreenSpec.TV_1080).columnWidth
-        val label = textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
-        val value = textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
+        val label = faces.textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
+        val value = faces.textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
         for (t in listOf(en, de)) {
             val lines = allRows(t).map { Triple(it.label, it.value, it.level != null) }.toSet()
             compose.runOnIdle {
                 for ((l, v, slider) in lines) {
                     val needed = width(l, label) + MenuGrid.LABEL_GAP + (if (slider) MenuGrid.SLIDER_WIDTH + MenuGrid.SLIDER_GAP else 0f) + width(v, value)
-                    assertWithMessage("\"$l\" with \"$v\" (${t.locale})").that(needed).isAtMost(column)
+                    assertThat(needed, name = "\"$l\" with \"$v\" (${t.locale})").isLessThanOrEqualTo(column)
                 }
             }
         }
@@ -339,15 +348,15 @@ class LanguageTest {
         measuring()
         val layout = StageGrid(ScreenSpec.TV_1080)
         val right = ScreenSpec.TV_1080.widthDp - layout.margin
-        val label = textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT)
-        val value = textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
+        val label = faces.textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT)
+        val value = faces.textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
         for (t in listOf(en, de)) {
             val states = allQuick(t, buttons = true).distinctBy { q -> q.rows.map { it.item to it.value } }
             compose.runOnIdle {
                 for (quick in states) {
                     val widths = quickWidths(quick, measurer, label, value, density, widest = true)
                     quick.rows.forEachIndexed { k, row ->
-                        assertWithMessage("${row.label}: ${row.values} (${t.locale})").that(QuickGrid.LEFT + widths[k]).isAtMost(right)
+                        assertThat(QuickGrid.LEFT + widths[k], name = "${row.label}: ${row.values} (${t.locale})").isLessThanOrEqualTo(right)
                     }
                 }
             }

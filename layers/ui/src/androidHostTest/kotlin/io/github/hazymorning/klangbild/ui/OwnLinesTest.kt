@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.app.UiState
@@ -17,12 +18,13 @@ import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.test.Test
 
 /**
  * A stage still on screen after its song has ended keeps its own lines: while the next song's
@@ -63,7 +65,7 @@ class OwnLinesTest {
         var position = 65_000L
         var ui by mutableStateOf(start)
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { key -> position.takeIf { key == reported } }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { key -> position.takeIf { key == reported } }, now = { 0L }, glyphs = AndroidGlyphs)) }
         compose.mainClock.advanceTimeBy(3_000)
         val before = capture()
         reported = b.key

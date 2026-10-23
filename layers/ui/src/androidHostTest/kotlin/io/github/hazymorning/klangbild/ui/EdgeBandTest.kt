@@ -10,7 +10,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThanOrEqualTo
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -18,10 +20,10 @@ import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * OLED: the band next to the screen edges stays black. This is checked on the rendered pixels
@@ -44,7 +46,7 @@ class EdgeBandTest {
         compose.setContent { Fixtures.Still { Stage(model) } }
         for (m in models) {
             model = m
-            assertWithMessage(m.text.title).that(brightestInBand()).isEqualTo(0)
+            assertThat(brightestInBand(), name = m.text.title).isEqualTo(0)
         }
     }
 
@@ -62,7 +64,7 @@ class EdgeBandTest {
         }
         for (i in strips.indices) {
             strip = i
-            assertWithMessage(strips[i][2].title).that(brightestInBand()).isEqualTo(0)
+            assertThat(brightestInBand(), name = strips[i][2].title).isEqualTo(0)
         }
     }
 
@@ -87,10 +89,10 @@ class EdgeBandTest {
             middle = i
             sides = left to right
             val what = "${tracks[i].title}, $left before, $right to come"
-            assertWithMessage(what).that(brightestInBand()).isEqualTo(0)
+            assertThat(brightestInBand(), name = what).isEqualTo(0)
             // Up to the column's edge, where the first letters' soft edges may begin.
             val column = scenes[i].layout.columnLeft + geometry.balance(left, right).column
-            assertWithMessage("$what: before the column").that(brightestBetween(column - FlowLight.GONE_BEFORE_COLUMN, column - 2f)).isEqualTo(0)
+            assertThat(brightestBetween(column - FlowLight.GONE_BEFORE_COLUMN, column - 2f), name = "$what: before the column").isEqualTo(0)
         }
     }
 
@@ -126,7 +128,7 @@ class EdgeBandTest {
                 at = t
                 dx = d.first
                 dy = d.second
-                assertWithMessage("${Fixtures.tracks[k].title} at $t s, drift $d").that(darkestOnTheEdges()).isAtLeast(6)
+                assertThat(darkestOnTheEdges(), name = "${Fixtures.tracks[k].title} at $t s, drift $d").isGreaterThanOrEqualTo(6)
             }
         }
     }
@@ -141,11 +143,11 @@ class EdgeBandTest {
         val groups = io.github.hazymorning.klangbild.config.SettingsMenu.sections.size
         for (c in listOf(0, groups - 1)) {
             state = Fixtures.menuGroups(cursor = c)
-            assertWithMessage("group $c").that(brightestInBand()).isEqualTo(0)
+            assertThat(brightestInBand(), name = "group $c").isEqualTo(0)
         }
         for (c in listOf(0, rows.size / 2, rows.size - 1)) {
             state = io.github.hazymorning.klangbild.app.MenuState(rows, c, section = section)
-            assertWithMessage(rows[c].label).that(brightestInBand()).isEqualTo(0)
+            assertThat(brightestInBand(), name = rows[c].label).isEqualTo(0)
         }
     }
 

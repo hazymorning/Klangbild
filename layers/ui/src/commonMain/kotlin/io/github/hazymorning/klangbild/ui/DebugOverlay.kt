@@ -1,9 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.os.Handler
-import android.os.HandlerThread
-import android.view.FrameMetrics
-import android.view.Window
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,66 +26,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
-import kotlinx.coroutines.flow.MutableStateFlow
+import io.github.hazymorning.klangbild.sound.monotonicMicros
+import io.github.hazymorning.klangbild.text.Strings
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Frame timing for checking smoothness on the real device (`--ez debug true`). Uses the
- * platform's FrameMetrics: per second, how many frames were drawn, how long the slowest
- * took and how many missed a 60 Hz deadline. Nothing is drawn when nothing changes, so a
- * quiet screen shows 0 frames, as intended.
+ * One second of frames on the real device (`--ez debug true`): how many were drawn, how long
+ * the slowest took and how many missed a 60 Hz deadline. Nothing is drawn when nothing changes,
+ * so a quiet screen shows 0 frames, as intended.
  */
-object FrameStats {
-    data class Second(val frames: Int, val worstMs: Float, val janky: Int)
+data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int)
 
-    private val _stats = MutableStateFlow(Second(0, 0f, 0))
-    val stats: StateFlow<Second> = _stats.asStateFlow()
-
-    private var frames = 0
-    private var worst = 0f
-    private var janky = 0
-    private var windowStart = 0L
-
-    /** One thread for the whole app, started the first time it is needed. */
-    private val handler by lazy { Handler(HandlerThread("frame-stats").apply { start() }.looper) }
-
-    private val listener = Window.OnFrameMetricsAvailableListener { _, metrics, _ ->
-        val ms = metrics.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000f
-        val now = System.nanoTime()
-        if (windowStart == 0L) windowStart = now
-        frames++
-        if (ms > worst) worst = ms
-        if (ms > 16.7f) janky++
-        if (now - windowStart >= 1_000_000_000L) {
-            _stats.value = Second(frames, worst, janky)
-            frames = 0
-            worst = 0f
-            janky = 0
-            windowStart = now
-        }
-    }
-
-    /** Counts [window]'s frames until [detach], only while the overlay is asked for. */
-    fun attach(window: Window) {
-        window.addOnFrameMetricsAvailableListener(listener, handler)
-    }
-
-    /** Stops counting [window]'s frames; nothing keeps the window afterwards. */
-    fun detach(window: Window) {
-        runCatching { window.removeOnFrameMetricsAvailableListener(listener) }
-    }
-}
-
+/** The frames of each second, as the platform counts them ([frames]), and what [sound] hears. */
 @Composable
-fun DebugOverlay(sound: SoundFeed = SoundFeed.None) {
-    val s by FrameStats.stats.collectAsStateWithLifecycle()
+fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed = SoundFeed.None) {
+    val s by frames.collectAsStateWithLifecycle()
     val t = texts()
     Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopStart) {
         Column(Modifier.background(BACKDROP).padding(horizontal = 8.dp, vertical = 4.dp)) {
-            BasicText(t.format(R.string.debug_frames, s.frames, t.decimal(s.worstMs.toDouble(), 1), s.janky), style = TextStyle(color = INK, fontSize = 12.sp))
+            BasicText(t.format(Strings.debugFrames, s.frames, t.decimal(s.worstMs.toDouble(), 1), s.janky), style = TextStyle(color = INK, fontSize = 12.sp))
             SoundMeter(sound)
         }
     }
@@ -114,14 +69,14 @@ private fun SoundMeter(sound: SoundFeed) {
     val words = remember(t, measurer) {
         val style = TextStyle(color = INK, fontSize = 12.sp)
         mapOf(
-            SoundTiming.EXACT to measurer.measure(t[R.string.debug_sound_exact], style),
-            SoundTiming.CLOSE to measurer.measure(t[R.string.debug_sound_close], style),
-            SoundTiming.NONE to measurer.measure(t[R.string.debug_sound_none], style),
+            SoundTiming.EXACT to measurer.measure(t[Strings.debugSoundExact], style),
+            SoundTiming.CLOSE to measurer.measure(t[Strings.debugSoundClose], style),
+            SoundTiming.NONE to measurer.measure(t[Strings.debugSoundNone], style),
         )
     }
     Canvas(Modifier.padding(top = 4.dp).size(METER_WIDTH, METER_HEIGHT)) {
         frames.value
-        val nowUs = System.nanoTime() / 1_000
+        val nowUs = monotonicMicros()
         sound.read(nowUs, heard)
         drawText(words.getValue(heard.timing), topLeft = Offset.Zero)
         val bar = BAR.toPx()

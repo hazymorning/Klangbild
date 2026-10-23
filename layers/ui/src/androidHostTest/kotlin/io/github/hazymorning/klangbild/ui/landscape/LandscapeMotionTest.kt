@@ -8,18 +8,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
+import io.github.hazymorning.klangbild.landscape.Place
+import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.ui.Fixtures
 import io.github.hazymorning.klangbild.ui.composeRule
-import io.github.hazymorning.klangbild.landscape.Place
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import io.github.hazymorning.klangbild.landscape.Weather
+import kotlinx.datetime.toJavaZoneId
 import org.junit.Rule
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /**
  * The landscape in motion, as sequences of stills: a few seconds frame by frame (the grass
@@ -48,13 +49,13 @@ class LandscapeMotionTest {
         month: Int = 10,
         day: Int = 10,
     ) {
-        val start = java.time.ZonedDateTime.of(2026, month, day, hour, minute, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
+        val start = java.time.ZonedDateTime.of(2026, month, day, hour, minute, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
         var wall = start
         val clock = LandscapeClock(now = { wall })
         if (timelapse) clock.timelapse(true)
         val feed = LandscapeFeed(place = { berlin }, weather = { weather }, clock = clock, zone = { Fixtures.zone }, wall = { wall })
         compose.mainClock.autoAdvance = false
-        compose.setContent { Landscape(feed, Modifier.fillMaxSize()) }
+        compose.setContent { Fixtures.Glyphs { Landscape(feed, Modifier.fillMaxSize()) } }
         // The picture is baked off the main thread: give it the time it takes, then let it fade in.
         repeat(8) {
             Thread.sleep(400)
@@ -75,11 +76,11 @@ class LandscapeMotionTest {
     @Test
     fun arrival() {
         // The first picture keeps one waiting: the words and the bar wait in the dark, then go as the picture comes up.
-        val wall = java.time.ZonedDateTime.of(2026, 10, 10, 15, 30, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
+        val wall = java.time.ZonedDateTime.of(2026, 10, 10, 15, 30, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
         val feed = LandscapeFeed(place = { berlin }, weather = { Weather(cover = 0.6f) }, clock = LandscapeClock(now = { wall }), zone = { Fixtures.zone }, wall = { wall })
         compose.mainClock.autoAdvance = false
         // On the app's black ground.
-        compose.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { Landscape(feed, Modifier.fillMaxSize()) } }
+        compose.setContent { Fixtures.Glyphs { Box(Modifier.fillMaxSize().background(Color.Black)) { Landscape(feed, Modifier.fillMaxSize()) } } }
         compose.mainClock.advanceTimeBy(1_700)
         compose.onRoot().captureRoboImage("build/screenshots/landscape/motion/arrival_00.png")
         repeat(8) {

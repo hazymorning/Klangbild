@@ -5,18 +5,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.app.LandscapeUi
+import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.landscape.LabelSide
-import io.github.hazymorning.klangbild.landscape.Place
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
+import io.github.hazymorning.klangbild.landscape.Place
 import io.github.hazymorning.klangbild.landscape.World
+import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /**
  * The landscape as a screen of the app. It shows the picture for Home Assistant's place and
@@ -53,7 +53,7 @@ fun rememberLandscapeFeed(ui: UiState, landscape: LandscapeUi?, clock: Landscape
     val shown by rememberUpdatedState(landscape)
     return remember(clock) {
         LandscapeFeed(
-            place = { latest.source.place?.let { (lat, lon) -> Place(lat, lon) } ?: World.guessPlace(ZoneId.systemDefault()) },
+            place = { latest.source.place?.let { (lat, lon) -> Place(lat, lon) } ?: World.guessPlace(TimeZone.currentSystemDefault()) },
             weather = { shown?.weather?.at(now()) },
             clock = clock,
             wall = now,

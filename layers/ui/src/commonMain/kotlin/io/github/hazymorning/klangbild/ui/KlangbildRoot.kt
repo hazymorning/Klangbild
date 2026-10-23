@@ -26,9 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import io.github.hazymorning.klangbild.app.FlowData
+import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
-import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
@@ -39,12 +39,17 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
-import io.github.hazymorning.klangbild.text.texts
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeAhead
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.ui.landscape.labelSide
+import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
+import io.github.hazymorning.klangbild.ui.landscape.rememberLandscapeFeed
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
@@ -53,17 +58,16 @@ import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import io.github.hazymorning.klangbild.ui.stage.StatusLine
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeAhead
-import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
-import io.github.hazymorning.klangbild.ui.landscape.labelSide
-import io.github.hazymorning.klangbild.ui.landscape.rememberLandscapeFeed
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
+import io.github.hazymorning.klangbild.ui.theme.Glyphs
+import io.github.hazymorning.klangbild.ui.theme.LocalFaces
+import io.github.hazymorning.klangbild.ui.theme.LocalGlyphs
+import io.github.hazymorning.klangbild.ui.theme.faces
 import kotlinx.coroutines.delay
+import kotlin.time.Clock
 
 /** A wall clock that ticks every [periodMs] (the UI needs minutes, the drift whole pixels). */
 @Composable
-fun rememberWallClock(periodMs: Long = 5_000, now: () -> Long = System::currentTimeMillis): State<Long> =
+fun rememberWallClock(periodMs: Long = 5_000, now: () -> Long = { Clock.System.now().toEpochMilliseconds() }): State<Long> =
     produceState(initialValue = now()) {
         while (true) {
             value = now()
@@ -77,11 +81,13 @@ class RootHooks(
     val positionOf: (String) -> Long?,
     /** Local time until which hidden parts (time, place, progress) show again after a key press. */
     val peekUntil: State<Long> = mutableLongStateOf(0L),
-    val now: () -> Long = System::currentTimeMillis,
+    val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** The color field's time (seconds): it runs while music plays, at the motion setting's speed. */
     val fieldTime: () -> Double = { 0.0 },
     /** The moment the landscape's sky shows. */
     val landscapeClock: LandscapeClock = LandscapeClock(now),
+    /** The platform's own text engine, for the outlines of the rest clock's figures. */
+    val glyphs: Glyphs,
 )
 
 /**
@@ -102,7 +108,7 @@ fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: M
         value = false
     }
     val content = contentKey(ui, quiet)
-    CompositionLocalProvider(LocalTexts provides (ui.texts ?: texts())) {
+    CompositionLocalProvider(LocalTexts provides (ui.texts ?: texts()), LocalFaces provides faces(), LocalGlyphs provides hooks.glyphs) {
         Root(ui, screen, hooks, wall, entrance, content, modifier)
     }
 }
@@ -317,7 +323,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
         { s: StageData ->
             val key = s.track.key
             val plays = key == playingKey
-            val text = TrackText.from(s.track, t[R.string.artists_others])
+            val text = TrackText.from(s.track, t[Strings.artistsOthers])
             // A book or an episode with chapters: the chapter in the album's place, the bar over
             // the chapter, the next chapter after it.
             val ch = played.chapter(key, plays, chapter)
@@ -341,7 +347,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 progress = if (lyrics != null) peek else display.progressBar || peek,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
-                    tip -> t[R.string.hint_down]
+                    tip -> t[Strings.hintDown]
                     lyrics != null -> StageTexts.next(s.track, t)
                     list != null -> StageTexts.queue(list.upNext.count, list.upNext.durationMs, t).orEmpty()
                     else -> nextChapter ?: StageTexts.next(after, t)
@@ -353,7 +359,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                     nextChapter != null -> null
                     else -> StageTexts.nextTitle(after, t)
                 },
-                nextLead = if (tip) t[R.string.hint_down_key] else null,
+                nextLead = if (tip) t[Strings.hintDownKey] else null,
                 statusLine = statusLine,
                 chapter = ch?.label,
                 rangeStartMs = ch?.startMs ?: 0L,

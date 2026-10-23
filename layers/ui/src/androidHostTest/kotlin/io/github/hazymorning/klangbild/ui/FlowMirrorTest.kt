@@ -11,29 +11,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
-import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.flow.FlowLook
 import io.github.hazymorning.klangbild.ui.flow.FlowStrip
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.test.Test
 
 /**
  * The mirror images of Cover Flow keep their strength while the cards move: while a card turns
@@ -94,7 +98,7 @@ class FlowMirrorTest {
         // Beside the new, darker cover the light card steps back; it does so evenly.
         for (values in listOf(side, middle)) {
             for (i in 1 until values.size) assertThat(abs(values[i] - values[i - 1])).isLessThan(3f)
-            assertThat(values.max()).isAtMost(max(values.first(), values.last()) + 1f)
+            assertThat(values.max()).isLessThanOrEqualTo(max(values.first(), values.last()) + 1f)
         }
     }
 
@@ -108,7 +112,7 @@ class FlowMirrorTest {
         val side = cover.sidePx
         val logo = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888)
         android.graphics.Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
-        val was = FlowCards.build(logo, round = false, cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
+        val was = FlowCards.build(logo.asImageBitmap(), round = false, cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
         val paper = scene.palette.wall.asColor()
         val cards = listOf(CardMotion(0, cover, 0f, 0f, was = was))
         var look by mutableFloatStateOf(0f)
@@ -123,7 +127,7 @@ class FlowMirrorTest {
             compose.waitForIdle()
             seen += print(capture(), geometry, 0f)
         }
-        assertThat(seen.min()).isAtLeast(min(seen.first(), seen.last()) - 2f)
+        assertThat(seen.min()).isGreaterThanOrEqualTo(min(seen.first(), seen.last()) - 2f)
         for (i in 1 until seen.size) assertThat(abs(seen[i] - seen[i - 1])).isLessThan(6f)
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
@@ -14,19 +15,18 @@ import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
-import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import io.github.hazymorning.klangbild.domain.Catalog
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /**
  * The song's words in the text column: beside a single cover and in Cover Flow, on both walls

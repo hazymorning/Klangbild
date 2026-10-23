@@ -2,10 +2,14 @@ package io.github.hazymorning.klangbild.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.contrastRatio
-import org.junit.Test
+import kotlin.test.Test
 
 /**
  * The quick settings' inks keep 4.5:1 on both walls: every ink on the veil, and the chosen
@@ -29,14 +33,14 @@ class QuickColorsTest {
             val c = QuickColors.of(appearance)
             val veil = c.veil.toArgb()
             for ((name, ink) in listOf("label" to c.label, "labelFocus" to c.labelFocus, "value" to c.value, "valueFocus" to c.valueFocus)) {
-                assertWithMessage("$appearance $name on the veil").that(contrast(ink, veil)).isAtLeast(4.5f)
+                assertThat(contrast(ink, veil), name = "$appearance $name on the veil").isGreaterThanOrEqualTo(4.5f)
             }
             for (muted in listOf(false, true)) {
-                assertWithMessage("$appearance value at rest, muted $muted").that(contrast(c.valueInk(focused = false, muted), veil)).isAtLeast(4.5f)
-                assertWithMessage("$appearance value chosen, muted $muted").that(contrast(c.valueInk(focused = true, muted), lit(c))).isAtLeast(4.5f)
+                assertThat(contrast(c.valueInk(focused = false, muted), veil), name = "$appearance value at rest, muted $muted").isGreaterThanOrEqualTo(4.5f)
+                assertThat(contrast(c.valueInk(focused = true, muted), lit(c)), name = "$appearance value chosen, muted $muted").isGreaterThanOrEqualTo(4.5f)
             }
             for ((name, ink) in listOf("labelFocus" to c.labelFocus, "valueFocus" to c.valueFocus)) {
-                assertWithMessage("$appearance $name in the band's light").that(contrast(ink, lit(c))).isAtLeast(4.5f)
+                assertThat(contrast(ink, lit(c)), name = "$appearance $name in the band's light").isGreaterThanOrEqualTo(4.5f)
             }
         }
     }
@@ -47,10 +51,10 @@ class QuickColorsTest {
             val c = QuickColors.of(appearance)
             val veil = c.veil.toArgb()
             val atRest = contrast(c.valueInk(focused = false, muted = false), veil)
-            assertWithMessage("$appearance at rest").that(contrast(c.valueInk(focused = false, muted = true), veil)).isLessThan(atRest)
-            assertWithMessage("$appearance chosen").that(contrast(c.valueInk(focused = true, muted = true), veil)).isAtMost(atRest)
+            assertThat(contrast(c.valueInk(focused = false, muted = true), veil), name = "$appearance at rest").isLessThan(atRest)
+            assertThat(contrast(c.valueInk(focused = true, muted = true), veil), name = "$appearance chosen").isLessThanOrEqualTo(atRest)
             // Chosen, it still says it is chosen: it comes forward from its quiet ink.
-            assertWithMessage("$appearance chosen").that(contrast(c.valueInk(focused = true, muted = true), veil))
+            assertThat(contrast(c.valueInk(focused = true, muted = true), veil), name = "$appearance chosen")
                 .isGreaterThan(contrast(c.valueInk(focused = false, muted = true), veil))
         }
     }

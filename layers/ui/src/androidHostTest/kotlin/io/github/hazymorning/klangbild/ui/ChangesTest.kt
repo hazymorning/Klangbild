@@ -3,7 +3,15 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.MonotonicFrameClock
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.ui.stage.TextLine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -12,7 +20,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import org.junit.Test
+import kotlin.test.Test
 
 /** One change at a time, in virtual time: how a change hurries, and how its text holds, hands over and rises. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -46,7 +54,7 @@ class ChangesTest {
         val start = currentTime
         playChange(t, 1_000, newer = { awaitCancellation() }) { error("nothing came") }
         assertThat(t.value).isEqualTo(1f)
-        assertThat(currentTime - start).isAtLeast(1_000L)
+        assertThat(currentTime - start).isGreaterThanOrEqualTo(1_000L)
     }
 
     @Test
@@ -55,9 +63,9 @@ class ChangesTest {
         var hurriedAt: Float? = null
         val start = currentTime
         playChange(t, 1_500, newer = { delay(300) }) { hurriedAt = it }
-        assertThat(hurriedAt!!).isWithin(0.03f).of(0.2f)
+        assertThat(hurriedAt!!).isCloseTo(0.2f, 0.03f)
         assertThat(t.value).isEqualTo(1f)
-        assertThat(currentTime - start).isAtMost(300L + Motion.HURRY_MS + 50)
+        assertThat(currentTime - start).isLessThanOrEqualTo(300L + Motion.HURRY_MS + 50)
     }
 
     @Test
@@ -100,7 +108,7 @@ class ChangesTest {
         assertThat(text.rising).isFalse()
         TextLine.entries.forEach { assertThat(text.level(it)).isEqualTo(1f) }
         // At the pace of the change: the rest of it.
-        assertThat(currentTime - start).isAtLeast(800L)
+        assertThat(currentTime - start).isGreaterThanOrEqualTo(800L)
     }
 
     @Test
@@ -113,7 +121,7 @@ class ChangesTest {
         val start = currentTime
         text.release(newer = { awaitCancellation() })
         assertThat(text.level(TextLine.NEXT)).isEqualTo(1f)
-        assertThat(currentTime - start).isAtMost(1_000L + 50)
+        assertThat(currentTime - start).isLessThanOrEqualTo(1_000L + 50)
     }
 
     @Test

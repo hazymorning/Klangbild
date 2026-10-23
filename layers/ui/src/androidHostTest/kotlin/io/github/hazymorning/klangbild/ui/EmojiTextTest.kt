@@ -1,8 +1,13 @@
 package io.github.hazymorning.klangbild.ui
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.ui.stage.EmojiText
-import org.junit.Test
+import kotlin.test.Test
 
 class EmojiTextTest {
     @Test

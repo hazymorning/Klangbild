@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -20,9 +19,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,12 +50,13 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Figures
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.roundToInt
@@ -86,7 +86,7 @@ data class QueueRowModel(
     /** "5:12"; null without a length. */
     val time: String?,
     /** The small cover; null while it is still being made. */
-    val cover: Bitmap?,
+    val cover: ImageBitmap?,
 )
 
 /** The list beside the cover, its rows in order. */
@@ -95,7 +95,7 @@ data class QueueModel(val rows: List<QueueRowModel>) {
     companion object {
         /** The list as the column shows [list], in the words of [t]. */
         fun of(list: QueueList, t: Texts): QueueModel {
-            val others = t[R.string.artists_others]
+            val others = t[Strings.artistsOthers]
             val rows = list.upNext.rows.map { row ->
                 val text = TrackText.from(row.track, others)
                 QueueRowModel(
@@ -120,7 +120,7 @@ internal class PlannedRow(
     val time: TextLayoutResult?,
     /** The small cover as a brush for its rounded square ([bitmap] its picture), and its side (px). */
     val cover: ShaderBrush?,
-    val bitmap: Bitmap?,
+    val bitmap: ImageBitmap?,
     val coverPx: Int,
 )
 
@@ -174,7 +174,8 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
     if (model.lyrics != null) return null
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val density = LocalDensity.current
-    val styles = remember(model.scene.palette) { StageStyles(model.scene.palette) }
+    val faces = faces()
+    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
     val figures = rememberFigures(styles.time, Face.TITLE)
     // The room the bar (or a line in its place) takes, gliding as it comes and goes.
     val target = slotRoom(bottomOf(model), styles, density)
@@ -276,7 +277,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         ?: queueTitleLadder.last().let { step -> TitleChoice(step, fitLines(measurer, title, styles.title(step, cjk), colW, step.lines)) }
     val titleStyle = styles.title(choice.step, cjk)
     val versionStyle = styles.version(choice.step.size)
-    val metaStyle = textType(17f, 400, styles.quiet, lineHeight = 23f, tracking = 0.005f)
+    val metaStyle = styles.faces.textType(17f, 400, styles.quiet, lineHeight = 23f, tracking = 0.005f)
         .merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
     val meta = metaLine(t, model.chapter ?: t.album, model.year, styles, metaStyle, measurer, colW)
 
@@ -310,7 +311,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
     val markWidth = coverPx + MARK_GAP * d
-    val rowTitle = textType(17f, 500, styles.muted, lineHeight = 23f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
+    val rowTitle = styles.faces.textType(17f, 500, styles.muted, lineHeight = 23f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
     val rowArtists = styles.label.merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
     val titleCap = cap(rowTitle)
     val descent = with(density) { rowArtists.fontSize.toPx() } * Fonts.DESCENT
@@ -328,7 +329,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
             title = measure(isolated(fitWords(measurer, row.title, rowTitle, titleWidth)), rowTitle, width = titleWidth),
             artists = row.artists?.let { measure(isolated(fitWords(measurer, it, rowArtists, textWidth)), rowArtists, width = textWidth) },
             time = time,
-            cover = row.cover?.let { ShaderBrush(ImageShader(it.asImageBitmap())) },
+            cover = row.cover?.let { ShaderBrush(ImageShader(it)) },
             bitmap = row.cover,
             coverPx = coverPx,
         )
@@ -440,7 +441,7 @@ internal fun QueueText(
     val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
     val bottomLine = model.line
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
-    val lead = model.nextLead ?: io.github.hazymorning.klangbild.text.texts()[R.string.stage_next]
+    val lead = model.nextLead ?: io.github.hazymorning.klangbild.ui.texts()[Strings.stageNext]
 
     Box(modifier.fillMaxSize()) {
         Layout(

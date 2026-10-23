@@ -18,8 +18,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.google.common.truth.Truth.assertWithMessage
 import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
@@ -31,9 +36,9 @@ import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.ui.stage.Stage
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import org.junit.Rule
-import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -41,6 +46,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.test.Test
 
 /**
  * The quick settings' Queue value shimmers while the queue's way just chosen is on its way: a
@@ -66,7 +72,7 @@ class QuickShimmerTest {
         val state = QuickState(rows, rows.indexOfFirst { it.item == QuickItem.QUEUE })
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            val style = textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
+            val style = faces().textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
             wordWidth = rememberTextMeasurer().measure("Cover Flow", style).size.width
             QuickBar(state, appearance, preparing = preparing)
         }
@@ -155,29 +161,29 @@ class QuickShimmerTest {
         // The pass is over: the word rests in its quieter ink.
         pass(700)
         val quiet = capture()
-        assertWithMessage("waiting, the word is quieter").that(same(quiet, before)).isFalse()
+        assertThat(same(quiet, before), name = "waiting, the word is quieter").isFalse()
         // The band crosses at an even pace, where a pass puts it, begun a few frames after the
         // word was told (the change reaches the shimmer, then the pass takes a frame of its own).
         val first = bandAt(early, before, quiet)
         val second = bandAt(late, before, quiet)
-        assertWithMessage("the band's way in 400 ms (word ${wordWidth}px)").that(second - first).isWithin(6f).of(expected(400f) - expected(0f))
-        assertWithMessage("the band 400 ms after the word was told").that(first).isIn(com.google.common.collect.Range.closed(expected(400f - START_MS) - 6f, expected(400f) + 6f))
+        assertThat(second - first, name = "the band's way in 400 ms (word ${wordWidth}px)").isCloseTo(expected(400f) - expected(0f), 6f)
+        assertThat(first, name = "the band 400 ms after the word was told").isBetween(expected(400f - START_MS) - 6f, expected(400f) + 6f)
         // Beyond the band's reach the word waits in its quieter ink, untouched.
         val m = word(late)
         val q = word(quiet)
         val left = QuickGrid.LEFT.toInt() - x0
         for (i in m.indices) {
             if (abs(i - left - second) < Shimmer.BAND_DP / 2 + 6) continue
-            for (j in m[i].indices) assertWithMessage("column ${i - left}").that(m[i][j]).isEqualTo(q[i][j])
+            for (j in m[i].indices) assertThat(m[i][j], name = "column ${i - left}").isEqualTo(q[i][j])
         }
         // A pass that has begun ends, even when the wait is over meanwhile.
         pass(500)
         preparing = false
         pass(400)
-        assertWithMessage("the second pass goes on").that(same(capture(), quiet)).isFalse()
+        assertThat(same(capture(), quiet), name = "the second pass goes on").isFalse()
         // Once it has ended and the word has come back to its ink, it is exactly as before.
         pass(1_200)
-        assertWithMessage("after the shimmer").that(same(capture(), before)).isTrue()
+        assertThat(same(capture(), before), name = "after the shimmer").isTrue()
     }
 
     @Test
@@ -189,10 +195,10 @@ class QuickShimmerTest {
         preparing = false
         // Late in the pass the word still waits, with the band on its last letters.
         pass(900)
-        assertWithMessage("late in the pass").that(same(capture(), before)).isFalse()
+        assertThat(same(capture(), before), name = "late in the pass").isFalse()
         // Then it has ended without a rest, and the word is back in its ink.
         pass(800)
-        assertWithMessage("after it").that(same(capture(), before)).isTrue()
+        assertThat(same(capture(), before), name = "after it").isTrue()
     }
 
     @Test
@@ -205,7 +211,7 @@ class QuickShimmerTest {
         // The rest ends early and the word comes back to its ink; no band crosses it again.
         for (step in 1..6) {
             pass(150)
-            if (step >= 3) assertWithMessage("${1_450 + step * 150} ms").that(same(capture(), before)).isTrue()
+            if (step >= 3) assertThat(same(capture(), before), name = "${1_450 + step * 150} ms").isTrue()
         }
     }
 
@@ -259,11 +265,11 @@ class QuickShimmerTest {
 
     @Test
     fun theShimmeringWordDrawsJustAsThePlainText() {
-        val style = textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
         val ink = Color(0xFFE3E1DE)
         var swept by mutableStateOf(false)
         var alpha by mutableStateOf(1f)
         compose.setContent {
+            val style = faces().textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
             Box(Modifier.fillMaxSize().background(Color.Black)) {
                 Box(Modifier.offset(QuickGrid.LEFT.dp, 40.dp)) {
                     if (swept) {
@@ -283,7 +289,7 @@ class QuickShimmerTest {
             compose.waitForIdle()
             val shimmering = capture()
             val differing = (0 until plain.height).sumOf { y -> (0 until plain.width).count { x -> plain.getPixel(x, y) != shimmering.getPixel(x, y) } }
-            assertWithMessage("alpha $a").that(differing).isEqualTo(0)
+            assertThat(differing, name = "alpha $a").isEqualTo(0)
         }
     }
 

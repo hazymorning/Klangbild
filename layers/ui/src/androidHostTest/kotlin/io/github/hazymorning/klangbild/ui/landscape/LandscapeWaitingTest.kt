@@ -14,9 +14,13 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.google.common.collect.Range
-import com.google.common.truth.Truth.assertThat
 import io.github.hazymorning.klangbild.landscape.BakeProgress
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -24,10 +28,10 @@ import io.github.hazymorning.klangbild.ui.Fixtures
 import io.github.hazymorning.klangbild.ui.QuietColors
 import io.github.hazymorning.klangbild.ui.composeRule
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * The sign that the landscape is on its way: a line of words over a bar like the stage's, the two
@@ -51,21 +55,21 @@ class LandscapeWaitingTest {
         val bmp = still(TestTexts.german, "waiting")
         val bar = barBounds(bmp)
         // 240 dp by 4 dp, centered across.
-        assertThat((bar[2] - bar[0]).toFloat()).isWithin(2f).of(480f)
-        assertThat((bar[3] - bar[1]).toFloat()).isWithin(1f).of(8f)
-        assertThat((bar[0] + bar[2]) / 2f).isWithin(1f).of(bmp.width / 2f)
+        assertThat((bar[2] - bar[0]).toFloat()).isCloseTo(480f, 2f)
+        assertThat((bar[3] - bar[1]).toFloat()).isCloseTo(8f, 1f)
+        assertThat((bar[0] + bar[2]) / 2f).isCloseTo(bmp.width / 2f, 1f)
         // The words' baseline (German has no descenders here) 16 dp above the bar; from their cap
         // height (17 sp × 0.70 above it) to the bar's lower edge, the two stand in the very middle.
         val text = bounds(bmp, bottom = bar[1]) { it > 40 }
-        assertThat((bar[1] - text[3]).toFloat()).isWithin(1f).of(32f)
+        assertThat((bar[1] - text[3]).toFloat()).isCloseTo(32f, 1f)
         val capTop = text[3] - 2 * 17f * 0.70f
-        assertThat((capTop + bar[3]) / 2f).isWithin(1f).of(bmp.height / 2f)
+        assertThat((capTop + bar[3]) / 2f).isCloseTo(bmp.height / 2f, 1f)
         // The words centered on their ink, in the rest screen's quiet ink; the bar's fill a level brighter.
-        assertThat((text[0] + text[2]) / 2f).isWithin(1f).of(bmp.width / 2f)
-        assertThat(brightest(bmp, bottom = bar[1])).isIn(Range.closed(words - 6, words + 1))
-        assertThat(brightest(bmp, top = bar[1])).isIn(Range.closed(fill - 2, fill + 1))
+        assertThat((text[0] + text[2]) / 2f).isCloseTo(bmp.width / 2f, 1f)
+        assertThat(brightest(bmp, bottom = bar[1])).isBetween(words - 6, words + 1)
+        assertThat(brightest(bmp, top = bar[1])).isBetween(fill - 2, fill + 1)
         // Filled to where the bake has come.
-        assertThat((filledTo(bmp, bar) - bar[0]).toFloat() / (bar[2] - bar[0])).isWithin(0.01f).of(0.6f)
+        assertThat((filledTo(bmp, bar) - bar[0]).toFloat() / (bar[2] - bar[0])).isCloseTo(0.6f, 0.01f)
     }
 
     @Test
@@ -73,15 +77,15 @@ class LandscapeWaitingTest {
         val bmp = still(TestTexts.english(), "waiting_en")
         val bar = barBounds(bmp)
         val text = bounds(bmp, bottom = bar[1]) { it > 40 }
-        assertThat((text[0] + text[2]) / 2f).isWithin(1f).of(bmp.width / 2f)
-        assertThat((bar[0] + bar[2]) / 2f).isWithin(1f).of(bmp.width / 2f)
+        assertThat((text[0] + text[2]) / 2f).isCloseTo(bmp.width / 2f, 1f)
+        assertThat((bar[0] + bar[2]) / 2f).isCloseTo(bmp.width / 2f, 1f)
     }
 
     @Test
     fun itComesOnlyWhenThePictureKeepsOneWaitingAndGoesBeforeItIsUp() {
         var ready by mutableStateOf(false)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready, progress = { BakeProgress(0.5f, 0.6f) }) } }
+        compose.setContent { Fixtures.Glyphs { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready, progress = { BakeProgress(0.5f, 0.6f) }) } } }
         compose.mainClock.advanceTimeBy(900)
         assertThat(brightest(capture())).isEqualTo(0)
         compose.mainClock.advanceTimeBy(1_000)
@@ -100,7 +104,7 @@ class LandscapeWaitingTest {
     fun theBarFollowsTheBakeAndNeverGoesBack() {
         var baked by mutableStateOf(BakeProgress(0.2f, 0.3f))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready = false, progress = { baked }) } }
+        compose.setContent { Fixtures.Glyphs { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready = false, progress = { baked }) } } }
         compose.mainClock.advanceTimeBy(3_000)
         val first = capture()
         val bar = barBounds(first)
@@ -112,14 +116,14 @@ class LandscapeWaitingTest {
         // A new bake starting over never takes the bar back.
         baked = BakeProgress(0.1f, 0.2f)
         compose.mainClock.advanceTimeBy(2_000)
-        assertThat(filledTo(capture(), bar)).isAtLeast(later)
+        assertThat(filledTo(capture(), bar)).isGreaterThanOrEqualTo(later)
     }
 
     @Test
     fun aPictureThatComesQuicklyComesWithoutIt() {
         var ready by mutableStateOf(false)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready, progress = { BakeProgress(0.9f, 1f) }) } }
+        compose.setContent { Fixtures.Glyphs { Box(Modifier.fillMaxSize().background(Color.Black)) { LandscapeWaiting(ready, progress = { BakeProgress(0.9f, 1f) }) } } }
         compose.mainClock.advanceTimeBy(600)
         ready = true
         repeat(10) {

@@ -1,9 +1,11 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import org.junit.Test
+import kotlin.test.Test
 
 /** A song that no longer plays keeps what its lines showed while it played. */
 class PlayedLinesTest {

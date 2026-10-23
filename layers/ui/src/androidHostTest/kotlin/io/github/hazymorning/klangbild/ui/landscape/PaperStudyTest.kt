@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
-import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.landscape.CloudPlace
 import io.github.hazymorning.klangbild.landscape.LabelSide
 import io.github.hazymorning.klangbild.landscape.PaperBake
@@ -13,12 +13,12 @@ import io.github.hazymorning.klangbild.landscape.SeasonMix
 import io.github.hazymorning.klangbild.landscape.SeasonShapes
 import io.github.hazymorning.klangbild.landscape.SkyMap
 import io.github.hazymorning.klangbild.landscape.SkyState
-import org.junit.Test
+import io.github.hazymorning.klangbild.ui.Fixtures
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.Test
 
 /** Studies of the paper cut through a day: one picture per hour's plate, to judge as prints. */
 @Category(Pictures::class)

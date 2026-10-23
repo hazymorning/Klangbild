@@ -7,9 +7,11 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
-import io.github.hazymorning.klangbild.text.R
 import io.github.hazymorning.klangbild.render.ArtworkScene
+import io.github.hazymorning.klangbild.text.Plurals
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.datetime.TimeZone
 import kotlin.math.roundToInt
 
 /**
@@ -86,9 +88,9 @@ object StageTexts {
         t: Texts,
         pace: String? = null,
     ): String? = when {
-        volumeFlash && !muted && volume != null -> t.format(R.string.status_volume, volume)
-        muted -> listOfNotNull(group, t[R.string.status_muted]).joinToString(TimeText.SEPARATOR)
-        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR)
+        volumeFlash && !muted && volume != null -> t.format(Strings.statusVolume, volume)
+        muted -> listOfNotNull(group, t[Strings.statusMuted]).joinToString(TimeText.SEPARATOR)
+        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR)
         else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
 
@@ -102,24 +104,24 @@ object StageTexts {
         always && !(own && level != null && (level * 100f).roundToInt() >= 100)
 
     /** "Pauses at 11:10 PM": when the sleep timer pauses the music. */
-    fun sleep(atMs: Long, t: Texts, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String =
-        t.format(R.string.status_pause_at, t.clock(atMs, zone))
+    fun sleep(atMs: Long, t: Texts, zone: TimeZone = TimeZone.currentSystemDefault()): String =
+        t.format(Strings.statusPauseAt, t.clock(atMs, zone))
 
     /** "Spiegel im Spiegel · Arvo Pärt". */
     fun next(track: TrackInfo?, t: Texts): String? =
-        track?.let { TrackText.from(it, t[R.string.artists_others]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
+        track?.let { TrackText.from(it, t[Strings.artistsOthers]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
 
     /** "11 tracks · 48 min": how many tracks follow and how long they play, as far as known; null when neither is. */
     fun queue(count: Int?, durationMs: Long?, t: Texts): String? =
-        listOfNotNull(count?.let { t.plural(R.plurals.queue_tracks, it, t.number(it.toDouble(), 0)) }, durationMs?.let { TimeText.length(it, t) })
+        listOfNotNull(count?.let { t.plural(Plurals.queueTracks, it, t.number(it.toDouble(), 0)) }, durationMs?.let { TimeText.length(it, t) })
             .joinToString(TimeText.SEPARATOR).ifEmpty { null }
 
     /** "Spiegel im Spiegel". */
-    fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[R.string.artists_others]).title }
+    fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[Strings.artistsOthers]).title }
 
     /** A line in the progress bar's place: the lost connection, or a radio's station. */
     fun line(linkDown: Boolean, track: TrackInfo, t: Texts): String? = when {
-        linkDown -> t[R.string.stage_link_down]
+        linkDown -> t[Strings.stageLinkDown]
         track.durationMs == null -> track.source
         else -> null
     }

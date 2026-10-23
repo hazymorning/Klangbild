@@ -12,11 +12,11 @@ import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
-import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * The queue's list in motion, as a sequence of stills: it comes beside the cover and goes again

@@ -18,8 +18,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.AlignmentLine
@@ -39,11 +40,12 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
-import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.render.ArtworkScene
+import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -96,7 +98,7 @@ fun WallLayer(
 ) {
     // With the cover colors background, the cover's own colors are the wall.
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, level)
-    val image = remember(scene) { scene.wall.asImageBitmap() }
+    val image = scene.wall
     val filters = remember { HashMap<Int, ColorFilter?>() }
     val lit = scene.appearance == Appearance.DARK
     val beside = lit && scene.layout.flow
@@ -156,11 +158,7 @@ fun ArtworkLayer(
     alpha: () -> Float = { 1f },
     dim: () -> Float = { 1f },
 ) {
-    val shader = remember(scene) {
-        android.graphics.BitmapShader(scene.cover, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
-    }
-    val brush = remember(shader) { ShaderBrush(shader) }
-    val place = remember { android.graphics.Matrix() }
+    val brush = remember(scene) { ShaderBrush(ImageShader(scene.cover, TileMode.Clamp, TileMode.Clamp)) }
     val filters = remember(scene) { HashMap<Int, ColorFilter>() }
     val rect = scene.layout.artRect
     Canvas(
@@ -170,14 +168,13 @@ fun ArtworkLayer(
     ) {
         val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
         val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
-        val x = (rect.left * density).roundToInt().toFloat()
-        val y = (rect.top * density).roundToInt().toFloat()
         val w = scene.cover.width.toFloat()
         val h = scene.cover.height.toFloat()
         val corner = CornerRadius(scene.corner * density)
-        place.setTranslate(x, y)
-        shader.setLocalMatrix(place)
-        drawRoundRect(brush, Offset(x, y), Size(w, h), corner, colorFilter = filter)
+        // The cover's pixels start at its corner, which stands on a whole pixel.
+        translate((rect.left * density).roundToInt().toFloat(), (rect.top * density).roundToInt().toFloat()) {
+            drawRoundRect(brush, Offset.Zero, Size(w, h), corner, colorFilter = filter)
+        }
     }
 }
 
@@ -245,7 +242,8 @@ internal fun TextLayer(
     }
     val layout = model.scene.layout
     val t = model.text
-    val styles = remember(model.scene.palette) { StageStyles(model.scene.palette) }
+    val faces = faces()
+    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
     val block = plan.styles
     val localDensity = LocalDensity.current
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
@@ -395,7 +393,8 @@ fun StatusLayer(
     val status = model.statusLine
     if (status == null || status.isEmpty) return
     val layout = model.scene.layout
-    val styles = remember(model.scene.palette) { StageStyles(model.scene.palette) }
+    val faces = faces()
+    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
     val figures = rememberFigures(styles.time, Face.TITLE)
     val clockText = status.clock
     val measurer = rememberTextMeasurer()

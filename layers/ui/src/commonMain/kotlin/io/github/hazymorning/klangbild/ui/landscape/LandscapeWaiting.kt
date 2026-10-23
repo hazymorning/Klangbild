@@ -27,13 +27,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.hazymorning.klangbild.landscape.BakeProgress
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.QuietColors
 import io.github.hazymorning.klangbild.ui.stage.BAR_THICKNESS
+import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberInkShift
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlinx.coroutines.delay
@@ -76,8 +77,8 @@ internal fun LandscapeWaiting(ready: Boolean, progress: () -> BakeProgress = { B
         }
     }
     val colors = remember { QuietColors.of() }
-    val style = textType(WAIT_TEXT_SP, WAIT_TEXT_WEIGHT, colors.secondary)
-    val words = texts()[R.string.landscape_waiting]
+    val style = faces().textType(WAIT_TEXT_SP, WAIT_TEXT_WEIGHT, colors.secondary)
+    val words = texts()[Strings.landscapeWaiting]
     // Centered on its ink: the first and last letters' side bearings differ.
     val shift = rememberInkShift(words, style)
     Layout(

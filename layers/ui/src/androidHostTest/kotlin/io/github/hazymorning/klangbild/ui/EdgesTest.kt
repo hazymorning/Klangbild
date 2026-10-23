@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
@@ -21,12 +22,13 @@ import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.test.Test
 
 /**
  * The screen drifts a few pixels against burn-in. Whatever shows (paper, the menu, the quick
@@ -71,31 +73,31 @@ class EdgesTest {
         var ui by mutableStateOf(UiState(screen = Screen.Stage(track, PlayerStatus.PAUSED, null), stage = light, appearance = Appearance.LIGHT))
         compose.mainClock.autoAdvance = false
         // Nine minutes into the hour the drift stands at its right end; the stage paused, so it rests.
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 9 * 60_000L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 9 * 60_000L }, glyphs = AndroidGlyphs)) }
         compose.mainClock.advanceTimeBy(2_500)
-        assertWithMessage("paper").that(stripe(frame())).isAtMost(4)
+        assertThat(stripe(frame()), name = "paper").isLessThanOrEqualTo(4)
         ui = ui.copy(menu = menu(Settings()))
         compose.mainClock.advanceTimeBy(1_000)
-        assertWithMessage("menu on paper").that(stripe(frame())).isAtMost(4)
+        assertThat(stripe(frame()), name = "menu on paper").isLessThanOrEqualTo(4)
         // Dark chosen in the menu: the menu turns dark at once, the wall behind it takes a while.
         ui = ui.copy(appearance = Appearance.DARK, stage = dark, menu = menu(Settings(appearance = AppearanceMode.DARK)))
         for (i in 1..8) {
             compose.mainClock.advanceTimeBy(300)
-            assertWithMessage("menu turning dark, frame $i").that(stripe(frame())).isAtMost(4)
+            assertThat(stripe(frame()), name = "menu turning dark, frame $i").isLessThanOrEqualTo(4)
         }
         // The menu closes while the wall still turns.
         ui = ui.copy(menu = null)
         for (i in 1..8) {
             compose.mainClock.advanceTimeBy(300)
-            assertWithMessage("wall turning dark, frame $i").that(stripe(frame())).isAtMost(4)
+            assertThat(stripe(frame()), name = "wall turning dark, frame $i").isLessThanOrEqualTo(4)
         }
         // The quick settings, on the dark wall and on paper: seamless to the sides and the bottom.
         ui = ui.copy(quick = quick())
         compose.mainClock.advanceTimeBy(1_000)
         // (The chosen entry's soft light reaches a few levels into the pixels compared.)
-        assertWithMessage("quick settings, dark").that(stripe(frame(), bottom = true)).isAtMost(12)
+        assertThat(stripe(frame(), bottom = true), name = "quick settings, dark").isLessThanOrEqualTo(12)
         ui = ui.copy(appearance = Appearance.LIGHT, stage = light)
         compose.mainClock.advanceTimeBy(3_000)
-        assertWithMessage("quick settings, paper").that(stripe(frame(), bottom = true)).isAtMost(12)
+        assertThat(stripe(frame(), bottom = true), name = "quick settings, paper").isLessThanOrEqualTo(12)
     }
 }

@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -12,9 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.draw.drawBehind
-import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,17 +28,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -59,21 +55,24 @@ import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
-import io.github.hazymorning.klangbild.render.StageGrid
-import io.github.hazymorning.klangbild.render.LampLight
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.ImageOps
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.WallGlow
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
+import io.github.hazymorning.klangbild.render.imageBitmapOf
+import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.exp
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Geometry of the menu (dp): the line under the cursor always sits at the screen's middle. */
 object MenuGrid {
@@ -220,7 +219,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
         val field = rememberOffMain(screen, colors) {
             val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
-            Bitmap.createBitmap(px, GLOW_MAP_W, GLOW_MAP_H, Bitmap.Config.ARGB_8888).asImageBitmap()
+            imageBitmapOf(px, GLOW_MAP_W, GLOW_MAP_H)
         }
         if (field != null) Canvas(Modifier.fillMaxSize()) {
             // The band's light adds to the wall, on black and on paper alike.
@@ -256,9 +255,10 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
     val offset = animateGlide(focusY - (cursor * MenuGrid.ROW + MenuGrid.ROW / 2f), GLIDE_MS)
 
     // Left: the heading at the print's top edge, the explanation level with the chosen line.
-    val headingStyle = titleType(36f, 420, colors.heading)
+    val faces = faces()
+    val headingStyle = faces.titleType(36f, 420, colors.heading)
     BaselineAt(x = layout.margin, baseline = layout.artTop + 36f * Fonts.CAP_HEIGHT, width = layout.art) {
-        BasicText(menu.section?.let { t[it.title] } ?: t[R.string.menu_heading], style = headingStyle)
+        BasicText(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], style = headingStyle)
     }
     // While a key is held the list runs on under the light: the explanation goes, and comes
     // back with the line the key is let go on.
@@ -270,19 +270,19 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
             BasicText(
                 text,
-                style = textType(18f, 420, colors.description, lineHeight = 26f).merge(
+                style = faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(
                     TextStyle(lineBreak = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default)),
                 ),
             )
         }
     }
     BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
-        BasicText(t[if (menu.section == null) R.string.menu_hint_groups else R.string.menu_hint], style = textType(15f, 500, colors.hint, tracking = 0.01f))
+        BasicText(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
     }
 
     // Right: the lines in the text column.
-    val labelStyle = textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
-    val valueStyle = textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
+    val labelStyle = faces.textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
+    val valueStyle = faces.textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
     menu.rows.forEachIndexed { i, line ->
         Box(
             Modifier

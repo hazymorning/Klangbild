@@ -8,17 +8,20 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isCloseTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * At sunset the stage turns from paper to the dark wall in one cross-fade, its lines with it: a
@@ -68,7 +71,7 @@ class WallChangeTest {
         compose.mainClock.advanceTimeBy(96)
         val early = capture()
         // Three frames in, the lines are still the dark ink on the paper, nearly as dark as before.
-        assertThat(column.darkest(early)).isWithin(18f).of(column.darkest(before))
+        assertThat(column.darkest(early)).isCloseTo(column.darkest(before), 18f)
         assertThat(column.lightest(early)).isLessThan(column.paper(early) + 12f)
         compose.mainClock.advanceTimeBy(3_000)
         val after = capture()

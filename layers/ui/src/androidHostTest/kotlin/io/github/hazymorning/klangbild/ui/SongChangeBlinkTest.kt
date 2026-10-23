@@ -8,17 +8,18 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isGreaterThanOrEqualTo
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * A song change never blinks: the old lines leave from where they stand, whenever in a frame the
@@ -65,7 +66,7 @@ class SongChangeBlinkTest {
                 compose.mainClock.advanceTimeBy(16)
                 // The old lines leave over 220 ms and the new ones rise later, so within these
                 // frames the column holds at least most of what it held.
-                assertThat(inked(capture())).isAtLeast(steady * 0.6f)
+                assertThat(inked(capture())).isGreaterThanOrEqualTo(steady * 0.6f)
             }
             compose.mainClock.advanceTimeBy(3_000)
         }

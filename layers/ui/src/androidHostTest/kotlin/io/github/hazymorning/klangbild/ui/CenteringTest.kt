@@ -10,8 +10,10 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -22,13 +24,15 @@ import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.stage.Stage
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.LocalGlyphs
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.test.Test
 
 /**
  * What is meant to stand in the middle does, measured on the rendered pixels (1080p, 2 px = 1 dp)
@@ -57,17 +61,17 @@ class CenteringTest {
         // In German with 24 hours, and in English with 12 (the clock shows the figures alone).
         for (t in listOf(Fixtures.texts, TestTexts.english())) for ((reason, at) in cases) {
             val ink = render {
-                CompositionLocalProvider(LocalTexts provides t) {
+                CompositionLocalProvider(LocalTexts provides t, LocalGlyphs provides AndroidGlyphs) {
                     RestScreen(reason, "Wohnzimmer", "media_player.wohnzimer", at, zone = Fixtures.zone)
                 }
             }
             val lines = ink.lines()
             val clock = lines.first()
             val case = "$reason in ${t.locale}"
-            assertWithMessage("$case: the clock across").that(abs(clock.centerX - 960f)).isAtMost(1.5f)
-            assertWithMessage("$case: the clock up and down (figures' top to baseline)").that(abs((clock.top + clock.baseline) / 2f - 540f)).isAtMost(2f)
+            assertThat(abs(clock.centerX - 960f), name = "$case: the clock across").isLessThanOrEqualTo(1.5f)
+            assertThat(abs((clock.top + clock.baseline) / 2f - 540f), name = "$case: the clock up and down (figures' top to baseline)").isLessThanOrEqualTo(2f)
             for (line in lines.drop(1)) {
-                assertWithMessage("$case: a line under the clock, at ${line.top}").that(abs(line.centerX - 960f)).isAtMost(3f)
+                assertThat(abs(line.centerX - 960f), name = "$case: a line under the clock, at ${line.top}").isLessThanOrEqualTo(3f)
             }
         }
     }
@@ -79,9 +83,9 @@ class CenteringTest {
         // "1", "8", ":", "4" and "0", each its own run of ink; the eight reaches as far over the
         // figures' top as below their baseline, so its middle is theirs.
         val (one, eight, colon) = ink.runs(clock.inkTop, clock.inkBottom)
-        assertThat(abs((colon.top + colon.bottom) / 2f - (eight.top + eight.bottom) / 2f)).isAtMost(2f)
+        assertThat(abs((colon.top + colon.bottom) / 2f - (eight.top + eight.bottom) / 2f)).isLessThanOrEqualTo(2f)
         // The one keeps no more room to the eight than the eight keeps to the colon.
-        assertThat(eight.left - one.right).isAtMost(colon.left - eight.right)
+        assertThat(eight.left - one.right).isLessThanOrEqualTo(colon.left - eight.right)
     }
 
     @Test
@@ -91,8 +95,8 @@ class CenteringTest {
         val art = ink.box(0, 0, 960, 1080)
         // The progress bar's track is quiet: found with a lower threshold.
         val right = ink.box(960, 0, 1920, 1080, threshold = 24)
-        assertWithMessage("above and below the artwork").that(abs(art.top - (1079 - art.bottom))).isAtMost(1)
-        assertWithMessage("left of the artwork, right of the column").that(abs(art.left - (1919 - right.right))).isAtMost(2)
+        assertThat(abs(art.top - (1079 - art.bottom)), name = "above and below the artwork").isLessThanOrEqualTo(1)
+        assertThat(abs(art.left - (1919 - right.right)), name = "left of the artwork, right of the column").isLessThanOrEqualTo(2)
     }
 
     @Test
@@ -116,9 +120,9 @@ class CenteringTest {
             val case = "${if (flow) "Cover Flow" else "single cover"} in ${t.locale}"
             // Its cap height and its baseline are as far from the artwork's middle (540) on either side.
             val cap = 30f * io.github.hazymorning.klangbild.ui.theme.Fonts.CAP_HEIGHT * 2f
-            assertWithMessage("$case: the sung line's baseline").that(abs(sung.baseline - (540f + cap / 2f))).isAtMost(1.5f)
+            assertThat(abs(sung.baseline - (540f + cap / 2f)), name = "$case: the sung line's baseline").isLessThanOrEqualTo(1.5f)
             // It starts on the column's left edge (pulled left by large type's extra side bearing, a pixel or two).
-            assertWithMessage("$case: the sung line's left edge").that(abs(sung.left - layout.columnLeft * 2f)).isAtMost(4f)
+            assertThat(abs(sung.left - layout.columnLeft * 2f), name = "$case: the sung line's left edge").isLessThanOrEqualTo(4f)
         }
     }
 
@@ -144,21 +148,21 @@ class CenteringTest {
             val case = "in ${t.locale}"
             // The status line leads the song as "Up next" leads the rows: baseline to cap height.
             val titleCap = title.baseline - 34f * Fonts.CAP_HEIGHT * 2f
-            assertWithMessage("$case: status line to title against \"Up next\" to the first row")
-                .that(abs((titleCap - status.baseline) - (row.inkTop - heading.baseline))).isAtMost(2f)
-            assertWithMessage("$case: the status line's cap height on the grid").that(abs(status.inkTop - layout.statusTop * 2f)).isAtMost(2f)
+            assertThat(abs((titleCap - status.baseline) - (row.inkTop - heading.baseline)), name = "$case: status line to title against \"Up next\" to the first row")
+                .isLessThanOrEqualTo(2f)
+            assertThat(abs(status.inkTop - layout.statusTop * 2f), name = "$case: the status line's cap height on the grid").isLessThanOrEqualTo(2f)
             // The song and the list stand further apart than anything within the song: the bar
             // (its fill, then its times) belongs to the song.
-            assertWithMessage("$case: the room before the list against the room above the bar")
-                .that(heading.top - times.baseline).isGreaterThan(lines[bar].inkTop - meta.baseline + 8)
+            assertThat(heading.top - times.baseline, name = "$case: the room before the list against the room above the bar")
+                .isGreaterThan(lines[bar].inkTop - meta.baseline + 8)
             // Nothing of the list reaches past the column's foot, or beyond its right edge.
             val foot = (layout.footerBottom * 2).toInt()
-            assertWithMessage("$case: below the column's foot").that(ink.box(left, foot + 1, 1920, 1080, threshold = 24).right).isEqualTo(-1)
+            assertThat(ink.box(left, foot + 1, 1920, 1080, threshold = 24).right, name = "$case: below the column's foot").isEqualTo(-1)
             val right = ((layout.columnLeft + layout.columnWidth) * 2).toInt()
-            assertWithMessage("$case: right of the column").that(ink.box(right + 2, 0, 1920, 1080, threshold = 24).right).isEqualTo(-1)
+            assertThat(ink.box(right + 2, 0, 1920, 1080, threshold = 24).right, name = "$case: right of the column").isEqualTo(-1)
             // Every line starts on the column's left edge (the title a pixel or two further left).
             for (line in listOf(status, title, heading, row)) {
-                assertWithMessage("$case: a line's left edge at ${line.top}").that(abs(line.left - layout.columnLeft * 2f)).isAtMost(4f)
+                assertThat(abs(line.left - layout.columnLeft * 2f), name = "$case: a line's left edge at ${line.top}").isLessThanOrEqualTo(4f)
             }
         }
     }
@@ -168,7 +172,7 @@ class CenteringTest {
         val settings = Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.wohnzimmer")
         val ink = render { Fixtures.Still { MenuScreen(Fixtures.menu(io.github.hazymorning.klangbild.config.MenuEntry.APPEARANCE, settings)) } }
         val all = ink.box(0, 0, 1920, 1080)
-        assertWithMessage("left of the heading, right of the values").that(abs(all.left - (1919 - all.right))).isAtMost(4)
+        assertThat(abs(all.left - (1919 - all.right)), name = "left of the heading, right of the values").isLessThanOrEqualTo(4)
     }
 
     @Test
@@ -178,8 +182,8 @@ class CenteringTest {
             val ink = render { Fixtures.Still { SetupScreen(reason, info, SetupArt.scene(info, tv)) } }
             val all = ink.box(0, 0, 1920, 1080)
             val card = ink.box(0, 0, 960, 1080)
-            assertWithMessage("$reason: left of the code, right of the longest line").that(abs(card.left - (1919 - all.right))).isAtMost(6)
-            assertWithMessage("$reason: above and below the code").that(abs(card.top - (1079 - card.bottom))).isAtMost(1)
+            assertThat(abs(card.left - (1919 - all.right)), name = "$reason: left of the code, right of the longest line").isLessThanOrEqualTo(6)
+            assertThat(abs(card.top - (1079 - card.bottom)), name = "$reason: above and below the code").isLessThanOrEqualTo(1)
         }
     }
 

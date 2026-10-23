@@ -5,15 +5,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MiniPlayer
+import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightColor
 import io.github.hazymorning.klangbild.lights.LightColors
@@ -21,22 +24,20 @@ import io.github.hazymorning.klangbild.lights.LightSlot
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import org.junit.Before
-import org.junit.Test
+import kotlinx.datetime.toJavaZoneId
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.time.ZonedDateTime
 import java.util.TimeZone
-import io.github.hazymorning.klangbild.Pictures
-import io.github.hazymorning.klangbild.domain.Catalog
-import org.junit.experimental.categories.Category
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * The screens in the README's pictures, in English; beside each song the colors the lights
@@ -48,9 +49,9 @@ import org.junit.experimental.categories.Category
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class ReadmeShotsTest {
-    @Before
+    @BeforeTest
     fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone))
+        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
     }
 
     private val en = TestTexts.english()
@@ -150,7 +151,7 @@ class ReadmeShotsTest {
     /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
     @Test
     fun landscapeShot() {
-        val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
+        val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
         val ui = UiState(
             screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),
             stage = Fixtures.stage(polarNight),

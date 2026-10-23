@@ -56,7 +56,9 @@ import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.rememberFrames
+import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -89,9 +91,9 @@ private val lyricsLadder = listOf(
 )
 
 /** The words' style at [step]; Japanese, Chinese and Korean words a little smaller, as titles are. */
-private fun lyricsStyle(step: LyricsStep, cjk: Boolean): TextStyle {
+private fun lyricsStyle(faces: Faces, step: LyricsStep, cjk: Boolean): TextStyle {
     val size = if (cjk) step.size * StageStyles.CJK_SCALE else step.size
-    return titleType(size = size, weight = step.weight, lineHeight = size * step.leading + if (cjk) 6f else 0f, tracking = if (cjk) 0f else step.tracking)
+    return faces.titleType(size = size, weight = step.weight, lineHeight = size * step.leading + if (cjk) 6f else 0f, tracking = if (cjk) 0f else step.tracking)
         .merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
 }
 
@@ -134,7 +136,7 @@ internal class LyricRow(val layout: TextLayoutResult, val line: Int, val baselin
  * balanced breaks, never inside a word, a short word kept with the next as in titles. A line
  * longer than [MAX_ROWS] rows even at the smallest size ends after a whole word.
  */
-internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasurer, density: Float): LyricsPlan {
+internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasurer, density: Float, faces: Faces): LyricsPlan {
     val colW = (columnWidth * density).roundToInt()
     val cjk = isMostlyCjk(lyrics.lines.take(CJK_SAMPLE).joinToString(" ") { it.text })
     val parts = lyrics.lines.map { line -> line.text.split('\n').map { glueShortWords(glueParentheses(AnnotatedString(it))) } }
@@ -143,10 +145,10 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
     // The longest parts decide, so they are tried first.
     val longest = parts.flatten().sortedByDescending { it.length }
     val step = lyricsLadder.firstOrNull { s ->
-        val style = lyricsStyle(s, cjk)
+        val style = lyricsStyle(faces, s, cjk)
         longest.all { wrapped(it, style).lineCount <= s.rows }
     } ?: lyricsLadder.last()
-    val style = lyricsStyle(step, cjk)
+    val style = lyricsStyle(faces, step, cjk)
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT * density
     val leading = style.lineHeight.value * density
     val gap = style.fontSize.value * LINE_GAP_EM * density
@@ -293,7 +295,8 @@ internal fun LyricsText(
     shift: () -> Float,
 ) {
     val layout = model.scene.layout
-    val styles = remember(model.scene.palette) { StageStyles(model.scene.palette) }
+    val faces = faces()
+    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
     val room = remember(layout, styles) { LyricsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
     val views = LocalLyricsViews.current
@@ -380,8 +383,9 @@ internal fun LyricsText(
 private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () -> LyricPlace): LyricsPlan? {
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
+    val faces = faces()
     val key = layout.columnWidth to density
-    fun plan() = planLyrics(view.lyrics, layout.columnWidth, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density)
+    fun plan() = planLyrics(view.lyrics, layout.columnWidth, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
     if (LocalStill.current) return remember(view, key) { view.keep(key, plan(), place()) }
     val ready = view.planFor(key)
     if (ready == null) {

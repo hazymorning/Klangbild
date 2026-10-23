@@ -4,25 +4,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import org.junit.Before
-import org.junit.Test
+import io.github.hazymorning.klangbild.ui.Fixtures
+import kotlinx.datetime.toJavaZoneId
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.shredzone.commons.suncalc.SunTimes
 import java.time.ZonedDateTime
 import java.util.TimeZone
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * The landscape through the year, as the app shows it in Berlin: for each season a day
@@ -34,9 +35,9 @@ import org.junit.experimental.categories.Category
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class LandscapeGalleryTest {
-    @Before
+    @BeforeTest
     fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone))
+        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
     }
 
     private fun shot(name: String, at: ZonedDateTime, weather: String? = "partlycloudy", cover: SyntheticCover = SyntheticCover.MIST, side: MiniPlayer = MiniPlayer.LEFT) {
@@ -58,11 +59,11 @@ class LandscapeGalleryTest {
 
     /** A day of [month]/[day]: sunrise, noon, golden hour, dusk, blue hour and the night. */
     private fun day(season: String, month: Int, day: Int, weather: String?, cover: SyntheticCover) {
-        val date = ZonedDateTime.of(2026, month, day, 0, 0, 0, 0, Fixtures.zone)
+        val date = ZonedDateTime.of(2026, month, day, 0, 0, 0, 0, Fixtures.zone.toJavaZoneId())
         val sun = SunTimes.compute().on(date).at(52.52, 13.40).execute()
-        val rise = sun.rise!!.withZoneSameInstant(Fixtures.zone)
-        val set = sun.set!!.withZoneSameInstant(Fixtures.zone)
-        val noon = sun.noon!!.withZoneSameInstant(Fixtures.zone)
+        val rise = sun.rise!!.withZoneSameInstant(Fixtures.zone.toJavaZoneId())
+        val set = sun.set!!.withZoneSameInstant(Fixtures.zone.toJavaZoneId())
+        val noon = sun.noon!!.withZoneSameInstant(Fixtures.zone.toJavaZoneId())
         shot("${season}_1_sunrise", rise.plusMinutes(12), weather, cover)
         shot("${season}_2_noon", noon, weather, cover)
         shot("${season}_3_golden", set.minusMinutes(50), weather, cover)
@@ -85,19 +86,19 @@ class LandscapeGalleryTest {
 
     @Test
     fun weather() {
-        val noon = ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, Fixtures.zone)
+        val noon = ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, Fixtures.zone.toJavaZoneId())
         shot("5_weather_1_clear", noon, "sunny")
         shot("5_weather_2_partly", noon, "partlycloudy")
         shot("5_weather_3_cloudy", noon, "cloudy")
         shot("5_weather_4_rain", noon, "rainy")
         // A full moon over snow: 3 January 2026.
-        shot("5_weather_5_full_moon", ZonedDateTime.of(2026, 1, 3, 22, 0, 0, 0, Fixtures.zone), "clear-night")
+        shot("5_weather_5_full_moon", ZonedDateTime.of(2026, 1, 3, 22, 0, 0, 0, Fixtures.zone.toJavaZoneId()), "clear-night")
         shot("5_weather_6_no_label", noon.withMonth(7).withDayOfMonth(16).withHour(19), "sunny", side = MiniPlayer.OFF)
         shot("5_weather_7_pouring", noon, "pouring")
         shot("5_weather_8_storm", noon, "lightning-rainy")
         shot("5_weather_9_fog", noon.withHour(9), "fog")
-        shot("5_weather_a_snow", ZonedDateTime.of(2026, 1, 22, 13, 0, 0, 0, Fixtures.zone), "snowy")
-        shot("5_weather_b_snow_night", ZonedDateTime.of(2026, 1, 22, 21, 0, 0, 0, Fixtures.zone), "snowy")
+        shot("5_weather_a_snow", ZonedDateTime.of(2026, 1, 22, 13, 0, 0, 0, Fixtures.zone.toJavaZoneId()), "snowy")
+        shot("5_weather_b_snow_night", ZonedDateTime.of(2026, 1, 22, 21, 0, 0, 0, Fixtures.zone.toJavaZoneId()), "snowy")
         shot("5_weather_c_rain_dusk", noon.withHour(18).withMinute(50), "rainy")
         shot("5_weather_d_windy", noon, "windy")
     }

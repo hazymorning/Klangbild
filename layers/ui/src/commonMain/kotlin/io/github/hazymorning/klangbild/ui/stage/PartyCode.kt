@@ -1,8 +1,5 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.Shader
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -18,7 +15,11 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.translate
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.QrCode
@@ -82,7 +83,7 @@ fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, size: Any,
  * The QR code of [url] as a printed card [sizePx] square, like the setup's: dark modules on whole
  * pixels on ivory (a whiter paper on the light wall). Null for a link no QR code can hold.
  */
-fun partyCard(url: String, sizePx: Int, wall: Appearance): Bitmap? =
+fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? =
     runCatching { QrCode.matrix(url) }.getOrNull()?.let { SetupArt.card(it, sizePx, wall) }
 
 /**
@@ -92,11 +93,9 @@ fun partyCard(url: String, sizePx: Int, wall: Appearance): Bitmap? =
  * stay the song's.
  */
 @Composable
-fun PartyCodeLayer(card: Bitmap?, scene: ArtworkScene, alpha: () -> Float, dim: () -> Float) {
+fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, dim: () -> Float) {
     if (card == null) return
-    val shader = remember(card) { BitmapShader(card, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
-    val brush = remember(shader) { ShaderBrush(shader) }
-    val place = remember { android.graphics.Matrix() }
+    val brush = remember(card) { ShaderBrush(ImageShader(card, TileMode.Clamp, TileMode.Clamp)) }
     val filters = remember(scene.appearance) { HashMap<Int, ColorFilter>() }
     val rect = scene.layout.artRect
     Canvas(Modifier.fillMaxSize()) {
@@ -105,11 +104,10 @@ fun PartyCodeLayer(card: Bitmap?, scene: ArtworkScene, alpha: () -> Float, dim: 
         if (a <= 0f) return@Canvas
         val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
         val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
-        val x = (rect.left * density).roundToInt().toFloat()
-        val y = (rect.top * density).roundToInt().toFloat()
-        place.setTranslate(x, y)
-        shader.setLocalMatrix(place)
         val corner = CornerRadius(scene.layout.radius * density)
-        drawRoundRect(brush, Offset(x, y), Size(card.width.toFloat(), card.height.toFloat()), corner, alpha = a, colorFilter = filter)
+        // The card's pixels start at its corner, which stands on a whole pixel.
+        translate((rect.left * density).roundToInt().toFloat(), (rect.top * density).roundToInt().toFloat()) {
+            drawRoundRect(brush, Offset.Zero, Size(card.width.toFloat(), card.height.toFloat()), corner, alpha = a, colorFilter = filter)
+        }
     }
 }

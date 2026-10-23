@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +21,6 @@ import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -34,6 +32,7 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.CoverField
 import io.github.hazymorning.klangbild.render.FieldBlob
 import io.github.hazymorning.klangbild.render.FieldMotion
+import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.rememberFrames
 import kotlin.math.ceil
 import kotlin.math.max
@@ -70,7 +69,7 @@ fun FieldLayer(
     level: () -> Float = { 1f },
 ) {
     val field = scene.field ?: return
-    val veil = remember(field) { field.veil?.asImageBitmap() }
+    val veil = field.veil
     val base = remember(field) { Color(field.base) }
     val brushes = remember(field) { field.blobs.map(::brush) }
     val places = remember(field) { FloatArray(field.blobs.size * FieldMotion.STRIDE) }
@@ -170,6 +169,6 @@ private object Grain {
             val v = r.nextInt(3)
             (0xFF shl 24) or (v shl 16) or (v shl 8) or v
         }
-        Bitmap.createBitmap(px, SIDE, SIDE, Bitmap.Config.ARGB_8888).asImageBitmap()
+        imageBitmapOf(px, SIDE, SIDE)
     }
 }

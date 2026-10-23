@@ -3,11 +3,13 @@ package io.github.hazymorning.klangbild.ui
 import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -15,13 +17,13 @@ import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.test.Test
 
 /**
  * Nothing frames a cover on paper: no shadow, no line, no lighter or darker box. Around the
@@ -68,7 +70,7 @@ class NoFrameTest {
                 intArrayOf(l - 80, t, l - 6, b),
                 intArrayOf(r + 6, t, r + 80, b),
             )
-            assertWithMessage("$cover: paper round the print").that(deviation(bmp, boxes)).isAtMost(3)
+            assertThat(deviation(bmp, boxes), name = "$cover: paper round the print").isLessThanOrEqualTo(3)
         }
     }
 
@@ -91,7 +93,7 @@ class NoFrameTest {
             intArrayOf(80, top - 90, 1110, top - 6),
             intArrayOf(80, bottom + 6, 1110, bottom + 90),
         )
-        assertWithMessage("paper above and below the cards").that(deviation(bmp, boxes)).isAtMost(3)
+        assertThat(deviation(bmp, boxes), name = "paper above and below the cards").isLessThanOrEqualTo(3)
     }
 
     @Test
@@ -110,7 +112,7 @@ class NoFrameTest {
             // The card stands on whole pixels: the strip's shift, rounded one way or the other.
             val dx = geometry.balance(left, right).cards * 2f
             val worst = listOf(floor(dx), ceil(dx)).minOf { middleCardDifference(full, bmp, it.toInt()) }
-            assertWithMessage("$left before, $right to come").that(worst).isEqualTo(0)
+            assertThat(worst, name = "$left before, $right to come").isEqualTo(0)
         }
     }
 

@@ -8,7 +8,11 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.app.UiState
@@ -17,11 +21,12 @@ import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.test.Test
 
 /**
  * The queue goes to or from Cover Flow: what showed stays on screen until the first scene of the
@@ -47,7 +52,7 @@ class CoverFlowSwitchTest {
     fun whatShowedStaysUntilTheOtherIsReady() {
         var ui by mutableStateOf(UiState(screen = Screen.Stage(track, PlayerStatus.PLAYING, null), stage = Fixtures.stage(track, mdpi)))
         compose.mainClock.autoAdvance = false
-        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L })) }
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L }, glyphs = AndroidGlyphs)) }
         compose.mainClock.advanceTimeBy(2_500)
         val single = capture()
         // Cover Flow is chosen; its cards are still being made: the single cover stays as it is.

@@ -1,15 +1,19 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
@@ -71,7 +75,7 @@ class StageTextsTest {
     fun `a radio shows its station, a lost link says so`() {
         val radio = TrackInfo("Morgenmusik", source = "Radio Morgenlicht")
         assertThat(StageTexts.line(false, radio, de)).isEqualTo("Radio Morgenlicht")
-        assertThat(StageTexts.line(true, radio, de)).isEqualTo(de[R.string.stage_link_down])
+        assertThat(StageTexts.line(true, radio, de)).isEqualTo(de[Strings.stageLinkDown])
         assertThat(StageTexts.line(true, radio, de)).isEqualTo("Verbindung wird wiederhergestellt\u00A0…")
         assertThat(StageTexts.line(false, radio.copy(durationMs = 1000), de)).isNull()
     }

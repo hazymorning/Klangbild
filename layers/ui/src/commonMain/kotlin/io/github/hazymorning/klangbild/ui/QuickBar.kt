@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -23,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.FirstBaseline
@@ -39,10 +37,12 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.QuickItem
-import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
+import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.exp
 import kotlin.math.max
@@ -190,8 +190,9 @@ internal class QuickColors(
 @Composable
 fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
     val colors = remember(appearance) { QuickColors.of(appearance) }
-    val labelStyle = remember { textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT) }
-    val valueStyle = remember { textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT) }
+    val faces = faces()
+    val labelStyle = remember(faces) { faces.textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT) }
+    val valueStyle = remember(faces) { faces.textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT) }
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val keys = quick.rows.map { it.key }
     val labels = quick.rows.map { it.label }
@@ -354,5 +355,5 @@ private fun glowBlob(ditherLsb: Float): androidx.compose.ui.graphics.ImageBitmap
         img.b[o] = value
     }
     val px = ImageOps.toArgbDithered(img, seed = 7, ditherLsb = ditherLsb, blackBelow = 0.0005f)
-    return Bitmap.createBitmap(px, BLOB_W, BLOB_H, Bitmap.Config.ARGB_8888).asImageBitmap()
+    return imageBitmapOf(px, BLOB_W, BLOB_H)
 }

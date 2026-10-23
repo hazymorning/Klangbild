@@ -6,12 +6,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.collect.Range
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 /**
  * A list's glide ([animateGlide]) frame by frame: a press glides one line, a held key runs the
@@ -54,8 +57,8 @@ class GlideTest {
         val f = frames(listOf(0L to LINE), untilMs = 600)
         // Eased in: the first frame barely moves; then it arrives and stays.
         assertThat(f.first().second).isLessThan(2f)
-        assertThat(f.first { it.second == LINE }.first).isIn(Range.closed(GLIDE_MS.toLong(), GLIDE_MS + 4 * FRAME_MS))
-        assertThat(f.maxOf { it.second }).isAtMost(LINE)
+        assertThat(f.first { it.second == LINE }.first).isBetween(GLIDE_MS.toLong(), GLIDE_MS + 4 * FRAME_MS)
+        assertThat(f.maxOf { it.second }).isLessThanOrEqualTo(LINE)
     }
 
     @Test
@@ -73,8 +76,8 @@ class GlideTest {
         val release = held.last().first
         val end = held.last().second
         val after = frames(held, untilMs = release + 1_000).filter { it.first > release }
-        assertThat(after.maxOf { it.second }).isAtMost(end + 0.5f)
-        assertThat(after.first { end - it.second < 0.5f }.first - release).isAtMost(600L)
+        assertThat(after.maxOf { it.second }).isLessThanOrEqualTo(end + 0.5f)
+        assertThat(after.first { end - it.second < 0.5f }.first - release).isLessThanOrEqualTo(600L)
     }
 
     private companion object {

@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.math.RecentMap
 
 /**
  * What each song's lines showed while it played, so that a stage still on screen after its song
@@ -19,9 +20,7 @@ internal class PlayedLines {
     }
 
     /** The songs of the last few changes, the one used last at the end. */
-    private val songs = object : LinkedHashMap<String, Played>(KEPT + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Played>?) = size > KEPT
-    }
+    private val songs = RecentMap<String, Played>(KEPT)
 
     private fun of(key: String) = songs.getOrPut(key) { Played() }
 

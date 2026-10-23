@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -16,8 +15,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asComposePath
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.LastBaseline
@@ -34,24 +31,25 @@ import androidx.compose.ui.unit.sp
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lab
-import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Lamp
+import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.ImageOps
+import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.ScreenSpec
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.render.imageBitmapOf
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
-import io.github.hazymorning.klangbild.text.texts
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.theme.ClockFigures
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberClockFigures
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.roundToInt
@@ -88,11 +86,11 @@ object RestTexts {
 
     fun lines(reason: RestReason, speaker: String?, entityId: String?, t: Texts): Lines = when (reason) {
         RestReason.IDLE -> Lines(speaker, null)
-        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[R.string.status_paused]).joinToString(TimeText.SEPARATOR), null)
-        RestReason.CONNECTING -> Lines(speaker, t[R.string.rest_connecting])
-        RestReason.OFFLINE -> Lines(null, t[R.string.rest_offline])
-        RestReason.UNAVAILABLE -> Lines(speaker ?: t[R.string.rest_speaker], t[R.string.rest_unavailable])
-        RestReason.ENTITY_MISSING -> Lines(null, t.format(R.string.rest_entity_missing, entityId ?: t[R.string.rest_this_speaker]))
+        RestReason.PAUSED -> Lines(listOfNotNull(speaker, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR), null)
+        RestReason.CONNECTING -> Lines(speaker, t[Strings.restConnecting])
+        RestReason.OFFLINE -> Lines(null, t[Strings.restOffline])
+        RestReason.UNAVAILABLE -> Lines(speaker ?: t[Strings.restSpeaker], t[Strings.restUnavailable])
+        RestReason.ENTITY_MISSING -> Lines(null, t.format(Strings.restEntityMissing, entityId ?: t[Strings.restThisSpeaker]))
     }
 }
 
@@ -153,7 +151,7 @@ fun RestScreen(
     entityId: String?,
     nowMs: Long,
     modifier: Modifier = Modifier,
-    zone: ZoneId = ZoneId.systemDefault(),
+    zone: TimeZone = TimeZone.currentSystemDefault(),
     /** The lamp's strength from the settings (0 = off). */
     intensity: Float = 1f,
     appearance: Appearance = Appearance.DARK,
@@ -171,7 +169,7 @@ fun RestScreen(
         val field = rememberOffMain(tint) {
             tint?.let {
                 val px = RestLight.field(screen.widthDp / 2f, screen.heightDp / 2f, screen, ImageOps.ditherFor(it))
-                Bitmap.createBitmap(px, RestLight.MAP_W, RestLight.MAP_H, Bitmap.Config.ARGB_8888).asImageBitmap()
+                imageBitmapOf(px, RestLight.MAP_W, RestLight.MAP_H)
             }
         }
         if (field != null && tint != null) {
@@ -200,7 +198,8 @@ fun RestScreen(
  */
 @Composable
 private fun RestBlock(time: String, date: String?, label: String?, sentence: String?, colors: QuietColors) {
-    val clock = titleType(CLOCK_SP, 320, colors.primary, lineHeight = 140f, tracking = -0.01f)
+    val faces = faces()
+    val clock = faces.titleType(CLOCK_SP, 320, colors.primary, lineHeight = 140f, tracking = -0.01f)
     Layout(
         content = {
             // The figures keep their own widths (in cells this large the "1" would stand apart);
@@ -209,16 +208,16 @@ private fun RestBlock(time: String, date: String?, label: String?, sentence: Str
                 ClockFace(t, clock)
             }
             if (date != null) {
-                BasicText(date, Modifier.layoutId(DATE), style = textType(22f, 420, colors.secondary).merge(TextStyle(textAlign = TextAlign.Center)))
+                BasicText(date, Modifier.layoutId(DATE), style = faces.textType(22f, 420, colors.secondary).merge(TextStyle(textAlign = TextAlign.Center)))
             }
             if (label != null) {
-                BasicText(label, Modifier.layoutId(LABEL), style = textType(16f, 500, colors.label).merge(TextStyle(textAlign = TextAlign.Center)))
+                BasicText(label, Modifier.layoutId(LABEL), style = faces.textType(16f, 500, colors.label).merge(TextStyle(textAlign = TextAlign.Center)))
             }
             if (sentence != null) {
                 BasicText(
                     sentence,
                     Modifier.layoutId(SENTENCE).widthIn(max = 480.dp),
-                    style = textType(19f, 420, colors.secondary, lineHeight = 27f).merge(
+                    style = faces.textType(19f, 420, colors.secondary, lineHeight = 27f).merge(
                         TextStyle(
                             textAlign = TextAlign.Center,
                             lineBreak = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default),
@@ -270,15 +269,15 @@ private fun RestBlock(time: String, date: String?, label: String?, sentence: Str
 @Composable
 private fun ClockFace(time: String, style: TextStyle) {
     val figures = rememberClockFigures(time, style)
-    val outline = remember(figures) { figures.outline.asComposePath() }
+    val outline = figures.outline
     val ink = figures.ink
     val color = style.color
     val above = ceil(-ink.top).toInt()
-    val width = ceil(ink.width()).toInt()
+    val width = ceil(ink.width).toInt()
     Layout(
         Modifier
             .semantics { contentDescription = time }
-            .drawBehind { translate((width - ink.width()) / 2f - ink.left, above.toFloat()) { drawPath(outline, color) } },
+            .drawBehind { translate((width - ink.width) / 2f - ink.left, above.toFloat()) { drawPath(outline, color) } },
     ) { _, _ ->
         layout(width, above + ceil(ink.bottom).toInt(), mapOf(FirstBaseline to above, LastBaseline to above)) {}
     }

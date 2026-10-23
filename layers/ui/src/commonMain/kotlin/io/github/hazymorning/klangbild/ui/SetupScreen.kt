@@ -1,8 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,40 +11,41 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.em
-import androidx.core.graphics.createBitmap
-import kotlin.math.roundToInt
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.setup.SetupInfo
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.ArtworkLayer
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 object SetupArt {
     /**
@@ -56,24 +54,24 @@ object SetupArt {
      * quiet zone. Becomes the "cover" of the setup scene, so it hangs on the wall in the same
      * light as an album.
      */
-    fun card(qr: Array<BooleanArray>?, sizePx: Int, appearance: Appearance = Appearance.DARK): Bitmap {
-        val bmp = createBitmap(sizePx, sizePx)
-        val c = Canvas(bmp)
-        c.drawColor(if (appearance == Appearance.DARK) 0xFFEAE2D4.toInt() else 0xFFF7F4EE.toInt())
+    fun card(qr: Array<BooleanArray>?, sizePx: Int, appearance: Appearance = Appearance.DARK): ImageBitmap {
+        val px = IntArray(sizePx * sizePx)
+        px.fill(if (appearance == Appearance.DARK) 0xFFEAE2D4.toInt() else 0xFFF7F4EE.toInt())
         if (qr != null) {
             val n = qr.size
             val module = max(1, (sizePx * 0.80f / n).toInt())
             val offset = (sizePx - module * n) / 2
-            val p = Paint().apply { color = 0xFF1C1814.toInt(); isAntiAlias = false }
             for (y in 0 until n) for (x in 0 until n) {
                 if (qr[y][x]) {
-                    val l = offset + x * module
-                    val t = offset + y * module
-                    c.drawRect(l.toFloat(), t.toFloat(), (l + module).toFloat(), (t + module).toFloat(), p)
+                    val l = (offset + x * module).coerceIn(0, sizePx)
+                    val r = (offset + x * module + module).coerceIn(0, sizePx)
+                    for (row in (offset + y * module).coerceIn(0, sizePx) until (offset + y * module + module).coerceIn(0, sizePx)) {
+                        px.fill(0xFF1C1814.toInt(), row * sizePx + l, row * sizePx + r)
+                    }
                 }
             }
         }
-        return bmp
+        return imageBitmapOf(px, sizePx, sizePx)
     }
 
     fun scene(info: SetupInfo?, screen: ScreenSpec, appearance: Appearance = Appearance.DARK): ArtworkScene {
@@ -104,33 +102,34 @@ fun SetupScreen(
     val p = scene.palette
     val layout = scene.layout
     val balanced = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default)
-    val label = textType(15f, 500, p.inkQuiet.asColor(), tracking = 0.01f)
-    val body = textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
+    val faces = faces()
+    val label = faces.textType(15f, 500, p.inkQuiet.asColor(), tracking = 0.01f)
+    val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
     val t = texts()
     val lead = t[
         when (reason) {
-            SetupReason.FIRST_RUN -> R.string.setup_first_run
-            SetupReason.AUTH_FAILED -> R.string.setup_rejected
-            SetupReason.REQUESTED -> R.string.setup_change
+            SetupReason.FIRST_RUN -> Strings.setupFirstRun
+            SetupReason.AUTH_FAILED -> Strings.setupRejected
+            SetupReason.REQUESTED -> Strings.setupChange
         },
     ]
     // A short word that opens a sentence never ends a line, and articles and adjectives stay
     // with their noun: the texts carry no-break spaces for that.
-    val text = t[if (reason == SetupReason.AUTH_FAILED) R.string.setup_text_rejected else R.string.setup_text]
-    val hint = if (reason == SetupReason.REQUESTED) t[R.string.setup_back] else null
+    val text = t[if (reason == SetupReason.AUTH_FAILED) Strings.setupTextRejected else Strings.setupText]
+    val hint = if (reason == SetupReason.REQUESTED) t[Strings.setupBack] else null
     val address = info?.url?.let { url ->
         buildAnnotatedString {
-            append(t[R.string.setup_in_browser])
+            append(t[Strings.setupInBrowser])
             append(" ")
             // A little air between the figures, so the dots stay visible from the sofa.
             withStyle(SpanStyle(letterSpacing = 0.03.em)) { append(SetupArt.shortUrl(url)) }
         }
-    } ?: AnnotatedString(t[R.string.setup_no_network])
+    } ?: AnnotatedString(t[Strings.setupNoNetwork])
     // Until the code is drawn its line stays empty but keeps its height.
     val code = info?.code?.chunked(3)?.joinToString(" ") ?: "\u00A0"
-    val name = titleType(44f, 420, p.ink.asColor(), tracking = -0.005f)
-    val leadStyle = textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
-    val codeStyle = titleType(44f, 400, p.ink.asColor(), tracking = 0.01f)
+    val name = faces.titleType(44f, 420, p.ink.asColor(), tracking = -0.005f)
+    val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
+    val codeStyle = faces.titleType(44f, 400, p.ink.asColor(), tracking = 0.01f)
     val addressStyle = body.copy(color = p.inkQuiet.asColor())
     // How wide the text really is: its longest line, as it breaks in the column.
     val measurer = rememberTextMeasurer()
@@ -162,7 +161,7 @@ fun SetupScreen(
                         Spacer(Modifier.height(20.dp))
                         BasicText(text, style = body)
                         Spacer(Modifier.height(30.dp))
-                        BasicText(t[R.string.setup_code], style = label)
+                        BasicText(t[Strings.setupCode], style = label)
                         Spacer(Modifier.height(2.dp))
                         BasicText(code, style = codeStyle)
                         Spacer(Modifier.height(8.dp))

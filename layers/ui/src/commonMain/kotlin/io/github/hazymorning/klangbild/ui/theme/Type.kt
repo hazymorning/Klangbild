@@ -1,15 +1,18 @@
 package io.github.hazymorning.klangbild.ui.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
@@ -19,7 +22,11 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import io.github.hazymorning.klangbild.ui.R
+import io.github.hazymorning.klangbild.ui.resources.Res
+import io.github.hazymorning.klangbild.ui.resources.dmsans
+import io.github.hazymorning.klangbild.ui.resources.jost
+import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.FontResource
 import kotlin.math.roundToInt
 
 /**
@@ -40,7 +47,7 @@ import kotlin.math.roundToInt
  * Arabic and others) fall back to the system's fonts.
  */
 enum class Face(
-    internal val font: Int,
+    internal val font: FontResource,
     /** The weights the styles use; a family holds exactly these, so no weight is ever faked. */
     internal val weights: IntArray,
     /** The optical-size axis (sp), or null for a face without one. */
@@ -48,8 +55,8 @@ enum class Face(
     /** How far a colon is raised to sit in the middle of the figures (em). */
     internal val colonRaise: Float,
 ) {
-    TITLE(R.font.jost, intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
-    TEXT(R.font.dmsans, intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
+    TITLE(Res.font.jost, intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
+    TEXT(Res.font.dmsans, intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
 }
 
 object Fonts {
@@ -58,35 +65,53 @@ object Fonts {
 
     /** How far DM Sans's descenders (p, q, y) reach below the baseline, as a share of the size. */
     const val DESCENT = 0.22f
+}
 
-    private val families = HashMap<Long, FontFamily>()
-
+/**
+ * The faces as the platform loads them from the app's resources ([rememberFaces]): a family for
+ * each face holding every weight the styles use, and for DM Sans one at every whole optical size.
+ */
+@Immutable
+class Faces internal constructor(private val families: List<List<FontFamily>>) {
     /** [face] for text at [size] sp. */
     fun family(face: Face, size: Float): FontFamily {
-        val opsz = face.opsz?.let { size.coerceIn(it.start, it.endInclusive).roundToInt() } ?: 0
-        val key = face.ordinal.toLong() shl 32 or opsz.toLong()
-        return synchronized(families) {
-            families.getOrPut(key) {
-                FontFamily(
-                    face.weights.map { weight ->
-                        val settings = if (face.opsz != null) {
-                            FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", opsz.toFloat()))
-                        } else {
-                            FontVariation.Settings(FontVariation.weight(weight))
-                        }
-                        Font(resId = face.font, weight = FontWeight(weight), variationSettings = settings)
-                    },
-                )
+        val opsz = face.opsz ?: return families[face.ordinal][0]
+        return families[face.ordinal][size.coerceIn(opsz.start, opsz.endInclusive).roundToInt() - opsz.start.roundToInt()]
+    }
+}
+
+/** The faces for the composition below, loaded once where it starts. */
+val LocalFaces = staticCompositionLocalOf<Faces?> { null }
+
+/** The faces: the composition's, or loaded here for a screen set on its own. */
+@Composable
+fun faces(): Faces = LocalFaces.current ?: rememberFaces()
+
+/** Loads the faces from the app's resources, which only a composition can do. */
+@Composable
+fun rememberFaces(): Faces {
+    val fonts = Face.entries.map { face ->
+        val sizes = face.opsz?.let { it.start.roundToInt()..it.endInclusive.roundToInt() } ?: 0..0
+        sizes.map { opsz ->
+            face.weights.map { weight ->
+                val settings = if (face.opsz != null) {
+                    FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", opsz.toFloat()))
+                } else {
+                    FontVariation.Settings(FontVariation.weight(weight))
+                }
+                Font(face.font, FontWeight(weight), variationSettings = settings)
             }
         }
     }
+    // The families are made once: the same family keeps every style that uses it equal.
+    return remember { Faces(fonts.map { sizes -> sizes.map { FontFamily(it) } }) }
 }
 
 /**
  * A text style in [face] at [size] sp: line height [lineHeight] sp, tracking [tracking] em.
  * Layouts align the result by its baselines and [Fonts.CAP_HEIGHT], never by the boxes.
  */
-fun type(
+fun Faces.type(
     face: Face,
     size: Float,
     weight: Int,
@@ -94,7 +119,7 @@ fun type(
     lineHeight: Float = size * 1.25f,
     tracking: Float = 0f,
 ): TextStyle = TextStyle(
-    fontFamily = Fonts.family(face, size),
+    fontFamily = family(face, size),
     fontWeight = FontWeight(weight),
     fontSize = size.sp,
     lineHeight = lineHeight.sp,
@@ -104,11 +129,11 @@ fun type(
 )
 
 /** A style in the title face (Jost). */
-fun titleType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.2f, tracking: Float = 0f) =
+fun Faces.titleType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.2f, tracking: Float = 0f) =
     type(Face.TITLE, size, weight, color, lineHeight, tracking)
 
 /** A style in the text face (DM Sans). */
-fun textType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.3f, tracking: Float = 0f) =
+fun Faces.textType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.3f, tracking: Float = 0f) =
     type(Face.TEXT, size, weight, color, lineHeight, tracking)
 
 /**
@@ -153,22 +178,15 @@ fun rememberFigures(style: TextStyle, face: Face): Figures {
  */
 @Composable
 fun rememberInkShift(text: String, style: TextStyle): Float {
+    val glyphs = LocalGlyphs.current
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
-    return remember(text, style, resolver, density) {
-        val typeface = resolver.resolve(style.fontFamily, style.fontWeight ?: FontWeight.Normal).value as? android.graphics.Typeface
-            ?: return@remember 0f
-        val paint = android.graphics.Paint().apply {
-            this.typeface = typeface
-            textSize = with(density) { style.fontSize.toPx() }
-            if (style.letterSpacing.isEm) letterSpacing = style.letterSpacing.value
-        }
+    return remember(text, style, glyphs, resolver, density) {
+        val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
+        val pen = glyphs.pen(style, resolver, with(density) { style.fontSize.toPx() }, tracking)
         // The outlines' exact bounds: whole pixels would leave the clock up to a pixel off.
-        val outline = android.graphics.Path()
-        paint.getTextPath(text, 0, text.length, 0f, 0f, outline)
-        val ink = android.graphics.RectF()
-        outline.computeBounds(ink, true)
-        paint.measureText(text) / 2f - (ink.left + ink.right) / 2f
+        val ink = pen.outline(text).getBounds()
+        pen.advance(text) / 2f - (ink.left + ink.right) / 2f
     }
 }
 
@@ -179,37 +197,26 @@ fun rememberInkShift(text: String, style: TextStyle): Float {
  * side bearings, which at this size leave it standing apart from its neighbors. As outlines the
  * figures are known exactly where they are seen: [ink] is what centers them.
  */
-class ClockFigures(time: String, typeface: android.graphics.Typeface, sizePx: Float, tracking: Float) {
+class ClockFigures(time: String, pen: Glyphs.Pen, sizePx: Float, tracking: Float) {
     /** The figures' outlines, the baseline starting at the origin. */
-    val outline = android.graphics.Path()
+    val outline = Path()
 
     /** Where the ink is, around the same origin. */
-    val ink = android.graphics.RectF()
+    val ink: Rect
 
     init {
-        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            this.typeface = typeface
-            textSize = sizePx
-        }
-        val glyph = android.graphics.Path()
-        val bounds = android.graphics.RectF()
-        fun middle(ch: String): Float {
-            paint.getTextPath(ch, 0, 1, 0f, 0f, glyph)
-            glyph.computeBounds(bounds, true)
-            return bounds.centerY()
-        }
+        fun middle(ch: String): Float = pen.outline(ch).getBounds().let { (it.top + it.bottom) * 0.5f }
         val raise = middle(":") - middle("0")
         var pulled = 0f
         for (i in time.indices) {
             val one = time[i] == '1'
             if (one) pulled += ONE_LEFT * sizePx
             // The pen where the font puts this figure, the kerning with the one before it included.
-            val x = paint.measureText(time, 0, i + 1) - paint.measureText(time, i, i + 1) + i * tracking * sizePx - pulled
-            paint.getTextPath(time, i, i + 1, x, if (time[i] == ':') -raise else 0f, glyph)
-            outline.addPath(glyph)
+            val x = pen.advance(time, 0, i + 1) - pen.advance(time, i, i + 1) + i * tracking * sizePx - pulled
+            outline.addPath(pen.outline(time, i, i + 1, x, if (time[i] == ':') -raise else 0f))
             if (one) pulled += ONE_RIGHT * sizePx
         }
-        outline.computeBounds(ink, true)
+        ink = outline.getBounds()
     }
 
     private companion object {
@@ -225,12 +232,12 @@ class ClockFigures(time: String, typeface: android.graphics.Typeface, sizePx: Fl
 /** [ClockFigures] for [time] in [style] (its tracking in em). */
 @Composable
 fun rememberClockFigures(time: String, style: TextStyle): ClockFigures {
+    val glyphs = LocalGlyphs.current
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
-    return remember(time, style, resolver, density) {
-        val typeface = resolver.resolve(style.fontFamily, style.fontWeight ?: FontWeight.Normal).value as? android.graphics.Typeface
-            ?: android.graphics.Typeface.DEFAULT
+    return remember(time, style, glyphs, resolver, density) {
+        val sizePx = with(density) { style.fontSize.toPx() }
         val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        ClockFigures(time, typeface, with(density) { style.fontSize.toPx() }, tracking)
+        ClockFigures(time, glyphs.pen(style, resolver, sizePx), sizePx, tracking)
     }
 }

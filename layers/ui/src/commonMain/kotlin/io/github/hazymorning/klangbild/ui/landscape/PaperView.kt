@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.landscape
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -9,34 +8,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.core.graphics.withTranslation
 import io.github.hazymorning.klangbild.landscape.CameraPose
 import io.github.hazymorning.klangbild.landscape.CloudPlace
 import io.github.hazymorning.klangbild.landscape.Depth
 import io.github.hazymorning.klangbild.landscape.Inks
+import io.github.hazymorning.klangbild.landscape.LandscapeCamera
 import io.github.hazymorning.klangbild.landscape.MistField
 import io.github.hazymorning.klangbild.landscape.Noise
 import io.github.hazymorning.klangbild.landscape.PaperBake
@@ -46,11 +45,12 @@ import io.github.hazymorning.klangbild.landscape.PaperMotif
 import io.github.hazymorning.klangbild.landscape.Sheet
 import io.github.hazymorning.klangbild.landscape.SheetId
 import io.github.hazymorning.klangbild.landscape.SkyPlaces
-import io.github.hazymorning.klangbild.landscape.LandscapeCamera
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.Weatherfall
 import io.github.hazymorning.klangbild.math.hashUnit
 import io.github.hazymorning.klangbild.math.smoothstep
+import io.github.hazymorning.klangbild.render.imageBitmapOf
+import io.github.hazymorning.klangbild.render.plainPaint
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.floor
@@ -62,7 +62,7 @@ import kotlin.math.sin
 
 /** The baked sheets as images the screen can draw (made off the main thread); the baked pixels are let go once copied. */
 class PaperImages(val baked: PaperBaked) {
-    private fun img(s: Sheet): ImageBitmap = Bitmap.createBitmap(s.pixels, s.width, s.height, Bitmap.Config.ARGB_8888).asImageBitmap().also { s.release() }
+    private fun img(s: Sheet): ImageBitmap = imageBitmapOf(s.pixels, s.width, s.height).also { s.release() }
 
     val sheets: Map<SheetId, ImageBitmap> = baked.sheets.mapValues { img(it.value) }
     val shadows: Map<SheetId, ImageBitmap> = baked.shadows.mapValues { img(it.value) }
@@ -276,7 +276,7 @@ private fun DrawScope.drawMoon(images: PaperImages, l: PaperLook, p: SkyPlaces, 
     val r = PaperBake.MOON_RADIUS * b.density + 1f
     val frac = p.moonFraction.coerceIn(0f, 1f)
     // Turned so the lit limb faces the sun (its place on the sky, even below the horizon).
-    val angle = Math.toDegrees(atan2((p.sunY - p.moonY).toDouble(), (p.sunX - p.moonX).toDouble())).toFloat()
+    val angle = (atan2((p.sunY - p.moonY).toDouble(), (p.sunX - p.moonX).toDouble()) * (180.0 / PI)).toFloat()
     val path = Path().apply {
         // The bright limb: a half circle on the right; the terminator: half an ellipse.
         val k = 1f - 2f * frac
@@ -581,20 +581,21 @@ private fun DrawScope.drawWeather(images: PaperImages, l: PaperLook, m: PaperMot
     if (w.snow > 0.003f) {
         for (band in Weatherfall.SNOW) if (band.depth == depth) {
             val n = Weatherfall.place(band, m.time, m.drift, w.wind, w.snow, snow = true, fall.items)
-            drawIntoCanvas { fall.flakes(it.nativeCanvas, n, b, l.snowInk, l.shadow, l.shadowAlpha) }
+            drawIntoCanvas { fall.flakes(it, n, b, l.snowInk, l.shadow, l.shadowAlpha) }
         }
     }
     if (w.rain > 0.003f) {
         for (band in Weatherfall.RAIN) if (band.depth == depth) {
             val n = Weatherfall.place(band, m.time, m.drift, w.wind, w.rain, snow = false, fall.items)
-            drawIntoCanvas { fall.threads(it.nativeCanvas, n, b, l.rainInk, band) }
+            drawIntoCanvas { fall.threads(it, n, b, l.rainInk, band) }
         }
     }
 }
 
 /**
  * Draws what falls in a few calls: the flakes as round points and the drops as lines, sorted
- * into a handful of sizes and strengths, one call per batch. Buffers are kept between frames.
+ * into a handful of sizes and strengths, one call per batch. Buffers are kept between frames;
+ * a batch is drawn from a copy just as long as it is, since a canvas draws whole arrays.
  */
 private class FallBatches {
     val items = FloatArray(Weatherfall.STRIDE * 200)
@@ -605,12 +606,12 @@ private class FallBatches {
     private val lines = Array(strengths) { FloatArray(200 * 4) }
     private val counts = IntArray(sizes * strengths)
     private val lineCounts = IntArray(strengths)
-    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        strokeCap = android.graphics.Paint.Cap.ROUND
+    private val paint = plainPaint().apply {
+        strokeCap = StrokeCap.Round
     }
 
     /** The flakes: discs of white paper, each with a faint shadow below it (seen against a pale sky), by size and strength. */
-    fun flakes(canvas: android.graphics.Canvas, n: Int, b: PaperBaked, ink: Int, shadow: Int, shadowAlpha: Float) {
+    fun flakes(canvas: Canvas, n: Int, b: PaperBaked, ink: Int, shadow: Int, shadowAlpha: Float) {
         if (n == 0) return
         counts.fill(0)
         var lo = Float.MAX_VALUE
@@ -632,7 +633,7 @@ private class FallBatches {
             buf[c * 2 + 1] = b.px(items[o + 1])
             counts[k] = c + 1
         }
-        paint.style = android.graphics.Paint.Style.STROKE
+        paint.style = PaintingStyle.Stroke
         val drop = FLAKE_SHADOW_DP * b.density
         for (k in buffers.indices) {
             if (counts[k] == 0) continue
@@ -640,18 +641,22 @@ private class FallBatches {
             val strength = k % strengths
             val r = lo + (hi - lo) * (size + 0.5f) / sizes
             val a = (strength + 1f) / strengths
+            val points = buffers[k].copyOf(counts[k] * 2)
             paint.strokeWidth = 2f * r * b.density
-            paint.color = shadow
-            paint.alpha = (255 * a * (0.18f + 0.4f * shadowAlpha)).toInt().coerceIn(0, 255)
-            canvas.withTranslation(drop * 0.4f, drop) { drawPoints(buffers[k], 0, counts[k] * 2, paint) }
-            paint.color = ink
-            paint.alpha = (255 * a).toInt().coerceIn(0, 255)
-            canvas.drawPoints(buffers[k], 0, counts[k] * 2, paint)
+            paint.color = Color(shadow)
+            paint.alpha = (255 * a * (0.18f + 0.4f * shadowAlpha)).toInt().coerceIn(0, 255) / 255f
+            canvas.save()
+            canvas.translate(drop * 0.4f, drop)
+            canvas.drawRawPoints(PointMode.Points, points, paint)
+            canvas.restore()
+            paint.color = Color(ink)
+            paint.alpha = (255 * a).toInt().coerceIn(0, 255) / 255f
+            canvas.drawRawPoints(PointMode.Points, points, paint)
         }
     }
 
     /** The rain: fine threads, slanting with the wind, by strength. */
-    fun threads(canvas: android.graphics.Canvas, n: Int, b: PaperBaked, ink: Int, band: Weatherfall.Band) {
+    fun threads(canvas: Canvas, n: Int, b: PaperBaked, ink: Int, band: Weatherfall.Band) {
         if (n == 0) return
         val lc = lineCounts
         lc.fill(0)
@@ -670,13 +675,13 @@ private class FallBatches {
             buf[c * 4 + 3] = b.px(items[o + 1])
             lc[strength] = c + 1
         }
-        paint.style = android.graphics.Paint.Style.STROKE
+        paint.style = PaintingStyle.Stroke
         paint.strokeWidth = (0.7f + 0.03f * band.sizeMax) * b.density
         for (k in 0 until strengths) {
             if (lc[k] == 0) continue
-            paint.color = ink
-            paint.alpha = (255 * RAIN_ALPHA * (k + 1f) / strengths).toInt().coerceIn(0, 255)
-            canvas.drawLines(lines[k], 0, lc[k] * 4, paint)
+            paint.color = Color(ink)
+            paint.alpha = (255 * RAIN_ALPHA * (k + 1f) / strengths).toInt().coerceIn(0, 255) / 255f
+            canvas.drawRawPoints(PointMode.Lines, lines[k].copyOf(lc[k] * 4), paint)
         }
     }
 }

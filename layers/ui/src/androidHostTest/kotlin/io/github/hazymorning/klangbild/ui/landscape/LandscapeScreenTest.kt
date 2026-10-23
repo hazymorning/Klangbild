@@ -4,23 +4,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.ui.Fixtures
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import org.junit.Before
-import org.junit.Test
+import io.github.hazymorning.klangbild.ui.Fixtures
+import kotlinx.datetime.toJavaZoneId
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.TimeZone
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /** The landscape as the app shows it: the picture of the moment in Berlin with the music's label. */
 @Category(Pictures::class)
@@ -28,9 +29,9 @@ import org.junit.experimental.categories.Category
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class LandscapeScreenTest {
-    @Before
+    @BeforeTest
     fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone))
+        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
     }
 
     private fun shot(
@@ -44,7 +45,7 @@ class LandscapeScreenTest {
         status: PlayerStatus = PlayerStatus.PAUSED,
         weather: String? = "partlycloudy",
     ) {
-        val t = java.time.ZonedDateTime.of(2026, month, day, hour, minute, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
+        val t = java.time.ZonedDateTime.of(2026, month, day, hour, minute, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
         val track = Fixtures.track(cover)
         val ui = UiState(
             screen = Screen.Stage(track, status, null),

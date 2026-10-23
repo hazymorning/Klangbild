@@ -5,36 +5,37 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.ActionState
-import io.github.hazymorning.klangbild.domain.QuickAction
-import io.github.hazymorning.klangbild.config.QuickKey
-import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
+import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
+import io.github.hazymorning.klangbild.config.RoomLightBrightness
+import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.ui.stage.Stage
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
-import org.junit.Before
-import org.junit.Test
+import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
+import io.github.hazymorning.klangbild.ui.stage.Stage
+import kotlinx.datetime.toJavaZoneId
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.TimeZone
-import io.github.hazymorning.klangbild.Pictures
-import org.junit.experimental.categories.Category
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /** The quick settings along the bottom edge: over the stage on black and on paper, and over the landscape. */
 @Category(Pictures::class)
@@ -42,9 +43,9 @@ import org.junit.experimental.categories.Category
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class QuickBarTest {
-    @Before
+    @BeforeTest
     fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone))
+        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
     }
 
     private val withLights = Settings(roomLights = RoomLights(left = "light.links", center = "light.mitte", right = "light.rechts"), roomLightBrightness = RoomLightBrightness.P50)
@@ -128,7 +129,7 @@ class QuickBarTest {
 
     @Test
     fun overTheLandscape() {
-        val t = java.time.ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, Fixtures.zone).toInstant().toEpochMilli()
+        val t = java.time.ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
         val track = Fixtures.track(SyntheticCover.BAUHAUS)
         val ui = UiState(
             screen = Screen.Stage(track, PlayerStatus.PLAYING, null),

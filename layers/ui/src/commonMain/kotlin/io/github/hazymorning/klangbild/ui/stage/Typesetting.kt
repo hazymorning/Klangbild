@@ -19,9 +19,11 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
-import io.github.hazymorning.klangbild.text.R
-import io.github.hazymorning.klangbild.text.texts
+import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.ui.texts
+import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlin.math.roundToInt
@@ -38,7 +40,7 @@ import kotlin.math.roundToInt
  * else is in the text face (never above 21 sp): the artist a little heavier, so the two balance
  * each other, and everything else quiet. Times take the title face's figures.
  */
-class StageStyles(palette: ScenePalette) {
+class StageStyles(palette: ScenePalette, val faces: Faces) {
     val ink = palette.ink.asColor()
     val muted = palette.inkMuted.asColor()
     val quiet = palette.inkQuiet.asColor()
@@ -55,7 +57,7 @@ class StageStyles(palette: ScenePalette) {
      */
     fun title(step: TitleStep, cjk: Boolean = false): TextStyle {
         val size = if (cjk) step.size * CJK_SCALE else step.size
-        return titleType(
+        return faces.titleType(
             size = size,
             weight = step.weight,
             color = ink,
@@ -65,19 +67,19 @@ class StageStyles(palette: ScenePalette) {
     }
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
-    fun version(titleSize: Float): TextStyle = textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).text()
+    fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).text()
 
-    val work = textType(17f, 440, quiet, lineHeight = 23f, tracking = 0.005f).text()
-    val artist = textType(21f, 500, muted, lineHeight = 27f).text()
-    val artistSmall = textType(19f, 500, muted, lineHeight = 25f).text()
-    val album = textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).text()
+    val work = faces.textType(17f, 440, quiet, lineHeight = 23f, tracking = 0.005f).text()
+    val artist = faces.textType(21f, 500, muted, lineHeight = 27f).text()
+    val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).text()
+    val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).text()
 
     /** Status, station: small and calm, with a little air (light on black closes up). */
-    val label = textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
+    val label = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
-    val time = titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
-    val next = textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
+    val time = faces.titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
+    val next = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
 
     /** "Up next" differs from what follows by weight alone. */
     val nextLead = SpanStyle(fontWeight = FontWeight(560))
@@ -148,12 +150,13 @@ class TextPlan(
 fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val nextLead = model.nextLead ?: texts()[R.string.stage_next]
+    val nextLead = model.nextLead ?: texts()[Strings.stageNext]
+    val faces = faces()
     return remember(
         model.text, model.year, model.next, model.scene.layout, model.scene.palette, model.progress, model.line, model.durationMs == null,
-        model.chapter != null, localDensity, nextLead,
+        model.chapter != null, localDensity, nextLead, faces,
     ) {
-        planText(model, measurer, localDensity, nextLead)
+        planText(model, measurer, localDensity, nextLead, faces)
     }
 }
 
@@ -162,12 +165,13 @@ private fun planText(
     measurer: androidx.compose.ui.text.TextMeasurer,
     density: androidx.compose.ui.unit.Density,
     nextLead: String,
+    faces: Faces,
 ): TextPlan {
     val t = model.text
     val layout = model.scene.layout
     val d = density.density
     val colW = (layout.columnWidth * d).roundToInt()
-    val normal = StageStyles(model.scene.palette)
+    val normal = StageStyles(model.scene.palette, faces)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
 
@@ -305,7 +309,7 @@ internal fun glueShortWords(text: AnnotatedString): AnnotatedString {
         }
         start = i + 1
     }
-    return if (!changed) text else AnnotatedString(String(chars), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
+    return if (!changed) text else AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
 
 /** Short parentheses never break inside: "(alla marcia)" stays one piece. */
@@ -323,7 +327,7 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
             }
         }
     }
-    return AnnotatedString(String(chars), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
+    return AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
 
 /** The title with every space that is not right after a dash made non-breaking; null without dashes. */
@@ -334,7 +338,7 @@ private fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
     for (i in chars.indices) {
         if (chars[i] == ' ' && !(i > 0 && chars[i - 1] == '–')) chars[i] = ' '
     }
-    return AnnotatedString(String(chars), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
+    return AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
 
 /** True if every line but the last ends right after a dash (U+2013) and a space. */
@@ -371,12 +375,6 @@ fun isMostlyCjk(text: String): Boolean {
         if (c in 0x3040..0x30FF || c in 0x3400..0x4DBF || c in 0x4E00..0x9FFF || c in 0xAC00..0xD7AF || c in 0xF900..0xFAFF) cjk++
     }
     return letters > 0 && cjk * 2 >= letters
-}
-
-/** True if [text] contains letters of a right-to-left script. */
-fun isRightToLeft(text: String): Boolean = text.any {
-    val d = Character.getDirectionality(it)
-    d == Character.DIRECTIONALITY_RIGHT_TO_LEFT || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC
 }
 
 /** "Up next" ([lead]) in a heavier weight, 12 dp, then what comes next (isolated if right-to-left). */

@@ -20,16 +20,12 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import io.github.hazymorning.klangbild.ui.LocalStageTick
-import io.github.hazymorning.klangbild.ui.LocalStill
-import io.github.hazymorning.klangbild.ui.StageTick
-import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.TICK_MS
-import io.github.hazymorning.klangbild.ui.rememberOffMain
 import io.github.hazymorning.klangbild.landscape.BakeProgress
 import io.github.hazymorning.klangbild.landscape.CloudField
 import io.github.hazymorning.klangbild.landscape.CloudPlace
 import io.github.hazymorning.klangbild.landscape.LabelSide
+import io.github.hazymorning.klangbild.landscape.LandscapeCamera
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.PaperBake
 import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.PaperLook
@@ -38,18 +34,24 @@ import io.github.hazymorning.klangbild.landscape.SeasonShapes
 import io.github.hazymorning.klangbild.landscape.SkyMap
 import io.github.hazymorning.klangbild.landscape.SkyPlaces
 import io.github.hazymorning.klangbild.landscape.SkyState
-import io.github.hazymorning.klangbild.landscape.LandscapeCamera
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.World
-import kotlinx.coroutines.asCoroutineDispatcher
+import io.github.hazymorning.klangbild.ui.LocalStageTick
+import io.github.hazymorning.klangbild.ui.LocalStill
+import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.StageTick
+import io.github.hazymorning.klangbild.ui.TICK_MS
+import io.github.hazymorning.klangbild.ui.rememberOffMain
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import java.util.concurrent.Executors
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
+import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.roundToInt
+import kotlin.time.Clock
 
 /** What the landscape needs from the world outside: where it is, the weather, its clock. */
 @Stable
@@ -58,9 +60,9 @@ class LandscapeFeed(
     /** The weather the picture shows now (gliding toward the weather outside), or null for a fair sky. */
     val weather: () -> Weather?,
     val clock: LandscapeClock,
-    val zone: () -> ZoneId = ZoneId::systemDefault,
+    val zone: () -> TimeZone = { TimeZone.currentSystemDefault() },
     /** The wall clock (ms) for what moves by itself: the clouds, the fire, the stars. */
-    val wall: () -> Long = System::currentTimeMillis,
+    val wall: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 )
 
 /**
@@ -182,12 +184,7 @@ fun LandscapeAhead(feed: LandscapeFeed, label: LabelSide) {
 }
 
 /** One background thread of low priority for baking ahead: the stage keeps its frames. */
-private val BAKER = Executors.newSingleThreadExecutor { r ->
-    Thread({
-        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
-        r.run()
-    }, "landscape-bake")
-}.asCoroutineDispatcher()
+private val BAKER = threadOfItsOwn("landscape-bake", background = true)
 
 /**
  * A thread of its own for the picture the screen waits for. A bake takes seconds, far longer on a
@@ -195,7 +192,7 @@ private val BAKER = Executors.newSingleThreadExecutor { r ->
  * two cores that stalled everything else, the settings' writes included (45 s in the Android 9
  * emulator).
  */
-private val SHOWN = Executors.newSingleThreadExecutor { r -> Thread(r, "landscape-shown") }.asCoroutineDispatcher()
+private val SHOWN = threadOfItsOwn("landscape-shown", background = false)
 
 /** Baking ahead waits this long after the app or the setting has settled, and looks at the season this often. */
 private const val AHEAD_DELAY_MS = 8_000L
@@ -213,7 +210,7 @@ private object PaperCache {
 
     /** Counts the clears: a bake that was under way during one is not kept. */
     @Volatile private var generation = 0
-    private val baking = Any()
+    private val baking = SynchronizedObject()
 
     /** How far the bake under way has come: the paper is cut, then laid out as pictures. */
     @Volatile var progress = BakeProgress.NONE
