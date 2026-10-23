@@ -134,7 +134,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   or web app would need only its entry point and its platform's implementations (a browser also
   needs ChaCha20-Poly1305 for Sendspin, which WebCrypto lacks). What a layer needs from its
   platform is an interface or an `expect` in commonMain, with Android's implementation in
-  androidMain. Compiling for wasmJs catches JVM-only calls that the other builds let through.
+  androidMain. `testDebugUnitTest` also compiles commonMain on its own, which catches calls only
+  some platforms have.
 - The app itself is `androidApp/`, since AGP 9 doesn't allow Kotlin Multiplatform in an app
   module, with MainActivity, KlangbildApp and its `AndroidPlatform` (what `AppGraph` needs from
   Android), SpeakerService, the screensaver, the manifest and the launcher resources.

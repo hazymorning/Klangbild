@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
 
 /**
  * A layer of the app, or the helpers of a layer's tests: a Kotlin Multiplatform library whose
@@ -72,8 +73,13 @@ class MultiplatformConventionPlugin : Plugin<Project> {
         }
         configureTests()
         // A layer's tests answer to the app's test task's name too, so one command runs every
-        // module's: on Android (Robolectric), on the JVM and as WebAssembly.
-        tasks.register("testDebugUnitTest") { dependsOn("allTests") }
+        // module's: on Android (Robolectric), on the JVM and as WebAssembly. The shared code is
+        // also compiled on its own, which catches calls that every target has but common code
+        // doesn't.
+        tasks.register("testDebugUnitTest") {
+            dependsOn("allTests")
+            dependsOn(tasks.withType<KotlinCompileCommon>())
+        }
         // Karma, which runs the WebAssembly tests, runs on Node.js, and Binaryen optimizes what
         // assemble builds; both come from the repositories declared in settings.gradle.kts, as every
         // other download does (the root project's Node.js is set there).

@@ -20,11 +20,11 @@ object ArtworkUrls {
     fun upgrade(url: String): String {
         maImageProxy.find(url)?.let { m ->
             val size = m.groupValues[2].toInt()
-            return if (size in 1 until MA_SIZE) url.replaceRange(m.groups[2]!!.range, MA_SIZE.toString()) else url
+            return if (size in 1 until MA_SIZE) url.replaceRange(m.range, m.groupValues[1] + MA_SIZE) else url
         }
         spotify.find(url)?.let { m ->
             // b273 = 640 px, the largest public rendition
-            return url.replaceRange(m.groups[2]!!.range, "b273")
+            return url.replaceRange(m.range, m.groupValues[1] + "b273")
         }
         deezer.find(url)?.let { m ->
             val size = m.groupValues[2].toInt()
