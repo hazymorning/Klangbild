@@ -3,12 +3,12 @@
 
     python3 ci/compare-pictures.py BEFORE AFTER [OUT]
 
-BEFORE and AFTER are folders as the tests write them (app/build/screenshots). The summary, in
-Markdown, says how many pictures are the same and lists the ones that changed (how many pixels,
-by how much), are new or are gone. With OUT, every changed picture is written there three times
-side by side: before, after, and after dimmed with every changed pixel in red. Exit code 0 when
-every picture is the same, 1 when something differs, 2 when they could not be compared. Needs
-Pillow.
+BEFORE and AFTER are folders as the tests write them (each module's build/screenshots, gathered
+in one tree). The summary, in Markdown, says how many pictures are the same and lists the ones
+that changed (how many pixels, by how much), are new or are gone. With OUT, every changed picture
+is written there three times side by side: before, after, and after dimmed with every changed
+pixel in red. Exit code 0 when every picture is the same, 1 when something differs, 2 when they
+could not be compared. Needs Pillow.
 """
 import os
 import sys

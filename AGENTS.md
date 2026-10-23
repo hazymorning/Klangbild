@@ -135,33 +135,56 @@ pictures: effort goes into the app, not into documents.
 ## Build and test
 
 ```bash
-./gradlew :app:testDebugUnitTest                               # the checks (unit + Robolectric), not the picture tests
-./gradlew :app:testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # everything, every picture to app/build/screenshots/
-./gradlew :app:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
-python3 ci/compare-pictures.py before/ app/build/screenshots/ changes/   # what looks different (Pillow)
-./gradlew :app:lintRelease                                     # Android Lint: every warning fails
-./gradlew :app:assembleRelease                                 # R8-minified APK, signed with the debug key
+./gradlew testDebugUnitTest                                    # the checks of every module (unit + Robolectric), not the picture tests
+./gradlew testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # everything, every picture to its module's build/screenshots/
+./gradlew :ui:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class, in its module
+python3 ci/compare-pictures.py before/ layers/ui/build/screenshots/ changes/   # what looks different (Pillow)
+./gradlew :androidApp:lintRelease                              # Android Lint over the app and every layer: every warning fails
+./gradlew :androidApp:assembleRelease                          # R8-minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # re-render banner + icons from the logo (Pillow)
 python3 tools/make_readme_pictures.py                          # README mockups, download button, poll banner (Pillow, numpy; names like poll_banners make only those)
-./gradlew :app:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=venv/bin/python   # the speaker against aiosendspin 10.2.0 (python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0')
+./gradlew :speaker:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # the speaker against aiosendspin 10.2.0 (python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0')
 ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's film from the promo film's MP4 (kept outside the repository)
 ```
 
 - Local SDK: `local.properties` → `sdk.dir=/opt/android-sdk` (not committed). compileSdk 37,
-  targetSdk 36, minSdk 28 (Android 9: the release signature, scheme v3, needs it).
+  targetSdk 36, minSdk 28 (Android 9: the release signature, scheme v3, needs it), in the
+  version catalog.
+- Modules: every layer is an Android library of its own in `layers/<package>/`, named as its
+  package (`:domain`, `:app` for the controller, `:ui`); the app itself (MainActivity,
+  KlangbildApp, SpeakerService, the screensaver, the manifest and launcher resources) is
+  `androidApp/`. What they share is set once in `build-logic/`: `klangbild.android.application`,
+  `klangbild.android.library`, `klangbild.robolectric` and `klangbild.compose`, the Compose
+  compiler, which also compiles the layers whose classes the screens take (color, domain, data,
+  config, landscape, render, sound, setup, text, app), since it sees a class as stable only when
+  it compiled it itself. A module names the layers it builds on as `implementation`, so it sees
+  only those; a library whose types its own API shows is `api`. All words are `:text`'s
+  resources (`text.R`), the fonts `:ui`'s. A library brings its R8 rules (`consumer-rules.pro`).
+- Tests live in the module of their package. One that also needs a layer above its own moves
+  up whole to the lowest module that sees it (`ProgressTest` in data, `DesignRulesTest` in ui);
+  one that needs a layer beside its own takes it as a test dependency (`CoverPaletteTest`).
+  Helpers shared by several layers' tests are modules of their own: `art-testing`
+  (SyntheticCovers), `text-testing` (TestTexts), `domain-testing` (Catalog), `app-testing`
+  (`AppFixtures`, which the controller's and the screens' `Fixtures` build on). The picture tests'
+  mark, `Pictures`, stands in the root package in ui's tests, where all picture tests are. A test
+  that reads a file outside its module gets its path from the build (`reads` in build-logic),
+  which counts the file as the test's input.
 - Kotlin warnings and lint warnings fail the build (`allWarningsAsErrors`, `warningsAsErrors`).
-  A suppression always carries a one-line reason (`app/lint.xml`, `@Suppress` with a comment).
+  A suppression always carries a one-line reason (the lint settings in build-logic, `@Suppress`
+  with a comment).
 - Maven Central rate-limits shared IPs (HTTP 429): Gradle and Robolectric use Google's
-  mirror first (`settings.gradle.kts`, `robolectric.dependency.repo.url` in `app/build.gradle.kts`).
+  mirror first (both `settings.gradle.kts`, `robolectric.dependency.repo.url` in build-logic's
+  Robolectric plugin).
 - Picture tests render how the screens look and check nothing themselves; they carry
   `@Category(Pictures::class)` and only run with `-Pklangbild.pictures`, so the everyday run
   stays quick. A new test that only renders pictures gets the category too. Pictures are not
   committed: CI renders them all, uploads them, and on a pull request also renders the branch it
   goes into and compares every picture (`ci/compare-pictures.py`; the job summary lists what
   changed, the artifact `picture-changes` marks each changed pixel in red). A refactor must leave
-  every picture identical; locally, compare a copy of `app/build/screenshots/` from before the
-  change with the same script. Renders must be the same on every run: an animated sequence
-  whose content is made off the main thread wraps it like a still (`LocalStill`).
+  every picture identical; locally, compare a copy of `layers/ui/build/screenshots/` (and the
+  Chladni sheet in `layers/art/build/screenshots/`) from before the change with the same
+  script. Renders must be the same on every run: an animated sequence whose content is made off
+  the main thread wraps it like a still (`LocalStill`).
 - Tests that need words use `TestTexts.german` or `TestTexts.english()` (Robolectric). Renders
   default to German through `Fixtures.texts` (the catalog's music and rooms are German);
   `Fixtures.Still(t) { }` renders in other words.
@@ -170,7 +193,7 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   `createComposeRule()` with `mainClock.autoAdvance = false`. The static stages for stills
   (`Stage`, `FlowStage`) live in the test sources; the app only has its theaters.
 - Motion is judged as contact sheets: `FlowMotionTest`/`TransitionTest` render frames to
-  `app/build/screenshots/...`; tile them with Pillow and look at them with the Read tool.
+  `layers/ui/build/screenshots/...`; tile them with Pillow and look at them with the Read tool.
 - The emulator smoke test (CI) talks to a stand-in Home Assistant, `ci/fake_ha.py`, which
   speaks only the documented commands. With it running locally,
   `-Pklangbild.fakeHa=http://127.0.0.1:8123` lets `FirstLaunchTest` talk to it for a few
@@ -182,9 +205,9 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   from it on the emulator, which has no sound.
 - Run Gradle with a UTF-8 locale (`export LC_ALL=C.UTF-8`): test names and data hold umlauts.
 - CI runs three jobs side by side: the release APK (the emulator smoke test and the key
-  rotation checks start from it), all tests with their pictures (aiosendspin installed for the
-  speaker's end-to-end tests), and lint. A release waits for
-  all of them. A push or pull request that changes only the texts and
+  rotation checks start from it), the tests of every module with their pictures, gathered into
+  one tree (aiosendspin installed for the speaker's end-to-end tests), and lint. A release waits
+  for all of them. A push or pull request that changes only the texts and
   pictures around the app (README, AGENTS.md, LICENSE, `docs/`, `tools/`, `.claude/`, the issue
   templates) runs nothing; tags and manual runs always run everything. The emulator jobs fetch
   their system image with `ci/install-system-image.sh`, which tries a broken download again.
@@ -225,12 +248,14 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 
 ## Architecture (data source → state model → UI)
 
-The packages build on each other in one direction, and `LayersTest` keeps it so: math, json,
+The packages build on each other in one direction, each a module of its own whose build file
+names the layers below it, and `LayersTest` keeps them to this: math, json,
 color, text, art and sound below everything; domain (the app's model and rules) on them; data (Home
 Assistant and Music Assistant) on domain, sendspin and sound; config (the settings, their store and menus) on data;
 render, landscape and lights; sendspin (the protocol, on json alone) and speaker (this TV as a
 speaker, on config, data, domain, json, sendspin and sound); app (the controller); ui on top. MainActivity,
-KlangbildApp (the wiring) and SpeakerService stand in the root package and may use everything.
+KlangbildApp (the wiring) and SpeakerService stand in the root package, in `androidApp` with the
+screensaver, and may use everything.
 
 ```
 data/ha/        HaAuth (long-lived token, or a sign-in: refresh token + client id → 30 minute access
@@ -476,7 +501,9 @@ ui/             KlangbildRoot (screen switch, OLED drift, menu overlay, peek, th
                 near bank, standing still while the camera moves)
 dream/          KlangbildDream (DreamService with ComposeView)
 test only       SyntheticCovers + Catalog (generated test covers and tracks, test://cover/NAME, a
-                book and an episode, invented words, the README's aurora), Fixtures, TestTexts, the static stages for stills
+                book and an episode, invented words, the README's aurora), AppFixtures and TestTexts,
+                each in a -testing module; Fixtures (the controller's and the screens' tests, built on
+                AppFixtures), the static stages for stills (ui's tests)
 ```
 
 ## Design principles (do not regress)
