@@ -9,7 +9,7 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that's playing as a calm picture on your TV, so the biggest screen in the room is worth looking at while you listen. The design comes first. Everything has to look right from across the room, and whatever would make the picture busier stays out, even when it would be useful.
+Klangbild shows the music that's playing as a calm picture on your TV, so the biggest screen in the room is worth looking at while you listen. The design comes first. Everything has to look right from across the room, and whatever would make the picture busier stays out.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
