@@ -11,7 +11,9 @@ kotlin {
 dependencies {
     // Only compiled against: the plugins themselves come from the main build, which declares them.
     compileOnly(libs.android.gradle.api)
-    compileOnly(libs.kotlin.gradle.plugin.api)
+    compileOnly(libs.kotlin.gradle.plugin)
+    // The texts' formats come from Unicode's CLDR, as ICU has them (GenerateTexts).
+    implementation(libs.icu4j)
 }
 
 gradlePlugin {
@@ -20,9 +22,9 @@ gradlePlugin {
             id = "klangbild.android.application"
             implementationClass = "AndroidApplicationConventionPlugin"
         }
-        register("androidLibrary") {
-            id = "klangbild.android.library"
-            implementationClass = "AndroidLibraryConventionPlugin"
+        register("multiplatform") {
+            id = "klangbild.multiplatform"
+            implementationClass = "MultiplatformConventionPlugin"
         }
         register("compose") {
             id = "klangbild.compose"
