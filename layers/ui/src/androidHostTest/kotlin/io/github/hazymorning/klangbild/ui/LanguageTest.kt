@@ -13,7 +13,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.contains
-import assertk.assertions.endsWith
 import assertk.assertions.isEmpty
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isLessThanOrEqualTo

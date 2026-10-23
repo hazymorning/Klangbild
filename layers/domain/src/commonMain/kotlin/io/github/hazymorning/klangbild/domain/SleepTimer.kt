@@ -13,9 +13,6 @@ enum class SleepChoice(val minutes: Int = 0) {
 
     /** The end of what plays: the song, the episode, the book. */
     ITEM_END,
-    ;
-
-    val isEnd: Boolean get() = this == CHAPTER_END || this == ITEM_END
 }
 
 /**

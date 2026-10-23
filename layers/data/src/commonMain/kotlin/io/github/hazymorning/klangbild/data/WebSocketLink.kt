@@ -78,10 +78,12 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
     }
 
     init {
-        scope.coroutineContext.job.invokeOnCompletion {
+        val whenScopeEnds = scope.coroutineContext.job.invokeOnCompletion {
             ended.value = true
             close()
         }
+        // A scope that outlives many links keeps none of them.
+        job.invokeOnCompletion { whenScopeEnds.dispose() }
     }
 
     /** Queues [text]; false when the connection is not open (any more). */

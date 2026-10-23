@@ -8,7 +8,7 @@ import java.io.File
 /**
  * The packages build on each other in one direction: each uses only the ones listed for it. The
  * model knows nothing of Home Assistant or the screen, the data layer nothing of the settings,
- * and the settings nothing of the screen. MainActivity and the wiring (KlangbildApp) stand on
+ * and the settings nothing of the screen. The app itself (MainActivity, KlangbildApp) stands on
  * top and may use everything. Each layer is a module of its own in layers/, and its build file
  * names the layers it builds on; this table is what they may be.
  */

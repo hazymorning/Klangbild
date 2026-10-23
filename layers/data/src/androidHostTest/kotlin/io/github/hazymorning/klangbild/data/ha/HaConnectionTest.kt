@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.data.ha
 
 import assertk.assertThat
 import assertk.assertions.contains
-import assertk.assertions.containsAll
 import assertk.assertions.containsAtLeast
 import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
@@ -10,9 +9,7 @@ import assertk.assertions.doesNotContain
 import assertk.assertions.hasSize
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNotEmpty
 import assertk.assertions.single
-import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.httpClient
 import io.ktor.client.engine.okhttp.OkHttp

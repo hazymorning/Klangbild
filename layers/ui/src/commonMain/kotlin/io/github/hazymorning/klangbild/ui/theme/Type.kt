@@ -54,10 +54,6 @@ enum class Face(
     TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
 }
 
-/** [face]'s font file at [weight], its axes set to [settings], as the platform loads it. */
-@Composable
-internal expect fun faceFont(face: Face, weight: FontWeight, settings: FontVariation.Settings): Font
-
 object Fonts {
     /** Cap height of both faces as a share of the size (for aligning by cap height). */
     const val CAP_HEIGHT = 0.70f
@@ -69,9 +65,13 @@ object Fonts {
 /**
  * The faces as the platform loads them from the app's resources ([rememberFaces]): a family for
  * each face holding every weight the styles use, and for DM Sans one at every whole optical size.
+ * [fonts] holds them as [faceFonts] gives them.
  */
 @Immutable
-class Faces internal constructor(private val families: List<List<FontFamily>>) {
+class Faces internal constructor(fonts: List<List<List<Font>>>) {
+    // The same family keeps every style that uses it equal.
+    private val families = fonts.map { sizes -> sizes.map { FontFamily(it) } }
+
     /** [face] for text at [size] sp. */
     fun family(face: Face, size: Float): FontFamily {
         val opsz = face.opsz ?: return families[face.ordinal][0]
@@ -86,10 +86,16 @@ val LocalFaces = staticCompositionLocalOf<Faces?> { null }
 @Composable
 fun faces(): Faces = LocalFaces.current ?: rememberFaces()
 
-/** Loads the faces from the app's resources, which only a composition can do. */
+/** The faces from the app's resources, as the platform loads them. */
 @Composable
-fun rememberFaces(): Faces {
-    val fonts = Face.entries.map { face ->
+expect fun rememberFaces(): Faces
+
+/**
+ * Every font of the faces, each from [font]: for each face, for each of its whole optical sizes,
+ * the file at each weight with its axes set.
+ */
+internal inline fun faceFonts(font: (Face, FontWeight, FontVariation.Settings) -> Font): List<List<List<Font>>> =
+    Face.entries.map { face ->
         val sizes = face.opsz?.let { it.start.roundToInt()..it.endInclusive.roundToInt() } ?: 0..0
         sizes.map { opsz ->
             face.weights.map { weight ->
@@ -98,13 +104,10 @@ fun rememberFaces(): Faces {
                 } else {
                     FontVariation.Settings(FontVariation.weight(weight))
                 }
-                faceFont(face, FontWeight(weight), settings)
+                font(face, FontWeight(weight), settings)
             }
         }
     }
-    // The families are made once: the same family keeps every style that uses it equal.
-    return remember { Faces(fonts.map { sizes -> sizes.map { FontFamily(it) } }) }
-}
 
 /**
  * A text style in [face] at [size] sp: line height [lineHeight] sp, tracking [tracking] em.

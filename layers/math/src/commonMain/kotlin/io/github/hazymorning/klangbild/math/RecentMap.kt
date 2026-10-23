@@ -8,8 +8,6 @@ package io.github.hazymorning.klangbild.math
 class RecentMap<K, V : Any>(private val max: Int, private val dropped: (K, V) -> Unit = { _, _ -> }) {
     private val map = LinkedHashMap<K, V>()
 
-    val size: Int get() = map.size
-
     operator fun get(key: K): V? = map.remove(key)?.also { map[key] = it }
 
     operator fun set(key: K, value: V) {

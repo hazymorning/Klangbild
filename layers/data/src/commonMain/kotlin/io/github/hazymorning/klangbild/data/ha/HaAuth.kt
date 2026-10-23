@@ -89,9 +89,6 @@ class HaAuth(
         tokens.accessToken
     }
 
-    /** The last access token, if any, without asking Home Assistant (it may have expired). */
-    fun lastToken(): String? = cached
-
     /** The access token [token] was refused: the next one is fetched anew (after a sign-in). */
     fun invalidate(token: String) {
         if (refreshable && cached == token) {

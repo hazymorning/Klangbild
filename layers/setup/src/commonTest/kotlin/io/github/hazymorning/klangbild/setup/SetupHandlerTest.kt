@@ -21,7 +21,6 @@ import dev.whyoleg.cryptography.random.CryptographyRandom
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SleepAction
-import io.github.hazymorning.klangbild.data.WebUrl.Companion.toWebUrl
 import io.github.hazymorning.klangbild.data.ha.HaAuthRejectedException
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
@@ -30,6 +29,7 @@ import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
+import io.ktor.http.Url
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.Buffer
 import kotlinx.io.readString
@@ -454,16 +454,16 @@ class SetupHandlerTest {
 
     /** Starts a sign-in on the page; the address of Home Assistant's login page it gets back. */
     private suspend fun startSignIn(url: String = "192.168.1.5:8123") =
-        json(post("/api/signin", """{"code":"${handler.code}","url":"$url"}"""))["authorize"]!!.jsonPrimitive.content.toWebUrl()
+        Url(json(post("/api/signin", """{"code":"${handler.code}","url":"$url"}"""))["authorize"]!!.jsonPrimitive.content)
 
     @Test
     fun `signing in goes through Home Assistant's own login page and back`() = runTest {
         val authorize = startSignIn()
         assertThat(authorize.encodedPath).isEqualTo("/auth/authorize")
         assertThat(authorize.host).isEqualTo("192.168.1.5")
-        assertThat(authorize.queryParameter("client_id")).isEqualTo(clientId)
-        assertThat(authorize.queryParameter("redirect_uri")).isEqualTo("http://192.168.1.23:8765/auth/callback")
-        val state = authorize.queryParameter("state")!!
+        assertThat(authorize.parameters["client_id"]).isEqualTo(clientId)
+        assertThat(authorize.parameters["redirect_uri"]).isEqualTo("http://192.168.1.23:8765/auth/callback")
+        val state = authorize.parameters["state"]!!
         assertThat(state.length).isGreaterThanOrEqualTo(40)
         // Home Assistant sends the phone back with a code; the TV swaps it for tokens and the phone goes on.
         val back = get("/auth/callback", mapOf("code" to "abc", "state" to state))
@@ -484,7 +484,7 @@ class SetupHandlerTest {
 
     @Test
     fun `the sign-in just saved is never revoked by the end of the setup that saving brings`() = runTest {
-        val state = startSignIn().queryParameter("state")!!
+        val state = startSignIn().parameters["state"]!!
         get("/auth/callback", mapOf("code" to "abc", "state" to state))
         // On the TV, saving closes the setup screen, and its reset runs before the answer is written.
         afterSave = { handler.reset() }
@@ -499,17 +499,17 @@ class SetupHandlerTest {
         startSignIn()
         assertThat(get("/auth/callback", mapOf("code" to "abc", "state" to "guessed")).headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_FAILED)
         // The state of the one sign-in under way, once.
-        val state = startSignIn().queryParameter("state")!!
+        val state = startSignIn().parameters["state"]!!
         assertThat(get("/auth/callback", mapOf("code" to "abc", "state" to state)).headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_OK)
         assertThat(get("/auth/callback", mapOf("code" to "abc", "state" to state)).headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_FAILED)
         // Ten minutes and more: Home Assistant's code has expired anyway.
-        val late = startSignIn().queryParameter("state")!!
+        val late = startSignIn().parameters["state"]!!
         now += SetupHandler.SIGN_IN_MS + 1
         assertThat(get("/auth/callback", mapOf("code" to "def", "state" to late)).headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_FAILED)
         assertThat(exchanged.map { it.second }).containsExactlyInAnyOrder("abc")
         // A code Home Assistant refuses is a failed sign-in.
         exchangeFails = true
-        val refused = startSignIn().queryParameter("state")!!
+        val refused = startSignIn().parameters["state"]!!
         assertThat(get("/auth/callback", mapOf("code" to "ghi", "state" to refused)).headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_FAILED)
         // Starting a sign-in needs the code shown on the TV.
         assertThat(post("/api/signin", """{"code":"000000x","url":"192.168.1.5:8123"}""").status).isEqualTo(403)
@@ -517,9 +517,9 @@ class SetupHandlerTest {
 
     @Test
     fun `a sign-in never saved is revoked, and so is one a new sign-in replaces`() = runTest {
-        val first = startSignIn().queryParameter("state")!!
+        val first = startSignIn().parameters["state"]!!
         get("/auth/callback", mapOf("code" to "one", "state" to first))
-        val second = startSignIn().queryParameter("state")!!
+        val second = startSignIn().parameters["state"]!!
         get("/auth/callback", mapOf("code" to "two", "state" to second))
         assertThat(revoked).containsExactlyInAnyOrder("http://192.168.1.5:8123" to "refresh-one")
         // The setup screen closes without saving.

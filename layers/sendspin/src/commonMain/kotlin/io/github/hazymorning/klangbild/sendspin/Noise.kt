@@ -110,8 +110,6 @@ class CipherState internal constructor(key: ByteArray? = null) {
     private var nonce = 0L
     private val nonceBytes = ByteArray(12)
 
-    val hasKey: Boolean get() = key != null
-
     internal fun initializeKey(k: ByteArray) {
         key = decode(k)
         nonce = 0

@@ -12,7 +12,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
-import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.config.DataStoreValues
 import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.sendspin.PairingRecord

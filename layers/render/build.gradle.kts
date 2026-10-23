@@ -1,3 +1,5 @@
+import io.github.hazymorning.klangbild.gradle.skikoSourceSet
+
 plugins {
     id("klangbild.multiplatform")
     id("klangbild.compose")
@@ -5,6 +7,8 @@ plugins {
 }
 
 kotlin {
+    // The scene's pictures as Skia's bitmaps where Compose draws with Skia (the JVM and the browser).
+    skikoSourceSet()
     sourceSets {
         commonMain.dependencies {
             implementation(projects.art)

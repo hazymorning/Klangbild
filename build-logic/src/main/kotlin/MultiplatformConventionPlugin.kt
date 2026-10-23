@@ -13,6 +13,8 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenEnvSpec
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
@@ -72,10 +74,15 @@ class MultiplatformConventionPlugin : Plugin<Project> {
         // A layer's tests answer to the app's test task's name too, so one command runs every
         // module's: on Android (Robolectric), on the JVM and as WebAssembly.
         tasks.register("testDebugUnitTest") { dependsOn("allTests") }
-        // Karma, which runs the WebAssembly tests, runs on Node.js, which comes from the repositories
-        // declared in settings.gradle.kts, as every other download does (the root project's is set there).
+        // Karma, which runs the WebAssembly tests, runs on Node.js, and Binaryen optimizes what
+        // assemble builds; both come from the repositories declared in settings.gradle.kts, as every
+        // other download does (the root project's Node.js is set there).
         plugins.withType<WasmNodeJsPlugin> {
             extensions.getByType<WasmNodeJsEnvSpec>().downloadBaseUrl.set(null as String?)
+        }
+        @OptIn(ExperimentalWasmDsl::class)
+        plugins.withType<BinaryenPlugin> {
+            extensions.getByType<BinaryenEnvSpec>().downloadBaseUrl.set(null as String?)
         }
     }
 }

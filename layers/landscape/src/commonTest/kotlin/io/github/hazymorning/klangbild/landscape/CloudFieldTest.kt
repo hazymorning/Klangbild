@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.landscape
 
 import assertk.assertThat
-import assertk.assertions.isEmpty
 import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isGreaterThanOrEqualTo

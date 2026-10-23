@@ -65,9 +65,11 @@ android {
         unitTests.all {
             // FirstLaunchTest against the stand-in Home Assistant (ci/fake_ha.py): -Pklangbild.fakeHa=http://127.0.0.1:8123
             providers.gradleProperty("klangbild.fakeHa").orNull?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
-            // LayersTest reads the app's own code and every layer's.
+            // LayersTest and TextsUsedTest read the app's own code and every layer's, and
+            // TextsUsedTest the texts.
             it.reads("klangbild.appCode", layout.projectDirectory.dir("src/main/java/io/github/hazymorning/klangbild"), "**/*.kt")
             it.reads("klangbild.layers", layout.settingsDirectory.dir("layers"), "*/src/*Main/**/*.kt")
+            it.reads("klangbild.strings", layout.settingsDirectory.dir("layers/text/strings"), "values*/strings.xml")
         }
     }
 

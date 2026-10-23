@@ -38,6 +38,13 @@ dependencyResolutionManagement {
             metadataSources { artifact() }
             content { includeModule("com.yarnpkg", "yarn") }
         }
+        // Binaryen, which optimizes a layer's WebAssembly when it is built for release (assemble).
+        ivy("https://github.com/WebAssembly/binaryen/releases/download") {
+            name = "Binaryen"
+            patternLayout { artifact("version_[revision]/binaryen-version_[revision]-[classifier].[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.github.webassembly", "binaryen") }
+        }
     }
 }
 

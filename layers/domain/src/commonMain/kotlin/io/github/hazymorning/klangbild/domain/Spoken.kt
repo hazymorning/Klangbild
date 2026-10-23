@@ -32,9 +32,7 @@ enum class MediaKind {
 }
 
 /** A chapter of a book or an episode, in the item's own time: from [startMs] to [endMs]. */
-data class Chapter(val name: String?, val startMs: Long, val endMs: Long) {
-    val lengthMs: Long get() = endMs - startMs
-}
+data class Chapter(val name: String?, val startMs: Long, val endMs: Long)
 
 /**
  * Where the listener is in a book or an episode with chapters, as the stage shows it: the

@@ -81,5 +81,13 @@
                 android:name="android.service.dream"
                 android:resource="@xml/dream" />
         </service>
+
+        <!-- Compose Multiplatform's resources are only read on the JVM and in the browser; on
+             Android the typefaces are Android resources, so the context this provider keeps for
+             them is never needed. -->
+        <provider
+            android:name="org.jetbrains.compose.resources.AndroidContextProvider"
+            android:authorities="${applicationId}.resources.AndroidContextProvider"
+            tools:node="remove" />
     </application>
 </manifest>

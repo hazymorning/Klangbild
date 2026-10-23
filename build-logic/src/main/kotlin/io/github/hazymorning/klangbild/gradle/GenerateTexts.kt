@@ -61,6 +61,7 @@ abstract class GenerateTexts : DefaultTask() {
                 check(arguments(name, text) == arguments(name, english.strings.getValue(name))) { "$name in $language takes other arguments than in English" }
             }
             for ((name, forms) in words.plurals) {
+                check(forms.keys == rules.keywords) { "$name in $language has the forms ${forms.keys}, where the language needs ${rules.keywords}" }
                 val all = arguments(name, english.plurals.getValue(name).getValue("other"))
                 for (text in forms.values) check(all.containsAll(arguments(name, text))) { "$name in $language takes other arguments than in English" }
             }

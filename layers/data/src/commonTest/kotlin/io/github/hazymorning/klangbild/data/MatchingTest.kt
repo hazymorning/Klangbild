@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.data
 
 import assertk.assertThat
-import assertk.assertions.contains
 import assertk.assertions.hasSize
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue

@@ -10,7 +10,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
 import assertk.assertions.isTrue
-import assertk.assertions.startsWith
 import assertk.assertions.support.expected
 import assertk.assertions.support.show
 import io.github.hazymorning.klangbild.domain.SpeakerLink

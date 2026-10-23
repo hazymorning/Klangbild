@@ -7,8 +7,8 @@ package io.github.hazymorning.klangbild.data
 /**
  * An `http` or `https` URL, parsed and written exactly as OkHttp's `HttpUrl` does it. Ported from
  * OkHttp 5.5.0, Copyright Square, Inc., Apache License 2.0, with only what the app uses: parsing,
- * the scheme, host, port, path and query parameters, resolving a link, adding a path segment and a
- * query parameter, and the canonical string.
+ * the scheme, host and port, resolving a link, adding a path segment and a query parameter, and the
+ * canonical string.
  */
 class WebUrl private constructor(
     /** Either `http` or `https`. */
@@ -25,31 +25,9 @@ class WebUrl private constructor(
     val port: Int,
     internal val encodedPathSegments: List<String>,
     internal val encodedQuery: String?,
-    /** The decoded query's names and values in turn, a value null without `=`, or null without a query. */
-    private val queryNamesAndValues: List<String?>?,
     internal val encodedFragment: String?,
     private val url: String,
 ) {
-    /** The path as it's written in the URL, like `/a/b%20c`. It starts with `/`. */
-    val encodedPath: String
-        get() {
-            val pathStart = url.indexOf('/', scheme.length + 3) // "://".length == 3.
-            val pathEnd = url.delimiterOffset("?#", pathStart, url.length)
-            return url.substring(pathStart, pathEnd)
-        }
-
-    /**
-     * The decoded value of the first query parameter named [name], or null if there's none or it
-     * has no `=`. A `+` in the query decodes as a space.
-     */
-    fun queryParameter(name: String): String? {
-        val namesAndValues = queryNamesAndValues ?: return null
-        for (i in 0 until namesAndValues.size step 2) {
-            if (name == namesAndValues[i]) return namesAndValues[i + 1]
-        }
-        return null
-    }
-
     /** The URL that following [link] from this one leads to, or null if that isn't a valid URL. */
     fun resolve(link: String): WebUrl? =
         try {
@@ -129,7 +107,6 @@ class WebUrl private constructor(
                 port = effectivePort,
                 encodedPathSegments = encodedPathSegments.toList(),
                 encodedQuery = encodedQuery,
-                queryNamesAndValues = encodedQueryNamesAndValues?.map { it?.percentDecode(plusIsSpace = true) },
                 encodedFragment = encodedFragment,
                 url = url,
             )
@@ -578,15 +555,14 @@ private fun StringBuilder.appendCanonicalized(
 }
 
 /**
- * The range of this string from [pos] to [limit] with each `%XX` decoded, and each `+` if
- * [plusIsSpace], as OkHttp decodes it. The bytes are read with [decodeToString], which on the JVM
+ * The range of this string from [pos] to [limit] with each `%XX` decoded, as OkHttp decodes it. The bytes are read with [decodeToString], which on the JVM
  * and Android is the platform's decoder, as in OkHttp. Elsewhere a surrogate written in UTF-8 (ED,
  * then A0 to BF) reads as one U+FFFD per byte instead of one for the sequence.
  */
-private fun String.percentDecode(pos: Int = 0, limit: Int = length, plusIsSpace: Boolean = false): String {
+private fun String.percentDecode(pos: Int, limit: Int): String {
     for (i in pos until limit) {
         val c = this[i]
-        if (c == '%' || c == '+' && plusIsSpace) {
+        if (c == '%') {
             // Slow path: the character at i requires decoding.
             val bytes = ByteArray((limit - pos) * 3)
             var size = 0
@@ -601,10 +577,6 @@ private fun String.percentDecode(pos: Int = 0, limit: Int = length, plusIsSpace:
                         j += 3
                         continue
                     }
-                } else if (codePoint == '+'.code && plusIsSpace) {
-                    bytes[size++] = ' '.code.toByte()
-                    j++
-                    continue
                 }
                 forEachUtf8Byte(codePoint) { bytes[size++] = it.toByte() }
                 j += charCount(codePoint)

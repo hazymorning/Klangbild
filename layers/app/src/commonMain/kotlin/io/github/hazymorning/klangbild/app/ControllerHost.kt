@@ -9,7 +9,6 @@ import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CoroutineScope
-import kotlin.concurrent.Volatile
 
 /**
  * What the parts of [NowPlayingController] (the menus, seeking, the sleep timer) need from it.
