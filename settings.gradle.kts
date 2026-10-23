@@ -25,7 +25,7 @@ dependencyResolutionManagement {
         // shared egress IPs; Maven Central itself stays as fallback.
         maven("https://maven-central.storage-download.googleapis.com/maven2/")
         mavenCentral()
-        // Node.js and Yarn, which run the WebAssembly tests.
+        // Node.js and Yarn, for Karma, which runs the WebAssembly tests in a browser.
         ivy("https://nodejs.org/dist") {
             name = "Node.js"
             patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }

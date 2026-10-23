@@ -13,7 +13,6 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
@@ -47,7 +46,18 @@ class MultiplatformConventionPlugin : Plugin<Project> {
             }
             @OptIn(ExperimentalWasmDsl::class)
             wasmJs {
-                nodejs()
+                // The tests run in a browser without a window, where Compose's graphics (Skia)
+                // load, bundled as an executable is: a library's bundle leaves Skia's runtime
+                // out (CMP-4906) and runs as a script, not a module.
+                binaries.executable()
+                browser {
+                    testTask {
+                        useKarma {
+                            useChromeHeadless()
+                            useConfigDirectory(rootDir.resolve("build-logic/karma.config.d"))
+                        }
+                    }
+                }
             }
             compilerOptions {
                 // A compiler warning fails the build as a lint warning does.
@@ -62,12 +72,8 @@ class MultiplatformConventionPlugin : Plugin<Project> {
         // A layer's tests answer to the app's test task's name too, so one command runs every
         // module's: on Android (Robolectric), on the JVM and as WebAssembly.
         tasks.register("testDebugUnitTest") { dependsOn("allTests") }
-        tasks.withType<KotlinJsTest>().configureEach {
-            // As much room as the JVM's tests have (the speaker's simulated playback needs it).
-            nodeJsArgs += "--max-old-space-size=3072"
-        }
-        // The WebAssembly tests run on Node.js, which comes from the repositories declared in
-        // settings.gradle.kts, as every other download does (the root project's is set there).
+        // Karma, which runs the WebAssembly tests, runs on Node.js, which comes from the repositories
+        // declared in settings.gradle.kts, as every other download does (the root project's is set there).
         plugins.withType<WasmNodeJsPlugin> {
             extensions.getByType<WasmNodeJsEnvSpec>().downloadBaseUrl.set(null as String?)
         }

@@ -1,6 +1,5 @@
 // The plugins of the whole build, loaded once here. The build's own plugins (build-logic) apply
-// Kotlin's, Android's and Compose's; ui applies Compose Multiplatform's (its fonts) and
-// Roborazzi's.
+// Kotlin's, Android's, Compose's and Compose Multiplatform's; ui applies Roborazzi's.
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.multiplatform.library) apply false
@@ -11,9 +10,9 @@ plugins {
     alias(libs.plugins.roborazzi) apply false
 }
 
-
-// The WebAssembly tests run on Node.js, with Yarn for their packages; both come from the
-// repositories declared in settings.gradle.kts, as every other download does.
+// Karma, which runs the WebAssembly tests in a browser, runs on Node.js, with Yarn for its
+// packages; both come from the repositories declared in settings.gradle.kts, as every other
+// download does.
 plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin> {
     the<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec>().downloadBaseUrl.set(null as String?)
 }
