@@ -201,8 +201,7 @@ private sealed interface Content {
     }
 
     data class SetupContent(val reason: io.github.hazymorning.klangbild.domain.SetupReason, val appearance: Appearance, val info: SetupInfo?) : Content {
-        // Leaving, the page keeps its code and address: the server has stopped by then (until
-        // 2026.10 they blanked while it faded).
+        // While the page fades out it keeps its code and address, though the server has stopped.
         override val key = "setup:$reason:$appearance"
     }
 

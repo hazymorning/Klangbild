@@ -71,7 +71,7 @@ class QuickActionsTest {
         val party = QuickAction("Party", "script.party", vars, grouped)
         val scene = QuickAction("Movie", "scene.movie", condition = Condition("sun.sun", null, Condition.Test.IS, "below_horizon"))
         assertThat(QuickActions.decode(QuickActions.encode(listOf(party, scene)))).containsExactly(party, scene).inOrder()
-        // Variables only go to a script; odd names, too many and odd conditions are no button.
+        // Variables only go to a script; odd names, too many variables and odd conditions don't make a button.
         assertThat(QuickActions.valid("Movie", "scene.movie", vars)!!.variables).isEmpty()
         assertThat(QuickActions.from(obj("""{"entity":"script.x","variables":{"not ok":1}}"""))).isNull()
         assertThat(QuickActions.from(obj("""{"entity":"script.x","variables":${(1..20).joinToString(",", "{", "}") { "\"v$it\":$it" }}}"""))).isNull()

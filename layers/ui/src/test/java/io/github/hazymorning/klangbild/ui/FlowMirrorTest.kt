@@ -36,10 +36,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The mirror images of Cover Flow keep their strength while the cards move. A card turning to
- * the side passes from its full texture to its half-size one; until 2026.10 the two were laid
- * over one another, so the half-transparent mirror image grew denser on the way and fell back in
- * one frame, and the new look of a strip came up over the old one with the same jump at its end.
+ * The mirror images of Cover Flow keep their strength while the cards move: while a card turns
+ * from its full texture to its half-size one, and while the strip takes a new look.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -63,7 +61,7 @@ class FlowMirrorTest {
     fun theMirrorImagesGoOverEvenlyWhileTheMiddleCardTakesANewCover() {
         // The next song of the same card, whose cover differs: the middle card goes over to it.
         // Its mirror image and those beside it change evenly and never swell beyond where they
-        // stood before and after (until 2026.10 they grew denser and fell back as the change landed).
+        // stood before and after.
         val sides = listOf(SyntheticCover.MOSS, SyntheticCover.TERRACOTTA, SyntheticCover.SALT_WATER)
             .map { Fixtures.track(it) }
         val sideScenes = sides.map { Fixtures.scene(it, mdpi, Appearance.DARK, flow = true) }
@@ -103,8 +101,7 @@ class FlowMirrorTest {
     @Test
     fun aPictureWithClearPartsGivesWayToTheSongsOwnWithoutADarkFlash() {
         // On paper a station's logo, clear around its mark, gives way to the song's own cover as
-        // Music Assistant finds it. The print goes over evenly and never darkens beyond both ends
-        // (in 2026.10.3 the paper behind the logo's clear parts was cleared and came back slowly).
+        // Music Assistant finds it. The print goes over evenly and never darkens beyond both ends.
         val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.LIGHT, flow = true)
         val geometry = FlowGeometry(scene.layout)
         val cover = scene.card!!
@@ -153,8 +150,7 @@ class FlowMirrorTest {
             val picture = capture()
             val mirror = mirror(picture, geometry, p, 0f)
             val print = print(picture, geometry, p)
-            // A card fading out loses its print quickly, but evenly (until 2026.10 it fell by 28 levels
-            // in one frame, its mirror image by 10).
+            // A card fading out loses its print quickly, but evenly.
             if (!mirrorBefore.isNaN()) {
                 assertThat(abs(mirror - mirrorBefore)).isLessThan(1.5f)
                 assertThat(abs(print - printBefore)).isLessThan(10f)

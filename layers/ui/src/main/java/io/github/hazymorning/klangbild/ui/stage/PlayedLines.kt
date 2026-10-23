@@ -6,8 +6,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 /**
  * What each song's lines showed while it played, so that a stage still on screen after its song
  * has ended (the next song's scene still being made, or its lines leaving in the change) keeps
- * its own time, its own next and its own chapter. Until 2026.10 a stage left waiting showed the
- * new song's, and lines leaving showed the new song's next and lost their own time and chapter.
+ * its own time, its own next and its own chapter.
  */
 internal class PlayedLines {
     private class Played {

@@ -159,7 +159,7 @@ data class UiState(
     /** How the queue shows: with Cover Flow its strip ([flow]) shows once it is ready, else the [stage]. */
     val queue: QueueDisplay = QueueDisplay.OFF,
     /**
-     * How the queue is to show, chosen but not on screen yet, while its stage is being made
+     * How the queue should show, chosen but not on screen yet, while its stage is being made
      * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
      * value shimmer meanwhile.
      */
@@ -749,7 +749,7 @@ class NowPlayingController(
             smooth.onReport(p?.track?.key, seeking.onReport(st, raw, t), t)
         }
         // A new volume (set here, on a phone or anywhere else) is shown for a moment; another
-        // speaker shown (this TV's own, or back) has a volume of its own, which is no change.
+        // speaker shown (this TV's own, or back) has a volume of its own, which doesn't count as a change.
         if (st.speaker != _ui.value.source.speaker) lastVolume = null
         val volume = p?.volume?.let { it to p.muted }
         if (volume != null) {

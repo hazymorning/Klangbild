@@ -944,7 +944,7 @@ class HaSourceTest {
             assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
             assertThat(sockets).hasSize(1)
 
-            // Switched off: this TV is no speaker any more.
+            // Switched off: this TV is no longer a speaker.
             speaker.value = SpeakerStatus()
             withTimeout(5_000) { s.state.first { it.ownSpeaker == null } }
             s.stop()

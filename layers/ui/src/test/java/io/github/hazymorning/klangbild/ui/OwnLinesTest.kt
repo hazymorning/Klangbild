@@ -26,9 +26,8 @@ import kotlin.math.abs
 
 /**
  * A stage still on screen after its song has ended keeps its own lines: while the next song's
- * scene is still being made, its time and its "Up next" stay its own (until 2026.10 they showed
- * the new song's at once), also when the player reports the next song a moment before the
- * screen changes to it.
+ * scene is still being made, its time and its "Up next" stay its own, also when the player
+ * reports the next song a moment before the screen changes to it.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

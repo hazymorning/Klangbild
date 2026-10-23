@@ -20,8 +20,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The setup page fades out as it showed: its server has stopped by then, and until 2026.10 its
- * code went blank and its address said there was no network while it faded.
+ * The setup page fades out as it was shown, with its code and address, though its server has
+ * stopped by then.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

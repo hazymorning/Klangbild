@@ -17,7 +17,7 @@ class UpNextTest {
         assertThat(UpNext.of(coming, remaining = 57)!!.durationMs).isNull()
         // A song without a length: none for all of them.
         assertThat(UpNext.of(coming + song("C", ms = null), remaining = 3)!!.durationMs).isNull()
-        // Not told how many: those read, unless as many were read as are read at most.
+        // Without a total, the count is the songs read, or unknown when the read hit its limit.
         assertThat(UpNext.of(coming, remaining = null)!!.count).isEqualTo(2)
         val many = (1..40).map { song("S$it") }
         assertThat(UpNext.of(many, remaining = null)!!.count).isNull()

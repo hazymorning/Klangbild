@@ -95,7 +95,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
         p.remove(Keys.formerView)
     }
 
-    /** The settings as [p] stores them; what an earlier version stored is read as it is meant now. */
+    /** The settings as [p] stores them; what an earlier version stored is read with its current meaning. */
     internal fun read(p: Preferences): Settings =
         Settings(
             haUrl = p[Keys.url],

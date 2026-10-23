@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installs an emulator system image before the emulator action starts, and tries again when the
 # download breaks off. Now and then the download server hands out a truncated archive
-# (sdkmanager: "Error on ZipFile unknown archive"), and the action, which tries only once, then
-# failed the whole run. With the image in place the action skips its own download.
+# (sdkmanager: "Error on ZipFile unknown archive"), and the action, which tries only once, would
+# fail the whole run. With the image in place the action skips its own download.
 #
 #   bash ci/install-system-image.sh 34 google_apis x86_64
 set -euo pipefail

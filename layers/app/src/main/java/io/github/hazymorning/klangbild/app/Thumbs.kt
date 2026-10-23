@@ -44,7 +44,7 @@ internal class Thumbs(
     }
     private val building = HashMap<String, Job>()
 
-    /** The side of a small cover (px). Another side (another screen) lets go of every one made. */
+    /** The side length of a small cover (px). A new length (another screen) drops every one made so far. */
     @Volatile var px = 0
         set(value) {
             if (value != field) clear()

@@ -241,8 +241,7 @@ fun FlowTheater(
         WallLayer(middle.scene, alpha = newWall, level = level, shift = { balance().cards }, column = { balance().column })
         // One strip, also while it takes a new look: each card is the mix of its texture before
         // and its new one, so a card never shows through another and its mirror image keeps its
-        // strength (until 2026.10 the new strip came up over the old one, the mirror images grew
-        // denser on the way and fell back in one frame when the change landed).
+        // strength.
         val before = remember(oldStrip, party.on(oldStrip?.appearance ?: appearance)) {
             oldStrip?.let { FlowLook(it.appearance, it.palette.wall.asColor(), !it.coverField, party.on(it.appearance)) }
         }

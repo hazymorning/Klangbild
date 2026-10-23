@@ -14,9 +14,9 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /**
- * A list's glide ([animateGlide]) frame by frame: a press glides one line as it always did; a
- * held key runs the list on evenly instead of starting over from a standstill at every repeat
- * (which read as lag), and once let go the list comes to rest on its line without passing it.
+ * A list's glide ([animateGlide]) frame by frame: a press glides one line, a held key runs the
+ * list on evenly instead of starting over at every repeat, and once let go the list comes to
+ * rest on its line without passing it.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])

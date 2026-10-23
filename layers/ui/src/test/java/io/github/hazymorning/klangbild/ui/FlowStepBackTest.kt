@@ -21,7 +21,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * On the dark wall a light card beside a dark middle one steps back. When the strip turns to
  * that card, it brightens with the turn: in the turn's first frames, before the strip has moved,
- * it is as bright as it was (until 2026.10 it doubled its brightness at once).
+ * it is as bright as it was.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

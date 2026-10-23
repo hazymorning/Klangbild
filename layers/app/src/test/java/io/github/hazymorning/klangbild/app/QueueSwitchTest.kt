@@ -20,7 +20,7 @@ import org.robolectric.annotation.GraphicsMode
  * The queue's way just chosen is on its way from the press until the state that shows it: Cover
  * Flow once its strip is there, Off and the list once the single cover's stage is. Only while a
  * song is on stage; over the clock, the setup page or a screen that says something is wrong
- * nothing is made, and what comes later is no switch.
+ * nothing is made, and what comes later doesn't count as a switch.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

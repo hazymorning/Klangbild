@@ -54,8 +54,7 @@ internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance:
         label = "pause-text",
     )
     // One value for the breath, so it always carries on from where the light stands: buffering
-    // again while it glides back starts there (until 2026.10 each spell of buffering began at full
-    // light, and the light jumped up).
+    // again while it glides back starts there.
     val breath = remember { Animatable(1f) }
     val buffering = status == PlayerStatus.BUFFERING
     if (!LocalStill.current) {

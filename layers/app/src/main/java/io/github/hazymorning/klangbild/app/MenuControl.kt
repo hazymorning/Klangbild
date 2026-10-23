@@ -128,7 +128,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
                 }
                 host.requestSetup(true)
             }
-            // The sleep timer is no setting: it lives until it has paused the music once.
+            // The sleep timer isn't stored with the settings. It lasts until it has paused the music once.
             entry == MenuEntry.SLEEP_TIMER -> sleep.step(direction, wrap)
             // The language is kept by the system (or, before API 33, by the app on its own).
             entry == MenuEntry.LANGUAGE -> host.language = SettingsMenu.stepLanguage(host.language, direction, wrap)

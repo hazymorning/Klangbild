@@ -21,7 +21,7 @@ class CameraPose(val zoom: Float, val panX: Float, val panY: Float) {
  * The camera's slow journey over the diorama, like a hand-held look through a window. It moves
  * in and out (up to [ZOOM_MAX]) and its view wanders across the picture, as far as the paper
  * reaches beyond the screen at that zoom ([PaperMotif.OVERSCAN], with the screen's own drift on
- * top). The music's label stands still on the screen because it is no part of the scenery, and
+ * top). The music's label stands still on the screen because it isn't part of the scenery, and
  * the view never wanders so far that the near bank under the label would leave it: the bank
  * covers the label, with [BANK_MARGIN] to spare, in every pose. A swing in and out takes about
  * two minutes, one across about a minute and a half; the waves are sums of sines with

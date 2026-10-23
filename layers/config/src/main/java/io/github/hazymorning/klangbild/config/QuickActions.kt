@@ -70,7 +70,7 @@ object QuickActions {
     /**
      * A button from what the phone sent: an entity a button can work, and a name (cut to
      * [MAX_NAME] characters; without one, the entity's own words). Only a script takes
-     * variables. Null when it is no button.
+     * variables. Null when it can't be a button.
      */
     fun valid(name: String?, entity: String?, variables: JsonObject = QuickAction.NO_VARIABLES, condition: Condition? = null): QuickAction? {
         val id = entity?.trim()?.takeIf { EntityId.isValid(it) && ActionKind.of(it) != null } ?: return null
