@@ -18,7 +18,6 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             lint.checkDependencies = true
         }
         dependencies {
-            "testImplementation"(libs.library("kotlin-test"))
             "testImplementation"(libs.library("junit"))
             "testImplementation"(libs.library("assertk"))
         }

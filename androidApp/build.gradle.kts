@@ -103,5 +103,5 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.okhttp)
 
-    testImplementation(libs.assertk)
+    testImplementation(libs.okhttp.mockwebserver)
 }

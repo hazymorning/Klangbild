@@ -56,7 +56,16 @@ class AndroidPlatform(context: Context) : Platform {
         .cache(null)
         .build()
 
-    override val http: HttpClient = httpClient(OkHttp.create { preconfigured = okHttp })
+    override val http: HttpClient = httpClient(
+        OkHttp.create {
+            preconfigured = okHttp
+            // Ktor's engine turns OkHttp's redirects off; pictures follow them, the guard checking each hop.
+            config {
+                followRedirects(true)
+                followSslRedirects(true)
+            }
+        },
+    )
 
     override val tokenHttp: HttpClient = httpClient(OkHttp.create { preconfigured = tokenOkHttp })
 
