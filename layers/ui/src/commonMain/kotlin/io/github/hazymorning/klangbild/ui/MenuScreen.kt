@@ -66,6 +66,7 @@ import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import io.github.hazymorning.klangbild.ui.text.BalancedText
+import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -269,7 +270,7 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         label = "menu-description",
     ) { text ->
         if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-            BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f))
+            BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
         }
     }
     BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {

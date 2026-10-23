@@ -11,6 +11,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -20,7 +21,8 @@ import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
+import io.github.hazymorning.klangbild.ui.text.LineBalancer
+import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -64,7 +66,7 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
             color = ink,
             lineHeight = size * step.leading + if (cjk) 6f else 0f,
             tracking = if (cjk) 0f else step.tracking,
-        ).merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+        ).merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
     }
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
@@ -128,11 +130,11 @@ const val BLOCK_SHARE = 0.62f
 
 /** The measured decisions for the text block: title step and breaks, the artists fitted onto one line, and more. */
 class TextPlan(
-    /** The title on its balanced lines: set in [titleStyle], exactly [titleWidth] px wide. */
+    /** The title as it is set on its balanced lines: in [titleStyle], within [titleConstraints]. */
     val title: AnnotatedString,
     val titleStyle: TextStyle,
     val titleLines: Int,
-    val titleWidth: Int,
+    val titleConstraints: Constraints,
     /** The styles of the block's lines. */
     val styles: StageStyles,
     /** "Radio Edit" under the title. */
@@ -200,9 +202,9 @@ private fun planText(
         return layout.art * BLOCK_SHARE * d - rest
     }
 
-    val breaker = BalancedBreaker(measurer)
-    val choice = pickTitleSize(title, { step -> normal.title(step, cjk) }, breaker, colW, ::budget, d)
-        ?: titleLadder.last().let { step -> TitleChoice(step, breaker.title(title, normal.title(step, cjk), colW, step.lines)) }
+    val balancer = lineBalancer(measurer)
+    val choice = pickTitleSize(title, { step -> normal.title(step, cjk) }, balancer, colW, ::budget, d)
+        ?: titleLadder.last().let { step -> TitleChoice(step, balancer.layout(title, normal.title(step, cjk), colW, step.lines, TextOverflow.Ellipsis)) }
     val block = normal
 
     // Artists on one line: the most complete form that fits, at the artist's size, then a
@@ -238,7 +240,7 @@ private fun planText(
         title = choice.layout.layoutInput.text,
         titleStyle = choice.layout.layoutInput.style,
         titleLines = choice.step.lines,
-        titleWidth = choice.layout.size.width,
+        titleConstraints = choice.layout.layoutInput.constraints,
         styles = block,
         version = version,
         versionStyle = block.version(choice.step.size),
@@ -256,12 +258,8 @@ private fun planText(
  */
 enum class TextLine(val stagger: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), BOTTOM(200), NEXT(260) }
 
-/** The title's step, and the title laid out at it as it is set. */
+/** The title's step, and the title laid out at it as it is set: at most the step's lines, the last one ellipsized. */
 internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)
-
-/** [text] in [style] as a title is set: on its balanced lines, at most [maxLines], the last one ellipsized. */
-internal fun BalancedBreaker.title(text: AnnotatedString, style: TextStyle, maxW: Int, maxLines: Int): TextLayoutResult =
-    layout(text, style, lines(text, style, maxW), maxLines, TextOverflow.Ellipsis)
 
 /**
  * The title at the largest step of the ladder that fits its line limit and the height it is
@@ -274,7 +272,7 @@ internal fun BalancedBreaker.title(text: AnnotatedString, style: TextStyle, maxW
 internal fun pickTitleSize(
     text: AnnotatedString,
     styleOf: (TitleStep) -> TextStyle,
-    breaker: BalancedBreaker,
+    balancer: LineBalancer,
     maxW: Int,
     budget: (TitleStep) -> Float,
     density: Float,
@@ -288,9 +286,9 @@ internal fun pickTitleSize(
     // says and fits the height; laid out only once the lines pass.
     fun fit(t: AnnotatedString, step: TitleStep, allowed: (IntArray) -> Boolean): TitleChoice? {
         val style = styleOf(step)
-        val lines = breaker.lines(t, style, maxW)
-        if (lines.ends.size > step.lines || !allowed(lines.ends)) return null
-        val r = breaker.layout(t, style, lines, step.lines, TextOverflow.Ellipsis)
+        val ends = balancer.lineEnds(t, style, maxW)
+        if (ends.size > step.lines || !allowed(ends)) return null
+        val r = balancer.layout(t, style, maxW, step.lines, TextOverflow.Ellipsis)
         return if (height(r) <= budget(step)) TitleChoice(step, r) else null
     }
     fun gluedFits(step: TitleStep) = glued?.let { g -> fit(g, step) { breaksOnlyAfterDashes(g.text, it) } }
@@ -342,7 +340,7 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
 }
 
 /** The title with every space that is not right after a dash made non-breaking; null without dashes. */
-private fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
+internal fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
     val s = text.text
     if (!s.contains(" – ")) return null
     val chars = s.toCharArray()

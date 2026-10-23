@@ -53,7 +53,8 @@ import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
+import io.github.hazymorning.klangbild.ui.text.LineBalancer
+import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Figures
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -136,11 +137,11 @@ internal class PlannedRow(
 internal class QueuePlan(
     val styles: StageStyles,
     val work: String?,
-    /** The title on its balanced lines: set in [titleStyle], exactly [titleWidth] px wide. */
+    /** The title as it is set on its balanced lines: in [titleStyle], within [titleConstraints]. */
     val title: AnnotatedString,
     val titleStyle: TextStyle,
     val titleLines: Int,
-    val titleWidth: Int,
+    val titleConstraints: Constraints,
     val version: String?,
     val versionStyle: TextStyle,
     val meta: AnnotatedString?,
@@ -276,11 +277,11 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val t = model.text
     val cjk = isMostlyCjk(t.title)
     val title = EmojiText.annotate(t.title, dimTo = styles.ink.copy(alpha = 0.62f))
-    val breaker = BalancedBreaker(measurer)
-    val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, breaker, colW, { Float.MAX_VALUE }, d, queueTitleLadder)
+    val balancer = lineBalancer(measurer)
+    val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, balancer, colW, { Float.MAX_VALUE }, d, queueTitleLadder)
         ?: queueTitleLadder.last().let { step ->
             val style = styles.title(step, cjk)
-            TitleChoice(step, breaker.title(fitLines(breaker, title, style, colW, step.lines), style, colW, step.lines))
+            TitleChoice(step, balancer.layout(fitLines(balancer, title, style, colW, step.lines), style, colW, step.lines, TextOverflow.Ellipsis))
         }
     val titleStyle = choice.layout.layoutInput.style
     val versionStyle = styles.version(choice.step.size)
@@ -348,7 +349,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         title = choice.layout.layoutInput.text,
         titleStyle = titleStyle,
         titleLines = choice.step.lines,
-        titleWidth = choice.layout.size.width,
+        titleConstraints = choice.layout.layoutInput.constraints,
         version = t.version,
         versionStyle = versionStyle,
         meta = meta,
@@ -403,8 +404,8 @@ private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyl
  * [text] in at most [lines] lines of [width], cut after a whole word if it must be, never inside
  * one, and before a parenthesis it would leave open.
  */
-private fun fitLines(breaker: BalancedBreaker, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
-    fun fits(s: AnnotatedString) = breaker.lineEnds(s, style, width).size <= lines
+private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
+    fun fits(s: AnnotatedString) = balancer.lineEnds(s, style, width).size <= lines
     if (fits(text)) return text
     val plain = text.text
     var end = plain.length
@@ -473,8 +474,8 @@ internal fun QueueText(
             val colW = plan.columnWidth
             val c = Constraints(maxWidth = colW)
             val work = measurables[0].measure(c)
-            // The title as wide as its balanced lines were set for.
-            val title = measurables[1].measure(Constraints.fixedWidth(plan.titleWidth))
+            // The title within the constraints it was set in.
+            val title = measurables[1].measure(plan.titleConstraints)
             val version = measurables[2].measure(c)
             val meta = measurables[3].measure(c)
             val bottom = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))

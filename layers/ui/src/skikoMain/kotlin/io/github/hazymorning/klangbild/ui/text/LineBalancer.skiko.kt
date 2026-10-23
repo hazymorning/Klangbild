@@ -7,15 +7,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineBreak
 
-/**
- * [text] in [style] on balanced lines ([BalancedBreaker]) within the width it is given: a
- * [BasicText] that looks as it does with a balanced line break.
- */
+/** [BalancedBreaker], since Skia has no balanced line breaking of its own. */
+actual fun lineBalancer(measurer: TextMeasurer): LineBalancer = BalancedBreaker(measurer)
+
+/** Any break that balances: BalancedBreaker sets every text it is given on balanced lines. */
+actual val sentenceLineBreak: LineBreak = LineBreak.Heading
+
+/** A [BasicText] with line feeds where the balanced lines end, as wide as those lines were set for. */
 @Composable
-fun BalancedText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier) {
+actual fun BalancedText(text: AnnotatedString, style: TextStyle, modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier) {
         val lines = remember(text, style, constraints.maxWidth, measurer) { BalancedBreaker(measurer).lines(text, style, constraints.maxWidth) }

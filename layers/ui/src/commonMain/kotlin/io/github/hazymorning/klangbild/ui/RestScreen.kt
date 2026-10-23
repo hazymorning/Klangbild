@@ -45,6 +45,7 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.text.BalancedText
+import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.ClockFigures
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberClockFigures
@@ -217,7 +218,7 @@ private fun RestBlock(time: String, date: String?, label: String?, sentence: Str
             if (sentence != null) {
                 BalancedText(
                     AnnotatedString(sentence),
-                    faces.textType(19f, 420, colors.secondary, lineHeight = 27f).merge(TextStyle(textAlign = TextAlign.Center)),
+                    faces.textType(19f, 420, colors.secondary, lineHeight = 27f).merge(TextStyle(textAlign = TextAlign.Center, lineBreak = sentenceLineBreak)),
                     Modifier.layoutId(SENTENCE).widthIn(max = 480.dp),
                 )
             }

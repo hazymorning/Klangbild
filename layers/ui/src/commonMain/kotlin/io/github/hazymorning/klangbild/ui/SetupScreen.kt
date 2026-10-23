@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
@@ -38,8 +39,9 @@ import io.github.hazymorning.klangbild.ui.stage.ArtworkLayer
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
-import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
 import io.github.hazymorning.klangbild.ui.text.BalancedText
+import io.github.hazymorning.klangbild.ui.text.lineBalancer
+import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -103,7 +105,7 @@ fun SetupScreen(
     val layout = scene.layout
     val faces = faces()
     val label = faces.textType(15f, 500, p.inkQuiet.asColor(), tracking = 0.01f)
-    val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f)
+    val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak))
     val t = texts()
     val lead = t[
         when (reason) {
@@ -127,7 +129,7 @@ fun SetupScreen(
     // Until the code is drawn its line stays empty but keeps its height.
     val code = info?.code?.chunked(3)?.joinToString(" ") ?: "\u00A0"
     val name = faces.titleType(44f, 420, p.ink.asColor(), tracking = -0.005f)
-    val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f)
+    val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak))
     val codeStyle = faces.titleType(44f, 400, p.ink.asColor(), tracking = 0.01f)
     val addressStyle = body.copy(color = p.inkQuiet.asColor())
     // How wide the text really is: its longest line, as it breaks in the column (the lead, the
@@ -136,11 +138,11 @@ fun SetupScreen(
     val local = LocalDensity.current
     val widest = remember(reason, info, layout, local, t) {
         val column = with(local) { layout.columnWidth.dp.roundToPx() }
-        val breaker = BalancedBreaker(measurer)
+        val balancer = lineBalancer(measurer)
         val plain = listOf(AnnotatedString("Klangbild") to name, AnnotatedString(code) to codeStyle)
             .map { (t, style) -> measurer.measure(t, style, constraints = Constraints(maxWidth = column)) }
         val balanced = listOf(AnnotatedString(lead) to leadStyle, AnnotatedString(text) to body, address to addressStyle)
-            .map { (t, style) -> breaker.layout(t, style, breaker.lines(t, style, column)) }
+            .map { (t, style) -> balancer.layout(t, style, column) }
         (plain + balanced)
             .maxOf { r -> (0 until r.lineCount).maxOf { r.getLineRight(it) - r.getLineLeft(it) } }
             .let { with(local) { it.toDp().value } }

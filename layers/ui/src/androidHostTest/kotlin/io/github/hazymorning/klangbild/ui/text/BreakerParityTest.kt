@@ -3,15 +3,18 @@ package io.github.hazymorning.klangbild.ui.text
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.em
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -19,17 +22,21 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.composeRule
 import io.github.hazymorning.klangbild.ui.stage.EmojiText
 import io.github.hazymorning.klangbild.ui.stage.StageStyles
+import io.github.hazymorning.klangbild.ui.stage.glueBetweenDashes
 import io.github.hazymorning.klangbild.ui.stage.glueParentheses
 import io.github.hazymorning.klangbild.ui.stage.glueShortWords
 import io.github.hazymorning.klangbild.ui.stage.isMostlyCjk
+import io.github.hazymorning.klangbild.ui.stage.lyricsLadder
+import io.github.hazymorning.klangbild.ui.stage.lyricsStyle
 import io.github.hazymorning.klangbild.ui.stage.titleLadder
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
-import io.github.hazymorning.klangbild.ui.theme.titleType
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,9 +48,11 @@ import kotlin.math.roundToInt
 
 /**
  * [BalancedBreaker] breaks the texts the screens set where Android's balanced line break does:
- * the texts the tests and fixtures write as titles at every step of the ladder and as the words
- * of songs, and the app's own sentences in the menu's, setup's and rest screen's styles, at the
- * widths those screens give them and at the densities of the pictures.
+ * the texts the tests and fixtures write, and a few for the hard cases ([EXTRA]), as titles at
+ * every step of the ladder (also glued between a movement's dashes) and as the words of songs,
+ * and the app's own sentences in the menu's, setup's and rest screen's styles with the setup's
+ * address, at the widths those screens give them and at each density of the pictures. Texts in
+ * Japanese or Chinese also break by those languages' rules.
  *
  * Robolectric runs Android 12's line breaker and ICU 68 (whatever the SDK), and drops the
  * strictness of a LineBreak, so its breaks are those of ICU's default rules, as the breaker's.
@@ -57,7 +66,6 @@ class BreakerParityTest {
     private lateinit var resolver: FontFamily.Resolver
     private lateinit var faces: Faces
     private val styles by lazy { StageStyles(ScenePalette(Appearance.DARK, 0xFF101010.toInt(), 0xFFEEEEEE.toInt(), 0xFFBBBBBB.toInt(), 0xFF999999.toInt()), faces) }
-    private val balanced = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default)
 
     /** A text in a style (with the balanced line break it had) at a width (px) and a density. */
     private class Case(val label: String, val text: AnnotatedString, val style: TextStyle, val width: Int, val density: Float)
@@ -71,14 +79,16 @@ class BreakerParityTest {
         }
         compose.waitForIdle()
         val strings = appStrings()
-        val texts = (testTexts() + strings).distinct()
+        val texts = (testTexts() + EXTRA + strings).distinct()
         check(texts.size > 300) { "only ${texts.size} texts found" }
         val cases = ArrayList<Case>()
-        for ((i, text) in texts.withIndex()) {
-            val density = DENSITIES[i % DENSITIES.size]
-            cases += titleCases(text, density)
-            cases += lyricsCases(text, density)
-            if (text in strings) cases += sentenceCases(text, density)
+        for (density in DENSITIES) {
+            for (text in texts) {
+                cases += titleCases(text, density)
+                cases += lyricsCases(text, density)
+                if (text in strings) cases += sentenceCases(AnnotatedString(text), density)
+            }
+            for (address in addresses()) cases += sentenceCases(address, density).filter { it.label == "setup" }.map { Case("setup address", it.text, it.style, it.width, it.density) }
         }
         val measurers = DENSITIES.associateWith { TextMeasurer(resolver, Density(it), LayoutDirection.Ltr, cacheSize = 0) }
         val breakers = measurers.mapValues { BalancedBreaker(it.value) }
@@ -102,38 +112,56 @@ class BreakerParityTest {
         assertThat(wrong, name = "cases that break differently").isEqualTo(0)
     }
 
-    /** The text as the stage sets a title: at every step, in its column and in Cover Flow's. */
+    /** The text as the stage sets a title: at every step, glued between dashes too, in its column and in Cover Flow's. */
     private fun titleCases(text: String, density: Float): List<Case> {
         val title = glueShortWords(glueParentheses(EmojiText.annotate(text, dimTo = Color.White.copy(alpha = 0.62f))))
         val cjk = isMostlyCjk(text)
+        val versions = listOfNotNull(title, glueBetweenDashes(title))
         return titleLadder.flatMap { step ->
-            val style = styles.title(step, cjk).merge(TextStyle(lineBreak = LineBreak.Heading))
-            listOf(false, true).map { flow -> Case("title ${step.size}sp${if (flow) " flow" else ""}", title, style, px(grid(density, flow).columnWidth, density), density) }
+            locales(cjk).flatMap { locale ->
+                val style = styles.title(step, cjk).merge(TextStyle(localeList = locale))
+                versions.flatMap { t -> listOf(false, true).map { flow -> Case("title ${step.size}sp${if (flow) " flow" else ""}", t, style, px(grid(density, flow).columnWidth, density), density) } }
+            }
         }
     }
 
-    /** The text as the words of a song, at each of their sizes (as in Lyrics.kt). */
+    /** The text as the words of a song, at each of their sizes. */
     private fun lyricsCases(text: String, density: Float): List<Case> {
         val part = glueShortWords(glueParentheses(AnnotatedString(text)))
         val cjk = isMostlyCjk(text)
-        return LYRICS.map { step ->
-            val size = if (cjk) step[0] * StageStyles.CJK_SCALE else step[0]
-            val style = faces.titleType(size, step[1].toInt(), lineHeight = size * step[2] + if (cjk) 6f else 0f, tracking = if (cjk) 0f else step[3])
-                .merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
-            Case("lyrics ${step[0]}sp", part, style, px(grid(density, false).columnWidth, density), density)
+        return lyricsLadder.flatMap { step ->
+            locales(cjk).map { locale ->
+                Case("lyrics ${step.size}sp", part, lyricsStyle(faces, step, cjk).merge(TextStyle(localeList = locale)), px(grid(density, false).columnWidth, density), density)
+            }
         }
     }
 
-    /** One of the app's sentences as the menu explains a line, as the setup's lead and text, and as the rest screen's sentence. */
-    private fun sentenceCases(text: String, density: Float): List<Case> {
-        val plain = AnnotatedString(text)
+    /** Japanese, Chinese and Korean texts in no language, and in Japanese and Chinese, whose rules differ a little. */
+    private fun locales(cjk: Boolean): List<LocaleList?> = if (cjk) listOf(null, LocaleList("ja"), LocaleList("zh")) else listOf(null)
+
+    /**
+     * A text as the menu explains a line, as the setup's lead and text, and as the rest screen's
+     * sentence (in their styles, as MenuScreen.kt, SetupScreen.kt and RestScreen.kt set them).
+     */
+    private fun sentenceCases(text: AnnotatedString, density: Float): List<Case> {
         val grid = grid(density, false)
         return listOf(
-            Case("menu", plain, faces.textType(18f, 420, lineHeight = 26f).merge(TextStyle(lineBreak = balanced)), px(grid.art - 24f, density), density),
-            Case("setup", plain, faces.textType(19f, 420, lineHeight = 27f).merge(TextStyle(lineBreak = balanced)), px(grid.columnWidth, density), density),
-            Case("setup lead", plain, faces.textType(21f, 520, lineHeight = 27f).merge(TextStyle(lineBreak = balanced)), px(grid.columnWidth, density), density),
-            Case("rest", plain, faces.textType(19f, 420, lineHeight = 27f).merge(TextStyle(lineBreak = balanced, textAlign = TextAlign.Center)), px(480f, density), density),
+            Case("menu", text, faces.textType(18f, 420, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)), px(grid.art - 24f, density), density),
+            Case("setup", text, faces.textType(19f, 420, lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak)), px(grid.columnWidth, density), density),
+            Case("setup lead", text, faces.textType(21f, 520, lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak)), px(grid.columnWidth, density), density),
+            Case("rest", text, faces.textType(19f, 420, lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak, textAlign = TextAlign.Center)), px(480f, density), density),
         )
+    }
+
+    /** The setup's address in both languages, with its figures a little apart, as SetupScreen.kt writes it. */
+    private fun addresses(): List<AnnotatedString> = listOf(TestTexts.english(), TestTexts.german).flatMap { t ->
+        listOf("192.168.178.23:8765", "10.0.0.5:8765", "[fd00::1:2]:8765").map { url ->
+            buildAnnotatedString {
+                append(t[Strings.setupInBrowser])
+                append(" ")
+                withStyle(SpanStyle(letterSpacing = 0.03.em)) { append(url) }
+            }
+        }
     }
 
     private fun grid(density: Float, flow: Boolean) = StageGrid(ScreenSpec((960 * density).roundToInt(), (540 * density).roundToInt(), density), flow)
@@ -150,7 +178,7 @@ class BreakerParityTest {
     /** Every text the tests and fixtures write: the string literals with words in them, the words of synced lyrics without their times. */
     private fun testTexts(): List<String> {
         val texts = LinkedHashSet<String>()
-        for (dir in listOf("ui", "art-testing", "domain-testing", "app-testing")) {
+        for (dir in listOf("ui/src/androidHostTest", "ui/src/commonTest", "art-testing/src", "domain-testing/src", "app-testing/src")) {
             val root = File(System.getProperty("klangbild.corpus.$dir")!!)
             // This test's own words are left out.
             root.walk().filter { it.isFile && it.name.endsWith(".kt") && "/ui/text/" !in it.path.replace('\\', '/') }.sortedBy { it.path }.forEach { file ->
@@ -216,7 +244,24 @@ class BreakerParityTest {
         /** The densities of the pictures: mdpi, xhdpi (1080p) and xxxhdpi (4K). */
         val DENSITIES = listOf(1f, 2f, 4f)
 
-        /** The lyrics' ladder: size (sp), weight, leading, tracking (em), as in Lyrics.kt. */
-        val LYRICS = listOf(floatArrayOf(30f, 420f, 1.15f, -0.005f), floatArrayOf(26f, 430f, 1.16f, 0f), floatArrayOf(24f, 430f, 1.16f, 0f))
+        /**
+         * Texts for what the others lack: lines that score the same ("la la la"), right-to-left text
+         * with numbers and Latin in it, and Japanese and Chinese with long vowel marks, small kana,
+         * ellipses and dashes.
+         */
+        val EXTRA = listOf(
+            "la la la la la",
+            "Yeah Yeah Yeah",
+            "Na na na na na na na na na na na na",
+            "Bye bye bye bye bye bye",
+            "حبيبي 2024 (Remix)",
+            "شمس – Acoustic Live",
+            "שיר 3 – Version 2",
+            "メロディーを探して",
+            "ドラッグストアーの夜",
+            "クリスマス・ストーリー（ライブ）",
+            "月光下的心——现场版",
+            "夜曲……第二部",
+        )
     }
 }

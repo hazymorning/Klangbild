@@ -21,11 +21,12 @@ import kotlin.math.ceil
 import kotlin.math.floor
 
 /**
- * Balanced line breaks, the same on every platform. This is Android's line breaker for
- * `LineBreak.Strategy.Balanced` (minikin's OptimalLineBreaker as Android 12 to 14 have it, and
- * as Robolectric runs it) over ICU's line break opportunities ([LineBreakRules]), with the
- * widths that [measurer] gives. On Android those widths are minikin's own, so the breaks are
- * the ones Android makes for a balanced [TextStyle.lineBreak].
+ * Android's balanced line breaks where Compose draws with Skia (the JVM and the browser), which
+ * has none of its own; Android itself keeps its own ([lineBalancer]). This is Android's line
+ * breaker for `LineBreak.Strategy.Balanced` (minikin's OptimalLineBreaker as Android 12 has it,
+ * and as Robolectric runs it) over ICU 68's line break opportunities ([LineBreakRules]), with
+ * the widths that [measurer] gives. With Android's widths, the breaks are the ones Android 12
+ * makes, which BreakerParityTest checks for the texts the screens set.
  *
  * Every width is summed and compared as minikin does it, in 32-bit floats and in the same
  * order, because balanced breaking often chooses between breaks that score the same ("la la la
@@ -33,20 +34,22 @@ import kotlin.math.floor
  * minikin's sum of the advances before it; where the text has runs in other sizes or is right
  * to left, the sums are taken apart and added up again (see [advances], [rightToLeftSums]).
  *
- * What it doesn't do as Android does: hyphenation ([androidx.compose.ui.text.style.Hyphens.Auto]),
- * tabs, a [TextIndent], inline content, and ICU's dictionaries for Thai, Lao, Khmer and Myanmar;
- * a paragraph that mixes left-to-right and right-to-left text is broken at the right places but
- * with sums that can differ in their last bit.
+ * What it doesn't do as Android 12 does: hyphenation ([androidx.compose.ui.text.style.Hyphens.Auto]),
+ * tabs, a [TextIndent], inline content, and ICU's dictionaries for Thai, Lao, Khmer and Myanmar,
+ * whose words it breaks only where it must; a paragraph that mixes left-to-right and
+ * right-to-left text is broken at the right places but with sums that can differ in their last
+ * bit. Other versions of Android differ in details: 9 to 11 sum in 64-bit floats, and 13 and
+ * later also follow a line break's strictness and word break (phrases in Japanese and Korean).
  */
-class BalancedBreaker(private val measurer: TextMeasurer) {
+internal class BalancedBreaker(private val measurer: TextMeasurer) : LineBalancer {
     /**
      * Where each line of [text] in [style] ends when it is laid out like
      * `measurer.measure(text, style, constraints = Constraints(maxWidth = maxWidth))` with a
      * balanced line break: the offsets that `getLineEnd` gives, the last one the text's length.
-     * The breaks are those of ICU's rules without a strictness, as Android 12 and older and
-     * Robolectric make them, which leave a line break's strictness out.
+     * The breaks are those of ICU's rules without a strictness, as Android 12 and Robolectric make
+     * them, which leave a line break's strictness out.
      */
-    fun lineEnds(text: AnnotatedString, style: TextStyle, maxWidth: Int): IntArray = lines(text, style, maxWidth).ends
+    override fun lineEnds(text: AnnotatedString, style: TextStyle, maxWidth: Int): IntArray = lines(text, style, maxWidth).ends
 
     /** The lines of [text] as [lineEnds] gives them, and how to set the text on them. */
     fun lines(text: AnnotatedString, style: TextStyle, maxWidth: Int): Lines {
@@ -76,7 +79,7 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
         }
         val out = ArrayList<Int>()
         for (p in paragraphs) {
-            val ends = p.measured?.breaks(width.toFloat()) ?: intArrayOf(0)
+            val ends = p.measured?.lineEnds(width.toFloat()) ?: intArrayOf(0)
             for ((i, end) in ends.withIndex()) out += if (i == ends.lastIndex) p.end else p.start + end
         }
         // After a final line feed comes one more line, an empty one.
@@ -93,18 +96,11 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
         return Lines(out.toIntArray(), constraints, direction)
     }
 
-    /**
-     * [text] in [style] laid out on [lines], which [lines] gave for them, at most [maxLines] lines
-     * with [overflow]: the layout a balanced line break gives it.
-     */
-    fun layout(
-        text: AnnotatedString,
-        style: TextStyle,
-        lines: Lines,
-        maxLines: Int = Int.MAX_VALUE,
-        overflow: TextOverflow = TextOverflow.Clip,
-    ): TextLayoutResult =
-        measurer.measure(withLineFeeds(text, lines.ends, maxLines), lines.style(style), overflow, maxLines = maxLines, constraints = lines.constraints)
+    /** [text] in [style] on its balanced lines ([lines]) within [maxWidth] px, at most [maxLines] lines with [overflow]. */
+    override fun layout(text: AnnotatedString, style: TextStyle, maxWidth: Int, maxLines: Int, overflow: TextOverflow): TextLayoutResult {
+        val lines = lines(text, style, maxWidth)
+        return measurer.measure(withLineFeeds(text, lines.ends, maxLines), lines.style(style), overflow, maxLines = maxLines, constraints = lines.constraints)
+    }
 
     /**
      * Where a text's lines end ([ends], the last one its length), the constraints to set it on
@@ -148,7 +144,7 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
         fun fullWidth(): Float = sumVisible.last()
 
         /** minikin's populateCandidates and LineBreakOptimizer.computeBreaks for a balanced, ragged paragraph. */
-        fun breaks(width: Float): IntArray {
+        fun lineEnds(width: Float): IntArray {
             val offsets = ArrayList<Int>()
             val preBreaks = ArrayList<Float>()
             val postBreaks = ArrayList<Float>()
@@ -408,7 +404,8 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
      * The sums at [offsets] of a right-to-left paragraph. There a position is the line's right
      * edge less the sum, which is exact when the sum is at least half the line (Sterbenz), so
      * each sum is read from the shortest beginning of the text that ends at a break and still
-     * holds it; up to a break, the text is shaped as in the whole paragraph.
+     * holds it. Up to a break after a space, the text is shaped as in the whole paragraph; at
+     * another break, a kerning pair across it can make the sum differ.
      */
     private fun rightToLeftSums(text: AnnotatedString, style: TextStyle, offsets: List<Int>): Map<Int, Float> {
         val out = HashMap<Int, Float>()
@@ -434,7 +431,7 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
         return out
     }
 
-    /** [text] and a space as one right-aligned, right-to-left line exactly as wide as it is. */
+    /** [text] and a space as one right-aligned, right-to-left line, no wider than it needs. */
     private fun rightToLeftLine(text: AnnotatedString, style: TextStyle): TextLayoutResult =
         measurer.measure(
             withSpace(text),
@@ -505,7 +502,7 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
         /** How close two advances are to be a ligature's equal shares (px). */
         const val EVEN_SPLIT = 0.002f
 
-        const val ZWNJ = '‌'
+        const val ZWNJ = '\u200C'
     }
 }
 
@@ -524,7 +521,7 @@ class BalancedBreaker(private val measurer: TextMeasurer) {
  * later lines by levels it reads from the paragraph's start, which a line of its own doesn't
  * share.
  */
-fun withLineFeeds(text: AnnotatedString, ends: IntArray, maxLines: Int = Int.MAX_VALUE): AnnotatedString {
+internal fun withLineFeeds(text: AnnotatedString, ends: IntArray, maxLines: Int = Int.MAX_VALUE): AnnotatedString {
     val s = text.text
     val replace = HashSet<Int>()
     val insert = ArrayList<Int>()

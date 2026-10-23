@@ -12,8 +12,6 @@ internal class LineBreakRules(
     private val starts: IntArray,
     private val categoryCount: Int,
     private val lookAheadSize: Int,
-    /** True if the machine starts with the category of the text's beginning (never for line breaks). */
-    private val beginRequired: Boolean,
     /** The category of each range of [starts]. */
     private val categories: ByteArray,
     /** One row per state: accepting, look-ahead, tag, then the next state for each category. */
@@ -22,7 +20,7 @@ internal class LineBreakRules(
     private val rowLength = 3 + categoryCount
 
     /** The category of the code point [c]. */
-    fun category(c: Int): Int {
+    private fun category(c: Int): Int {
         var low = 0
         var high = starts.size - 1
         while (low < high) {
@@ -55,10 +53,6 @@ internal class LineBreakRules(
         var row = START_STATE * rowLength
         var mode = RUN
         var category = 0
-        if (beginRequired) {
-            category = BEGIN
-            mode = START
-        }
         while (true) {
             if (c < 0) {
                 if (mode == END) break
@@ -70,7 +64,7 @@ internal class LineBreakRules(
             row = state * rowLength
             val accepting = table[row].toInt() and 0xff
             if (accepting == ACCEPTING) {
-                if (mode != START) result = index
+                result = index
             } else if (accepting > ACCEPTING) {
                 val position = lookAhead[accepting]
                 if (position >= 0) return position
@@ -81,8 +75,6 @@ internal class LineBreakRules(
             if (mode == RUN) {
                 c = codePointAt(text, index)
                 if (c >= 0) index += charCount(c)
-            } else if (mode == START) {
-                mode = RUN
             }
         }
         // The rules always move on by at least one code point; ICU makes sure of it.
@@ -95,11 +87,9 @@ internal class LineBreakRules(
         const val START_STATE = 1
         const val ACCEPTING = 1
 
-        /** The categories ICU reserves for the end and the beginning of the text. */
+        /** The category ICU reserves for the end of the text. */
         const val END_OF_TEXT = 1
-        const val BEGIN = 2
 
-        const val START = 0
         const val RUN = 1
         const val END = 2
     }

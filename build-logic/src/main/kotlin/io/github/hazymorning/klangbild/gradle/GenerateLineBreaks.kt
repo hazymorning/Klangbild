@@ -111,7 +111,6 @@ private fun lineBreakTablesKt(packageName: String): String = buildString {
         appendLine("                starts = starts,")
         appendLine("                categoryCount = ${file.categoryCount},")
         appendLine("                lookAheadSize = ${file.lookAheadSize},")
-        appendLine("                beginRequired = ${file.beginRequired},")
         appendLine("                categories = decodeBase64(")
         appendChunks(base64(ByteArray(starts.size) { file.categories[starts[it]].toByte() }), indent = 20)
         appendLine("                ),")
@@ -172,9 +171,10 @@ private fun ruleChoices(): Map<String, String> {
         val file = entry(locale, "line")
         if (file != root) out[locale] = file
     }
-    // A language's own entry stands for all its regions; a script's entry only where it differs.
-    return out.filterKeys { key -> key.isEmpty() || key.count { it == '_' } == 0 || out[key] != out[key.substringBefore('_')] }
-        .mapKeys { (key, _) -> key.split('_').take(2).joinToString("_") }
+    // The breaker looks a text's language up with its script ("zh_Hant") or alone, so only those
+    // are kept, a script's entry only where it differs from its language's.
+    fun withScript(key: String) = key.split('_').let { it.size == 2 && it[1].length == 4 && it[1][0].isUpperCase() }
+    return out.filterKeys { key -> key.isEmpty() || '_' !in key || withScript(key) && out[key] != out[key.substringBefore('_')] }
 }
 
 /** Where ICU4J keeps its data: under icudt<version>b, or under icudata since version 74. */
@@ -222,15 +222,14 @@ private fun propertyRanges(property: Int): List<Int> {
 }
 
 /**
- * One of ICU's compiled break rule files (data format "Brk ", versions 6 and 7, as written
- * since ICU 68): its forward state table and the code points' categories. The reverse table
- * and the rules' source are not needed for going forward through a text.
+ * One of ICU's compiled break rule files (data format "Brk ", version 6, as written since ICU
+ * 68): its forward state table and the code points' categories. The reverse table and the
+ * rules' source are not needed for going forward through a text.
  */
 private class BrkFile(
     val categoryCount: Int,
     val stateCount: Int,
     val lookAheadSize: Int,
-    val beginRequired: Boolean,
     /** Rows of one byte each: accepting, look-ahead, tag index, then the next state per category. */
     val table: ByteArray,
     /** The category of every code point. */
@@ -246,9 +245,8 @@ private class BrkFile(
             buffer.order(if (bytes[8].toInt() == 1) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
             val headerSize = buffer.getShort(0).toInt() and 0xffff
             check(bytes.copyOfRange(12, 16).decodeToString() == "Brk ") { "$name is not break iterator data" }
-            // Format 6 (ICU 68 to 76) and 7 (since ICU 77, without the category for the text's
-            // beginning) have the layout read here.
-            check(bytes[16].toInt() in 6..7) { "$name has data format ${bytes[16]}, only 6 and 7 are known" }
+            // Format 6 (ICU 68 to 76) has the layout read here.
+            check(bytes[16].toInt() == 6) { "$name has data format ${bytes[16]}, only 6 is known" }
             fun int(at: Int) = buffer.getInt(headerSize + at)
             check(int(0) == 0xb1a0) { "$name: wrong magic number" }
             val categoryCount = int(12)
@@ -260,6 +258,7 @@ private class BrkFile(
             val lookAheadSize = int(forward + 12)
             val flags = int(forward + 16)
             check(flags and 4 != 0) { "$name has rows of 16 bits; only rows of 8 bits are read" }
+            check(flags and 2 == 0) { "$name starts with the text's beginning, which the breaker doesn't" }
             check(rowLength == 3 + categoryCount) { "$name: unexpected row length" }
             val tableStart = headerSize + forward + 20
             val table = bytes.copyOfRange(tableStart, tableStart + stateCount * rowLength)
@@ -267,7 +266,7 @@ private class BrkFile(
             val codePointTrie = CodePointTrie.fromBinary(null, null, trieBuffer)
             val categories = IntArray(0x110000) { codePointTrie.get(it) }
             check(categories.all { it in 0 until categoryCount }) { "$name: a category out of range" }
-            return BrkFile(categoryCount, stateCount, lookAheadSize, flags and 2 != 0, table, categories)
+            return BrkFile(categoryCount, stateCount, lookAheadSize, table, categories)
         }
     }
 }
