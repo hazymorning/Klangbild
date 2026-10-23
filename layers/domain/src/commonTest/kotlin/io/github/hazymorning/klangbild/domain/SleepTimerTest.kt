@@ -4,7 +4,6 @@ import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.containsAtLeast
 import assertk.assertions.containsExactly
-import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.doesNotContain
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
@@ -105,7 +104,7 @@ class SleepTimerTest {
         assertThat(timer.choices(song)).doesNotContain(SleepChoice.CHAPTER_END)
         assertThat(timer.choices(song)).contains(SleepChoice.ITEM_END)
         val station = TrackInfo(title = "SWR2", kind = MediaKind.RADIO)
-        assertThat(timer.choices(station)).containsExactlyInAnyOrder(
+        assertThat(timer.choices(station)).containsExactly(
             SleepChoice.OFF, SleepChoice.MIN_15, SleepChoice.MIN_30, SleepChoice.MIN_45, SleepChoice.MIN_60,
         )
         // A choice that no longer fits stays until it is changed.

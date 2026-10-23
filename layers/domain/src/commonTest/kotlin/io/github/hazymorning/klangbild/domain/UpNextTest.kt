@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.domain
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
@@ -40,7 +39,7 @@ class UpNextTest {
     @Test
     fun `a row keeps its identity as it moves up, the same song twice is two rows`() {
         val first = UpNext.of(listOf(song("A"), song("B"), song("A", id = "q-A2")), remaining = 3)!!
-        assertThat(first.rows.map { it.id }).containsExactlyInAnyOrder("q-A", "q-B", "q-A2")
+        assertThat(first.rows.map { it.id }).containsExactly("q-A", "q-B", "q-A2")
         assertThat(UpNext.of(listOf(song("B"), song("A", id = "q-A2")), remaining = 2)!!.rows.first().id).isEqualTo(first.rows[1].id)
         // Without Music Assistant's ids: the song and how often it came before.
         val bare = UpNext.of(listOf(song("A", id = null), song("B", id = null), song("A", id = null)), remaining = 3)!!

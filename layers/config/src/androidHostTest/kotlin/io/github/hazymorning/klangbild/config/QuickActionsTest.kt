@@ -10,7 +10,6 @@ import assertk.assertions.hasLength
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
-import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.ActionKind

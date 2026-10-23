@@ -27,7 +27,7 @@ import kotlin.random.Random
  * Pure Kotlin (returns ARGB pixels), so it renders identically on the JVM and the device
  * and can be produced at the exact on-screen pixel size, with no upscaling ever.
  */
-object ChladniArt : SynchronizedObject() {
+object ChladniArt {
 
     /**
      * One figure: the ring mode J₀(k1·r), plus [mix] times the mode J_n2(k2·r)·cos(n2·θ) with
@@ -202,8 +202,9 @@ object ChladniArt : SynchronizedObject() {
     private const val STEP = 0.01f
     private const val MAX_X = 40f
     private val tables = HashMap<Int, BesselTable>()
+    private val tablesLock = SynchronizedObject()
 
-    private fun besselTable(n: Int): BesselTable = synchronized(this) {
+    private fun besselTable(n: Int): BesselTable = synchronized(tablesLock) {
         tables.getOrPut(n) {
             val count = (MAX_X / STEP).toInt() + 2
             val steps = 64 // even, for Simpson

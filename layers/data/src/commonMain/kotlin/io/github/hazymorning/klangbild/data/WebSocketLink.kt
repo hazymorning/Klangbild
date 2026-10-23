@@ -11,15 +11,17 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.io.IOException
 import kotlin.concurrent.Volatile
 
 /**
  * A WebSocket to [url] (`ws`, `wss`, or `http` and `https` for them) over [http], opened at
- * once in [scope]. What happens on it reaches [listener] as it happens, on the thread that
- * receives it, so a message's arrival can be timed in [Listener.onBinary]. It ends once, with
- * [Listener.onClosed] or [Listener.onFailure].
+ * once. What happens on it reaches [listener] as it happens, on the thread that receives it, so
+ * a message's arrival can be timed in [Listener.onBinary]. It ends once, with
+ * [Listener.onClosed] or [Listener.onFailure]. When [scope] ends, it closes as [close] closes
+ * it, so what was queued (a goodbye) still goes out, and the listener hears nothing more.
  */
 class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, private val listener: Listener) {
     interface Listener {
@@ -40,8 +42,9 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
     @Volatile private var session: DefaultClientWebSocketSession? = null
     private val ended = atomic(false)
 
-    // Unconfined: messages are handed on in the thread that receives them, not after a hop.
-    private val job = scope.launch(Dispatchers.Unconfined) {
+    // A scope of its own, which [scope]'s end doesn't cut off. Unconfined: messages are handed on
+    // in the thread that receives them, not after a hop.
+    private val job = CoroutineScope(Dispatchers.Unconfined).launch {
         try {
             http.webSocket({
                 address(url)
@@ -71,6 +74,13 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
             if (ended.compareAndSet(expect = false, update = true)) listener.onFailure(e)
         } finally {
             session = null
+        }
+    }
+
+    init {
+        scope.coroutineContext.job.invokeOnCompletion {
+            ended.value = true
+            close()
         }
     }
 

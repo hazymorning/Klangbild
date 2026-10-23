@@ -53,12 +53,18 @@ data class EntityState(
         /** An ISO 8601 time as epoch seconds. */
         fun seconds(iso: String?): Double? = iso?.let(::instant)?.let { it.epochSeconds + it.nanosecondsOfSecond / 1e9 }
 
-        /** An ISO 8601 time with its offset ("2026-10-20T19:30:00.5+02:00"); null when it is not one. */
+        /**
+         * An ISO 8601 time with its offset ("2026-10-20T19:30:00.5+02:00", or without the seconds);
+         * null when it is not one.
+         */
         fun instant(iso: String): Instant? = try {
-            DateTimeComponents.Formats.ISO_DATE_TIME_OFFSET.parse(iso).toInstantUsingOffset()
+            DateTimeComponents.Formats.ISO_DATE_TIME_OFFSET.parse(iso.replace(NO_SECONDS, "$1:00")).toInstantUsingOffset()
         } catch (_: IllegalArgumentException) {
             null
         }
+
+        /** A time of day written without its seconds, which the format above needs. */
+        private val NO_SECONDS = Regex("^(\\d{4}-\\d\\d-\\d\\d[Tt]\\d\\d:\\d\\d)(?=[Zz+-])")
 
     }
 }

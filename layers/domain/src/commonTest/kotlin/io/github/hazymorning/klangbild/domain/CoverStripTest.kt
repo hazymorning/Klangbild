@@ -27,7 +27,7 @@ class CoverStripTest {
         val second = strip.update(a2, coming = listOf(b1))
         assertThat(second.middle.id).isEqualTo(first.middle.id)
         assertThat(second.middle.track).isEqualTo(a2)
-        assertThat(second.albums()).containsExactlyInAnyOrder("Alpha", "Beta")
+        assertThat(second.albums()).containsExactly("Alpha", "Beta")
     }
 
     @Test
@@ -39,7 +39,7 @@ class CoverStripTest {
         assertThat(after.middle.id).isEqualTo(nextId)
         // what played stands to the left now, with its old id
         assertThat(after.cards[after.current - 1].id).isEqualTo(before.middle.id)
-        assertThat(after.albums()).containsExactlyInAnyOrder("Alpha", "Beta", "Gamma")
+        assertThat(after.albums()).containsExactly("Alpha", "Beta", "Gamma")
     }
 
     @Test
@@ -59,7 +59,7 @@ class CoverStripTest {
         val first = strip.update(a1, coming = listOf(b1))
         val jump = strip.update(d1)
         assertThat(jump.middle.id).isNotEqualTo(first.cards.last().id)
-        assertThat(jump.albums()).containsExactlyInAnyOrder("Alpha", "Delta")
+        assertThat(jump.albums()).containsExactly("Alpha", "Delta")
     }
 
     @Test
@@ -70,7 +70,7 @@ class CoverStripTest {
         assertThat(s.current).isEqualTo(2)
         assertThat(s.cards).hasSize(5)
         val fromQueue = strip.update(song("e1", "Epsilon"), before = listOf(c1, b1))
-        assertThat(fromQueue.albums().take(fromQueue.current)).containsExactlyInAnyOrder("Gamma", "Beta")
+        assertThat(fromQueue.albums().take(fromQueue.current)).containsExactly("Gamma", "Beta")
     }
 
     @Test
@@ -78,12 +78,12 @@ class CoverStripTest {
         val strip = CoverStrip()
         val first = strip.update(a1, coming = listOf(b1, c1))
         val forward = strip.update(b1)
-        assertThat(forward.albums()).containsExactlyInAnyOrder("Alpha", "Beta", "Gamma")
+        assertThat(forward.albums()).containsExactly("Alpha", "Beta", "Gamma")
         assertThat(forward.cards.last().id).isEqualTo(first.cards.last().id)
         val back = strip.update(a1)
-        assertThat(back.albums()).containsExactlyInAnyOrder("Alpha", "Beta", "Gamma")
+        assertThat(back.albums()).containsExactly("Alpha", "Beta", "Gamma")
         val jump = strip.update(d1)
-        assertThat(jump.albums()).containsExactlyInAnyOrder("Alpha", "Delta")
+        assertThat(jump.albums()).containsExactly("Alpha", "Delta")
     }
 
     @Test
@@ -106,7 +106,7 @@ class CoverStripTest {
         val next = TrackInfo("Song 2", listOf("Y"), artworkUrl = "http://ha/api/media_player_proxy/m?token=b&cache=logo", source = "Radio", kind = MediaKind.RADIO)
         val second = strip.update(next)
         assertThat(second.middle.id).isNotEqualTo(first.middle.id)
-        assertThat(second.cards.map { it.id }).containsExactlyInAnyOrder(first.middle.id, second.middle.id)
+        assertThat(second.cards.map { it.id }).containsExactly(first.middle.id, second.middle.id)
         assertThat(strip.update(next.copy(artworkUrl = "http://ha/api/media_player_proxy/m?token=c&cache=logo")).middle.id).isEqualTo(second.middle.id)
     }
 

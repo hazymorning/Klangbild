@@ -6,6 +6,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
@@ -45,6 +46,18 @@ suspend fun <T> HttpClient.fetch(
         socketTimeoutMillis = readTimeoutMs
     }
 }.execute(read)
+
+/**
+ * Carries [token] in the Authorization header. A token with a character no header holds is
+ * refused as OkHttp refuses it, leaving the token out of the message, which may be logged.
+ */
+fun HttpRequestBuilder.bearer(token: String) {
+    val value = "Bearer $token"
+    for ((i, c) in value.withIndex()) {
+        require(c == '\t' || c in '\u0020'..'\u007e') { "Unexpected char 0x${c.code.toString(16).padStart(2, '0')} at $i in Authorization value" }
+    }
+    header("Authorization", value)
+}
 
 /** Whether the status is a success (2xx). */
 val HttpResponse.isSuccessful: Boolean get() = status.value in 200..299

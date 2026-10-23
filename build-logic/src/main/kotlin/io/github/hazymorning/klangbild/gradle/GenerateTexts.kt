@@ -46,6 +46,8 @@ abstract class GenerateTexts : DefaultTask() {
             .associate { (if (it.name == "values") "en" else it.name.removePrefix("values-")) to read(File(it, "strings.xml")) }
             .toSortedMap(compareBy<String> { it != "en" }.thenBy { it })
         val english = languages.getValue("en")
+        for ((name, text) in english.strings) arguments(name, text)
+        for ((name, forms) in english.plurals) forms.values.forEach { arguments(name, it) }
         for ((language, words) in languages) {
             val rules = PluralRules.forLocale(ULocale(language))
             check(rules.keywords == setOf("one", "other") && rules.select(1.0) == "one" && rules.select(2.0) == "other") {
@@ -53,6 +55,14 @@ abstract class GenerateTexts : DefaultTask() {
             }
             for (name in words.strings.keys + words.plurals.keys + words.arrays.keys) {
                 check(name in english.strings || name in english.plurals || name in english.arrays) { "$name in $language has no English text" }
+            }
+            // What lint checks in Android's own resources: a translation fills in what English does.
+            for ((name, text) in words.strings) {
+                check(arguments(name, text) == arguments(name, english.strings.getValue(name))) { "$name in $language takes other arguments than in English" }
+            }
+            for ((name, forms) in words.plurals) {
+                val all = arguments(name, english.plurals.getValue(name).getValue("other"))
+                for (text in forms.values) check(all.containsAll(arguments(name, text))) { "$name in $language takes other arguments than in English" }
             }
         }
         val out = output.get().asFile.resolve(PACKAGE.replace('.', '/'))
@@ -223,6 +233,30 @@ abstract class GenerateTexts : DefaultTask() {
             appendLine("    ${literal(tag)} to Region(${values.joinToString()}),")
         }
         appendLine(")")
+    }
+
+    /**
+     * The arguments [text] fills in, as Texts reads them: `%s` and `%d`, numbered in turn or by
+     * themselves (`%2$s`), and `%%` for a percent sign.
+     */
+    private fun arguments(name: String, text: String): Set<String> {
+        val out = HashSet<String>()
+        var next = 1
+        var i = text.indexOf('%')
+        while (i >= 0) {
+            var j = i + 1
+            if (text.getOrNull(j) != '%') {
+                while (j < text.length && text[j].isDigit()) j++
+                val explicit = text.getOrNull(j) == '$'
+                val index = if (explicit) text.substring(i + 1, j).toInt() else next++
+                if (explicit) j++
+                val conversion = text.getOrNull(j)
+                check(conversion == 's' || conversion == 'd') { "$name: \"${text.substring(i, minOf(j + 1, text.length))}\" is not a format Texts fills in" }
+                out += "$index$conversion"
+            }
+            i = text.indexOf('%', j + 1)
+        }
+        return out
     }
 
     private fun StringBuilder.header() {

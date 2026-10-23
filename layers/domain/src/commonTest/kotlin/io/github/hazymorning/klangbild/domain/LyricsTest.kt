@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.domain
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
@@ -22,8 +21,8 @@ class LyricsTest {
             [00:21.90]Ich fahre ohne Ziel
             """.trimIndent(),
         )!!
-        assertThat(times(l)).containsExactlyInAnyOrder(12_300L, 17_050L, 21_900L)
-        assertThat(texts(l)).containsExactlyInAnyOrder("Die Straße glänzt im Regen", "und alle Ampeln stehen still", "Ich fahre ohne Ziel")
+        assertThat(times(l)).containsExactly(12_300L, 17_050L, 21_900L)
+        assertThat(texts(l)).containsExactly("Die Straße glänzt im Regen", "und alle Ampeln stehen still", "Ich fahre ohne Ziel")
         assertThat(l.breaks).isEmpty()
     }
 
@@ -37,8 +36,8 @@ class LyricsTest {
         val l = Lrc.parse(raw)!!
         // In time order; the chorus once per time; a word's own times gone; a colon before the fraction
         // read as a point; a spaced hyphen set as a dash that stays with the word before it.
-        assertThat(times(l)).containsExactlyInAnyOrder(12_300L, 17_050L, 21_905L, 40_000L, 80_000L)
-        assertThat(texts(l)).containsExactlyInAnyOrder(
+        assertThat(times(l)).containsExactly(12_300L, 17_050L, 21_905L, 40_000L, 80_000L)
+        assertThat(texts(l)).containsExactly(
             "Die Straße glänzt", "und alle Ampeln", "Ich fahre\u00A0– ohne Ziel", "Neonlicht, Neonlicht", "Neonlicht, Neonlicht",
         )
     }
@@ -46,8 +45,8 @@ class LyricsTest {
     @Test
     fun `an offset brings the words sooner or later`() {
         val text = "[offset:+500]\n[00:10.00]Eins\n[00:20.00]Zwei"
-        assertThat(times(Lrc.parse(text)!!)).containsExactlyInAnyOrder(9_500L, 19_500L)
-        assertThat(times(Lrc.parse(text.replace("+500", "-250"))!!)).containsExactlyInAnyOrder(10_250L, 20_250L)
+        assertThat(times(Lrc.parse(text)!!)).containsExactly(9_500L, 19_500L)
+        assertThat(times(Lrc.parse(text.replace("+500", "-250"))!!)).containsExactly(10_250L, 20_250L)
     }
 
     @Test
@@ -65,17 +64,17 @@ class LyricsTest {
     @Test
     fun `synced words in the plain field are found there`() {
         val lrc = "[00:10.00]Eins\n[00:20.00]Zwei"
-        assertThat(times(Lrc.of(lyrics = lrc, lrcLyrics = null)!!)).containsExactlyInAnyOrder(10_000L, 20_000L)
+        assertThat(times(Lrc.of(lyrics = lrc, lrcLyrics = null)!!)).containsExactly(10_000L, 20_000L)
         assertThat(Lrc.of(lyrics = "Eins\nZwei", lrcLyrics = null)).isNull()
         // The synced field wins.
-        assertThat(texts(Lrc.of(lyrics = "[00:01.00]Alt\n[00:02.00]Alt", lrcLyrics = lrc)!!)).containsExactlyInAnyOrder("Eins", "Zwei")
+        assertThat(texts(Lrc.of(lyrics = "[00:01.00]Alt\n[00:02.00]Alt", lrcLyrics = lrc)!!)).containsExactly("Eins", "Zwei")
     }
 
     @Test
     fun `lines sung together are one line, each on its own row`() {
         val l = Lrc.parse("[00:10.00]Ich rufe\n[00:10.10](ich rufe)\n[00:10.00]Ich rufe\n[00:14.00]und keiner hört")!!
-        assertThat(texts(l)).containsExactlyInAnyOrder("Ich rufe\n(ich rufe)", "und keiner hört")
-        assertThat(times(l)).containsExactlyInAnyOrder(10_000L, 14_000L)
+        assertThat(texts(l)).containsExactly("Ich rufe\n(ich rufe)", "und keiner hört")
+        assertThat(times(l)).containsExactly(10_000L, 14_000L)
     }
 
     @Test
@@ -95,9 +94,9 @@ class LyricsTest {
             [01:04.00]
             """.trimIndent(),
         )!!
-        assertThat(texts(l)).containsExactlyInAnyOrder("Erste Zeile", "Zweite Zeile", "Nach dem Solo", "Gleich weiter", "Ende")
+        assertThat(texts(l)).containsExactly("Erste Zeile", "Zweite Zeile", "Nach dem Solo", "Gleich weiter", "Ende")
         // Not before the first line, not for a breath (two seconds), rests in a row as one, and the end.
-        assertThat(l.breaks).containsExactlyInAnyOrder(13_000L, 40_000L, 64_000L)
+        assertThat(l.breaks).containsExactly(13_000L, 40_000L, 64_000L)
     }
 
     @Test

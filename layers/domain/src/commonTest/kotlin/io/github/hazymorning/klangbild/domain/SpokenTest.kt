@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.domain
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.hasSize
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
@@ -52,8 +51,8 @@ class SpokenTest {
             900_000L,
         )
         // B's end lies before its start: it runs to C instead; D starts after the end.
-        assertThat(ch.map { it.name }).containsExactlyInAnyOrder("A", "B", "C")
-        assertThat(ch.map { it.startMs to it.endMs }).containsExactlyInAnyOrder(0L to 290_000L, 300_000L to 600_000L, 600_000L to 900_000L)
+        assertThat(ch.map { it.name }).containsExactly("A", "B", "C")
+        assertThat(ch.map { it.startMs to it.endMs }).containsExactly(0L to 290_000L, 300_000L to 600_000L, 600_000L to 900_000L)
         // One chapter is no chapter; without a duration the last open one is dropped.
         assertThat(Chapters.of(listOf(raw(1, "A", 0.0)), 900_000L)).isEmpty()
         assertThat(Chapters.of(listOf(raw(1, "A", 0.0), raw(2, "B", 10.0), raw(3, "C", 20.0)), null)).hasSize(2)

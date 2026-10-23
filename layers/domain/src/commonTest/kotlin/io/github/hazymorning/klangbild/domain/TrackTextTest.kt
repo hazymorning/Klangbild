@@ -2,7 +2,6 @@ package io.github.hazymorning.klangbild.domain
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.endsWith
 import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThanOrEqualTo
@@ -91,7 +90,7 @@ class TrackTextTest {
     @Test
     fun `offers artist lines from complete to short`() {
         val x = TrackText.from(TrackInfo("T", listOf("Kammerphilharmonie an der Spree", "Johanna Reiter", "Paul Weber")), others)
-        assertThat(x.artistOptions()).containsExactlyInAnyOrder(
+        assertThat(x.artistOptions()).containsExactly(
             "Kammerphilharmonie an der Spree, Johanna Reiter & Paul Weber",
             "Kammerphilharmonie an der Spree, Johanna Reiter u.\u00A0a.",
             "Kammerphilharmonie an der Spree u.\u00A0a.",

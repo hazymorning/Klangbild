@@ -77,7 +77,6 @@ import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,7 +87,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
@@ -194,7 +192,7 @@ data class UiState(
     val landscape: LandscapeUi? = null,
     /** The landscape shows or is on its way: its picture is baked ahead, for its label on this side. */
     val landscapeAhead: MiniPlayer? = null,
-    /** The words in the language shown; null leaves them to the screen's own context. */
+    /** The words in the language shown; null leaves them to the platform's languages (a screen rendered on its own). */
     val texts: Texts? = null,
     /** The values of one's own in words, as far as Home Assistant can tell them ("Outside 12 °C"). */
     val values: List<String> = emptyList(),
@@ -241,7 +239,8 @@ class NowPlayingController(
     /** What this TV plays, as a sound feed, while it plays as a speaker. */
     ownSound: () -> SoundFeed? = { null },
 ) {
-    private val _ui = MutableStateFlow(UiState())
+    // In the language shown from the first frame, the clock as the system has it.
+    private val _ui = MutableStateFlow(UiState(texts = localizer.texts.value))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     /** What changes together changes under this lock (the menus' parts take it too). */
@@ -1014,8 +1013,6 @@ class NowPlayingController(
 
         /** A stop shorter than this is a hand-over between the app and the screensaver. */
         const val HANDOVER_MS = 10_000L
-
-        /** The tag of the few lines the app writes to the log: connection and settings, never a token. */
 
         /** How long a closing connection waits for the lights to be given back. */
         const val LIGHTS_RELEASE_MS = 4_000L

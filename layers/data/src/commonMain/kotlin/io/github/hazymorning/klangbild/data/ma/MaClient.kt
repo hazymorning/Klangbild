@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.address
+import io.github.hazymorning.klangbild.data.bearer
 import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.isSuccessful
@@ -9,7 +10,6 @@ import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
-import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HeaderValueParam
@@ -146,7 +146,7 @@ class MaClient(private val http: HttpClient, val baseUrl: String, private val to
             {
                 method = HttpMethod.Post
                 address("$baseUrl/api")
-                header("Authorization", "Bearer $token")
+                bearer(token)
                 setBody(TextContent(body.toString(), JSON))
             },
             readTimeoutMs = if (slow) LYRICS_TIMEOUT_MS else null,

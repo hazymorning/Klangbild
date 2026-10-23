@@ -59,17 +59,16 @@ object Noise {
     private val macKeys = provider.get(HMAC).keyDecoder(SHA256)
     internal val cipherKeys = provider.get(ChaCha20Poly1305).keyDecoder()
 
-    fun sha256(vararg parts: ByteArray): ByteArray {
-        val d = hash.createHashFunction()
+    fun sha256(vararg parts: ByteArray): ByteArray = hash.createHashFunction().use { d ->
         for (p in parts) d.update(p)
-        return d.hashToByteArray()
+        d.hashToByteArray()
     }
 
-    internal fun hmac(key: ByteArray, vararg parts: ByteArray): ByteArray {
-        val mac = macKeys.decodeFromByteArrayBlocking(HMAC.Key.Format.RAW, key).signatureGenerator().createSignFunction()
-        for (p in parts) mac.update(p)
-        return mac.signToByteArray()
-    }
+    internal fun hmac(key: ByteArray, vararg parts: ByteArray): ByteArray =
+        macKeys.decodeFromByteArrayBlocking(HMAC.Key.Format.RAW, key).signatureGenerator().createSignFunction().use { mac ->
+            for (p in parts) mac.update(p)
+            mac.signToByteArray()
+        }
 
     /** Noise's HKDF: two or three outputs of 32 bytes from [chainingKey] and [input]. */
     internal fun hkdf(chainingKey: ByteArray, input: ByteArray, outputs: Int): List<ByteArray> {
@@ -121,7 +120,7 @@ class CipherState internal constructor(key: ByteArray? = null) {
     /** [plaintext] sealed with [ad] as associated data (as it is, while there is no key). */
     fun encrypt(ad: ByteArray, plaintext: ByteArray, offset: Int = 0, length: Int = plaintext.size - offset): ByteArray {
         val k = key ?: return plaintext.copyOfRange(offset, offset + length)
-        val out = seal(k, true, ad, plaintext.copyOfRange(offset, offset + length))
+        val out = seal(k, true, ad, plaintext.part(offset, length))
         check(out.size == length + Noise.TAG_BYTES)
         return out
     }
@@ -130,7 +129,7 @@ class CipherState internal constructor(key: ByteArray? = null) {
     fun decrypt(ad: ByteArray, ciphertext: ByteArray, offset: Int = 0, length: Int = ciphertext.size - offset): ByteArray {
         val k = key ?: return ciphertext.copyOfRange(offset, offset + length)
         if (length < Noise.TAG_BYTES) throw NoiseException("message shorter than its tag")
-        val out = seal(k, false, ad, ciphertext.copyOfRange(offset, offset + length))
+        val out = seal(k, false, ad, ciphertext.part(offset, length))
         check(out.size == length - Noise.TAG_BYTES)
         return out
     }
@@ -160,6 +159,9 @@ class CipherState internal constructor(key: ByteArray? = null) {
     }
 
     private fun decode(k: ByteArray): ChaCha20Poly1305.Key = Noise.cipherKeys.decodeFromByteArrayBlocking(ChaCha20Poly1305.Key.Format.RAW, k)
+
+    /** The bytes from [offset], [length] of them: the array itself when that is all of it. */
+    private fun ByteArray.part(offset: Int, length: Int): ByteArray = if (offset == 0 && length == size) this else copyOfRange(offset, offset + length)
 }
 
 /** Noise's symmetric state during a handshake: the chaining key, the hash of everything so far, and the cipher. */

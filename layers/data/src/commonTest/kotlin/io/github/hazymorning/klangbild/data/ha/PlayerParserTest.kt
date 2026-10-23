@@ -108,6 +108,7 @@ class PlayerParserTest {
         val idle = PlayerParser.player(entity("idle", """{"media_title":""}"""), base)
         assertThat(idle.track).isNull()
         assertThat(PlayerParser.parseInstant("2026-10-08T18:21:07+00:00")).isEqualTo(1791483667000L)
+        assertThat(PlayerParser.parseInstant("2026-10-08T18:21+00:00")).isEqualTo(1791483660000L)
         assertThat(PlayerParser.parseInstant("nonsense")).isNull()
     }
 
