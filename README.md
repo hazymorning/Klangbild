@@ -6,7 +6,7 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that's playing as a calm picture on your TV, made to look nice in the room it's in. Everything on the screen is balanced around the album cover and takes its colors from it. You choose the music on your phone as usual.
+Klangbild shows the music that’s playing as a calm picture on your TV and it’s made to look nice in a room. Everything on the screen is balanced around the album cover and takes its colors from it. Choosing the music stays in whatever app you already use.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
@@ -18,7 +18,7 @@ It works with any media player in Home Assistant. Music Assistant adds the queue
 
 > [!NOTE]
 > **Klangbild is being built in two&nbsp;phases.**<br>
-> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful rather than psychedelic. Eventually, it will replace the landscape. If you'd like the landscape to stay, just say so in the&nbsp;[poll](https://github.com/hazymorning/Klangbild/discussions/51).
+> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind). Eventually, it will replace the landscape.
 
 <a href="https://github.com/hazymorning/Klangbild/discussions/51"><picture><source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/screenshots/poll-small.png"><source media="(max-width: 640px)" srcset="docs/screenshots/poll-small-light.png"><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/poll.png"><img src="docs/screenshots/poll-light.png" alt="Should the landscape stay? Vote in the poll"></picture></a>
 
