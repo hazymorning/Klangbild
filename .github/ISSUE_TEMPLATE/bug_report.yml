@@ -5,35 +5,33 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this. Klangbild shows what's playing, but it doesn't browse your library or choose the music. You keep doing that in Music Assistant or Home Assistant, and the TV follows along.
-
-        Issues are kept for bugs, things that are actually broken, so they stay easy to follow. If you have an idea, a wish for a new feature or a question, please start a [discussion](https://github.com/hazymorning/Klangbild/discussions) instead. I'm happy to talk about it there.
+        Klangbild only shows what's playing and can't browse your library or pick music. For ideas and questions, please use [Discussions](https://github.com/hazymorning/Klangbild/discussions).
   - type: checkboxes
     id: broken
     attributes:
       label: Before you report
       options:
-        - label: This is something that's broken, not an idea or a question, and I've read the [README](https://github.com/hazymorning/Klangbild#readme).
+        - label: This is a bug, and I've read the [README](https://github.com/hazymorning/Klangbild#readme).
           required: true
   - type: textarea
     id: what-happened
     attributes:
       label: What happened
-      description: What did you do, what did you see, and what did you expect to see instead?
+      description: What did you do, what did you see, and what did you expect instead?
     validations:
       required: true
   - type: input
     id: klangbild-version
     attributes:
       label: Klangbild version
-      description: It's shown in the TV's app settings.
+      description: It's shown on Klangbild's page in the TV's app settings.
     validations:
       required: true
   - type: input
     id: tv-device
     attributes:
-      label: TV device and Android TV version
-      description: The model, and the version of Android TV or Fire OS shown in its settings under About.
+      label: Device and Android TV version
+      description: The model, and the Android TV version shown under About in its settings.
     validations:
       required: true
   - type: input
