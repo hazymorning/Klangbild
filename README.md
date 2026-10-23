@@ -34,11 +34,7 @@ During the day the background is light, and at night it turns dark.
 <summary><b>Compatibility</b></summary>
 <br>
 
-Klangbild runs on TVs and boxes with Android TV 9 or later. Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
-
-**Streaming sticks with Fire OS or Vega OS**
-
-Many streaming sticks run Fire OS, which is built on Android, and the Android version underneath most likely decides whether Klangbild installs. Fire OS 7 and later are built on Android 9 or newer, which should be enough, though Klangbild hasn't been tried on one of those sticks yet. On Fire OS 6 and earlier it won't install, probably because their Android is too old. The newest sticks run Vega OS, which isn't Android at all, so Android apps most likely won't install on them.
+Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 </details>
 
@@ -63,7 +59,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
 > **Important**<br>
-> If Music Assistant plays your music, your speaker most likely shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
+> If Music Assistant plays your music, your speaker usually shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
 
 </details>
 

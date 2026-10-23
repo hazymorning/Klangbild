@@ -39,8 +39,8 @@ release notes, commits, pull requests, issues, discussions and code comments.
 - Only claim what has been verified, and claim behavior on a real device, like the frame rate,
   waking the TV over CEC or the screensaver, only once it has been verified there. Never say
   publicly whether something was tried on a real TV.
-- Don't mention brands of lights, speakers, media players or TV devices in UI text, code or
-  comments. Data used to recognize them, like the words in `SpeakerLabel`, is fine.
+- Don't mention brands of lights, speakers, media players or TV devices anywhere. Data used to
+  recognize them, like the words in `SpeakerLabel`, is fine.
 - The UI is in English, with German in `values-de`. No English UI string is longer than its German
   translation (`LanguageTest`). Menu labels use the words people know from TVs and phones, and
   their values are plain words. Everything else in the repository is in English.

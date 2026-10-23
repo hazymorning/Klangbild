@@ -31,7 +31,7 @@ body:
     id: tv-device
     attributes:
       label: Device and Android TV version
-      description: The model, and the Android TV or Fire OS version shown under About in its settings.
+      description: The model, and the Android TV version shown under About in its settings.
     validations:
       required: true
   - type: input
