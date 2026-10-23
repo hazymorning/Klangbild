@@ -11,8 +11,14 @@ import androidx.compose.ui.text.font.FontFamily
  * outlines ([ClockFigures]), and a line is centered by its ink with them ([rememberInkShift]).
  */
 interface Glyphs {
-    /** A pen for the typeface [resolver] gives [style], at [sizePx] px with [letterSpacing] em between letters. */
-    fun pen(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float, letterSpacing: Float = 0f): Pen
+    /**
+     * A pen for finding where a line's ink lies, in the typeface [resolver] gives [style], at
+     * [sizePx] px with [letterSpacing] em between letters; null while there is no such typeface.
+     */
+    fun measuring(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float, letterSpacing: Float): Pen?
+
+    /** A pen for figures drawn as outlines, in [style]'s typeface (or the platform's own) at [sizePx] px. */
+    fun drawing(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float): Pen
 
     interface Pen {
         /** How far the pen moves over [text] from [start] to [end], the kerning inside it included (px). */

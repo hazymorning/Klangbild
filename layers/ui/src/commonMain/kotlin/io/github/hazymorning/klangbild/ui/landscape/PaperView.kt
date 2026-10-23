@@ -595,8 +595,7 @@ private fun DrawScope.drawWeather(images: PaperImages, l: PaperLook, m: PaperMot
 
 /**
  * Draws what falls in a few calls: the flakes as round points and the drops as lines, sorted
- * into a handful of sizes and strengths, one call per batch. Buffers are kept between frames;
- * a batch is drawn from a copy just as long as it is, since a canvas draws whole arrays.
+ * into a handful of sizes and strengths, one call per batch. Buffers are kept between frames.
  */
 private class FallBatches {
     val items = FloatArray(Weatherfall.STRIDE * 200)
@@ -642,17 +641,16 @@ private class FallBatches {
             val strength = k % strengths
             val r = lo + (hi - lo) * (size + 0.5f) / sizes
             val a = (strength + 1f) / strengths
-            val points = buffers[k].copyOf(counts[k] * 2)
             paint.strokeWidth = 2f * r * b.density
             paint.color = Color(shadow)
             paint.alpha = (255 * a * (0.18f + 0.4f * shadowAlpha)).toInt().coerceIn(0, 255) / 255f
             canvas.save()
             canvas.translate(drop * 0.4f, drop)
-            canvas.drawRawPoints(PointMode.Points, points, paint)
+            canvas.drawPointBatch(buffers[k], counts[k], paint)
             canvas.restore()
             paint.color = Color(ink)
             paint.alpha = (255 * a).toInt().coerceIn(0, 255) / 255f
-            canvas.drawRawPoints(PointMode.Points, points, paint)
+            canvas.drawPointBatch(buffers[k], counts[k], paint)
         }
     }
 
@@ -682,7 +680,7 @@ private class FallBatches {
             if (lc[k] == 0) continue
             paint.color = Color(ink)
             paint.alpha = (255 * RAIN_ALPHA * (k + 1f) / strengths).toInt().coerceIn(0, 255) / 255f
-            canvas.drawRawPoints(PointMode.Lines, lines[k].copyOf(lc[k] * 4), paint)
+            canvas.drawLineBatch(lines[k], lc[k], paint)
         }
     }
 }

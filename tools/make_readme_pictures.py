@@ -6,7 +6,7 @@ Usage: python3 tools/make_readme_pictures.py [names]   (needs Pillow and numpy; 
 poll_banners make only those pictures)
 
 Render the screens first:
-    ./gradlew :ui:testDebugUnitTest --tests '*ReadmeShotsTest*' --tests '*LandscapeGalleryTest*' -Pklangbild.pictures -Proborazzi.test.record=true
+    ./gradlew :ui:testAndroidHostTest --tests '*ReadmeShotsTest*' --tests '*LandscapeGalleryTest*' -Pklangbild.pictures -Proborazzi.test.record=true
 They land in layers/ui/build/screenshots/readme/, each with the colors the lights behind the TV
 would show (a JSON file beside it); the poll's banner also takes the landscape by day from
 layers/ui/build/screenshots/landscape/gallery/. The pictures go to docs/screenshots/.
@@ -26,7 +26,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RENDERS = os.path.join(ROOT, "layers", "ui", "build", "screenshots", "readme")
 OUT = os.path.join(ROOT, "docs", "screenshots")
-FONTS = os.path.join(ROOT, "layers", "ui", "src", "main", "res", "font")
+FONTS = os.path.join(ROOT, "layers", "ui", "src", "androidMain", "res", "font")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from make_launcher_assets import NAVY, logo  # noqa: E402  (the same mark as on the TV's home screen)

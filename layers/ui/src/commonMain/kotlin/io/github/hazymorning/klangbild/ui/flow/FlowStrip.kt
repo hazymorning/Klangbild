@@ -7,15 +7,12 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
 import io.github.hazymorning.klangbild.color.Appearance
@@ -23,7 +20,6 @@ import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FlowCard
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.WallGlow
-import io.github.hazymorning.klangbild.render.plainPaint
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.stage.coverScale
 import kotlin.math.abs
@@ -264,10 +260,7 @@ private class DrawTools {
     val dp = FloatArray(8)
     val dst = FloatArray(8)
     val src = FloatArray(8)
-    val matrix = Matrix()
-    val perspective = Perspective()
-    val paint = plainPaint()
-    val layer = plainPaint()
+    val painter = cardPainter()
 
     val textures = arrayOfNulls<FlowCard>(4)
     val halves = BooleanArray(4)
@@ -316,9 +309,9 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
     var own = true
     for (j in 1 until n) if (tools.textures[j] !== first) own = false
     if (own && first.appearance == Appearance.DARK) {
-        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], mode = BlendMode.DstOut)
+        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], blend = CardBlend.BENEATH)
         for (j in 0 until n) {
-            quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = BlendMode.Plus)
+            quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], blend = CardBlend.ADD)
         }
     } else if (own && n == 2) {
         // Full beneath at a(1 - h) / (1 - a h), half over at a h: together exactly a, for any a.
@@ -330,22 +323,22 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
         quad(canvas, first, true, over, tools.filters[half]!!, tools, snap = false)
     } else {
         val d = tools.dst
-        val bounds = Rect(
+        tools.painter.layer(
+            canvas,
             min(min(d[0], d[2]), min(d[4], d[6])) - LAYER_MARGIN_PX,
             min(min(d[1], d[3]), min(d[5], d[7])) - LAYER_MARGIN_PX,
             max(max(d[0], d[2]), max(d[4], d[6])) + LAYER_MARGIN_PX,
             max(max(d[1], d[3]), max(d[5], d[7])) + LAYER_MARGIN_PX,
+            (alpha.coerceIn(0f, 1f) * 255f).roundToInt(),
         )
-        tools.layer.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt() / 255f
-        canvas.saveLayer(bounds, tools.layer)
         for (j in 0 until n) {
-            quad(canvas, tools.textures[j]!!, tools.halves[j], tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], mode = if (j == 0) BlendMode.SrcOver else BlendMode.Plus)
+            quad(canvas, tools.textures[j]!!, tools.halves[j], tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], blend = if (j == 0) CardBlend.OVER else CardBlend.ADD)
         }
-        canvas.restore()
+        tools.painter.restore(canvas)
     }
 }
 
-/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [tools].dst, blended by [mode]. */
+/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [tools].dst, blended as [blend] says. */
 private fun quad(
     canvas: Canvas,
     card: FlowCard,
@@ -354,7 +347,7 @@ private fun quad(
     filter: ColorFilter?,
     tools: DrawTools,
     snap: Boolean,
-    mode: BlendMode = BlendMode.SrcOver,
+    blend: CardBlend = CardBlend.OVER,
 ) {
     val image = if (half) card.half else card.full
     val scale = if (half) 0.5f else 1f
@@ -366,23 +359,13 @@ private fun quad(
     s[2] = pad + w; s[3] = pad
     s[4] = pad + w; s[5] = pad + h
     s[6] = pad; s[7] = pad + h
-    val m = tools.matrix
+    val k = (alpha.coerceIn(0f, 1f) * 255f).roundToInt()
     if (snap) {
         // Facing the room, the card is drawn 1:1 on whole pixels, as crisp as the single cover.
-        m.reset()
-        m[3, 0] = (tools.dst[0] - pad).roundToInt().toFloat()
-        m[3, 1] = (tools.dst[1] - pad).roundToInt().toFloat()
+        tools.painter.moved(canvas, image, (tools.dst[0] - pad).roundToInt().toFloat(), (tools.dst[1] - pad).roundToInt().toFloat(), k, filter, blend)
     } else {
-        // A quad without area keeps the matrix before, as it always has.
-        tools.perspective.map(s, tools.dst, m)
+        tools.painter.mapped(canvas, image, s, tools.dst, k, filter, blend)
     }
-    tools.paint.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt() / 255f
-    tools.paint.colorFilter = filter
-    tools.paint.blendMode = mode
-    canvas.save()
-    canvas.concat(m)
-    canvas.drawImage(image, Offset.Zero, tools.paint)
-    canvas.restore()
 }
 
 /**

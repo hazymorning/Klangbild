@@ -13,6 +13,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
@@ -22,11 +23,6 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import io.github.hazymorning.klangbild.ui.resources.Res
-import io.github.hazymorning.klangbild.ui.resources.dmsans
-import io.github.hazymorning.klangbild.ui.resources.jost
-import org.jetbrains.compose.resources.Font
-import org.jetbrains.compose.resources.FontResource
 import kotlin.math.roundToInt
 
 /**
@@ -47,7 +43,6 @@ import kotlin.math.roundToInt
  * Arabic and others) fall back to the system's fonts.
  */
 enum class Face(
-    internal val font: FontResource,
     /** The weights the styles use; a family holds exactly these, so no weight is ever faked. */
     internal val weights: IntArray,
     /** The optical-size axis (sp), or null for a face without one. */
@@ -55,9 +50,13 @@ enum class Face(
     /** How far a colon is raised to sit in the middle of the figures (em). */
     internal val colonRaise: Float,
 ) {
-    TITLE(Res.font.jost, intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
-    TEXT(Res.font.dmsans, intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
+    TITLE(intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
+    TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
 }
+
+/** [face]'s font file at [weight], its axes set to [settings], as the platform loads it. */
+@Composable
+internal expect fun faceFont(face: Face, weight: FontWeight, settings: FontVariation.Settings): Font
 
 object Fonts {
     /** Cap height of both faces as a share of the size (for aligning by cap height). */
@@ -99,7 +98,7 @@ fun rememberFaces(): Faces {
                 } else {
                     FontVariation.Settings(FontVariation.weight(weight))
                 }
-                Font(face.font, FontWeight(weight), variationSettings = settings)
+                faceFont(face, FontWeight(weight), settings)
             }
         }
     }
@@ -183,7 +182,7 @@ fun rememberInkShift(text: String, style: TextStyle): Float {
     val density = LocalDensity.current
     return remember(text, style, glyphs, resolver, density) {
         val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        val pen = glyphs.pen(style, resolver, with(density) { style.fontSize.toPx() }, tracking)
+        val pen = glyphs.measuring(style, resolver, with(density) { style.fontSize.toPx() }, tracking) ?: return@remember 0f
         // The outlines' exact bounds: whole pixels would leave the clock up to a pixel off.
         val ink = pen.outline(text).getBounds()
         pen.advance(text) / 2f - (ink.left + ink.right) / 2f
@@ -238,6 +237,6 @@ fun rememberClockFigures(time: String, style: TextStyle): ClockFigures {
     return remember(time, style, glyphs, resolver, density) {
         val sizePx = with(density) { style.fontSize.toPx() }
         val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        ClockFigures(time, glyphs.pen(style, resolver, sizePx), sizePx, tracking)
+        ClockFigures(time, glyphs.drawing(style, resolver, sizePx), sizePx, tracking)
     }
 }
