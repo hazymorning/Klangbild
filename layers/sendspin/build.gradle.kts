@@ -15,7 +15,7 @@ kotlin {
             api(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.atomicfu)
             implementation(libs.cryptography.core)
-            api(libs.cryptography.random)
+            implementation(libs.cryptography.random)
             implementation(libs.kotlinx.io.core)
         }
         // The primitives on the JVM: BouncyCastle's, which Android's own providers lack below API 33.

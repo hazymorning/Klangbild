@@ -19,17 +19,17 @@ kotlin {
             api(libs.compose.ui)
             implementation(libs.ktor.client.websockets)
             implementation(libs.kotlinx.atomicfu)
-            implementation(libs.kotlinx.datetime)
             implementation(libs.normalize)
         }
-        // Ktor's OkHttp engine, whose interceptors keep cleartext in the home network.
+        // OkHttp, whose interceptor (CleartextGuard) keeps cleartext in the home network.
         androidMain.dependencies {
-            api(libs.ktor.client.okhttp)
+            api(libs.okhttp)
         }
         commonTest.dependencies {
             implementation(projects.domainTesting)
         }
         androidHostTest.dependencies {
+            implementation(libs.ktor.client.okhttp)
             implementation(libs.okhttp.mockwebserver)
         }
     }

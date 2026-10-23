@@ -22,9 +22,12 @@ kotlin {
             implementation(libs.kotlinx.atomicfu)
             implementation(libs.cryptography.random)
         }
-        // The speaker's client on Android: Ktor's OkHttp engine, which pings.
+        // The speaker's client on Android, Ktor's OkHttp engine on an OkHttp client that pings, and
+        // its key and pairings in a DataStore.
         androidMain.dependencies {
+            api(libs.okhttp)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.androidx.datastore.preferences)
         }
     }
 }
