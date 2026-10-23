@@ -193,6 +193,8 @@ class SendspinEndToEndTest {
                     assertThat(ahead).isGreaterThan(0L)
                     assertThat(ahead).isLessThan(6_500_000L)
                 }
+                // The server reports its chunks before stream/end has gone out (stop_stream only queues it).
+                while ("end" !in speaker.events && System.nanoTime() < deadline) Thread.sleep(20)
                 assertThat(speaker.events).containsInOrder("player true", "start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end")
                 // The commands came back in the speaker's state.
                 assertThat(server.all.last { it.startsWith("CLIENT_STATE") }).contains("\"volume\":30,\"muted\":false,\"output_delay_ms\":20")
