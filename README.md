@@ -149,7 +149,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 <summary><b>Contributing</b></summary>
 <br>
 
-Klangbild is a small project made for the joy of it. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
+Klangbild is a small project made for the joy of it. If you have an idea that fits, the [Discussions](https://github.com/hazymorning/Klangbild/discussions/categories/ideas) are the place for it, and a look through the settings first often turns up what you're after. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues), and if you'd like to build something yourself, starting with a discussion can save you work.
 
 </details>
 
