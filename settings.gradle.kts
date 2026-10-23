@@ -1,4 +1,6 @@
 pluginManagement {
+    // The build's own plugins: what the modules have in common.
+    includeBuild("build-logic")
     repositories {
         google {
             content {

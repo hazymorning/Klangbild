@@ -3,8 +3,9 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    id("klangbild.android.application")
+    id("klangbild.compose")
+    id("klangbild.robolectric")
     alias(libs.plugins.roborazzi)
 }
 
@@ -32,12 +33,9 @@ val autoVersionName: String = providers.gradleProperty("klangbild.versionName").
 
 android {
     namespace = "io.github.hazymorning.klangbild"
-    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.hazymorning.klangbild"
-        minSdk = 28
-        targetSdk = 36
         versionCode = autoVersionCode
         versionName = autoVersionName
         // No abiFilters on purpose: the app ships no native code of its own, and any
@@ -61,30 +59,16 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     buildFeatures {
-        compose = true
         buildConfig = true
     }
 
     testOptions {
         unitTests {
-            isIncludeAndroidResources = true
             all {
                 it.maxHeapSize = "3g"
                 // Two JVMs share the Robolectric classes; the screenshot classes run side by side.
                 it.maxParallelForks = 2
-                it.systemProperty("robolectric.graphicsMode", "NATIVE")
-                // Robolectric fetches its android-all jars itself; use the same Maven Central
-                // mirror as Gradle (repo1.maven.org rate-limits shared egress IPs).
-                it.systemProperty(
-                    "robolectric.dependency.repo.url",
-                    "https://maven-central.storage-download.googleapis.com/maven2",
-                )
                 // FirstLaunchTest against the stand-in Home Assistant (ci/fake_ha.py): -Pklangbild.fakeHa=http://127.0.0.1:8123
                 (project.findProperty("klangbild.fakeHa") as String?)?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
                 // The speaker against aiosendspin, the server Music Assistant runs (ci/sendspin_server.py):
@@ -100,14 +84,6 @@ android {
         }
     }
 
-    lint {
-        // Every warning fails the build; app/lint.xml turns off the few checks that do not apply.
-        warningsAsErrors = true
-        abortOnError = true
-        checkDependencies = false
-        lintConfig = file("lint.xml")
-    }
-
     packaging {
         resources {
             excludes += setOf(
@@ -118,13 +94,6 @@ android {
                 "/META-INF/versions/9/previous-compilation-data.bin",
             )
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        // A compiler warning fails the build like a lint warning does.
-        allWarningsAsErrors.set(true)
     }
 }
 
@@ -155,16 +124,11 @@ dependencies {
     // API only (no JCA provider is registered): the platform has no X25519 below API 33.
     implementation(libs.bouncycastle)
 
-    testImplementation(libs.junit)
-    testImplementation(libs.truth)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
-    testImplementation(libs.robolectric)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
-    testImplementation(libs.androidx.test.core)
-    testImplementation(libs.androidx.test.ext.junit)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)

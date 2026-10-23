@@ -154,9 +154,11 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Local SDK: `local.properties` → `sdk.dir=/opt/android-sdk` (not committed). compileSdk 37,
   targetSdk 36, minSdk 28 (Android 9: the release signature, scheme v3, needs it).
 - Kotlin warnings and lint warnings fail the build (`allWarningsAsErrors`, `warningsAsErrors`).
-  A suppression always carries a one-line reason (`app/lint.xml`, `@Suppress` with a comment).
+  A suppression always carries a one-line reason (the lint settings in build-logic, `@Suppress`
+  with a comment).
 - Maven Central rate-limits shared IPs (HTTP 429): Gradle and Robolectric use Google's
-  mirror first (`settings.gradle.kts`, `robolectric.dependency.repo.url` in `app/build.gradle.kts`).
+  mirror first (both `settings.gradle.kts`, `robolectric.dependency.repo.url` in build-logic's
+  Robolectric plugin).
 - Picture tests render how the screens look and check nothing themselves; they carry
   `@Category(Pictures::class)` and only run with `-Pklangbild.pictures`, so the everyday run
   stays quick. A new test that only renders pictures gets the category too. Pictures are not
