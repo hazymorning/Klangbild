@@ -3,6 +3,12 @@ plugins {
 }
 
 kotlin {
+    android {
+        optimization {
+            consumerKeepRules.publish = true
+            consumerKeepRules.file("consumer-rules.pro")
+        }
+    }
     sourceSets {
         commonMain.dependencies {
             implementation(projects.json)

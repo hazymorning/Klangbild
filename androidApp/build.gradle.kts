@@ -49,7 +49,7 @@ android {
             // Signed with the debug key so that any build installs for testing. Published
             // releases are signed again in CI with the release key (ci/sign-release.sh).
             signingConfig = signingConfigs.getByName("debug")
-            // The modules bring the rules their libraries need (consumer-rules.pro).
+            // A layer brings the rules its libraries need (its consumer-rules.pro).
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
         debug {
