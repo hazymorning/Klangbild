@@ -1,7 +1,11 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.hasLength
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import kotlin.test.Test
 
 /** The constants and the reference vector of connection.md and pairing.md. */
 class KeysTest {
@@ -24,7 +28,7 @@ class KeysTest {
     fun `a key reads only as its 43 characters`() {
         val id = B64.encode(ByteArray(32) { 7 })
         assertThat(id).hasLength(43)
-        assertThat(B64.key(id)).isEqualTo(ByteArray(32) { 7 })
+        assertThat(B64.key(id)).isNotNull().isEqualTo(ByteArray(32) { 7 })
         assertThat(B64.key(id + "A")).isNull()
         assertThat(B64.key("!".repeat(43))).isNull()
         assertThat(B64.key(null)).isNull()

@@ -1,8 +1,12 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Assert.assertThrows
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isSameInstanceAs
+import kotlin.test.Test
+import kotlin.test.assertFailsWith
 
 class FramesTest {
     private fun bytes(vararg b: Int) = ByteArray(b.size) { b[it].toByte() }
@@ -19,16 +23,16 @@ class FramesTest {
     fun `fragments join into their message`() {
         assertThat(reassembler.accept(bytes(1, 2, 0, 0x7b))).isNull()
         assertThat(reassembler.accept(bytes(1, 0, 0x22))).isNull()
-        assertThat(reassembler.accept(bytes(1, 1, 0x7d))).isEqualTo(bytes(0, 0x7b, 0x22, 0x7d))
+        assertThat(reassembler.accept(bytes(1, 1, 0x7d))).isNotNull().isEqualTo(bytes(0, 0x7b, 0x22, 0x7d))
         // The next message is on its own again.
-        assertThat(reassembler.accept(bytes(4, 5))).isEqualTo(bytes(4, 5))
+        assertThat(reassembler.accept(bytes(4, 5))).isNotNull().isEqualTo(bytes(4, 5))
     }
 
     @Test
     fun `a message nobody reads is followed but not kept`() {
         assertThat(reassembler.accept(bytes(1, 2, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))).isNull()
         assertThat(reassembler.accept(bytes(1, 1, 1))).isNull()
-        assertThat(reassembler.accept(bytes(0, 1))).isEqualTo(bytes(0, 1))
+        assertThat(reassembler.accept(bytes(0, 1))).isNotNull().isEqualTo(bytes(0, 1))
     }
 
     @Test
@@ -47,7 +51,7 @@ class FramesTest {
         )
         for (messages in cases) {
             val r = Reassembler(limit = 16) { true }
-            assertThrows(ProtocolException::class.java) { messages.forEach { r.accept(it) } }
+            assertFailsWith<ProtocolException> { messages.forEach { r.accept(it) } }
         }
     }
 

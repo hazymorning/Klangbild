@@ -1,11 +1,14 @@
 package io.github.hazymorning.klangbild.sendspin
 
+import dev.whyoleg.cryptography.random.CryptographyRandom
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
-import java.security.SecureRandom
+import kotlin.random.Random
 
 /** How a connection carries messages; the session never sees the WebSocket itself. */
 interface Transport {
@@ -68,8 +71,8 @@ class Session(
     private val listener: Listener,
     /** The local clock in microseconds (monotonic): the clock of [ClockMap]'s local side. */
     private val nowUs: () -> Long,
-    private val random: SecureRandom = SecureRandom(),
-) {
+    private val random: Random = CryptographyRandom.Default,
+) : SynchronizedObject() {
     /** What the session tells the speaker. Called on the session's calling thread, while it holds the session. */
     interface Listener {
         /** The player's state now (volume, mute, delay, timing), for `client/state`. */
@@ -148,13 +151,13 @@ class Session(
     private var bursts = 0
 
     /** Whether the server has activated the player role. */
-    val playerRole: Boolean @Synchronized get() = Roles.PLAYER in roles
+    val playerRole: Boolean get() = synchronized(this) { Roles.PLAYER in roles }
 
     /** Whether the server's first activation has come: the connection is set up, roles or not. */
-    val activated: Boolean @Synchronized get() = step == Step.ACTIVE
+    val activated: Boolean get() = synchronized(this) { step == Step.ACTIVE }
 
     /** Whether the time filter has settled enough to schedule playback. */
-    val synced: Boolean @Synchronized get() = bursts >= SYNC_BURSTS && filter.errorUs < SYNC_ERROR_US
+    val synced: Boolean get() = synchronized(this) { bursts >= SYNC_BURSTS && filter.errorUs < SYNC_ERROR_US }
 
     /**
      * What `client/state` says of availability: true once the clock has settled, and then for
@@ -164,18 +167,16 @@ class Session(
     private var available = false
 
     /** Opens the conversation with `client/init`. */
-    @Synchronized
-    fun start() {
+    fun start(): Unit = synchronized(this) {
         check(step == Step.NEW)
         val text = Outgoing.clientInit(B64.encode(identity.publicKey)).encode()
-        clientInit = text.toByteArray(Charsets.UTF_8)
+        clientInit = text.encodeToByteArray()
         step = Step.INIT_SENT
         transport.sendText(text)
     }
 
     /** A text message arrived (only the handshake's are text). */
-    @Synchronized
-    fun onText(text: String) {
+    fun onText(text: String): Unit = synchronized(this) {
         try {
             when (step) {
                 Step.INIT_SENT -> serverInit(text)
@@ -194,8 +195,7 @@ class Session(
     }
 
     /** A binary message arrived at local time [arrivalUs]. */
-    @Synchronized
-    fun onBinary(bytes: ByteArray, arrivalUs: Long) {
+    fun onBinary(bytes: ByteArray, arrivalUs: Long): Unit = synchronized(this) {
         if (step == Step.OVER) return
         try {
             val c = channel ?: throw ProtocolException("binary message before the handshake")
@@ -203,7 +203,7 @@ class Session(
             val plain = c.receive.decrypt(EMPTY, bytes)
             val whole = reassembler.accept(plain) ?: return
             when (whole[0].toInt() and 0xff) {
-                MessageId.JSON -> json(Message.parse(String(whole, 1, whole.size - 1, Charsets.UTF_8)), arrivalUs)
+                MessageId.JSON -> json(Message.parse(whole.decodeToString(1, whole.size)), arrivalUs)
                 MessageId.AUDIO -> audio(whole, arrivalUs)
                 MessageId.BEAT -> beat(whole)
             }
@@ -221,8 +221,7 @@ class Session(
      * The connection went away underneath: closed by the server ([byServer]), or lost (a failure,
      * a timeout).
      */
-    @Synchronized
-    fun onClosed(byServer: Boolean) {
+    fun onClosed(byServer: Boolean): Unit = synchronized(this) {
         when {
             step == Step.OVER -> Unit
             // Music Assistant before 2.10 closes at once on a client/init it does not know; a
@@ -233,8 +232,7 @@ class Session(
     }
 
     /** Starts a burst of time messages (messaging.md: at least eight, each after the answer to the one before). */
-    @Synchronized
-    fun burst() {
+    fun burst(): Unit = synchronized(this) {
         if (step != Step.ACTIVE) return
         // A burst whose answer never came is given up.
         if (burstLeft > 0 && nowUs() - burstSentUs < BURST_STALL_US) return
@@ -247,8 +245,7 @@ class Session(
      * The local clock stood still meanwhile (the device slept): the time filter starts afresh,
      * with a burst at once. Until it has settled again, the playback waits for it.
      */
-    @Synchronized
-    fun clockReset() {
+    fun clockReset(): Unit = synchronized(this) {
         filter.reset()
         bursts = 0
         burstLeft = 0
@@ -257,8 +254,7 @@ class Session(
     }
 
     /** The player's state changed here (volume by the TV, the output delay): the server hears of it. */
-    @Synchronized
-    fun stateChanged() {
+    fun stateChanged(): Unit = synchronized(this) {
         if (step == Step.ACTIVE && stateSent) sendState()
     }
 
@@ -266,14 +262,12 @@ class Session(
      * Leaves the group with `client/leave` (messaging.md): something else on the TV took its
      * sound, and the server stops playing here rather than on in a group that no longer hears it.
      */
-    @Synchronized
-    fun leave() {
+    fun leave(): Unit = synchronized(this) {
         if (step == Step.ACTIVE) send(Outgoing.leave())
     }
 
     /** Ends the session with `client/goodbye` ([reason] as the spec names it). */
-    @Synchronized
-    fun goodbye(reason: String) {
+    fun goodbye(reason: String): Unit = synchronized(this) {
         if (step == Step.OVER) return
         if (channel != null) send(Outgoing.goodbye(reason))
         end(SessionEnd.GOODBYE, reason)
@@ -303,7 +297,7 @@ class Session(
         val id = m.string("server_id")
         serverKey = B64.key(id) ?: throw ProtocolException("server_id is not a key")
         serverId = id
-        prologue = clientInit + text.toByteArray(Charsets.UTF_8)
+        prologue = clientInit + text.encodeToByteArray()
         step = Step.AWAIT_NOISE
     }
 
@@ -327,7 +321,7 @@ class Session(
         val data = m.string("data")?.let(B64::decode) ?: throw ProtocolException("noise/handshake without data")
         val handshake = KkPsk2Handshake(false, prologue, identity, checkNotNull(serverKey)) { KeyPair.generate(random) }
         val payload = try {
-            Json.parseToJsonElement(String(handshake.readFirst(data), Charsets.UTF_8)) as? JsonObject
+            Json.parseToJsonElement(handshake.readFirst(data).decodeToString()) as? JsonObject
         } catch (e: NoiseException) {
             throw e
         } catch (_: Exception) {
@@ -568,10 +562,10 @@ class Session(
 
     private fun send(m: Message) {
         val c = channel ?: return
-        val body = m.encode().toByteArray(Charsets.UTF_8)
+        val body = utf8(m.encode())
         if (body.size + 1 > Noise.MAX_MESSAGE - Noise.TAG_BYTES) throw ProtocolException("message too long to send")
         val plain = ByteArray(body.size + 1)
-        System.arraycopy(body, 0, plain, 1, body.size)
+        body.copyInto(plain, 1)
         transport.sendBinary(c.send.encrypt(EMPTY, plain))
     }
 
@@ -602,6 +596,6 @@ class Session(
         private const val PAIRING = "pairing"
         private const val PAIRING_PSK = "pairing_psk"
         private val EMPTY = ByteArray(0)
-        private val EMPTY_OBJECT = "{}".toByteArray(Charsets.UTF_8)
+        private val EMPTY_OBJECT = "{}".encodeToByteArray()
     }
 }

@@ -70,7 +70,7 @@ class Reassembler(
         if (!keep) return null
         val whole = ByteArray(size + 1)
         whole[0] = type.toByte()
-        System.arraycopy(buffer, 0, whole, 1, size)
+        buffer.copyInto(whole, 1, 0, size)
         size = 0
         return whole
     }
@@ -79,7 +79,7 @@ class Reassembler(
         val n = message.size - from
         if (size + n > limit) throw ProtocolException("fragmented message beyond $limit bytes")
         if (size + n > buffer.size) buffer = buffer.copyOf(maxOf(size + n, buffer.size * 2))
-        System.arraycopy(message, from, buffer, size, n)
+        message.copyInto(buffer, size, from, from + n)
         size += n
     }
 

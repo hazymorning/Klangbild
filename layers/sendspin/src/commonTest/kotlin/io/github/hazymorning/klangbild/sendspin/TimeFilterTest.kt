@@ -1,8 +1,12 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isLessThan
+import assertk.assertions.isTrue
 import kotlin.math.abs
+import kotlin.test.Test
 
 class TimeFilterTest {
     /**

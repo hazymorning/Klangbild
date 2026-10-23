@@ -166,17 +166,18 @@ object Outgoing {
 
     /** [text] cut to at most 64 bytes of UTF-8, never inside a character. */
     internal fun cap(text: String, bytes: Int = 64): String {
-        if (text.toByteArray(Charsets.UTF_8).size <= bytes) return text
+        if (utf8(text).size <= bytes) return text
         val out = StringBuilder()
         var used = 0
         var i = 0
         while (i < text.length) {
-            val cp = text.codePointAt(i)
-            val len = String(Character.toChars(cp)).toByteArray(Charsets.UTF_8).size
+            val pair = text[i].isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()
+            val chars = if (pair) 2 else 1
+            val len = if (pair) 4 else utf8(text.substring(i, i + 1)).size
             if (used + len > bytes) break
-            out.appendCodePoint(cp)
+            out.append(text, i, i + chars)
             used += len
-            i += Character.charCount(cp)
+            i += chars
         }
         return out.toString()
     }

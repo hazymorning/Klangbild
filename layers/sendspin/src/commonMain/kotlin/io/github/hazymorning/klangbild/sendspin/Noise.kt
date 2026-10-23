@@ -1,12 +1,12 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import org.bouncycastle.crypto.digests.SHA256Digest
-import org.bouncycastle.crypto.macs.HMac
-import org.bouncycastle.crypto.modes.ChaCha20Poly1305
-import org.bouncycastle.crypto.params.AEADParameters
-import org.bouncycastle.crypto.params.KeyParameter
-import org.bouncycastle.math.ec.rfc7748.X25519
-import java.security.SecureRandom
+import dev.whyoleg.cryptography.CryptographyProvider
+import dev.whyoleg.cryptography.DelicateCryptographyApi
+import dev.whyoleg.cryptography.algorithms.ChaCha20Poly1305
+import dev.whyoleg.cryptography.algorithms.HMAC
+import dev.whyoleg.cryptography.algorithms.SHA256
+import dev.whyoleg.cryptography.algorithms.XDH
+import kotlin.random.Random
 
 /** A Noise message that cannot be read: a wrong key, a changed byte, or one that does not belong here. */
 class NoiseException(message: String) : Exception(message)
@@ -14,31 +14,33 @@ class NoiseException(message: String) : Exception(message)
 /** A Curve25519 key pair: the private key's 32 bytes and the public key they give. */
 class KeyPair(val privateKey: ByteArray, val publicKey: ByteArray) {
     init {
-        require(privateKey.size == X25519.SCALAR_SIZE && publicKey.size == X25519.POINT_SIZE)
+        require(privateKey.size == Noise.KEY_BYTES && publicKey.size == Noise.KEY_BYTES)
     }
 
     companion object {
-        /** A new key pair from [random] (a CSPRNG). */
-        fun generate(random: SecureRandom): KeyPair {
-            val private = ByteArray(X25519.SCALAR_SIZE)
-            X25519.generatePrivateKey(random, private)
+        /** A new key pair from [random] (a CSPRNG), its private key clamped as RFC 7748 has it. */
+        fun generate(random: Random): KeyPair {
+            val private = random.nextBytes(Noise.KEY_BYTES)
+            private[0] = (private[0].toInt() and 0xF8).toByte()
+            private[31] = (private[31].toInt() and 0x7F or 0x40).toByte()
             return of(private)
         }
 
-        /** The key pair of [privateKey]. */
-        fun of(privateKey: ByteArray): KeyPair {
-            val public = ByteArray(X25519.POINT_SIZE)
-            X25519.scalarMultBase(privateKey, 0, public, 0)
-            return KeyPair(privateKey.copyOf(), public)
-        }
+        /** The key pair of [privateKey]: its public key is the private key times the curve's base point. */
+        fun of(privateKey: ByteArray): KeyPair = KeyPair(privateKey.copyOf(), Noise.x25519(privateKey, BASE_POINT))
+
+        /** The base point of Curve25519: u = 9. */
+        private val BASE_POINT = ByteArray(Noise.KEY_BYTES).also { it[0] = 9 }
     }
 }
 
 /**
  * The Noise Protocol Framework (revision 34, https://noiseprotocol.org/noise.html) as Sendspin
  * uses it: the KKpsk2 pattern over Curve25519, ChaCha20-Poly1305 and SHA-256. The state machine
- * is written out here; the primitives under it are BouncyCastle's (X25519, ChaCha20Poly1305,
- * SHA-256, HMAC), used through its lightweight API without registering a provider.
+ * is written out here; the primitives under it are cryptography-kotlin's (X25519,
+ * ChaCha20-Poly1305, SHA-256, HMAC), on Android and the JVM by way of BouncyCastle. They are
+ * used as the session is, one call after the other; a browser's WebCrypto has no
+ * ChaCha20-Poly1305 and answers only asynchronously, so there the session can't open.
  */
 object Noise {
     /** The suite Klangbild picks in `client/init`: the one that needs no AES hardware. */
@@ -51,17 +53,22 @@ object Noise {
     const val KEY_BYTES = 32
     const val HASH_BYTES = 32
 
+    private val provider = CryptographyProvider.Default
+    private val curve = provider.get(XDH)
+    private val hash = provider.get(SHA256).hasher()
+    private val macKeys = provider.get(HMAC).keyDecoder(SHA256)
+    internal val cipherKeys = provider.get(ChaCha20Poly1305).keyDecoder()
+
     fun sha256(vararg parts: ByteArray): ByteArray {
-        val d = SHA256Digest()
-        for (p in parts) d.update(p, 0, p.size)
-        return ByteArray(HASH_BYTES).also { d.doFinal(it, 0) }
+        val d = hash.createHashFunction()
+        for (p in parts) d.update(p)
+        return d.hashToByteArray()
     }
 
     internal fun hmac(key: ByteArray, vararg parts: ByteArray): ByteArray {
-        val mac = HMac(SHA256Digest())
-        mac.init(KeyParameter(key))
-        for (p in parts) mac.update(p, 0, p.size)
-        return ByteArray(HASH_BYTES).also { mac.doFinal(it, 0) }
+        val mac = macKeys.decodeFromByteArrayBlocking(HMAC.Key.Format.RAW, key).signatureGenerator().createSignFunction()
+        for (p in parts) mac.update(p)
+        return mac.signToByteArray()
     }
 
     /** Noise's HKDF: two or three outputs of 32 bytes from [chainingKey] and [input]. */
@@ -75,10 +82,22 @@ object Noise {
 
     /** Diffie-Hellman between [pair]'s private key and [public]; an all-zero result (a low-order point) is refused. */
     internal fun dh(pair: KeyPair, public: ByteArray): ByteArray {
-        if (public.size != X25519.POINT_SIZE) throw NoiseException("public key of ${public.size} bytes")
-        val out = ByteArray(X25519.POINT_SIZE)
-        if (!X25519.calculateAgreement(pair.privateKey, 0, public, 0, out, 0)) throw NoiseException("low-order public key")
-        return out
+        if (public.size != KEY_BYTES) throw NoiseException("public key of ${public.size} bytes")
+        return x25519(pair.privateKey, public)
+    }
+
+    /** RFC 7748's X25519 of [scalar] and the point [u]; throws [NoiseException] for a point of low order. */
+    internal fun x25519(scalar: ByteArray, u: ByteArray): ByteArray {
+        val shared = try {
+            val private = curve.privateKeyDecoder(XDH.Curve.X25519).decodeFromByteArrayBlocking(XDH.PrivateKey.Format.RAW, scalar)
+            val public = curve.publicKeyDecoder(XDH.Curve.X25519).decodeFromByteArrayBlocking(XDH.PublicKey.Format.RAW, u)
+            private.sharedSecretGenerator().generateSharedSecretToByteArrayBlocking(public)
+        } catch (_: IllegalStateException) {
+            // BouncyCastle refuses an agreement on a point of low order.
+            throw NoiseException("low-order public key")
+        }
+        if (shared.all { it == 0.toByte() }) throw NoiseException("low-order public key")
+        return shared
     }
 }
 
@@ -88,24 +107,22 @@ object Noise {
  * little-endian), so a message replayed, dropped or put out of order fails to open.
  */
 class CipherState internal constructor(key: ByteArray? = null) {
-    private var key: KeyParameter? = key?.let { KeyParameter(it) }
+    private var key: ChaCha20Poly1305.Key? = key?.let(::decode)
     private var nonce = 0L
-    private val aead = ChaCha20Poly1305()
     private val nonceBytes = ByteArray(12)
 
     val hasKey: Boolean get() = key != null
 
     internal fun initializeKey(k: ByteArray) {
-        key = KeyParameter(k)
+        key = decode(k)
         nonce = 0
     }
 
     /** [plaintext] sealed with [ad] as associated data (as it is, while there is no key). */
     fun encrypt(ad: ByteArray, plaintext: ByteArray, offset: Int = 0, length: Int = plaintext.size - offset): ByteArray {
         val k = key ?: return plaintext.copyOfRange(offset, offset + length)
-        val out = ByteArray(length + Noise.TAG_BYTES)
-        val written = seal(k, true, ad, plaintext, offset, length, out)
-        check(written == out.size)
+        val out = seal(k, true, ad, plaintext.copyOfRange(offset, offset + length))
+        check(out.size == length + Noise.TAG_BYTES)
         return out
     }
 
@@ -113,13 +130,13 @@ class CipherState internal constructor(key: ByteArray? = null) {
     fun decrypt(ad: ByteArray, ciphertext: ByteArray, offset: Int = 0, length: Int = ciphertext.size - offset): ByteArray {
         val k = key ?: return ciphertext.copyOfRange(offset, offset + length)
         if (length < Noise.TAG_BYTES) throw NoiseException("message shorter than its tag")
-        val out = ByteArray(length - Noise.TAG_BYTES)
-        val written = seal(k, false, ad, ciphertext, offset, length, out)
-        check(written == out.size)
+        val out = seal(k, false, ad, ciphertext.copyOfRange(offset, offset + length))
+        check(out.size == length - Noise.TAG_BYTES)
         return out
     }
 
-    private fun seal(k: KeyParameter, encrypt: Boolean, ad: ByteArray, input: ByteArray, offset: Int, length: Int, out: ByteArray): Int {
+    @OptIn(DelicateCryptographyApi::class)
+    private fun seal(k: ChaCha20Poly1305.Key, encrypt: Boolean, ad: ByteArray, input: ByteArray): ByteArray {
         // The last nonce (2^64 - 1) is reserved; no connection lives long enough to reach it.
         if (nonce == -1L) throw NoiseException("nonces used up")
         var n = nonce
@@ -127,16 +144,22 @@ class CipherState internal constructor(key: ByteArray? = null) {
             nonceBytes[i] = n.toByte()
             n = n ushr 8
         }
-        aead.init(encrypt, AEADParameters(k, Noise.TAG_BYTES * 8, nonceBytes, ad))
-        return try {
-            val len = aead.processBytes(input, offset, length, out, 0)
-            val total = len + aead.doFinal(out, len)
-            nonce++
-            total
-        } catch (e: org.bouncycastle.crypto.InvalidCipherTextException) {
-            throw NoiseException("message does not open")
+        val cipher = k.cipher()
+        val out = if (encrypt) {
+            cipher.encryptWithIvBlocking(nonceBytes, input, ad)
+        } else {
+            try {
+                cipher.decryptWithIvBlocking(nonceBytes, input, ad)
+            } catch (_: Exception) {
+                // The tag doesn't match: the platform's own exception, whatever it is called.
+                throw NoiseException("message does not open")
+            }
         }
+        nonce++
+        return out
     }
+
+    private fun decode(k: ByteArray): ChaCha20Poly1305.Key = Noise.cipherKeys.decodeFromByteArrayBlocking(ChaCha20Poly1305.Key.Format.RAW, k)
 }
 
 /** Noise's symmetric state during a handshake: the chaining key, the hash of everything so far, and the cipher. */
@@ -148,7 +171,7 @@ internal class SymmetricState(protocolName: String) {
     val cipher = CipherState()
 
     init {
-        val name = protocolName.toByteArray(Charsets.US_ASCII)
+        val name = protocolName.encodeToByteArray()
         h = if (name.size <= Noise.HASH_BYTES) name.copyOf(Noise.HASH_BYTES) else Noise.sha256(name)
         ck = h.copyOf()
     }

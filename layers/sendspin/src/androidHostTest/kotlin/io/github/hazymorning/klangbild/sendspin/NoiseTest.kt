@@ -1,9 +1,10 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Assert.assertThrows
-import org.junit.Test
-import java.security.SecureRandom
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import dev.whyoleg.cryptography.random.CryptographyRandom
+import kotlin.test.Test
+import kotlin.test.assertFailsWith
 
 /**
  * The Noise layer against the published test vector for Noise_KKpsk2_25519_ChaChaPoly_SHA256
@@ -77,7 +78,7 @@ class NoiseTest {
         r.readFirst(messages[0].second)
         val other = psk.copyOf().also { it[0] = (it[0] + 1).toByte() }
         val (second, _) = r.writeSecond(other, messages[1].first)
-        assertThrows(NoiseException::class.java) { initiator().apply { writeFirst(messages[0].first) }.readSecond(psk, second) }
+        assertFailsWith<NoiseException> { initiator().apply { writeFirst(messages[0].first) }.readSecond(psk, second) }
     }
 
     @Test
@@ -90,14 +91,14 @@ class NoiseTest {
         val (_, ic) = i.readSecond(psk, second)
         val sealed = ic.send.encrypt(ByteArray(0), byteArrayOf(0, 1, 2, 3))
         val changed = sealed.copyOf().also { it[2] = (it[2].toInt() xor 1).toByte() }
-        assertThrows(NoiseException::class.java) { rc.receive.decrypt(ByteArray(0), changed) }
+        assertFailsWith<NoiseException> { rc.receive.decrypt(ByteArray(0), changed) }
         assertThat(rc.receive.decrypt(ByteArray(0), sealed)).isEqualTo(byteArrayOf(0, 1, 2, 3))
-        assertThrows(NoiseException::class.java) { rc.receive.decrypt(ByteArray(0), sealed) }
+        assertFailsWith<NoiseException> { rc.receive.decrypt(ByteArray(0), sealed) }
     }
 
     @Test
     fun `fresh keys agree with each other`() {
-        val random = SecureRandom()
+        val random = CryptographyRandom.Default
         val server = KeyPair.generate(random)
         val client = KeyPair.generate(random)
         val i = KkPsk2Handshake(true, prologue, server, client.publicKey) { KeyPair.generate(random) }

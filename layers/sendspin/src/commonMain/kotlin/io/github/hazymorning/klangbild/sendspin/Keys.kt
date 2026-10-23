@@ -1,13 +1,13 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 /** Sendspin's base64url without padding: client and server ids, PSK ids, Noise messages. */
 object B64 {
-    private val encoder = Base64.getUrlEncoder().withoutPadding()
-    private val decoder = Base64.getUrlDecoder()
+    private val encoder = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+    private val decoder = Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
 
-    fun encode(bytes: ByteArray): String = encoder.encodeToString(bytes)
+    fun encode(bytes: ByteArray): String = encoder.encode(bytes)
 
     /** The bytes of [text]; null when it is not base64url (padding is tolerated). */
     fun decode(text: String): ByteArray? = try {
@@ -38,10 +38,10 @@ object Psk {
      * The published PSK for a server with no other PSK to use: it authenticates nothing, it only
      * lets the handshake complete (`SHA-256("sendspin-sentinel-psk-v1")`).
      */
-    val SENTINEL: ByteArray = Noise.sha256("sendspin-sentinel-psk-v1".toByteArray(Charsets.UTF_8))
+    val SENTINEL: ByteArray = Noise.sha256("sendspin-sentinel-psk-v1".encodeToByteArray())
 
     /** The id the server names a PSK by in its first handshake message. */
-    fun id(psk: ByteArray): String = B64.encode(Noise.sha256("sendspin-psk-id-v1".toByteArray(Charsets.UTF_8), psk))
+    fun id(psk: ByteArray): String = B64.encode(Noise.sha256("sendspin-psk-id-v1".encodeToByteArray(), psk))
 }
 
 /**

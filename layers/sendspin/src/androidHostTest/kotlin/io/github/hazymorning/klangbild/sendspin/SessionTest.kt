@@ -1,14 +1,28 @@
 package io.github.hazymorning.klangbild.sendspin
 
-import com.google.common.truth.Truth.assertThat
+import assertk.Assert
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsAtLeast
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import assertk.assertions.support.expected
+import assertk.assertions.support.show
+import dev.whyoleg.cryptography.random.CryptographyRandom
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import org.junit.Test
-import java.security.SecureRandom
+import kotlin.test.Test
 
 /**
  * The session against a server played here: Noise's initiator, the messages as messaging.md
@@ -16,7 +30,7 @@ import java.security.SecureRandom
  * over, as a connection would.
  */
 class SessionTest {
-    private val random = SecureRandom()
+    private val random = CryptographyRandom.Default
     private val clientKeys = KeyPair.generate(random)
     private val serverKeys = KeyPair.generate(random)
     private val serverId = B64.encode(serverKeys.publicKey)
@@ -210,12 +224,12 @@ class SessionTest {
         val (server, s) = connect()
         val hello = server.fromClient.first { it.type == "client/hello" }
         assertThat(hello.string("name")).isEqualTo("Living room TV")
-        assertThat(hello.strings("supported_roles")).containsExactly(Roles.PLAYER, Roles.VISUALIZER).inOrder()
+        assertThat(hello.strings("supported_roles")).isNotNull().containsExactly(Roles.PLAYER, Roles.VISUALIZER)
         // Nothing Music Assistant would take for an old client: no supported_commands or trust_level in the hello.
-        assertThat(hello.obj("player@v1_support")!!.keys).containsExactly("supported_formats", "buffer_capacity")
+        assertThat(hello.obj("player@v1_support")!!.keys).containsExactlyInAnyOrder("supported_formats", "buffer_capacity")
         assertThat(server.fromClient.count { it.type == "client/time" }).isEqualTo(Session.BURST * Session.SYNC_BURSTS)
         val state = server.fromClient.single { it.type == "client/state" }
-        assertThat(state.bool("available")).isTrue()
+        assertThat(state.bool("available")).isNotNull().isTrue()
         assertThat(state.obj("player")!!.keys).containsAtLeast("volume", "muted", "output_delay_ms", "supported_commands")
         assertThat(state.obj("visualizer")!!["types"].toString()).isEqualTo("[\"beat\"]")
         assertThat(s.synced).isTrue()
@@ -243,8 +257,8 @@ class SessionTest {
             pump(server, s)
         }
         assertThat(s.synced).isTrue()
-        assertThat(events).containsAtLeast("player false", "player true").inOrder()
-        assertThat(server.fromClient.single { it.type == "client/state" }.bool("available")).isTrue()
+        assertThat(events).containsInOrder("player false", "player true")
+        assertThat(server.fromClient.single { it.type == "client/state" }.bool("available")).isNotNull().isTrue()
     }
 
     @Test
@@ -257,7 +271,7 @@ class SessionTest {
         pump(server, s)
         assertThat(events.count { it == "clock" }).isEqualTo(clocks)
         s.stateChanged()
-        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isTrue()
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isNotNull().isTrue()
         repeat(Session.SYNC_BURSTS) {
             now += 300_000
             s.burst()
@@ -282,14 +296,14 @@ class SessionTest {
             }
         }))
         pump(server, s)
-        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isFalse()
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isNotNull().isFalse()
         repeat(Session.SYNC_BURSTS - 1) {
             now += 300_000
             s.burst()
             pump(server, s)
         }
         assertThat(s.synced).isTrue()
-        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isTrue()
+        assertThat(server.fromClient.last { it.type == "client/state" }.bool("available")).isNotNull().isTrue()
     }
 
     @Test
@@ -308,8 +322,8 @@ class SessionTest {
         }))
         server.send(Message.of("stream/end", JsonObject(emptyMap())))
         pump(server, s)
-        assertThat(audio).containsExactly(123_456_789L to 4_800)
-        assertThat(events).containsAtLeast("start", "volume 30", "end").inOrder()
+        assertThat(audio).containsExactlyInAnyOrder(123_456_789L to 4_800)
+        assertThat(events).containsInOrder("start", "volume 30", "end")
         // The new volume is reported back.
         assertThat(server.fromClient.count { it.type == "client/state" }).isEqualTo(2)
         assertThat(ended).isNull()
@@ -323,7 +337,7 @@ class SessionTest {
         server.sendRaw(byteArrayOf(1, 2, 4) + payload.copyOfRange(0, 500))
         server.sendRaw(byteArrayOf(1, 1) + payload.copyOfRange(500, payload.size))
         pump(server, s)
-        assertThat(audio).containsExactly(77L to 1_200)
+        assertThat(audio).containsExactlyInAnyOrder(77L to 1_200)
     }
 
     @Test
@@ -360,7 +374,7 @@ class SessionTest {
         pump(server, s)
         val init = server.fromClient.single { it.type == "client/pair-init" }
         assertThat(init.int("pairing_index")).isEqualTo(1)
-        assertThat(events).containsAtLeast("paired", "used").inOrder()
+        assertThat(events).containsInOrder("paired", "used")
         assertThat(records.single().serverId).isEqualTo(serverId)
         assertThat(events).contains("player true")
         assertThat(ended).isNull()
@@ -468,5 +482,12 @@ class SessionTest {
 
     private companion object {
         const val OFFSET = 7_000_000_000L
+    }
+
+    /** The [expected] items come in this order, with any others between them. */
+    private fun Assert<List<String>>.containsInOrder(vararg expected: String) = given { actual ->
+        var next = 0
+        for (item in actual) if (next < expected.size && item == expected[next]) next++
+        if (next < expected.size) expected("to contain in order:${show(expected.toList())} but was:${show(actual)}")
     }
 }
