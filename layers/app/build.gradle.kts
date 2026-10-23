@@ -28,12 +28,12 @@ kotlin {
             implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
+            implementation(projects.textTesting)
             implementation(libs.kotlinx.coroutines.test)
         }
         androidHostTest.dependencies {
             implementation(projects.appTesting)
             implementation(projects.artTesting)
-            implementation(projects.textTesting)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.okhttp.mockwebserver)

@@ -5,20 +5,23 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.contains
+import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
-import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.QuickAction
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import java.lang.reflect.Modifier
@@ -113,6 +116,25 @@ class SettingsStoreTest {
         val store = SettingsStore(settingsValues(context), FakeBox())
         store.write(changed)
         assertThat(store.settings.first()).isEqualTo(changed)
+    }
+
+    @Test
+    fun `the store keeps the buttons`(): Unit = runBlocking {
+        val store = SettingsStore(settingsValues(context), KeystoreSecretBox())
+        val grouped = QuickAction("Ungroup", "script.ungroup_speakers").copy(
+            variables = Json.parseToJsonElement("""{"mode":"all"}""").jsonObject,
+            condition = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1"),
+        )
+        val party = QuickAction("Party mode", "input_boolean.party")
+        val values = listOf(OwnValue("Outside", "sensor.outside"), OwnValue("", "weather.home", "temperature"))
+        store.write(Settings(quickActions = listOf(grouped, party), ownValues = values, showValues = false))
+        val back = store.settings.first()
+        assertThat(back.quickActions).containsExactly(grouped, party)
+        assertThat(back.ownValues).containsExactly(*values.toTypedArray())
+        assertThat(back.showValues).isFalse()
+        store.write(back.copy(quickActions = emptyList(), ownValues = emptyList()))
+        assertThat(store.settings.first().quickActions).isEmpty()
+        assertThat(store.settings.first().ownValues).isEmpty()
     }
 
     @Test

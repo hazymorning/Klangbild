@@ -1,5 +1,6 @@
 import io.github.hazymorning.klangbild.gradle.GenerateLineBreaks
 import io.github.hazymorning.klangbild.gradle.reads
+import io.github.hazymorning.klangbild.gradle.skikoSourceSet
 
 plugins {
     id("klangbild.multiplatform")
@@ -21,14 +22,7 @@ kotlin {
         androidResources.enable = true
     }
     // Where Compose draws with Skia (the JVM and the browser), the typefaces are Compose resources.
-    applyDefaultHierarchyTemplate {
-        common {
-            group("skiko") {
-                withJvm()
-                withWasmJs()
-            }
-        }
-    }
+    skikoSourceSet()
     sourceSets {
         commonMain {
             kotlin.srcDir(generateLineBreaks.flatMap { it.output })
@@ -54,19 +48,21 @@ kotlin {
                 implementation(libs.lifecycle.runtime.compose)
             }
         }
+        commonTest.dependencies {
+            implementation(projects.textTesting)
+            // The design rules hold the sand figures too (DesignRulesTest).
+            implementation(projects.art)
+            implementation(libs.kotlinx.coroutines.test)
+        }
         androidHostTest.dependencies {
             implementation(projects.appTesting)
             implementation(projects.artTesting)
             implementation(projects.domainTesting)
-            implementation(projects.textTesting)
-            // The design rules hold the sand figures too (DesignRulesTest), and the README's
-            // pictures show the lights' colors (ReadmeShotsTest).
-            implementation(projects.art)
+            // The README's pictures show the lights' colors (ReadmeShotsTest).
             implementation(projects.lights)
             implementation(project.dependencies.platform(libs.androidx.compose.bom))
             implementation(libs.androidx.compose.ui.test.junit4)
             implementation(libs.androidx.compose.ui.test.manifest)
-            implementation(libs.kotlinx.coroutines.test)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.roborazzi)
             implementation(libs.roborazzi.compose)
@@ -88,7 +84,8 @@ roborazzi {
     outputDir.set(layout.buildDirectory.dir("screenshots"))
 }
 
-tasks.withType<Test>().configureEach {
+// The tests on the Android host, the screens' among them.
+tasks.withType<Test>().matching { it.name == "testAndroidHostTest" }.configureEach {
     // Two JVMs share the Robolectric classes; the screenshot classes run side by side.
     maxParallelForks = 2
     // The picture tests render how the screens look and check nothing themselves (see Pictures
@@ -100,7 +97,7 @@ tasks.withType<Test>().configureEach {
     // LanguageTest reads the words as they are written, in English and German.
     reads("klangbild.strings", layout.settingsDirectory.dir("layers/text/strings"), "values*/strings.xml")
     // BreakerParityTest breaks every text the tests and fixtures set.
-    for (dir in listOf("ui/src/androidHostTest", "art-testing/src", "domain-testing/src", "app-testing/src")) {
-        reads("klangbild.corpus.${dir.substringBefore('/')}", layout.settingsDirectory.dir("layers/$dir"), "**/*.kt")
+    for (dir in listOf("ui/src/androidHostTest", "ui/src/commonTest", "art-testing/src", "domain-testing/src", "app-testing/src")) {
+        reads("klangbild.corpus.$dir", layout.settingsDirectory.dir("layers/$dir"), "**/*.kt")
     }
 }

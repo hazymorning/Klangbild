@@ -1,12 +1,10 @@
 package io.github.hazymorning.klangbild.app
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
@@ -27,8 +25,6 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import kotlin.test.Test
 
 /**
@@ -36,8 +32,6 @@ import kotlin.test.Test
  * jump is sent, the jump goes with its item, and the next one never lands on its place.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class SeekingTest {
     private val test = TestScope(StandardTestDispatcher())
     private val a = TrackInfo("First chapter", listOf("Reader"), durationMs = 1_200_000L)
@@ -63,7 +57,7 @@ class SeekingTest {
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
-        override val log: Log = AndroidLog
+        override val log: Log = QuietLog
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
         override val settings get() = Settings()

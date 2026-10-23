@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
@@ -11,12 +10,8 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import kotlin.test.Test
 
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class StageTextsTest {
     private val de = TestTexts.german
     private val en = TestTexts.english()

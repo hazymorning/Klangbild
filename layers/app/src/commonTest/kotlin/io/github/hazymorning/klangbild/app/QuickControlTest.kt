@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.app
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
@@ -16,7 +15,6 @@ import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
@@ -49,8 +47,6 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import kotlin.test.Test
 
 /**
@@ -59,8 +55,6 @@ import kotlin.test.Test
  * used, or whose condition does not hold, is left out.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class QuickControlTest {
     private val dispatcher = StandardTestDispatcher()
     private val test = TestScope(dispatcher)
@@ -133,7 +127,7 @@ class QuickControlTest {
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
-        override val log: Log = AndroidLog
+        override val log: Log = QuietLog
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
         override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen, queue = queue)

@@ -1,8 +1,5 @@
 package io.github.hazymorning.klangbild.config
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
@@ -14,23 +11,16 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.Condition
-import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.text.TestTexts
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import kotlin.test.Test
 
 /**
  * The quick settings' own buttons: what each kind of entity does, how they are kept, and how
  * they stand in the row (after the built-in entries, only while their entity can be used).
  */
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class QuickActionsTest {
     private val en = TestTexts.english()
     private val ungroup = QuickAction("Ungroup", "script.ungroup_speakers")
@@ -113,25 +103,6 @@ class QuickActionsTest {
     }
 
     private fun obj(json: String) = Json.parseToJsonElement(json).jsonObject
-
-    @Test
-    fun `the store keeps the buttons`(): Unit = runBlocking {
-        val context: Context = ApplicationProvider.getApplicationContext()
-        val store = SettingsStore(settingsValues(context), KeystoreSecretBox())
-        val grouped = ungroup.copy(
-            variables = Json.parseToJsonElement("""{"mode":"all"}""").jsonObject,
-            condition = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1"),
-        )
-        val values = listOf(OwnValue("Outside", "sensor.outside"), OwnValue("", "weather.home", "temperature"))
-        store.write(Settings(quickActions = listOf(grouped, party), ownValues = values, showValues = false))
-        val back = store.settings.first()
-        assertThat(back.quickActions).containsExactly(grouped, party)
-        assertThat(back.ownValues).containsExactly(*values.toTypedArray())
-        assertThat(back.showValues).isFalse()
-        store.write(back.copy(quickActions = emptyList(), ownValues = emptyList()))
-        assertThat(store.settings.first().quickActions).isEmpty()
-        assertThat(store.settings.first().ownValues).isEmpty()
-    }
 
     @Test
     fun `the buttons come after the built-in entries, only while their entity can be used`() {

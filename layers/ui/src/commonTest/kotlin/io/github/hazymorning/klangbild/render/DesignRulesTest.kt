@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.render
 
 import assertk.assertThat
-import assertk.assertions.contains
 import assertk.assertions.isBetween
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
@@ -21,6 +20,7 @@ import io.github.hazymorning.klangbild.color.contrastRatio
 import io.github.hazymorning.klangbild.color.relativeLuminance
 import io.github.hazymorning.klangbild.ui.stage.BLOCK_SHARE
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.test.Test
 
@@ -117,8 +117,8 @@ class DesignRulesTest {
             val palette = CoverPalette.derive(CoverPalette.analyze(thumb(c)))
             // the brightest wall under the text column: its left edge, level with the artwork's center
             val wall = field.at(layout.columnLeft + 1f, layout.textCenter)
-            assertThat(contrast(palette.inkQuiet, wall), name = "cover " + Integer.toHexString(c)).isGreaterThanOrEqualTo(4.5f)
-            assertThat(contrast(palette.ink, wall), name = "cover " + Integer.toHexString(c)).isGreaterThanOrEqualTo(10f)
+            assertThat(contrast(palette.inkQuiet, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(4.5f)
+            assertThat(contrast(palette.ink, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(10f)
         }
     }
 
@@ -208,7 +208,7 @@ class DesignRulesTest {
             assertThat(kotlin.math.abs(spec.mix)).isLessThanOrEqualTo(ChladniArt.MAX_MIX)
             // the middle stays free: the field there is the ring mode's
             assertThat(ChladniArt.field(spec, 0.05f, 1f)).isGreaterThan(0.8f)
-            seen += Math.round(spec.k1 * 0.7f / 3f) to spec.n2
+            seen += (spec.k1 * 0.7f / 3f).roundToInt() to spec.n2
         }
         // variety: two or three circles, many lobe counts
         assertThat(seen.size).isGreaterThanOrEqualTo(8)

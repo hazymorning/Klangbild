@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.app
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
@@ -10,7 +9,6 @@ import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
@@ -24,8 +22,6 @@ import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CoroutineScope
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 
@@ -34,8 +30,6 @@ import kotlin.test.Test
  * level. A step moves only the cursor (a held key makes twenty a second), and while up or down
  * is held the explanation waits until the key is let go.
  */
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class MenuControlTest {
     private var recomputed = 0
     private var shown = 0
@@ -44,7 +38,7 @@ class MenuControlTest {
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
-        override val log: Log = AndroidLog
+        override val log: Log = QuietLog
         override val scope = CoroutineScope(EmptyCoroutineContext)
         override val now: () -> Long = { 0L }
         override val settings get() = Settings()
