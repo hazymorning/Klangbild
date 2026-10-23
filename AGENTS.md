@@ -99,8 +99,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Kotlin and lint warnings fail the build. Give every suppression a one-line reason.
 - In a layer, `testDebugUnitTest` runs its tests on all three targets (`allTests`). `--tests`
   needs one target's task: `testAndroidHostTest`, `jvmTest` or `wasmJsBrowserTest`. The
-  WebAssembly tests run in headless Chrome through Karma (`CHROME_BIN` points to it; as root,
-  Chrome needs `--no-sandbox`).
+  WebAssembly tests run in headless Chrome through Karma. `CHROME_BIN` points to it, and as root to
+  a script that runs it with `--no-sandbox`.
 - Gradle and Robolectric try Google's Maven mirror first, since Maven Central rate-limits shared
   IPs.
 - Picture tests render screens and assert nothing. They're annotated with
@@ -131,10 +131,10 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 
 - Every layer is a Kotlin Multiplatform library in `layers/<package>/` with android, jvm and
   wasmJs targets. Its code is in commonMain, which uses no `android.*` or `java.*`, so a desktop
-  or web app would need only its entry point and its platform's implementations. What a layer
-  needs from its platform is an interface or an `expect` in commonMain, with Android's
-  implementation in androidMain. Compiling for wasmJs catches JVM-only calls that the other
-  builds let through.
+  or web app would need only its entry point and its platform's implementations (a browser also
+  needs ChaCha20-Poly1305 for Sendspin, which WebCrypto lacks). What a layer needs from its
+  platform is an interface or an `expect` in commonMain, with Android's implementation in
+  androidMain. Compiling for wasmJs catches JVM-only calls that the other builds let through.
 - The app itself is `androidApp/`, since AGP 9 doesn't allow Kotlin Multiplatform in an app
   module, with MainActivity, KlangbildApp and its `AndroidPlatform` (what `AppGraph` needs from
   Android), SpeakerService, the screensaver, the manifest and the launcher resources.
@@ -144,16 +144,17 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - A layer depends only on the layers its build file lists, and `LayersTest` checks that the
   dependencies point downward. Project dependencies are `implementation`, and an external library
   is `api` only when its types appear in the module's API.
-- All strings are in `layers/text/strings/`, which the build turns into Kotlin (`GenerateTexts`,
-  read as `texts[Strings.x]`), so `Texts` works the same everywhere. The fonts are Android
-  resources of `:ui`, which its `skikoMain` (the JVM and the browser) reads as Compose resources.
-  A layer ships the R8 rules its libraries need in `consumer-rules.pro`.
-- Tests are in commonTest, which runs on all three targets, unless they need Android or Robolectric
-  (androidHostTest) or only the JVM (jvmTest). Tests live in the module of their package. A test
-  that needs a layer above its own goes in the lowest module that depends on that layer, like
-  `ProgressTest` in data. Test helpers shared by several layers are separate modules (`art-testing`,
-  `text-testing`, `domain-testing`, `app-testing`). A test that reads a file outside its module gets
-  the path from the build (`reads` in build-logic).
+- All texts are in `layers/text/strings/`, which the build turns into Kotlin (`GenerateTexts`,
+  read as `texts[Strings.x]`), so `Texts` works the same everywhere. Only the app's name, which
+  Android shows, is a resource of androidApp. The fonts are Android resources of `:ui`, which its
+  `skikoMain` (the JVM and the browser) reads as Compose resources. A layer ships the R8 rules its
+  libraries need in `consumer-rules.pro`.
+- Tests are in commonTest, which runs on all three targets, unless they need Android, Robolectric
+  or a JVM library (androidHostTest) or the JVM's own classes (jvmTest). Tests live in the module
+  of their package. A test that needs a layer above its own goes in the lowest module that depends
+  on that layer, like `ProgressTest` in data. Test helpers shared by several layers are separate
+  modules (`art-testing`, `text-testing`, `domain-testing`, `app-testing`). A test that reads a
+  file outside its module gets the path from the build (`reads` in build-logic).
 
 From the bottom up:
 
@@ -214,7 +215,8 @@ are in the code, and the tests named here check them.
 - There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
   (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
   with no letter spacing or italics, and never in the system font. Outside the debug overlay,
-  nothing is smaller than 15 sp.
+  nothing is smaller than 15 sp. Balanced lines go through `LineBalancer` or `BalancedText`, so
+  the JVM and the browser get them too.
 - Text comes in three inks, near-neutral with a hint of the cover's color, each with a contrast of
   at least 4.5:1 against its background (`DesignRulesTest`). Never pure white.
 - The screen looks the same at any time of day. Only the background (light by day, dark at night)
