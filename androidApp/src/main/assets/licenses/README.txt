@@ -61,6 +61,12 @@ MIT License (full text in MIT.txt)
   SLF4J API
   Copyright (c) 2004-2023 QOS.ch
 
+Unicode License v3 (full text in Unicode-3.0.txt)
+
+  Unicode's character data and CLDR, in the texts' number and date formats, the reading of
+  web addresses and the direction of text
+  Copyright © 1991-2026 Unicode, Inc.
+
 SIL Open Font License 1.1
 
   Jost, Copyright 2020 The Jost Project Authors (Jost-OFL.txt)

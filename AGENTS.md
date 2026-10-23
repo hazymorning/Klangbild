@@ -84,19 +84,21 @@ is standing permission to push to that branch and open pull requests from it.
 export LC_ALL=C.UTF-8                                          # test names and data contain umlauts
 ./gradlew testDebugUnitTest                                    # every module's tests, without the pictures
 ./gradlew testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # with every picture, written to each module's build/screenshots/
-./gradlew :ui:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # only the stage tests
+./gradlew :ui:testAndroidHostTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # only the stage tests
 python3 ci/compare-pictures.py before/ layers/ui/build/screenshots/ changes/   # compares with a copy made before the change, changed pictures go to changes/
 ./gradlew :androidApp:lintRelease                              # lint over the app and every layer
 ./gradlew :androidApp:assembleRelease                          # minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # banner and icons from tools/logo.svg
 python3 tools/make_readme_pictures.py                          # the README's mockups, download button and poll banner
-./gradlew :speaker:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # first: python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0'
+./gradlew :speaker:testAndroidHostTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # first: python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0'
 ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's video, from the promo video kept outside the repository
 ```
 
 - `local.properties` holds `sdk.dir=/opt/android-sdk` and isn't committed. The SDK levels are in
   the version catalog. minSdk is 28 because the v3 release signature needs it.
 - Kotlin and lint warnings fail the build. Give every suppression a one-line reason.
+- In a layer, `testDebugUnitTest` runs its tests on all three targets (`allTests`). `--tests`
+  needs one target's task: `testAndroidHostTest` (Robolectric), `jvmTest` or `wasmJsNodeTest`.
 - Gradle and Robolectric try Google's Maven mirror first, since Maven Central rate-limits shared
   IPs.
 - Picture tests render screens and assert nothing. They're annotated with
@@ -125,29 +127,36 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 
 ## Modules
 
-- Every layer is an Android library in `layers/<package>/`. The app itself is `androidApp/`, with
-  MainActivity, KlangbildApp and its `AppGraph` (the wiring), SpeakerService, the screensaver, the
-  manifest and the launcher resources.
+- Every layer is a Kotlin Multiplatform library in `layers/<package>/` with android, jvm and
+  wasmJs targets. Its code is in commonMain, which uses no `android.*` or `java.*`, so a desktop
+  or web app would need only its entry point and its platform's implementations. What a layer
+  needs from its platform is an interface in commonMain, with Android's implementation in
+  androidMain. Compiling for wasmJs catches JVM-only calls that the other builds let through.
+- The app itself is `androidApp/`, since AGP 9 doesn't allow Kotlin Multiplatform in an app
+  module, with MainActivity, KlangbildApp and its `AndroidPlatform` (what `AppGraph` needs from
+  Android), SpeakerService, the screensaver, the manifest and the launcher resources.
 - Shared build setup lives in `build-logic/` as convention plugins (`klangbild.android.application`,
-  `klangbild.android.library`, `klangbild.compose`, `klangbild.robolectric`). The Compose compiler
+  `klangbild.multiplatform`, `klangbild.compose`, `klangbild.robolectric`). The Compose compiler
   also runs on the layers whose classes the screens use, so Compose treats those classes as stable.
 - A layer depends only on the layers its build file lists, and `LayersTest` checks that the
   dependencies point downward. Project dependencies are `implementation`, and an external library
   is `api` only when its types appear in the module's API.
-- All strings are resources of `:text` (`text.R`), and the fonts belong to `:ui`. Each library
-  ships its own R8 rules in `consumer-rules.pro`.
-- Tests live in the module of their package. A test that needs a layer above its own goes in the
-  lowest module that depends on that layer, like `ProgressTest` in data. Test helpers shared by
-  several layers are separate modules (`art-testing`, `text-testing`, `domain-testing`,
-  `app-testing`). A test that reads a file outside its module gets the path from the build
-  (`reads` in build-logic).
+- All strings are in `layers/text/strings/`, which the build turns into Kotlin (`GenerateTexts`,
+  read as `texts[Strings.x]`), so `Texts` works the same everywhere. The fonts are Compose
+  resources of `:ui`. A layer ships the R8 rules its libraries need in `consumer-rules.pro`.
+- Tests are in commonTest, which runs on all three targets, unless they need Robolectric or a JVM
+  library (androidHostTest). Tests live in the module of their package. A test that needs a layer
+  above its own goes in the lowest module that depends on that layer, like `ProgressTest` in data.
+  Test helpers shared by several layers are separate modules (`art-testing`, `text-testing`,
+  `domain-testing`, `app-testing`). A test that reads a file outside its module gets the path from
+  the build (`reads` in build-logic).
 
 From the bottom up:
 
 | Module | What's in it |
 | --- | --- |
 | math, json | small helpers like easing, a seeded random source, hashes and JSON strings |
-| text | every UI string, `Texts` and the language setting |
+| text | every UI string, `Texts`, the language setting and how each region writes numbers and dates |
 | color | Oklab, cover palettes, the lamp light that tints every color (`Lamp`), the light and dark background, contrast |
 | art | generated art for tracks without a cover |
 | sound | the sound feed for the upcoming visualizer, with loudness, bands and beats |
@@ -160,8 +169,8 @@ From the bottom up:
 | lights | the lights behind the TV |
 | setup | the phone's setup page and its small web server |
 | speaker | the TV as a Sendspin speaker |
-| app | `NowPlayingController`, which turns everything into one `UiState` |
-| ui | the Compose screens |
+| app | `NowPlayingController`, which turns everything into one `UiState`, the remote's keys and `AppGraph`, the wiring |
+| ui | the Compose Multiplatform screens |
 
 ## Releases and signing
 
@@ -219,11 +228,11 @@ are in the code, and the tests named here check them.
 - Commands only go to Home Assistant when the player's `supported_features` allow them.
 - Home Assistant is used only through its documented interfaces. Tokens are encrypted at rest and
   only ever go to the address they were issued for. Every request that carries a token goes
-  through `AppGraph.tokenHttp` (in `KlangbildApp.kt`), which follows no redirects and caches
-  nothing. Plain HTTP only goes to private addresses, which `LocalNetwork.CleartextGuard` checks
-  before sending and again on every hop. A refresh token Home Assistant has refused is never tried
-  again, since Home Assistant counts every attempt as a failed login. The app logs its connection
-  steps under the tag `Klangbild` and never logs a token.
+  through `Platform.tokenHttp`, on Android an OkHttp client in `KlangbildApp.kt` that follows no
+  redirects and caches nothing. Plain HTTP only goes to private addresses, which `CleartextGuard`
+  checks before sending and again on every hop. A refresh token Home Assistant has refused is
+  never tried again, since Home Assistant counts every attempt as a failed login. The app logs its
+  connection steps under the tag `Klangbild` and never logs a token.
 - Music Assistant is optional, and everything works with Home Assistant alone.
 - The "Play here" setting, which makes the TV a speaker, is off by default. While it's off, none
   of it runs: no service, thread or connection (`SpeakerServiceTest`). Its key is generated once
