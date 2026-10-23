@@ -604,8 +604,8 @@ class LightSyncTest {
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
         val before = ha.calls.size
-        // Nothing on stage any more: until 2026.10 the lights were let go at once, so the dim
-        // never reached them and they went back without a fade.
+        // Nothing on stage any more: the lights stay followed, so the dim still reaches them and
+        // they go back with a fade.
         s.update(null)
         testScheduler.advanceTimeBy(LightSync.PAUSE_DELAY_MS + 2_000)
         assertThat(ha.followed).containsExactly(left, right)

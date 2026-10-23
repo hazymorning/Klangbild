@@ -28,8 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A switch to Cover Flow and straight back lets go of the scene still being made for Cover Flow:
- * the single cover's own scene starts at once instead of waiting for one nobody will show (until
- * 2026.10 it waited for that build to end, at worst for the whole wait on its cover).
+ * the single cover's own scene starts at once instead of waiting for one nobody will show.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

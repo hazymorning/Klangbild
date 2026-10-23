@@ -30,6 +30,6 @@ interface NowPlayingSource {
     /** Does what [action] says in Home Assistant; whether Home Assistant took it. */
     suspend fun run(action: QuickAction): Boolean = false
 
-    /** The link guests open to join the party ([SourceState.party]); null when none can be had. */
+    /** The link guests open to join the party ([SourceState.party]); null when there is none. */
     suspend fun partyUrl(): String? = null
 }

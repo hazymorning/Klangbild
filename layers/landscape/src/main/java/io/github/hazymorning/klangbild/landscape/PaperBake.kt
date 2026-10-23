@@ -27,7 +27,7 @@ data class BakeProgress(val done: Float, val upTo: Float) {
  */
 object PaperBake {
     /**
-     * Bakes the diorama; [progress] hears how far it has come as each part starts, by the time
+     * Bakes the diorama; [progress] is told how far it has come as each part starts, by the time
      * each part takes ([COST]), and where the part then starting ends.
      */
     fun bake(

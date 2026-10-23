@@ -23,9 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * At sunset the stage turns from paper to the dark wall in one cross-fade, its lines with it: a
  * few frames in they are still the dark lines on paper, and once the wall is dark they are the
- * light ones (until 2026.10 the light lines stood at once on the single stage, and the status
- * line beside a single cover and in Cover Flow, a pale ghost of the title on the still-light
- * paper).
+ * light ones. The same goes for the status line beside a single cover and in Cover Flow.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

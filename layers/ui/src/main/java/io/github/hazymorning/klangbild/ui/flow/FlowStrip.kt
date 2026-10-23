@@ -86,9 +86,8 @@ class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, 
  *
  * A card that turns between its full and its half-size texture, or takes a new look, is the
  * mix of its textures laid over the wall as one ([mix]): its half-transparent mirror image keeps
- * its strength all the way (until 2026.10 the textures were laid over one another, so the mirror
- * image grew denser as a card turned and fell back in one frame). Each texture is lit as on the
- * wall it was made for, so a card of the look before keeps its light while it gives way.
+ * its strength all the way. Each texture is lit as on the wall it was made for, so a card of the
+ * look before keeps its light while it gives way.
  *
  * @param time how far the change has come (0..1, linear); each card eases its own stretch.
  * @param dim brightness of the cards (pause).

@@ -549,7 +549,7 @@ class HaConnection(
                         is WsEvent.Closed, is WsEvent.Failure -> return@coroutineScope lost(ev)
                     }
                 }
-                @Suppress("UNREACHABLE_CODE")
+                @Suppress("UNREACHABLE_CODE") // The loop above only ends by returning, but the try still needs a value.
                 SessionEnd.Lost(null)
             } finally {
                 pinger.cancel()

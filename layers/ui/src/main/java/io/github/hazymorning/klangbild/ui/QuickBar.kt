@@ -176,7 +176,7 @@ internal class QuickColors(
                 QuickColors(
                     veil = c(CoverPalette.PAPER, 0.006f),
                     band = Color(0xFF0D0C0B),
-                    // 0.52 until 2026.10, which gave only 4.25:1 on the paper.
+                    // 0.50 keeps 4.5:1 on the paper.
                     label = c(0.50f),
                     labelFocus = c(0.42f),
                     value = c(0.45f),

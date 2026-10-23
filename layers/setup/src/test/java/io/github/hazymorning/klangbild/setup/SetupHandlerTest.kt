@@ -306,7 +306,7 @@ class SetupHandlerTest {
         // Saved without the section (nothing found yet): the buttons stay.
         assertThat(post("/api/save", """{$base}""").status).isEqualTo(200)
         assertThat(stored.quickActions).hasSize(2)
-        // Nothing that is no button: a lock, a media player, an odd list.
+        // Nothing that can't be a button is saved: a lock, a media player, a malformed list.
         assertThat(post("/api/save", """{$base,"actions":[{"name":"Tür","entity":"lock.front_door"}]}""").status).isEqualTo(400)
         assertThat(post("/api/save", """{$base,"actions":"script.x"}""").status).isEqualTo(400)
         assertThat(stored.quickActions).hasSize(2)

@@ -27,7 +27,7 @@ class EntityStoreTest {
         assertThat(st.context).isEqualTo("01K")
         assertThat(st.contextParent).isEqualTo("01P")
         assertThat(st.contextUser).isNull()
-        // Without last_updated it is last_changed; anything without an entity id is no state.
+        // Without last_updated, last_changed is used; anything without an entity id isn't a state.
         assertThat(state("""{"entity_id":"sun.sun","state":"below_horizon","last_changed":"2026-10-10T18:00:00+00:00"}""").lastUpdated)
             .isEqualTo(1_791_655_200.0)
         assertThat(EntityState.of(Json.parseToJsonElement("""{"state":"on"}""").jsonObject)).isNull()

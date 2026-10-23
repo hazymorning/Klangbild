@@ -34,7 +34,7 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the landscape showed when the quick settings opened: it stays as it was while they are open. */
     @Volatile private var hold: Boolean? = null
 
-    /** How the queue is to show, chosen with OK, taken once the presses stop (so a step through them never shows the one between). */
+    /** How the queue should show, chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
     @Volatile private var pendingQueue: QueueDisplay? = null
     private var pictureJob: Job? = null
 
@@ -56,10 +56,10 @@ internal class QuickControl(private val host: ControllerHost) {
     /** A switch just turned from the quick settings: shown as asked until Home Assistant reports it, or a while. */
     private val switchWanted = HashMap<String, Pair<Boolean, Long>>()
 
-    /** The party's code is to show (OK on "Party code"); a party that ends switches it off. */
+    /** The party's code should show (OK on "Party code"); a party that ends switches it off. */
     @Volatile private var partyOn = false
 
-    /** The link guests open, while the code is to show: asked when it is switched on, and again now and then (a code expires). */
+    /** The link guests open, while the code should show. It is fetched when the code is switched on, and again now and then (a code expires). */
     @Volatile private var partyUrl: String? = null
     private var partyJob: Job? = null
 
@@ -160,7 +160,7 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
     val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
 
-    /** How the queue is to show, chosen with OK and not taken yet (the presses have not stopped). */
+    /** How the queue should show, chosen with OK and not applied yet (the presses have not stopped). */
     val pending: QueueDisplay? get() = pendingQueue
 
     /**
@@ -179,7 +179,7 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * Takes how the queue is to show, as chosen in the quick settings. Another choice over the
+     * Applies the queue view chosen in the quick settings. Another choice over the
      * landscape leaves it ([leave]): the stage comes to show it. Stepped round to the one it had,
      * nothing changes. The choice counts as waiting until the setting has it, so the screen never
      * works out a moment with neither (the Queue value would stop shimmering for it).
@@ -201,8 +201,8 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * The landscape now, or no longer, at once. A queue still waiting to be taken is taken
-     * first, without leaving the landscape.
+     * Shows or leaves the landscape at once. A queue choice still waiting is applied first,
+     * without leaving the landscape.
      */
     private fun toggleLandscape() {
         applyQueue(leave = false)
@@ -270,9 +270,9 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * Shows the party's code, or no longer. On, its link is asked for at once and again every
-     * [PARTY_URL_MS] (soon again when no answer came); a link once had stays until a new one
-     * comes. The code shows at once: the landscape makes way.
+     * Turns the party's code on or off. While it's on, its link is fetched at once and again every
+     * [PARTY_URL_MS] (sooner when no answer came), and the last link stays until a new one comes.
+     * The code shows at once, and the landscape makes way.
      */
     private fun toggleParty() {
         val src = host.source ?: return
@@ -302,7 +302,7 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * Whether the party's code is to show, with a party playing [here]: a party that has ended
+     * Whether the party's code should show, with a party playing [here]: a party that has ended
      * (or plays elsewhere) switches it off, so the next one starts without it (called under the lock).
      */
     fun partyWanted(here: Boolean): Boolean {
@@ -445,7 +445,7 @@ internal class QuickControl(private val host: ControllerHost) {
         /** Untouched quick settings close after this long: they are for a moment's choice. */
         const val IDLE_MS = 20_000L
 
-        /** How the queue is to show, chosen in the quick settings, is taken this long after the last press. */
+        /** The queue view chosen in the quick settings is applied this long after the last press. */
         const val SETTLE_MS = 900L
 
         /** Shuffle just asked for is shown this long before the player has reported it. */
@@ -460,7 +460,7 @@ internal class QuickControl(private val host: ControllerHost) {
         /** While the party's code shows, its link is asked for again this often: Music Assistant renews an expired code. */
         const val PARTY_URL_MS = 60_000L
 
-        /** When the party's link could not be had, it is asked for again after this long. */
+        /** When the party's link could not be fetched, it is asked for again after this long. */
         const val PARTY_RETRY_MS = 5_000L
 
         /** Home Assistant's state for an entity that is there but cannot be used. */

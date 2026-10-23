@@ -125,7 +125,7 @@ class MaQueueTest {
         assertThat(episode.chapters).isEmpty()
         // Music plays at its own pace.
         assertThat(MaQueue.window(items, offset = 10, currentIndex = 11, baseUrl = base).speed).isEqualTo(1f)
-        // A book is no song: no words are asked for it.
+        // A book isn't a song, so no lyrics are requested for it.
         assertThat(w.currentSong).isNull()
     }
 
@@ -153,7 +153,7 @@ class MaQueueTest {
         val next = w.nextSong!!
         assertThat(next.uri).isEqualTo("spotify://track/4x2")
         assertThat(next.lrcLyrics).isNull()
-        // A station is no song.
+        // A station isn't a song.
         assertThat(MaQueue.window(songs, offset = 0, currentIndex = 1, baseUrl = base).nextSong).isNull()
     }
 

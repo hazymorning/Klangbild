@@ -22,8 +22,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * A song change never blinks: the old lines leave from where they stand, whenever in a frame the
- * change arrives (until 2026.10 a change that came between composing a frame and drawing it drew
- * the old lines at the new song's first, empty step, so the whole block vanished for a frame).
+ * change arrives, even between composing a frame and drawing it.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

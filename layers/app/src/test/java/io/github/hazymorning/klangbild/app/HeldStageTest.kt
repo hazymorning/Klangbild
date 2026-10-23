@@ -20,10 +20,10 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * After the clock, the setup page or the landscape, a song other than the one the stage kept
  * waits for its own scene, and so does the same song when the wall has changed meanwhile or the
- * queue has gone to or from Cover Flow: the stage left from before never comes up for it (until 2026.10 the song before
- * came up first and the lights took its colors). Meanwhile the clock or the landscape stays,
- * never the dark; over the landscape the song keys act on what plays. A screen that says
- * something is wrong and the setup page go through the dark.
+ * queue has gone to or from Cover Flow: the stage left from before never comes up for it.
+ * Meanwhile the clock or the landscape stays, never the dark, and over the landscape the song
+ * keys act on what plays. A screen that says something is wrong and the setup page go through
+ * the dark.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

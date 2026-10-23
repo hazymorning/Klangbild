@@ -76,7 +76,7 @@ enum class ActionState {
 data class QuickContext(
     /** The screen shows the landscape. */
     val landscape: Boolean = false,
-    /** How the queue is to show, chosen with OK and taken once the presses stop. */
+    /** How the queue should show, chosen with OK and applied once the presses stop. */
     val pending: QueueDisplay? = null,
     /** Something plays (or is paused) on the stage. */
     val music: Boolean = false,
@@ -115,8 +115,8 @@ object QuickMenu {
         fun row(item: QuickItem, value: String, muted: Boolean = false) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t), muted))
         row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
         row(QuickItem.LANDSCAPE, t[if (ctx.landscape) R.string.on else R.string.off])
-        // On while this song has no synced words: still On, only quieter. A word of its own for
-        // that ("None") read as if the words had been switched off.
+        // While this song has no synced lyrics it still says On, only quieter, since a word like
+        // "None" would look as if they had been switched off.
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
         if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))

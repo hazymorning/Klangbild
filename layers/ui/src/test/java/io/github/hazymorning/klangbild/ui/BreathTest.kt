@@ -56,8 +56,7 @@ class BreathTest {
         compose.setContent { Fixtures.Theater(stage, status) }
         compose.mainClock.advanceTimeBy(1_600)
         light()
-        // Playing again, the light glides back up; the speaker buffers again before it is there
-        // (until 2026.10 the light then jumped to full at once).
+        // Playing again, the light glides back up; the speaker buffers again before it is there.
         status = PlayerStatus.PLAYING
         compose.mainClock.advanceTimeBy(200)
         val seen = arrayListOf(light())

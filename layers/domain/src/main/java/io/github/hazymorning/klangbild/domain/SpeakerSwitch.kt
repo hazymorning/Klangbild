@@ -13,10 +13,10 @@ class SpeakerSwitch(private val backMs: Long = BACK_MS) {
 
     private var stoppedSince: Long? = null
 
-    /** While the own speaker has stopped and still shows: when it goes back to the chosen one. */
+    /** While this TV's speaker has stopped and still shows, when the screen goes back to the chosen one. */
     val backAt: Long? get() = stoppedSince?.let { it + backMs }
 
-    /** Decides anew from the own speaker ([here]) and the chosen one at [t]; whether the own one shows. */
+    /** Decides again from this TV's speaker ([here]) and the chosen one at [t]; returns whether this TV's speaker shows. */
     fun update(here: PlayerSnapshot?, chosen: PlayerSnapshot?, t: Long): Boolean {
         val music = here?.track != null
         val status = here?.status

@@ -233,7 +233,7 @@ object LaunchExtras {
         val out = LinkedHashMap<String, Any?>()
         intent?.extras?.let { b ->
             for (key in b.keySet()) {
-                @Suppress("DEPRECATION")
+                @Suppress("DEPRECATION") // Bundle.get is the only call that reads an extra of any type.
                 out[key] = b.get(key)
             }
         }

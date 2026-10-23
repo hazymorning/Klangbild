@@ -43,7 +43,7 @@ import kotlin.math.sin
 object Shimmer {
     /**
      * The band's width (dp): the word's own ink in its middle, falling off as cos² to either side.
-     * 64 dp in the first beta lit only two letters at a time and read as too faint.
+     * A narrower band lights only a letter or two and looks too faint.
      */
     const val BAND_DP = 96f
 

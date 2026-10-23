@@ -186,7 +186,7 @@ class LightSync(
         wake.trySend(Unit)
     }
 
-    /** Asks the link for the states of the lights wanted now; whichever call comes last, it says what holds then. */
+    /** Asks the link for the states of the lights wanted now; whichever call comes last decides. */
     @Synchronized
     private fun follow() {
         val ids = followed(target)
@@ -384,7 +384,7 @@ class LightSync(
     }
 
     /**
-     * What each light (or each light in [only]) is to show, sent where it differs enough from
+     * What each light (or each light in [only]) should show, sent where it differs enough from
      * what it shows.
      */
     private fun send(b: LightBridge, target: Target, t: Long, transitionMs: Long, force: Boolean, paused: Boolean, only: Set<String>? = null) {

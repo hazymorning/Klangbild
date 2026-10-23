@@ -12,7 +12,7 @@ interface SoundFeed {
      */
     fun read(nowUs: Long, out: SoundFrame): Boolean
 
-    /** Someone reads the feed from now on ([on]), or no longer. */
+    /** Someone starts reading the feed ([on]), or stops. */
     fun reading(on: Boolean)
 
     /** Nothing is known about the music that plays. */

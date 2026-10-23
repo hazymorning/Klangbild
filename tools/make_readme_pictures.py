@@ -546,8 +546,8 @@ class Room:
         dx, yy = b.xx - ax, b.yy
         arc = yb + w * sb * np.sqrt(np.clip(1 - (dx / w) ** 2, 0, 1))
         body = np.clip(w - np.abs(dx) + 0.5, 0, 1) * np.clip(arc - yy + 0.5, 0, 1) * np.clip(yy - yt + 0.5, 0, 1)
-        # The top is an ellipse, covered by the distance to its edge in pixels; a radius clipped to
-        # zero once filled its whole bounding box, so the tops read as flat lids.
+        # The top is an ellipse, its coverage taken from the distance to its edge in pixels, so it
+        # stays round instead of filling its bounding box.
         r = np.sqrt((dx / w) ** 2 + ((yy - yt) / (w * st)) ** 2)
         grad = np.sqrt((dx / w ** 2) ** 2 + ((yy - yt) / (w * st) ** 2) ** 2) / np.maximum(r, 1e-6)
         top = np.clip(1.0 - r, 0, None)

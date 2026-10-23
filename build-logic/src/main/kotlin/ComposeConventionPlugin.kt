@@ -9,8 +9,8 @@ import org.gradle.kotlin.dsl.getByType
 /**
  * A module the Compose compiler compiles: the screens, and every layer whose classes they take
  * as they are. The compiler sees a class as stable only when it compiled it itself, so the
- * layers below the screens go through it too, and the screens skip and remember just as when
- * everything was one module.
+ * layers below the screens go through it too, so the screens can still skip what hasn't
+ * changed when they recompose.
  */
 class ComposeConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
