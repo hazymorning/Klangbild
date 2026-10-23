@@ -146,7 +146,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   dependencies point downward. Project dependencies are `implementation`, and an external library
   is `api` only when its types appear in the module's API.
 - All texts are in `layers/text/strings/`, which the build turns into Kotlin (`GenerateTexts`,
-  read as `texts[Strings.x]`), so `Texts` works the same everywhere. Only the app's name, which
+  read as `texts[Strings.x]`), so `Texts` works the same everywhere. Lint doesn't read them, so
+  `GenerateTexts` checks them as lint would, apart from spelling. Only the app's name, which
   Android shows, is a resource of androidApp. The fonts are Android resources of `:ui`, which its
   `skikoMain` (the JVM and the browser) reads as Compose resources. A layer ships the R8 rules its
   libraries need in `consumer-rules.pro`.

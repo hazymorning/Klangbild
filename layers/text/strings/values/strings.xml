@@ -4,7 +4,7 @@
   the German texts: a no-break space ( ) keeps a short word that opens a sentence, an
   article or a number with the word it belongs to; typographic quotes and apostrophes.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Values used on many lines -->
     <string name="on">On</string>
     <string name="off">Off</string>
@@ -290,7 +290,7 @@
     <string name="speaker_notification">Music Assistant can play here.</string>
 
     <!-- Frame statistics (debug overlay): a readout with units, not a sentence that needs plurals -->
-    <string name="debug_frames">%1$d frames/s · slowest %2$s ms · %3$d late</string>
+    <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d frames/s · slowest %2$s ms · %3$d late</string>
     <!-- The sound feed in the debug overlay: how exactly its times are known -->
     <string name="debug_sound_exact">Exact timing</string>
     <string name="debug_sound_close">Close timing</string>

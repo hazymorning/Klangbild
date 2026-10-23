@@ -65,6 +65,10 @@ abstract class GenerateTexts : DefaultTask() {
                 val all = arguments(name, english.plurals.getValue(name).getValue("other"))
                 for (text in forms.values) check(all.containsAll(arguments(name, text))) { "$name in $language takes other arguments than in English" }
             }
+            // And lint's typography, and its guess at a count that wants plurals, unless tools:ignore lets a text through.
+            val texts = words.strings.mapValues { listOf(it.value) } + words.plurals.mapValues { it.value.values.toList() } + words.arrays
+            for ((name, list) in texts) list.forEach { typography(name, language, it, words.ignored[name].orEmpty()) }
+            if (language == "en") for ((name, text) in words.strings) plurals(name, text, words.ignored[name].orEmpty())
         }
         val out = output.get().asFile.resolve(PACKAGE.replace('.', '/'))
         out.deleteRecursively()
@@ -74,11 +78,12 @@ abstract class GenerateTexts : DefaultTask() {
         File(out, "Regions.kt").writeText(regionsKt(languages.keys))
     }
 
-    /** A language's strings.xml. */
+    /** A language's strings.xml, with the lint checks each text's tools:ignore names. */
     private class Language(
         val strings: Map<String, String>,
         val plurals: Map<String, Map<String, String>>,
         val arrays: Map<String, List<String>>,
+        val ignored: Map<String, Set<String>>,
     )
 
     private fun read(file: File): Language {
@@ -86,8 +91,11 @@ abstract class GenerateTexts : DefaultTask() {
         val strings = LinkedHashMap<String, String>()
         val plurals = LinkedHashMap<String, Map<String, String>>()
         val arrays = LinkedHashMap<String, List<String>>()
+        val ignored = HashMap<String, Set<String>>()
         for (element in doc.documentElement.childElements()) {
             val name = element.getAttribute("name")
+            check(name !in strings && name !in plurals && name !in arrays) { "${file.path}: $name is there twice" }
+            element.getAttributeNS(TOOLS, "ignore").takeIf { it.isNotEmpty() }?.let { ignored[name] = it.split(',').map(String::trim).toSet() }
             when (element.tagName) {
                 "string" -> strings[name] = text(element)
                 "plurals" -> plurals[name] = element.childElements().associate { it.getAttribute("quantity") to text(it) }
@@ -95,7 +103,7 @@ abstract class GenerateTexts : DefaultTask() {
                 else -> error("${file.path}: <${element.tagName}> is not a text")
             }
         }
-        return Language(strings, plurals, arrays)
+        return Language(strings, plurals, arrays, ignored)
     }
 
     private fun Element.childElements(): List<Element> =
@@ -260,6 +268,28 @@ abstract class GenerateTexts : DefaultTask() {
         return out
     }
 
+    /** Lint's typography checks that are on by default, as lint has them. */
+    private fun typography(name: String, language: String, text: String, ignore: Set<String>) {
+        fun rule(id: String, broken: Boolean, advice: String) = check(!broken || id in ignore) { "$name in $language: $advice ($id)" }
+        rule("TypographyEllipsis", "..." in text && !text.trimStart().startsWith("."), "replace \"...\" with the ellipsis character (…)")
+        rule("TypographyDashes", "--" in text && !text.startsWith("-"), "replace \"--\" with an em dash (—)")
+        // A space before the hyphen and none after makes a negative number.
+        val range = HYPHEN_RANGE.matchEntire(text)?.destructured?.let { (before, after) -> !(before.last().isWhitespace() && !after.first().isWhitespace()) } == true
+        rule("TypographyDashes", range, "replace \"-\" between numbers with an en dash (–)")
+        val fraction = FRACTION.matchEntire(text)?.destructured?.let { (over, under) -> "$over/$under" in FRACTIONS } == true
+        rule("TypographyFractions", fraction, "use a fraction character (½, ⅓, ¼ or ¾)")
+        rule("TypographyOther", "(c)" in text || "(C)" in text, "replace (c) with the copyright symbol (©)")
+    }
+
+    /** Lint's guess that an English text wants plurals: a count followed by a word ("%d songs"). */
+    private fun plurals(name: String, text: String, ignore: Set<String>) {
+        for (count in COUNT.findAll(text)) {
+            val word = text.substring(count.range.last + 1).dropWhile(Character::isWhitespace).takeWhile(Character::isLetter)
+            val wanted = word.length > 2 && word.drop(1).none(Character::isUpperCase) && word.any { it in "aeiouy" } && word != "min"
+            check(!wanted || "PluralsCandidate" in ignore) { "$name: a count followed by \"$word\" should probably be a plural (PluralsCandidate)" }
+        }
+    }
+
     private fun StringBuilder.header() {
         appendLine("// Written by the build from strings.xml and Unicode's CLDR (GenerateTexts in build-logic).")
         appendLine("package $PACKAGE")
@@ -288,6 +318,13 @@ abstract class GenerateTexts : DefaultTask() {
 
     private companion object {
         const val PACKAGE = "io.github.hazymorning.klangbild.text"
+
+        const val TOOLS = "http://schemas.android.com/tools"
+
+        val COUNT = Regex("""%(\d+\$)?d""")
+        val HYPHEN_RANGE = Regex(""".*(\d+\s*)-(\s*\d+).*""")
+        val FRACTION = Regex(""".*\b([13])\s*/\s*([234])\b.*""")
+        val FRACTIONS = setOf("1/2", "1/3", "1/4", "3/4")
 
         val INVISIBLE = listOf(0x7f..0xa0, 0xad..0xad, 0x2000..0x200f, 0x2028..0x202f, 0x205f..0x206f, 0xfeff..0xfeff).flatMap { it }.toSet()
 
