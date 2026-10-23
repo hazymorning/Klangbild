@@ -99,8 +99,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Kotlin and lint warnings fail the build. Give every suppression a one-line reason.
 - In a layer, `testDebugUnitTest` runs its tests on all three targets (`allTests`). `--tests`
   needs one target's task: `testAndroidHostTest`, `jvmTest` or `wasmJsBrowserTest`. The
-  WebAssembly tests run in headless Chrome through Karma. `CHROME_BIN` points to it, and as root to
-  a script that runs it with `--no-sandbox`.
+  WebAssembly tests run in headless Chrome through Karma, which finds it through `CHROME_BIN`. As
+  root, point that at a script that runs Chrome with `--no-sandbox`.
 - Gradle and Robolectric try Google's Maven mirror first, since Maven Central rate-limits shared
   IPs.
 - Picture tests render screens and assert nothing. They're annotated with
@@ -134,8 +134,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   or web app would need only its entry point and its platform's implementations (a browser also
   needs ChaCha20-Poly1305 for Sendspin, which WebCrypto lacks). What a layer needs from its
   platform is an interface or an `expect` in commonMain, with Android's implementation in
-  androidMain. `testDebugUnitTest` also compiles commonMain on its own, which catches calls only
-  some platforms have.
+  androidMain. `testDebugUnitTest` also compiles commonMain on its own, which catches calls that
+  every target has but common code doesn't.
 - The app itself is `androidApp/`, since AGP 9 doesn't allow Kotlin Multiplatform in an app
   module, with MainActivity, KlangbildApp and its `AndroidPlatform` (what `AppGraph` needs from
   Android), SpeakerService, the screensaver, the manifest and the launcher resources.
