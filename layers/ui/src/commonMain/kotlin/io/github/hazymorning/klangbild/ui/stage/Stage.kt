@@ -295,7 +295,8 @@ internal fun TextLayer(
         val c = Constraints(maxWidth = colW)
         val cBottom = Constraints(minWidth = colW, maxWidth = colW)
         val work = measurables[0].measure(c)
-        val title = measurables[1].measure(c)
+        // The title as wide as its balanced lines were set for.
+        val title = measurables[1].measure(Constraints.fixedWidth(plan.titleWidth))
         val version = measurables[2].measure(c)
         val artist = measurables[3].measure(c)
         val album = measurables[4].measure(c)

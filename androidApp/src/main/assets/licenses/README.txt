@@ -36,6 +36,9 @@ Apache License 2.0 (full text in Apache-2.0.txt)
   commons-suncalc, ported to Kotlin Multiplatform
   Copyright Richard "Shred" Körber
 
+  Android's balanced line breaker (minikin), ported to Kotlin Multiplatform
+  Copyright The Android Open Source Project
+
   JSpecify
   Copyright The JSpecify Authors
 
@@ -63,8 +66,8 @@ MIT License (full text in MIT.txt)
 
 Unicode License v3 (full text in Unicode-3.0.txt)
 
-  Unicode's character data and CLDR, in the texts' number and date formats, the reading of
-  web addresses and the direction of text
+  Unicode's character data, CLDR and ICU's line break rules, in the texts' number and date
+  formats, line breaking, the reading of web addresses and the direction of text
   Copyright © 1991-2026 Unicode, Inc.
 
 SIL Open Font License 1.1

@@ -19,10 +19,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -40,6 +38,8 @@ import io.github.hazymorning.klangbild.ui.stage.ArtworkLayer
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
+import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
+import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -101,10 +101,9 @@ fun SetupScreen(
 ) {
     val p = scene.palette
     val layout = scene.layout
-    val balanced = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default)
     val faces = faces()
     val label = faces.textType(15f, 500, p.inkQuiet.asColor(), tracking = 0.01f)
-    val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
+    val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f)
     val t = texts()
     val lead = t[
         when (reason) {
@@ -128,19 +127,22 @@ fun SetupScreen(
     // Until the code is drawn its line stays empty but keeps its height.
     val code = info?.code?.chunked(3)?.joinToString(" ") ?: "\u00A0"
     val name = faces.titleType(44f, 420, p.ink.asColor(), tracking = -0.005f)
-    val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = balanced))
+    val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f)
     val codeStyle = faces.titleType(44f, 400, p.ink.asColor(), tracking = 0.01f)
     val addressStyle = body.copy(color = p.inkQuiet.asColor())
-    // How wide the text really is: its longest line, as it breaks in the column.
+    // How wide the text really is: its longest line, as it breaks in the column (the lead, the
+    // text and the address on balanced lines).
     val measurer = rememberTextMeasurer()
     val local = LocalDensity.current
     val widest = remember(reason, info, layout, local, t) {
-        val column = Constraints(maxWidth = with(local) { layout.columnWidth.dp.roundToPx() })
-        listOf(AnnotatedString("Klangbild") to name, AnnotatedString(lead) to leadStyle, AnnotatedString(text) to body, AnnotatedString(code) to codeStyle, address to addressStyle)
-            .maxOf { (t, style) ->
-                val r = measurer.measure(t, style, constraints = column)
-                (0 until r.lineCount).maxOf { r.getLineRight(it) - r.getLineLeft(it) }
-            }
+        val column = with(local) { layout.columnWidth.dp.roundToPx() }
+        val breaker = BalancedBreaker(measurer)
+        val plain = listOf(AnnotatedString("Klangbild") to name, AnnotatedString(code) to codeStyle)
+            .map { (t, style) -> measurer.measure(t, style, constraints = Constraints(maxWidth = column)) }
+        val balanced = listOf(AnnotatedString(lead) to leadStyle, AnnotatedString(text) to body, address to addressStyle)
+            .map { (t, style) -> breaker.layout(t, style, breaker.lines(t, style, column)) }
+        (plain + balanced)
+            .maxOf { r -> (0 until r.lineCount).maxOf { r.getLineRight(it) - r.getLineLeft(it) } }
             .let { with(local) { it.toDp().value } }
     }
     // The group moves right by half of what the column leaves empty.
@@ -157,15 +159,15 @@ fun SetupScreen(
                     Column(Modifier.width(layout.columnWidth.dp)) {
                         BasicText("Klangbild", style = name)
                         Spacer(Modifier.height(4.dp))
-                        BasicText(lead, style = leadStyle)
+                        BalancedText(AnnotatedString(lead), leadStyle)
                         Spacer(Modifier.height(20.dp))
-                        BasicText(text, style = body)
+                        BalancedText(AnnotatedString(text), body)
                         Spacer(Modifier.height(30.dp))
                         BasicText(t[Strings.setupCode], style = label)
                         Spacer(Modifier.height(2.dp))
                         BasicText(code, style = codeStyle)
                         Spacer(Modifier.height(8.dp))
-                        BasicText(address, style = addressStyle)
+                        BalancedText(address, addressStyle)
                     }
                 },
             ) { measurables, constraints ->

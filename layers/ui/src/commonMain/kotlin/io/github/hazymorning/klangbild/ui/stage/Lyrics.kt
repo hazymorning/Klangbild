@@ -40,7 +40,6 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +55,7 @@ import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.rememberFrames
+import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
@@ -94,7 +94,7 @@ private val lyricsLadder = listOf(
 private fun lyricsStyle(faces: Faces, step: LyricsStep, cjk: Boolean): TextStyle {
     val size = if (cjk) step.size * StageStyles.CJK_SCALE else step.size
     return faces.titleType(size = size, weight = step.weight, lineHeight = size * step.leading + if (cjk) 6f else 0f, tracking = if (cjk) 0f else step.tracking)
-        .merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+        .merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
 }
 
 /** The words of one song as set for the column: each row on its own line, and where each line stands (px). */
@@ -140,13 +140,15 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
     val colW = (columnWidth * density).roundToInt()
     val cjk = isMostlyCjk(lyrics.lines.take(CJK_SAMPLE).joinToString(" ") { it.text })
     val parts = lyrics.lines.map { line -> line.text.split('\n').map { glueShortWords(glueParentheses(AnnotatedString(it))) } }
-    fun wrapped(text: AnnotatedString, style: TextStyle) =
-        measurer.measure(text, style, constraints = Constraints(maxWidth = colW), maxLines = MAX_ROWS + 1)
+    // Where a part's balanced rows end, found once for each part and style.
+    val breaker = BalancedBreaker(measurer)
+    val found = HashMap<Pair<AnnotatedString, TextStyle>, IntArray>()
+    fun ends(text: AnnotatedString, style: TextStyle) = found.getOrPut(text to style) { breaker.lineEnds(text, style, colW) }
     // The longest parts decide, so they are tried first.
     val longest = parts.flatten().sortedByDescending { it.length }
     val step = lyricsLadder.firstOrNull { s ->
         val style = lyricsStyle(faces, s, cjk)
-        longest.all { wrapped(it, style).lineCount <= s.rows }
+        longest.all { ends(it, style).size <= s.rows }
     } ?: lyricsLadder.last()
     val style = lyricsStyle(faces, step, cjk)
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT * density
@@ -160,13 +162,13 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
         tops[i] = baseline - cap
         var first = true
         for (part in line) {
-            val r = wrapped(part, style)
+            val rowEnds = ends(part, style)
             val text = part.text
-            for (k in 0 until minOf(r.lineCount, MAX_ROWS)) {
-                val start = r.getLineStart(k)
-                val cut = k == MAX_ROWS - 1 && r.lineCount > MAX_ROWS
-                val end = if (cut) text.length else r.getLineEnd(k, visibleEnd = true)
-                var words = text.substring(start, end.coerceAtLeast(start)).trim()
+            for (k in 0 until minOf(rowEnds.size, MAX_ROWS)) {
+                val start = if (k == 0) 0 else rowEnds[k - 1]
+                val cut = k == MAX_ROWS - 1 && rowEnds.size > MAX_ROWS
+                val end = if (cut) text.length else rowEnds[k]
+                var words = text.substring(start, end).trim()
                 if (cut) words = fitWords(measurer, words, style, colW)
                 if (!first) baseline += leading
                 first = false

@@ -25,6 +25,9 @@ okhttp = "5.5.0"
 cryptography = "0.6.0"
 # Under cryptography-kotlin on the JVM: newer than the one it names.
 bouncycastle = "1.86"
+# Under cryptography-kotlin too: newer than the one it names, whose WebAssembly code a browser
+# can't run from a bundle.
+kotlinxIo = "0.9.1"
 normalize = "1.4.0"
 profileinstaller = "1.4.1"
 junit = "4.13.2"
@@ -37,10 +40,14 @@ androidxTestJunit = "1.3.0"
 # landscape's gallery.
 zxing = "3.5.4"
 suncalc = "3.11"
-# What the texts' number and date formats are generated from, at build time.
-icu4j = "79.1"
+# What the texts' number and date formats are generated from, at build time: Android 14's ICU,
+# whose formats most devices show.
+icu4j = "72.1"
 # The time zones for the WebAssembly tests (an npm package).
 jsJodaTimezone = "2.22.0"
+# ICU as Android 12 and Robolectric's graphics have it, whose line breaks the pictures show
+# (GenerateLineBreaks writes the breaker's tables from it).
+icu4jLineBreaks = "68.2"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -56,7 +63,6 @@ compose-animation = { module = "org.jetbrains.compose.animation:animation", vers
 compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
-androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
@@ -66,6 +72,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
@@ -93,6 +100,7 @@ suncalc = { module = "org.shredzone.commons:commons-suncalc", version.ref = "sun
 android-gradle-api = { module = "com.android.tools.build:gradle-api", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
+icu4j-linebreaks = { module = "com.ibm.icu:icu4j", version.ref = "icu4jLineBreaks" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

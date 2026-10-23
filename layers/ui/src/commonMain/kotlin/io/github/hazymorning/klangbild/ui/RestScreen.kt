@@ -22,8 +22,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -44,6 +44,7 @@ import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
+import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.theme.ClockFigures
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberClockFigures
@@ -214,15 +215,10 @@ private fun RestBlock(time: String, date: String?, label: String?, sentence: Str
                 BasicText(label, Modifier.layoutId(LABEL), style = faces.textType(16f, 500, colors.label).merge(TextStyle(textAlign = TextAlign.Center)))
             }
             if (sentence != null) {
-                BasicText(
-                    sentence,
+                BalancedText(
+                    AnnotatedString(sentence),
+                    faces.textType(19f, 420, colors.secondary, lineHeight = 27f).merge(TextStyle(textAlign = TextAlign.Center)),
                     Modifier.layoutId(SENTENCE).widthIn(max = 480.dp),
-                    style = faces.textType(19f, 420, colors.secondary, lineHeight = 27f).merge(
-                        TextStyle(
-                            textAlign = TextAlign.Center,
-                            lineBreak = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default),
-                        ),
-                    ),
                 )
             }
         },

@@ -11,15 +11,16 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
 import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -63,7 +64,7 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
             color = ink,
             lineHeight = size * step.leading + if (cjk) 6f else 0f,
             tracking = if (cjk) 0f else step.tracking,
-        ).merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+        ).merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
     }
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
@@ -127,9 +128,11 @@ const val BLOCK_SHARE = 0.62f
 
 /** The measured decisions for the text block: title step and breaks, the artists fitted onto one line, and more. */
 class TextPlan(
+    /** The title on its balanced lines: set in [titleStyle], exactly [titleWidth] px wide. */
     val title: AnnotatedString,
     val titleStyle: TextStyle,
     val titleLines: Int,
+    val titleWidth: Int,
     /** The styles of the block's lines. */
     val styles: StageStyles,
     /** "Radio Edit" under the title. */
@@ -197,8 +200,9 @@ private fun planText(
         return layout.art * BLOCK_SHARE * d - rest
     }
 
-    val choice = pickTitleSize(title, { step -> normal.title(step, cjk) }, measurer, colW, ::budget, d)
-        ?: TitleChoice(titleLadder.last(), title)
+    val breaker = BalancedBreaker(measurer)
+    val choice = pickTitleSize(title, { step -> normal.title(step, cjk) }, breaker, colW, ::budget, d)
+        ?: titleLadder.last().let { step -> TitleChoice(step, breaker.title(title, normal.title(step, cjk), colW, step.lines)) }
     val block = normal
 
     // Artists on one line: the most complete form that fits, at the artist's size, then a
@@ -231,9 +235,10 @@ private fun planText(
         }
     }
     return TextPlan(
-        title = choice.text,
-        titleStyle = block.title(choice.step, cjk),
+        title = choice.layout.layoutInput.text,
+        titleStyle = choice.layout.layoutInput.style,
         titleLines = choice.step.lines,
+        titleWidth = choice.layout.size.width,
         styles = block,
         version = version,
         versionStyle = block.version(choice.step.size),
@@ -251,7 +256,12 @@ private fun planText(
  */
 enum class TextLine(val stagger: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), BOTTOM(200), NEXT(260) }
 
-internal class TitleChoice(val step: TitleStep, val text: AnnotatedString)
+/** The title's step, and the title laid out at it as it is set. */
+internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)
+
+/** [text] in [style] as a title is set: on its balanced lines, at most [maxLines], the last one ellipsized. */
+internal fun BalancedBreaker.title(text: AnnotatedString, style: TextStyle, maxW: Int, maxLines: Int): TextLayoutResult =
+    layout(text, style, lines(text, style, maxW), maxLines, TextOverflow.Ellipsis)
 
 /**
  * The title at the largest step of the ladder that fits its line limit and the height it is
@@ -264,7 +274,7 @@ internal class TitleChoice(val step: TitleStep, val text: AnnotatedString)
 internal fun pickTitleSize(
     text: AnnotatedString,
     styleOf: (TitleStep) -> TextStyle,
-    measurer: androidx.compose.ui.text.TextMeasurer,
+    breaker: BalancedBreaker,
     maxW: Int,
     budget: (TitleStep) -> Float,
     density: Float,
@@ -274,19 +284,20 @@ internal fun pickTitleSize(
     val glued = glueBetweenDashes(base)
     fun height(r: TextLayoutResult): Float =
         r.layoutInput.style.fontSize.value * Fonts.CAP_HEIGHT * density + (r.getLineBaseline(r.lineCount - 1) - r.getLineBaseline(0))
-    fun gluedFits(step: TitleStep): Boolean {
-        if (glued == null) return false
-        val g = measurer.measure(glued, style = styleOf(step), constraints = Constraints(maxWidth = maxW), maxLines = step.lines + 1)
-        return g.lineCount <= step.lines && height(g) <= budget(step) && breaksOnlyAfterDashes(g)
+    // [t] at [step] if it takes no more lines than the step has, breaks only where [allowed]
+    // says and fits the height; laid out only once the lines pass.
+    fun fit(t: AnnotatedString, step: TitleStep, allowed: (IntArray) -> Boolean): TitleChoice? {
+        val style = styleOf(step)
+        val lines = breaker.lines(t, style, maxW)
+        if (lines.ends.size > step.lines || !allowed(lines.ends)) return null
+        val r = breaker.layout(t, style, lines, step.lines, TextOverflow.Ellipsis)
+        return if (height(r) <= budget(step)) TitleChoice(step, r) else null
     }
+    fun gluedFits(step: TitleStep) = glued?.let { g -> fit(g, step) { breaksOnlyAfterDashes(g.text, it) } }
     for ((i, step) in ladder.withIndex()) {
-        if (gluedFits(step)) return TitleChoice(step, glued!!)
-        val r = measurer.measure(base, style = styleOf(step), constraints = Constraints(maxWidth = maxW), maxLines = step.lines + 1)
-        if (r.lineCount <= step.lines && height(r) <= budget(step) && !breaksInsideWord(r)) {
-            val smaller = ladder.getOrNull(i + 1)
-            if (smaller != null && gluedFits(smaller)) return TitleChoice(smaller, glued!!)
-            return TitleChoice(step, base)
-        }
+        gluedFits(step)?.let { return it }
+        val free = fit(base, step) { !breaksInsideWord(base.text, it) } ?: continue
+        return ladder.getOrNull(i + 1)?.let(::gluedFits) ?: free
     }
     return null
 }
@@ -341,21 +352,19 @@ private fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
     return AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
 
-/** True if every line but the last ends right after a dash (U+2013) and a space. */
-private fun breaksOnlyAfterDashes(r: TextLayoutResult): Boolean {
-    val text = r.layoutInput.text.text
-    for (i in 0 until r.lineCount - 1) {
-        val end = r.getLineEnd(i)
+/** True if every line of [text] but the last ([ends], where they end) ends right after a dash (U+2013) and a space. */
+private fun breaksOnlyAfterDashes(text: String, ends: IntArray): Boolean {
+    for (i in 0 until ends.size - 1) {
+        val end = ends[i]
         if (end < 2 || text[end - 1] != ' ' || text[end - 2] != '–') return false
     }
     return true
 }
 
-/** True if a line ends in the middle of a word (the breaker had no better option). */
-private fun breaksInsideWord(r: TextLayoutResult): Boolean {
-    val text = r.layoutInput.text.text
-    for (i in 0 until r.lineCount - 1) {
-        val end = r.getLineEnd(i)
+/** True if a line of [text] ([ends], where they end) ends in the middle of a word (the breaker had no better option). */
+private fun breaksInsideWord(text: String, ends: IntArray): Boolean {
+    for (i in 0 until ends.size - 1) {
+        val end = ends[i]
         if (end <= 0 || end >= text.length) continue
         val before = text[end - 1]
         val after = text[end]

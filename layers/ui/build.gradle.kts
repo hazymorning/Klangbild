@@ -1,3 +1,4 @@
+import io.github.hazymorning.klangbild.gradle.GenerateLineBreaks
 import io.github.hazymorning.klangbild.gradle.reads
 
 plugins {
@@ -7,32 +8,51 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+// ICU's line break rules as Kotlin, for BalancedBreaker.
+val generateLineBreaks = tasks.register<GenerateLineBreaks>("generateLineBreaks") {
+    icu.from(configurations.detachedConfiguration(dependencies.create(libs.icu4j.linebreaks.get())))
+    packageName = "io.github.hazymorning.klangbild.ui.text"
+    output = layout.buildDirectory.dir("generated/lineBreaks")
+}
+
 kotlin {
     android {
-        // The two typefaces are Compose resources, which Android reads from the app's assets.
+        // The two typefaces are Android resources.
         androidResources.enable = true
     }
+    // Where Compose draws with Skia (the JVM and the browser), the typefaces are Compose resources.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("skiko") {
+                withJvm()
+                withWasmJs()
+            }
+        }
+    }
     sourceSets {
-        commonMain.dependencies {
-            implementation(projects.app)
-            implementation(projects.color)
-            implementation(projects.config)
-            implementation(projects.domain)
-            implementation(projects.landscape)
-            implementation(projects.math)
-            implementation(projects.render)
-            implementation(projects.setup)
-            implementation(projects.sound)
-            implementation(projects.text)
-            // The screens' API is Compose's, and their frame statistics come as a flow.
-            api(libs.compose.animation)
-            api(libs.compose.foundation)
-            api(libs.compose.ui)
-            api(libs.kotlinx.coroutines.core)
-            implementation(libs.compose.resources)
-            implementation(libs.kotlinx.atomicfu)
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.lifecycle.runtime.compose)
+        commonMain {
+            kotlin.srcDir(generateLineBreaks.flatMap { it.output })
+            dependencies {
+                implementation(projects.app)
+                implementation(projects.color)
+                implementation(projects.config)
+                implementation(projects.domain)
+                implementation(projects.landscape)
+                implementation(projects.math)
+                implementation(projects.render)
+                implementation(projects.setup)
+                implementation(projects.sound)
+                implementation(projects.text)
+                // The screens' API is Compose's, and their frame statistics come as a flow.
+                api(libs.compose.animation)
+                api(libs.compose.foundation)
+                api(libs.compose.ui)
+                api(libs.kotlinx.coroutines.core)
+                implementation(libs.compose.resources)
+                implementation(libs.kotlinx.atomicfu)
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.lifecycle.runtime.compose)
+            }
         }
         androidHostTest.dependencies {
             implementation(projects.appTesting)
@@ -60,6 +80,8 @@ kotlin {
 
 compose.resources {
     packageOfResClass = "io.github.hazymorning.klangbild.ui.resources"
+    // The files Android has as resources.
+    customDirectory("skikoMain", provider { layout.projectDirectory.dir("src/androidMain/res") })
 }
 
 roborazzi {
@@ -77,4 +99,8 @@ tasks.withType<Test>().configureEach {
     }
     // LanguageTest reads the words as they are written, in English and German.
     reads("klangbild.strings", layout.settingsDirectory.dir("layers/text/strings"), "values*/strings.xml")
+    // BreakerParityTest breaks every text the tests and fixtures set.
+    for (dir in listOf("ui/src/androidHostTest", "art-testing/src", "domain-testing/src", "app-testing/src")) {
+        reads("klangbild.corpus.${dir.substringBefore('/')}", layout.settingsDirectory.dir("layers/$dir"), "**/*.kt")
+    }
 }

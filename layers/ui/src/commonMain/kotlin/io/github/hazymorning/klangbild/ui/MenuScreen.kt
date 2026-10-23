@@ -42,8 +42,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
@@ -65,6 +65,7 @@ import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
+import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -268,12 +269,7 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         label = "menu-description",
     ) { text ->
         if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-            BasicText(
-                text,
-                style = faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(
-                    TextStyle(lineBreak = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Normal, LineBreak.WordBreak.Default)),
-                ),
-            )
+            BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f))
         }
     }
     BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {

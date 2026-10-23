@@ -53,6 +53,7 @@ import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.text.BalancedBreaker
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Figures
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -135,9 +136,11 @@ internal class PlannedRow(
 internal class QueuePlan(
     val styles: StageStyles,
     val work: String?,
+    /** The title on its balanced lines: set in [titleStyle], exactly [titleWidth] px wide. */
     val title: AnnotatedString,
     val titleStyle: TextStyle,
     val titleLines: Int,
+    val titleWidth: Int,
     val version: String?,
     val versionStyle: TextStyle,
     val meta: AnnotatedString?,
@@ -273,9 +276,13 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val t = model.text
     val cjk = isMostlyCjk(t.title)
     val title = EmojiText.annotate(t.title, dimTo = styles.ink.copy(alpha = 0.62f))
-    val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, measurer, colW, { Float.MAX_VALUE }, d, queueTitleLadder)
-        ?: queueTitleLadder.last().let { step -> TitleChoice(step, fitLines(measurer, title, styles.title(step, cjk), colW, step.lines)) }
-    val titleStyle = styles.title(choice.step, cjk)
+    val breaker = BalancedBreaker(measurer)
+    val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, breaker, colW, { Float.MAX_VALUE }, d, queueTitleLadder)
+        ?: queueTitleLadder.last().let { step ->
+            val style = styles.title(step, cjk)
+            TitleChoice(step, breaker.title(fitLines(breaker, title, style, colW, step.lines), style, colW, step.lines))
+        }
+    val titleStyle = choice.layout.layoutInput.style
     val versionStyle = styles.version(choice.step.size)
     val metaStyle = styles.faces.textType(17f, 400, styles.quiet, lineHeight = 23f, tracking = 0.005f)
         .merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
@@ -291,7 +298,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         y += cap(styles.work) + height(measure(AnnotatedString(work), styles.work)) + Gaps.WORK * d
     }
     val titleTop = y
-    y += cap(titleStyle) + height(measure(choice.text, titleStyle, lines = choice.step.lines))
+    y += cap(titleStyle) + height(choice.layout)
     var versionTop: Float? = null
     if (t.version != null) {
         versionTop = y + Gaps.VERSION * d
@@ -338,9 +345,10 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     return QueuePlan(
         styles = styles,
         work = t.work,
-        title = choice.text,
+        title = choice.layout.layoutInput.text,
         titleStyle = titleStyle,
         titleLines = choice.step.lines,
+        titleWidth = choice.layout.size.width,
         version = t.version,
         versionStyle = versionStyle,
         meta = meta,
@@ -395,8 +403,8 @@ private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyl
  * [text] in at most [lines] lines of [width], cut after a whole word if it must be, never inside
  * one, and before a parenthesis it would leave open.
  */
-private fun fitLines(measurer: TextMeasurer, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
-    fun fits(s: AnnotatedString) = !measurer.measure(s, style, maxLines = lines, constraints = Constraints(maxWidth = width)).hasVisualOverflow
+private fun fitLines(breaker: BalancedBreaker, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
+    fun fits(s: AnnotatedString) = breaker.lineEnds(s, style, width).size <= lines
     if (fits(text)) return text
     val plain = text.text
     var end = plain.length
@@ -465,7 +473,8 @@ internal fun QueueText(
             val colW = plan.columnWidth
             val c = Constraints(maxWidth = colW)
             val work = measurables[0].measure(c)
-            val title = measurables[1].measure(c)
+            // The title as wide as its balanced lines were set for.
+            val title = measurables[1].measure(Constraints.fixedWidth(plan.titleWidth))
             val version = measurables[2].measure(c)
             val meta = measurables[3].measure(c)
             val bottom = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))

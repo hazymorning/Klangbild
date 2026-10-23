@@ -12,7 +12,8 @@ dependencies {
     // Only compiled against: the plugins themselves come from the main build, which declares them.
     compileOnly(libs.android.gradle.api)
     compileOnly(libs.kotlin.gradle.plugin)
-    // The texts' formats come from Unicode's CLDR, as ICU has them (GenerateTexts).
+    // The texts' formats come from Unicode's CLDR, as ICU has them (GenerateTexts). GenerateLineBreaks
+    // is compiled against it too but runs with the ICU4J the module using it hands it.
     implementation(libs.icu4j)
 }
 
