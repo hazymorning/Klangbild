@@ -1,28 +1,28 @@
 # Klangbild
 
-These are the notes for AI assistants working on this repository. They only cover what the code
-and tests don't already show, and they describe how things are now. When a change makes a line
-here wrong, fix the line. Add a new one only for something a future session couldn't learn from
-the code, and keep history and anything said in a chat out of it. Git keeps the history.
+These are the notes for AI assistants working on this repository. They describe things as they
+are now and cover only what the code and tests don't show. When a change makes a line here wrong,
+fix it. Add a line only for something a future session couldn't learn from the code. Leave out
+history, which Git keeps, and don't quote or refer to chat conversations.
 
 ## What Klangbild is
 
-Klangbild is a decoration for the room, a calm picture of the music that's playing, and not a
-generic media player. There are enough media players already. The design is the whole point of
-Klangbild and the reason it exists.
+Klangbild is a calm picture of the music that's playing, made to decorate a room. It isn't a
+generic media player, since there are enough of those already. Its design is the whole point.
 
-Every change makes this one design better and keeps to its standard. Nothing turns it toward a
-player, so there are no buttons or other controls on the screen (the remote works without anything
-to point at) and nothing that outweighs the cover. Anything new meets the same standard as
-everything else.
+Every change should make that design better and meet its standard. Nothing should make it more
+like a player, so there are no buttons, icons or other controls on the screen (the remote works
+without them) and nothing that draws more attention than the cover.
 
-Build what was asked for and nothing more. A feature, a setting, a line in these notes or a
-sentence in a text is there because it's needed, not because it can't hurt.
+Build only what was asked for. Add a feature, a setting, a line in these notes or a sentence
+anywhere because it's needed, not because it can't hurt.
 
 It's an Android TV app for Home Assistant and Music Assistant, built for a 4K Android TV box with a
-weak GPU in front of an OLED TV, and installed by sideloading. The first phase, the Now Playing
-screen, is nearly finished. The second is a calm music visualizer that will replace the landscape,
-so the landscape gets no new work.
+weak GPU connected to an OLED TV, and it's sideloaded. The first phase, the Now Playing screen, is
+nearly finished. The second is a calm music visualizer meant to replace the paper landscape
+(`layers/landscape`), unless people vote in the poll (discussion #51) to keep it. Until then, keep
+the landscape working but don't put new work into it, and never call it useless or unfinished in
+public.
 
 ## Writing
 
@@ -31,47 +31,52 @@ release notes, commits, pull requests, issues, discussions and code comments.
 
 - Write plain, standard English, the way a native speaker would write it on GitHub. Use US
   spelling and the usual words for things, like track, lyrics, queue, library and Now Playing.
-- Use as few words as the information needs. Every sentence tells the reader something new, and
-  a text with one fact in it is one sentence long.
-- Keep the tone friendly and modest. Use normal punctuation, with colons and dashes only where
-  they really help. No em dashes, emoji, exclamation marks or marketing words.
-- Only claim what has been verified. Whether something was tried on a real TV is internal and
-  stays out of public texts.
-- UI texts, names and code comments name no brands of lights, speakers, media players or TV
-  devices. Data that recognizes them, like `SpeakerLabel`'s, is fine.
-- The UI speaks English, with German in `values-de`. An English UI sentence is never longer than
-  its German one (`LanguageTest`). Menu labels use the words people know from TVs and phones.
-  Everything else in the repository is in English.
-- Music metadata keeps its own typography (`TrackText`). Dashes inside strings and test data are
-  data, so never search and replace them.
+- Use as few words as the information needs, and make every sentence tell the reader something
+  new. Keep text short by leaving things out, not by writing clipped sentences.
+- Keep the tone friendly and modest. Use periods and commas for most things and a colon only where
+  it really helps. Don't use dashes as punctuation, emoji, exclamation points or marketing
+  language.
+- Only claim what has been verified, and claim behavior on a real device, like the frame rate,
+  waking the TV over CEC or the screensaver, only once it has been verified there. Never say
+  publicly whether something was tried on a real TV.
+- Don't mention brands of lights, speakers, media players or TV devices in UI text, code or
+  comments. Data used to recognize them, like the words in `SpeakerLabel`, is fine.
+- The UI is in English, with German in `values-de`. No English UI string is longer than its German
+  translation (`LanguageTest`). Menu labels use the words people know from TVs and phones, and
+  their values are plain words. Everything else in the repository is in English.
+- Music metadata keeps its own typography (`TrackText`). Dashes in string literals and test data
+  are data, so never change them with find and replace.
 
-For particular texts:
+By kind:
 
-- **README:** short, written to the reader and never in the first person, with the longer parts
-  folded into `<details>`. GitHub only draws alert boxes like `> [!NOTE]` outside a fold, so a
-  note inside one is a plain quote. The pictures are mockups in `docs/screenshots/`.
-  `ReadmeShotsTest` renders the screens and `tools/make_readme_pictures.py` sets them in a room,
-  and both run again when the look changes. The download button links to
-  `releases/latest/download/klangbild.apk`, so every release names its APK `klangbild.apk`.
+- **README:** short, addressed to the reader and never in the first person, with the longer parts
+  in `<details>` sections. GitHub renders alerts like `> [!NOTE]` only outside `<details>`, so use
+  a plain quote inside one. The pictures are mockups in `docs/screenshots/`. `ReadmeShotsTest`
+  renders the screens and `tools/make_readme_pictures.py` places them in a room. Run both again
+  when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
+  every release's APK must be named `klangbild.apk`.
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better` and
-  `### Bug fixes` as needed. Each gets a few short points in everyday words about what changed in
-  Klangbild, without talking to the reader. Nothing technical, only what's sure to work, and as
-  short as the release allows.
-- **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300.
-- **Issues** are for bugs, through the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
-  questions go to the Discussions.
-- `docs/` only holds the release notes and the README's pictures. The effort goes into the app.
+  `### Bug fixes` as needed. Each file has a few short points in everyday words about what changed,
+  without addressing the reader. Leave out technical details and precise-sounding claims like "to a
+  fraction of a second", include only what's known to work, and keep it as short as the release
+  allows.
+- **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
+  characters.
+- **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
+  questions go in Discussions.
+- `docs/` holds only the release notes and the README's pictures. Put the effort into the app, not
+  into more documentation.
 
-Commits, pull requests, comments, issues and releases carry no AI branding, so no "Generated with"
-or "Generated by" lines, no Co-Authored-By and no session links. If a tool adds a footer by
-itself, edit it out right away. Commits carry the owner's name, which
+Keep AI branding out of commits, pull requests, comments, issues and releases, so no "Generated
+with" or "Generated by" lines, no Co-Authored-By and no session links. If a tool adds a footer
+automatically, remove it right away. Commits are authored under the owner's name, which
 `.claude/hooks/session-start.sh` sets in cloud sessions.
 
-Push work to a branch named after a German word from the world of sound, never to a cloud
-session's own branch (`ccr-…`, `claude/…`). Use lowercase, write umlauts as ae, oe and ue and ß as
-ss, and pick a word that isn't on GitHub at the moment and fits the work if one does, like
-`auftakt` for something new, `missklang` for a fix, `nachklang` for a follow-up or `stimmgabel`
-for tuning. This is standing permission to push there and open pull requests from it.
+Push work to a branch named after a German word related to sound, never to a cloud session's own
+branch (`ccr-…`, `claude/…`). Use lowercase, and write ä, ö, ü as ae, oe, ue and ß as ss. Pick a
+word that isn't already a branch on GitHub and, if possible, fits the work, like `auftakt` for
+something new, `missklang` for a fix, `nachklang` for a follow-up or `stimmgabel` for tuning. This
+is standing permission to push to that branch and open pull requests from it.
 
 ## Build and test
 
@@ -79,57 +84,63 @@ for tuning. This is standing permission to push there and open pull requests fro
 export LC_ALL=C.UTF-8                                          # test names and data contain umlauts
 ./gradlew testDebugUnitTest                                    # every module's tests, without the pictures
 ./gradlew testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true   # with every picture, written to each module's build/screenshots/
-./gradlew :ui:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # one class
-python3 ci/compare-pictures.py before/ layers/ui/build/screenshots/ changes/   # which pictures changed
+./gradlew :ui:testDebugUnitTest --tests '*StageTest*' -Pklangbild.pictures -Proborazzi.test.record=true   # only the stage tests
+python3 ci/compare-pictures.py before/ layers/ui/build/screenshots/ changes/   # compares with a copy made before the change, changed pictures go to changes/
 ./gradlew :androidApp:lintRelease                              # lint over the app and every layer
 ./gradlew :androidApp:assembleRelease                          # minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # banner and icons from tools/logo.svg
 python3 tools/make_readme_pictures.py                          # the README's mockups, download button and poll banner
-./gradlew :speaker:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # after: python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0'
-ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's film, from the promo film kept outside the repository
+./gradlew :speaker:testDebugUnitTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # first: python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0'
+ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's video, from the promo video kept outside the repository
 ```
 
 - `local.properties` holds `sdk.dir=/opt/android-sdk` and isn't committed. The SDK levels are in
   the version catalog. minSdk is 28 because the v3 release signature needs it.
-- Kotlin and lint warnings fail the build. Every suppression has a one-line reason.
+- Kotlin and lint warnings fail the build. Give every suppression a one-line reason.
 - Gradle and Robolectric try Google's Maven mirror first, since Maven Central rate-limits shared
   IPs.
-- Picture tests render screens and check nothing. They carry `@Category(Pictures::class)` and only
-  run with `-Pklangbild.pictures`. Pictures aren't committed. CI renders them all, and on a pull
-  request it also renders the base branch and compares every picture (`ci/compare-pictures.py`,
-  artifact `picture-changes`). The comparison doesn't fail the run, so read its job summary. A
-  refactor leaves every picture identical.
-- Renders come out the same on every run. Stills wrap their content in `Fixtures.Still { }`, which
+- Picture tests render screens and assert nothing. They're annotated with
+  `@Category(Pictures::class)` and only run with `-Pklangbild.pictures`. Pictures aren't
+  committed. CI renders them all, and on a pull request it also renders the base branch and
+  compares every picture (`ci/compare-pictures.py`, artifact `picture-changes`). A difference
+  doesn't fail the run, so read the job summary. A refactor must leave every picture identical. To
+  check that locally, copy `layers/ui/build/screenshots/` and `layers/art/build/screenshots/`
+  before the change and compare them afterward.
+- Renders must be identical on every run. Stills wrap their content in `Fixtures.Still { }`, which
   provides `LocalStill`, and animations use `createComposeRule()` with
   `mainClock.autoAdvance = false`.
-- Tests that need words use `TestTexts.german` or `TestTexts.english()`. Renders are German by
+- Tests that need UI strings use `TestTexts.german` or `TestTexts.english()`. Renders are German by
   default (`Fixtures.texts`).
-- Motion is judged from contact sheets. `FlowMotionTest` and `TransitionTest` write frames, which
-  you tile with Pillow and look at with the Read tool.
-- The emulator smoke test talks to `ci/fake_ha.py`, a stand-in Home Assistant. The speaker's
-  end-to-end tests play from aiosendspin 10.2.0 (`ci/sendspin_server.py`), the version Music
-  Assistant 2.10.7 runs.
-- CI runs three jobs side by side: the release APK (followed by the emulator smoke test and the
-  key rotation checks), every module's tests with their pictures, and lint. A change that only
-  touches the README, AGENTS.md, LICENSE, `docs/`, `tools/`, `.claude/` or the issue templates
-  runs nothing. Tags and manual runs always run everything.
+- To judge motion, take the frames that `FlowMotionTest` and `TransitionTest` write, tile them
+  into a contact sheet with Pillow, and look at it with the Read tool.
+- The emulator smoke test talks to `ci/fake_ha.py`, a stand-in Home Assistant. With it running
+  locally, `-Pklangbild.fakeHa=http://127.0.0.1:8123` lets `FirstLaunchTest` talk to it. The
+  speaker's end-to-end tests play from aiosendspin 10.2.0 (`ci/sendspin_server.py`), the version
+  Music Assistant 2.10.7 runs.
+- CI runs three jobs in parallel: the release APK (followed by the emulator smoke test and the key
+  rotation checks), every module's tests with their pictures, and lint. On a pull request a fourth
+  job renders the base branch's pictures. CI doesn't run for a change that only touches the
+  README, AGENTS.md, LICENSE, `docs/`, `tools/`, `.claude/` or the issue templates. Tags and manual
+  runs always run everything.
 
 ## Modules
 
-- Every layer is an Android library in `layers/<package>/`, named after its package. The app
-  itself is `androidApp/`, with MainActivity, KlangbildApp (the wiring), SpeakerService, the
-  screensaver, the manifest and the launcher resources.
+- Every layer is an Android library in `layers/<package>/`. The app itself is `androidApp/`, with
+  MainActivity, KlangbildApp and its `AppGraph` (the wiring), SpeakerService, the screensaver, the
+  manifest and the launcher resources.
 - Shared build setup lives in `build-logic/` as convention plugins (`klangbild.android.application`,
   `klangbild.android.library`, `klangbild.compose`, `klangbild.robolectric`). The Compose compiler
   also runs on the layers whose classes the screens use, so Compose treats those classes as stable.
-- A layer only builds on the layers its build file names, and `LayersTest` checks the direction.
-  Project dependencies are `implementation`, and an outside library is `api` only when its types
-  show in the module's API.
-- All strings are resources of `:text` (`text.R`), and the fonts belong to `:ui`. A library brings
-  its own R8 rules in `consumer-rules.pro`.
-- Tests live in the module of their package. Helpers that several layers' tests share are modules
-  of their own (`art-testing`, `text-testing`, `domain-testing`, `app-testing`). A test that reads
-  a file outside its module gets the path from the build (`reads` in build-logic).
+- A layer depends only on the layers its build file lists, and `LayersTest` checks that the
+  dependencies point downward. Project dependencies are `implementation`, and an external library
+  is `api` only when its types appear in the module's API.
+- All strings are resources of `:text` (`text.R`), and the fonts belong to `:ui`. Each library
+  ships its own R8 rules in `consumer-rules.pro`.
+- Tests live in the module of their package. A test that needs a layer above its own goes in the
+  lowest module that depends on that layer, like `ProgressTest` in data. Test helpers shared by
+  several layers are separate modules (`art-testing`, `text-testing`, `domain-testing`,
+  `app-testing`). A test that reads a file outside its module gets the path from the build
+  (`reads` in build-logic).
 
 From the bottom up:
 
@@ -137,9 +148,9 @@ From the bottom up:
 | --- | --- |
 | math, json | small helpers like easing, a seeded random source, hashes and JSON strings |
 | text | every UI string, `Texts` and the language setting |
-| color | Oklab, cover palettes, the lamp light everything is seen in, the light and dark wall, contrast |
+| color | Oklab, cover palettes, the lamp light that tints every color (`Lamp`), the light and dark background, contrast |
 | art | generated art for tracks without a cover |
-| sound | the sound feed for the coming visualizer, with loudness, bands and beats |
+| sound | the sound feed for the upcoming visualizer, with loudness, bands and beats |
 | domain | the model and its rules: tracks, player state, the queue, progress, chapters, the sleep timer |
 | sendspin | Music Assistant's protocol for synchronized audio |
 | render | the stage grid and the work done once per track (`SceneBuilder`) |
@@ -149,73 +160,79 @@ From the bottom up:
 | lights | the lights behind the TV |
 | setup | the phone's setup page and its small web server |
 | speaker | the TV as a Sendspin speaker |
-| app | the controller, `NowPlayingController`, which turns everything into one `UiState` |
+| app | `NowPlayingController`, which turns everything into one `UiState` |
 | ui | the Compose screens |
 
 ## Releases and signing
 
-- There's no signing key in the repository. CI signs release APKs (`ci/sign-release.sh`) with APK
-  Signature Scheme v3 and a signing certificate lineage, so copies signed with the original key
-  (every release up to 6.0.0) still update in place. The key, its password and the lineage exist
-  only as repository secrets (`RELEASE_KEYSTORE`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_LINEAGE`).
-  Never make a new key or lineage, even though `ci/make-lineage.sh` could: every installed copy
-  would refuse the update. `ci/rotation-check.sh` tests the update path on API 28 to 36 with
-  throwaway keys.
+- CI signs release APKs (`ci/sign-release.sh`) with APK Signature Scheme v3 and a signing
+  certificate lineage, so installs signed with the original key (every release up to 6.0.0) still
+  update in place. The key, its password and the lineage exist only as repository secrets
+  (`RELEASE_KEYSTORE`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_LINEAGE`). Never create a new key or
+  lineage, even with `ci/make-lineage.sh`, because every installed copy would refuse the update.
+  `ci/rotation-check.sh` tests the update path on API 28 to 36 with throwaway keys.
 - The app declares no signature permission of its own. The original key has no permission
   capability in the lineage, so an update that declares one would be refused. That's why the
   manifest removes the one AndroidX core adds.
-- Versions follow the calendar, like Home Assistant's. `v2026.11.0` is the first release in
+- Versions are calendar-based, like Home Assistant's. `v2026.11.0` is the first release in
   November 2026 and `v2026.11.1` the next one that month. A beta is `v2026.11.0-beta.1`.
-- A pushed tag publishes a release right away. A manual CI run on main with the version as
-  `release` makes a draft instead, and a beta draft can come from any branch. Publishing a draft
-  creates its tag. This session's git can't push tags, so manual runs go through the GitHub tools.
-- Never publish a release or push a version tag yourself. The owner publishes drafts, or tells
-  you to in so many words. Getting a release ready means writing `docs/releases/<tag>.md` and,
-  when asked, making a draft with a manual run.
-- The "Tidy up" workflow, started by hand, keeps the newest ten calendar releases, deletes the tags
-  of the others and deletes branches merged into main. The old 6.3.0 and 6.4.0 releases stay.
+- A pushed version tag publishes a release right away, but a beta tag publishes nothing. A manual
+  CI run on main with the version in the `release` input makes a draft instead, and a beta draft
+  can come from any branch. Publishing a draft creates its tag, and that tag's run publishes
+  nothing more. Git in a cloud session can't push tags, so start manual runs with the GitHub tools.
+- The owner publishes drafts. Publish a release or push a version tag only when the owner
+  explicitly tells you to. Getting a release ready means writing `docs/releases/<tag>.md`,
+  checking it and the README for em dashes and emoji, and, when asked, making a draft with a
+  manual run.
+- The "Tidy up" workflow, run manually, keeps the newest calendar releases (ten by default),
+  deletes the older ones with their tags, and deletes branches merged into main. The old 6.3.0 and
+  6.4.0 releases stay.
 
 ## Design
 
 These rules hold for every change, including settings that are off by default. The exact numbers
-are in the code, and the tests named here check them on rendered pixels.
+are in the code, and the tests named here check them.
 
 - The cover is the heaviest and tallest thing on screen. The text block beside it takes at most
   62% of its height (`BLOCK_SHARE`). Nothing frames a cover, so no shadow, outline or mat
   (`NoFrameTest`), and every cover fills its square (`CoverFillTest`).
 - The layout follows `StageGrid` and is centered on what's actually drawn, in both languages
   (`CenteringTest`). The whole screen drifts by up to 6 dp to protect the OLED.
-- There are two typefaces. Jost is for titles from 24 sp, the clock, headings and all numbers
-  (`titleType()`), and DM Sans for the smaller text (`textType()`). Text is in sentence case, with
-  no all caps, letter spacing or italics, and never in the system font. Nothing is smaller than
-  15 sp.
-- Text comes in three inks, near-neutral with a hint of the cover's color, each at least 4.5:1
-  against what's behind it (`DesignRulesTest`). Never pure white.
-- The screen looks the same at every hour. Only the wall (light by day, dark at night) and the
-  brightness of the lights follow the sun.
-- Motion is calm. Things fade and cross, nothing slides or bounces, a track change never goes
-  dark, and one change runs at a time while the newest waits for it. A frame only changes alpha,
-  transforms and color filters, and heavy work like blurring and palettes happens once per track
-  in `SceneBuilder`. Nothing in CI measures the frame cost, so this is the only guard.
-- States are words in the status line, like "Living room · Paused" or "Volume 35%".
+- There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
+  (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
+  with no letter spacing or italics, and never in the system font. Outside the debug overlay,
+  nothing is smaller than 15 sp.
+- Text comes in three inks, near-neutral with a hint of the cover's color, each with a contrast of
+  at least 4.5:1 against its background (`DesignRulesTest`). Never pure white.
+- The screen looks the same at any time of day. Only the background (light by day, dark at night)
+  and the brightness of the lights follow the sun.
+- Motion is calm. Things fade and crossfade, nothing slides or bounces, the screen never goes dark
+  during a track change, and only one transition runs at a time. Whatever arrives meanwhile waits,
+  and only the newest runs next. Per frame, only alpha, transforms and color filters change. Heavy
+  work like blurring and palettes happens once per track in `SceneBuilder`. CI measures frames
+  only for the landscape, on a manual run with the `measure` input, so for the stage these rules
+  are the only guard.
+- States are shown as words in the status line, never as icons, like "Living room · Paused" or
+  "Volume 35%".
 - Every setting is always in the menu. One that needs something set up first is dimmed, its
-  explanation says what's missing, and OK opens the setup.
+  explanation says what's missing, and pressing OK opens the setup.
 - Commands only go to Home Assistant when the player's `supported_features` allow them.
-- Home Assistant is used only through its documented interfaces. Tokens are encrypted at rest,
-  only ever go to the address they were made for and are never logged. Every request that carries
-  a token goes through `tokenHttp` in `KlangbildApp`, which follows no redirects and caches
+- Home Assistant is used only through its documented interfaces. Tokens are encrypted at rest and
+  only ever go to the address they were issued for. Every request that carries a token goes
+  through `AppGraph.tokenHttp` (in `KlangbildApp.kt`), which follows no redirects and caches
   nothing. Plain HTTP only goes to private addresses, which `LocalNetwork.CleartextGuard` checks
   before sending and again on every hop. A refresh token Home Assistant has refused is never tried
-  again, since every try counts as a failed login there.
-- Music Assistant is optional. Without it, everything works from Home Assistant alone.
-- Play here, the TV as a speaker, is off by default. While it's off, nothing of it runs, no
-  service, thread or connection (`SpeakerServiceTest`). Its key is made once and kept, because a
-  new key would show up as a new speaker in Music Assistant and a new entity in Home Assistant.
-- Klangbild gives the lights behind the TV back as they were. It saves their state with
-  `scene.create` before taking them over and restores it afterwards, and a light someone else
-  changes is theirs until the next session.
-- The setup page on the phone follows the same design. Its server only runs while the setup
-  screen shows, only answers requests for its own address, only takes API calls as JSON from its
-  own page with the six-digit code, and closes slow connections.
-- Behavior on a real device, like the frame rate, waking the TV over CEC or the screensaver, is
-  only claimed once it has been verified there.
+  again, since Home Assistant counts every attempt as a failed login. The app logs its connection
+  steps under the tag `Klangbild` and never logs a token.
+- Music Assistant is optional, and everything works with Home Assistant alone.
+- The "Play here" setting, which makes the TV a speaker, is off by default. While it's off, none
+  of it runs: no service, thread or connection (`SpeakerServiceTest`). Its key is generated once
+  and kept, because a new key would show up as a new speaker in Music Assistant and a new entity
+  in Home Assistant. It has been in daily use on the owner's TV and plays well.
+- Klangbild saves the state of the lights behind the TV with `scene.create` before taking them
+  over and restores it afterward. If someone else changes a light, Klangbild leaves it alone until
+  the next time music starts.
+- The setup page on the phone uses the phone's own system font, in sentence case, with no icons,
+  shadows, gradients or pill buttons, and follows the phone's light or dark mode. Its server only
+  runs while the setup screen is open, only answers requests for its own address, only accepts API
+  calls as JSON from its own page with the six-digit code, and closes slow connections.

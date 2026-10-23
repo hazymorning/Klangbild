@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Klangbild only shows what's playing and can't browse your library or pick music. Issues are for bugs, so please post ideas and questions in the [Discussions](https://github.com/hazymorning/Klangbild/discussions).
+        Klangbild only shows what's playing and can't browse your library or pick music. For ideas and questions, please use [Discussions](https://github.com/hazymorning/Klangbild/discussions).
   - type: checkboxes
     id: broken
     attributes:
@@ -17,21 +17,21 @@ body:
     id: what-happened
     attributes:
       label: What happened
-      description: What did you do, what did you see, and what did you expect to see instead?
+      description: What did you do, what did you see, and what did you expect instead?
     validations:
       required: true
   - type: input
     id: klangbild-version
     attributes:
       label: Klangbild version
-      description: It's shown in the TV's app settings.
+      description: It's shown on Klangbild's page in the TV's app settings.
     validations:
       required: true
   - type: input
     id: tv-device
     attributes:
-      label: TV device and Android TV version
-      description: The model, and the version of Android TV or Fire OS shown in its settings under About.
+      label: Device and Android TV version
+      description: The model, and the Android TV or Fire OS version shown under About in its settings.
     validations:
       required: true
   - type: input
