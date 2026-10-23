@@ -34,6 +34,10 @@ internal fun Project.configureAndroid(android: CommonExtension) {
             "IconMissingDensityFolder",
         )
     }
+    android.testOptions.unitTests.all {
+        // The speaker's simulated playback and the screens' 4K pictures need this much room.
+        it.maxHeapSize = "3g"
+    }
     extensions.configure<KotlinAndroidExtension> {
         compilerOptions {
             // A compiler warning fails the build as a lint warning does.

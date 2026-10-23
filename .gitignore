@@ -23,6 +23,4 @@ secrets.properties
 *.keystore
 *.p12
 
-# Screenshot test output (renderings are produced by the tests, curated ones live in docs/)
-app/src/test/screenshots/
 __pycache__/

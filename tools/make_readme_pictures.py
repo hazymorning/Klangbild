@@ -6,10 +6,10 @@ Usage: python3 tools/make_readme_pictures.py [names]   (needs Pillow and numpy; 
 poll_banners make only those pictures)
 
 Render the screens first:
-    ./gradlew :app:testDebugUnitTest --tests '*ReadmeShotsTest*' --tests '*LandscapeGalleryTest*' -Pklangbild.pictures -Proborazzi.test.record=true
-They land in app/build/screenshots/readme/, each with the colors the lights behind the TV would
-show (a JSON file beside it); the poll's banner also takes the landscape by day from
-app/build/screenshots/landscape/gallery/. The pictures go to docs/screenshots/.
+    ./gradlew :ui:testDebugUnitTest --tests '*ReadmeShotsTest*' --tests '*LandscapeGalleryTest*' -Pklangbild.pictures -Proborazzi.test.record=true
+They land in layers/ui/build/screenshots/readme/, each with the colors the lights behind the TV
+would show (a JSON file beside it); the poll's banner also takes the landscape by day from
+layers/ui/build/screenshots/landscape/gallery/. The pictures go to docs/screenshots/.
 
 The room is lit in linear light: a painted wall, a little light from the room, and the lights
 behind the TV, each a soft lamp hidden behind the screen's edge, shining on the wall in the color
@@ -24,9 +24,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RENDERS = os.path.join(ROOT, "app", "build", "screenshots", "readme")
+RENDERS = os.path.join(ROOT, "layers", "ui", "build", "screenshots", "readme")
 OUT = os.path.join(ROOT, "docs", "screenshots")
-FONTS = os.path.join(ROOT, "app", "src", "main", "res", "font")
+FONTS = os.path.join(ROOT, "layers", "ui", "src", "main", "res", "font")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from make_launcher_assets import NAVY, logo  # noqa: E402  (the same mark as on the TV's home screen)
@@ -944,7 +944,7 @@ def poll_banner(light=False, small=False, veil=(0.30, 0.62)):
         title_size, size, optical, bh, inset, r, hair = 56, 38, 18, 100, 54, 22, 2
         W, H = 1800, 240
         left, right, top = 0.08, 0.965, 0.225
-    src = os.path.join(ROOT, "app", "build", "screenshots", "landscape", "gallery", "2_summer_2_noon.png") if light \
+    src = os.path.join(ROOT, "layers", "ui", "build", "screenshots", "landscape", "gallery", "2_summer_2_noon.png") if light \
         else os.path.join(RENDERS, "landscape.png")
     render = Image.open(src).convert("RGB")
     rw, rh = render.size
