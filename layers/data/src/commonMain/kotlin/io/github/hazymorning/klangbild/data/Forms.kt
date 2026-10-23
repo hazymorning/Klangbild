@@ -15,10 +15,11 @@ fun formBody(vararg fields: Pair<String, String>): String =
     fields.joinToString("&") { (name, value) -> formEncode(name) + "=" + formEncode(value) }
 
 /**
- * [text] decoded from a form or a query, exactly as `java.net.URLDecoder.decode(text, "UTF-8")`
- * decodes it: `+` becomes a space, and each run of `%XX` becomes the characters of its UTF-8
- * bytes, with U+FFFD for a malformed sequence. Like it, this throws IllegalArgumentException for a
- * `%` without two hex digits after it.
+ * [text] decoded from a form or a query: `+` becomes a space, and each run of `%XX` becomes the
+ * characters of its UTF-8 bytes, with U+FFFD for a malformed sequence. A `%` without two hex
+ * digits (0-9, a-f, A-F) after it throws IllegalArgumentException.
+ *
+ * It follows `java.net.URLDecoder.decode(text, "UTF-8")` on Android, messages included.
  *
  * The bytes are read with [decodeToString], which on the JVM and Android is the platform's own
  * decoder, the one URLDecoder uses. Elsewhere a surrogate written in UTF-8 (ED, then A0 to BF)
@@ -40,7 +41,14 @@ fun formDecode(text: String): String {
                 val buffer = bytes ?: ByteArray((text.length - i) / 3).also { bytes = it }
                 var size = 0
                 while (i + 2 < text.length && c == '%') {
-                    buffer[size++] = hexByte(text, i + 1).toByte()
+                    val high = text[i + 1].parseHexDigit()
+                    val low = text[i + 2].parseHexDigit()
+                    if (high == -1 || low == -1) {
+                        throw IllegalArgumentException(
+                            "URLDecoder: Illegal hex characters in escape (%) pattern : " + text.substring(i, i + 3),
+                        )
+                    }
+                    buffer[size++] = (high * 16 + low).toByte()
                     i += 3
                     if (i < text.length) c = text[i]
                 }
@@ -57,37 +65,3 @@ fun formDecode(text: String): String {
     }
     return out.toString()
 }
-
-/**
- * The two characters of [text] at [start] read as a number in hex, as URLDecoder reads them with
- * `Integer.parseInt(text, start, start + 2, 16)`: a sign may come first, and any digit Java knows
- * counts, like a fullwidth one.
- */
-private fun hexByte(text: String, start: Int): Int {
-    var i = start
-    var negative = false
-    if (text[i] < '0') {
-        when (text[i]) {
-            '-' -> negative = true
-            '+' -> Unit
-            else -> throw illegalHex(text, start, i)
-        }
-        i++
-    }
-    var value = 0
-    while (i < start + 2) {
-        val digit = text[i].digitToIntOrNull(16) ?: throw illegalHex(text, start, i)
-        value = value * 16 + digit
-        i++
-    }
-    if (negative && value != 0) {
-        throw IllegalArgumentException("URLDecoder: Illegal hex characters in escape (%) pattern - negative value")
-    }
-    return value
-}
-
-private fun illegalHex(text: String, start: Int, index: Int) =
-    IllegalArgumentException(
-        "URLDecoder: Illegal hex characters in escape (%) pattern - Error at index ${index - start} in: " +
-            "\"${text.substring(start, start + 2)}\"",
-    )

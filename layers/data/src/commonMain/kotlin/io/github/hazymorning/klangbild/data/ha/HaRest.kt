@@ -1,13 +1,13 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
+import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
-import io.ktor.client.request.url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -67,7 +67,7 @@ class HaRest(private val http: HttpClient, private val auth: HaAuth) {
             val (code, text) = http.fetch(
                 CALL_TIMEOUT_MS,
                 {
-                    url(auth.baseUrl + path)
+                    address(auth.baseUrl + path)
                     header("Authorization", "Bearer $token")
                 },
             ) { response -> response.status.value to response.textBelow(MAX_ANSWER_BYTES) }

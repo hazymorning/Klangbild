@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
+import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.formBody
 import io.github.hazymorning.klangbild.data.isSuccessful
@@ -9,7 +10,6 @@ import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.setBody
-import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
@@ -143,7 +143,7 @@ class HaAuth(
         /** A POST of the form [form] to [url]. */
         private fun HttpRequestBuilder.post(url: String, form: String) {
             method = HttpMethod.Post
-            url(url)
+            address(url)
             setBody(TextContent(form, FORM))
         }
 

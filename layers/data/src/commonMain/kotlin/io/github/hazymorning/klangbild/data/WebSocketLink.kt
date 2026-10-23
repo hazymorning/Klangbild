@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.data
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.request.url
 import io.ktor.http.URLProtocol
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
@@ -17,12 +16,12 @@ import kotlinx.io.IOException
 import kotlin.concurrent.Volatile
 
 /**
- * A WebSocket to [address] (`ws`, `wss`, or `http` and `https` for them) over [http], opened at
+ * A WebSocket to [url] (`ws`, `wss`, or `http` and `https` for them) over [http], opened at
  * once in [scope]. What happens on it reaches [listener] as it happens, on the thread that
  * receives it, so a message's arrival can be timed in [Listener.onBinary]. It ends once, with
  * [Listener.onClosed] or [Listener.onFailure].
  */
-class WebSocketLink(scope: CoroutineScope, http: HttpClient, address: String, private val listener: Listener) {
+class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, private val listener: Listener) {
     interface Listener {
         /** The connection is open: messages can be sent on [socket]. */
         fun onOpen(socket: WebSocketLink) = Unit
@@ -45,11 +44,11 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, address: String, pr
     private val job = scope.launch(Dispatchers.Unconfined) {
         try {
             http.webSocket({
-                url(address)
-                url.protocol = when (url.protocol) {
+                address(url)
+                this.url.protocol = when (this.url.protocol) {
                     URLProtocol.HTTP -> URLProtocol.WS
                     URLProtocol.HTTPS -> URLProtocol.WSS
-                    else -> url.protocol
+                    else -> this.url.protocol
                 }
             }) {
                 session = this

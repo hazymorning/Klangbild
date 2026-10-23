@@ -13,8 +13,8 @@ package io.github.hazymorning.klangbild.data
 class WebUrl private constructor(
     /** Either `http` or `https`. */
     val scheme: String,
-    private val encodedUsername: String,
-    private val encodedPassword: String,
+    internal val encodedUsername: String,
+    internal val encodedPassword: String,
     /**
      * The host in canonical form: a name in lowercase ASCII with its international labels in
      * Punycode, like `xn--bcher-kva.local`, an IPv4 address, or an IPv6 address without brackets,
@@ -23,11 +23,11 @@ class WebUrl private constructor(
     val host: String,
     /** The port the URL names, or its scheme's default: 80 for `http` and 443 for `https`. */
     val port: Int,
-    private val encodedPathSegments: List<String>,
-    private val encodedQuery: String?,
+    internal val encodedPathSegments: List<String>,
+    internal val encodedQuery: String?,
     /** The decoded query's names and values in turn, a value null without `=`, or null without a query. */
     private val queryNamesAndValues: List<String?>?,
-    private val encodedFragment: String?,
+    internal val encodedFragment: String?,
     private val url: String,
 ) {
     /** The path as it's written in the URL, like `/a/b%20c`. It starts with `/`. */

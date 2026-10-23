@@ -8,7 +8,6 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
-import io.ktor.client.request.url
 import io.ktor.http.contentLength
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -106,7 +105,7 @@ class ArtworkLoader(
         return client.fetch(
             timeoutMs,
             {
-                url(url)
+                address(url)
                 token?.let { header("Authorization", "Bearer $it") }
             },
         ) { response ->
