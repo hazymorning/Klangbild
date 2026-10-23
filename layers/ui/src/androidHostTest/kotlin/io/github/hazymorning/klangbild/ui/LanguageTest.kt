@@ -295,7 +295,7 @@ class LanguageTest {
     fun everyEnglishTextIsTranslatedAndNoSentenceIsLongerThanItsGerman() {
         val english = strings("values")
         val german = strings("values-de")
-        val untranslatable = setOf("app_name", "language_english", "language_german")
+        val untranslatable = setOf("language_english", "language_german")
         assertThat(english.keys - german.keys - untranslatable, name = "texts without a German version").isEmpty()
         assertThat(german.keys - english.keys, name = "German texts without an English one").isEmpty()
         for ((name, text) in english) {

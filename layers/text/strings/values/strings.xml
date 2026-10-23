@@ -5,8 +5,6 @@
   article or a number with the word it belongs to; typographic quotes and apostrophes.
 -->
 <resources>
-    <string name="app_name" translatable="false">Klangbild</string>
-
     <!-- Values used on many lines -->
     <string name="on">On</string>
     <string name="off">Off</string>

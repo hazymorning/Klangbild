@@ -17,6 +17,7 @@ kotlin {
             implementation(projects.render)
             implementation(projects.setup)
             implementation(projects.sound)
+            implementation(projects.speaker)
             implementation(projects.text)
             // The controller runs in the scope it is given, on Ktor's clients, and hands out its
             // state, with the covers of the queue's list, as a flow.

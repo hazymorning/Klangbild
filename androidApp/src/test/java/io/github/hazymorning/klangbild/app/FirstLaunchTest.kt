@@ -4,7 +4,8 @@ import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isNotEqualTo
 import io.github.hazymorning.klangbild.KlangbildApp
 import io.github.hazymorning.klangbild.MainActivity
 import io.github.hazymorning.klangbild.domain.LinkState
@@ -61,11 +62,11 @@ class FirstLaunchTest {
             }
             if (ui.source.link != LinkState.UNCONFIGURED && ui.source.link != LinkState.CONNECTING) connected = true
             if (connected || ha == null) {
-                assertWithMessage("link after ${(System.currentTimeMillis() - start) / 1000} s").that(ui.source.link).isNotEqualTo(LinkState.UNCONFIGURED)
+                assertThat(ui.source.link, name = "link after ${(System.currentTimeMillis() - start) / 1000} s").isNotEqualTo(LinkState.UNCONFIGURED)
             }
             if (ha == null && ui.source.link != LinkState.UNCONFIGURED) return
             Thread.sleep(50)
         }
-        if (ha == null) assertWithMessage("link after the first start").that(controller.ui.value.source.link).isNotEqualTo(LinkState.UNCONFIGURED)
+        if (ha == null) assertThat(controller.ui.value.source.link, name = "link after the first start").isNotEqualTo(LinkState.UNCONFIGURED)
     }
 }

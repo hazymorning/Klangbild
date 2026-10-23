@@ -67,7 +67,7 @@ android {
             providers.gradleProperty("klangbild.fakeHa").orNull?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
             // LayersTest reads the app's own code and every layer's.
             it.reads("klangbild.appCode", layout.projectDirectory.dir("src/main/java/io/github/hazymorning/klangbild"), "**/*.kt")
-            it.reads("klangbild.layers", layout.settingsDirectory.dir("layers"), "*/src/main/**/*.kt")
+            it.reads("klangbild.layers", layout.settingsDirectory.dir("layers"), "*/src/*Main/**/*.kt")
         }
     }
 
@@ -91,14 +91,17 @@ dependencies {
     implementation(projects.domain)
     implementation(projects.landscape)
     implementation(projects.render)
+    implementation(projects.setup)
     implementation(projects.sound)
     implementation(projects.speaker)
     implementation(projects.text)
     implementation(projects.ui)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.compose.ui)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.okhttp)
+
+    testImplementation(libs.assertk)
 }

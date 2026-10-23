@@ -1,0 +1,78 @@
+package io.github.hazymorning.klangbild.app
+
+import io.github.hazymorning.klangbild.config.SecretBox
+import io.github.hazymorning.klangbild.config.SettingsStore
+import io.github.hazymorning.klangbild.config.ValueStore
+import io.github.hazymorning.klangbild.data.Log
+import io.github.hazymorning.klangbild.data.PictureDecoder
+import io.github.hazymorning.klangbild.setup.SetupHandler
+import io.github.hazymorning.klangbild.setup.SetupServer
+import io.github.hazymorning.klangbild.speaker.SpeakerHub
+import io.github.hazymorning.klangbild.speaker.SpeakerStore
+import io.github.hazymorning.klangbild.text.LanguageStore
+import io.github.hazymorning.klangbild.text.Localizer
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+/** What the app needs from the platform it runs on. [AppGraph] makes the rest of it from these. */
+interface Platform {
+    /** For pictures from anywhere: requests carry no credentials but to Home Assistant's own host. */
+    val http: HttpClient
+
+    /**
+     * For requests that carry a token: it follows no redirects and keeps nothing, so a token only
+     * ever goes to the address it was issued for.
+     */
+    val tokenHttp: HttpClient
+
+    /** Where the settings are kept. */
+    val settings: ValueStore
+
+    /** Seals the tokens the settings keep. */
+    val secrets: SecretBox
+
+    /** Where Play here keeps its key and pairings, opened when it is first needed. */
+    fun speakerValues(): ValueStore
+
+    /** Where the language chosen is kept, and the system's own languages and clock. */
+    val languages: LanguageStore
+
+    /** How covers are decoded. */
+    val pictures: PictureDecoder
+
+    /** The setup page's server for [handler], running in [scope]. */
+    fun setupServer(scope: CoroutineScope, handler: SetupHandler): SetupServer
+
+    val log: Log
+}
+
+/** The app's parts, made once from what the platform gives. The app is small enough not to need a DI framework. */
+class AppGraph(private val platform: Platform) {
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    val settings = SettingsStore(platform.settings, platform.secrets)
+
+    /** The words in the language chosen: the system's, or one from the menu. */
+    val localizer = Localizer(platform.languages)
+
+    /** This TV's speaker while it plays as one. */
+    val speakerHub = SpeakerHub()
+
+    val controller = NowPlayingController(
+        scope, platform.http, platform.tokenHttp, settings, localizer, platform.pictures, platform::setupServer, platform.log,
+        speaker = speakerHub.status,
+        pairingToken = { speakerHub.speaker?.pairingToken },
+        ownSound = { speakerHub.speaker?.sound },
+    )
+
+    /** What the speaker keeps (its key, its pairings), opened when it is first needed. */
+    val speakerStore: SpeakerStore by lazy { SpeakerStore(platform.speakerValues(), platform.secrets) }
+
+    init {
+        // What an earlier version stored is brought up to date now rather than on the next change.
+        scope.launch { settings.migrate() }
+    }
+}

@@ -9,74 +9,79 @@ import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
-import io.github.hazymorning.klangbild.app.NowPlayingController
+import io.github.hazymorning.klangbild.app.AppGraph
+import io.github.hazymorning.klangbild.app.Platform
 import io.github.hazymorning.klangbild.config.KeystoreSecretBox
-import io.github.hazymorning.klangbild.config.SettingsStore
-import io.github.hazymorning.klangbild.data.ha.LocalNetwork
-import io.github.hazymorning.klangbild.speaker.SpeakerStore
-import io.github.hazymorning.klangbild.text.Localizer
+import io.github.hazymorning.klangbild.config.ValueStore
+import io.github.hazymorning.klangbild.config.settingsValues
+import io.github.hazymorning.klangbild.data.AndroidLog
+import io.github.hazymorning.klangbild.data.AndroidPictureDecoder
+import io.github.hazymorning.klangbild.data.ha.CleartextGuard
+import io.github.hazymorning.klangbild.data.httpClient
+import io.github.hazymorning.klangbild.setup.SetupHandler
+import io.github.hazymorning.klangbild.setup.SocketSetupServer
+import io.github.hazymorning.klangbild.speaker.speakerClient
+import io.github.hazymorning.klangbild.speaker.speakerValues
 import io.github.hazymorning.klangbild.text.PlatformLanguageStore
 import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** Manual dependency graph. The app is small enough not to need a DI framework. */
-class AppGraph(context: Context) {
+/** What the app needs from Android: OkHttp's connections, DataStore, the keystore and the rest. */
+class AndroidPlatform(context: Context) : Platform {
     private val app = context.applicationContext
 
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    val http: OkHttpClient = OkHttpClient.Builder()
+    private val okHttp: OkHttpClient = OkHttpClient.Builder()
         // Covers come again (the album's next song, the cover flow): kept on disk as the servers allow.
-        .cache(Cache(File(context.cacheDir, "http"), HTTP_CACHE_BYTES))
+        .cache(Cache(File(app.cacheDir, "http"), HTTP_CACHE_BYTES))
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         // WebSocket keep-alive is handled by HA pings; OkHttp answers server pings itself.
-        .addInterceptor(LocalNetwork.CleartextGuard())
+        .addInterceptor(CleartextGuard())
         // The guard checks every redirect hop, too: a picture link must not lead to plain HTTP outside the home.
-        .addNetworkInterceptor(LocalNetwork.CleartextGuard())
+        .addNetworkInterceptor(CleartextGuard())
         .build()
 
     /** For requests that carry a token: no redirects, so a token never goes to another host than its own. */
-    val tokenHttp: OkHttpClient = http.newBuilder()
+    private val tokenOkHttp: OkHttpClient = okHttp.newBuilder()
         .followRedirects(false)
         .followSslRedirects(false)
         // What a token fetches is not written to disk.
         .cache(null)
         .build()
 
-    val settings = SettingsStore(context.applicationContext)
+    override val http: HttpClient = httpClient(OkHttp.create { preconfigured = okHttp })
 
-    /** The words in the language chosen: the system's, or one from the menu. */
-    val localizer = Localizer(context.applicationContext, PlatformLanguageStore(context.applicationContext))
+    override val tokenHttp: HttpClient = httpClient(OkHttp.create { preconfigured = tokenOkHttp })
 
-    /** This TV's speaker while its service runs ([SpeakerService]). */
-    val speakerHub = SpeakerHub()
+    /** Play here's connection, a token's too, made when it is first needed. */
+    val speakerHttp: HttpClient by lazy { speakerClient(tokenOkHttp) }
 
-    val controller = NowPlayingController(
-        scope, http, tokenHttp, settings, localizer,
-        speaker = speakerHub.status,
-        pairingToken = { speakerHub.speaker?.pairingToken },
-        ownSound = { speakerHub.speaker?.sound },
-    )
+    override val settings: ValueStore = settingsValues(app)
 
-    /** What the speaker keeps (its key, its pairings), opened when it is first needed. */
-    val speakerStore: SpeakerStore by lazy { SpeakerStore(app, KeystoreSecretBox()) }
+    override val secrets = KeystoreSecretBox()
 
-    init {
-        // What an earlier version stored is brought up to date now rather than on the next change.
-        scope.launch { settings.migrate() }
-    }
+    override fun speakerValues(): ValueStore = speakerValues(app)
+
+    override val languages = PlatformLanguageStore(app)
+
+    override val pictures = AndroidPictureDecoder
+
+    override fun setupServer(scope: CoroutineScope, handler: SetupHandler) = SocketSetupServer(scope, handler)
+
+    override val log = AndroidLog
 }
 
 class KlangbildApp : Application() {
+    lateinit var platform: AndroidPlatform
+        private set
+
     lateinit var graph: AppGraph
         private set
 
@@ -98,7 +103,8 @@ class KlangbildApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        graph = AppGraph(this)
+        platform = AndroidPlatform(this)
+        graph = AppGraph(platform)
         val refresh = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) = graph.localizer.refresh()
         }
@@ -127,7 +133,9 @@ class KlangbildApp : Application() {
     }
 }
 
-val Context.graph: AppGraph get() = (applicationContext as KlangbildApp).graph
+val Context.app: KlangbildApp get() = applicationContext as KlangbildApp
+
+val Context.graph: AppGraph get() = app.graph
 
 /** Room for covers on disk. */
 private const val HTTP_CACHE_BYTES = 32L * 1024 * 1024

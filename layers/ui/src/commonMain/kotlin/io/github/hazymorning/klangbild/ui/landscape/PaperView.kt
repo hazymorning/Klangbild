@@ -47,6 +47,7 @@ import io.github.hazymorning.klangbild.landscape.SheetId
 import io.github.hazymorning.klangbild.landscape.SkyPlaces
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.Weatherfall
+import io.github.hazymorning.klangbild.math.degrees
 import io.github.hazymorning.klangbild.math.hashUnit
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.imageBitmapOf
@@ -276,7 +277,7 @@ private fun DrawScope.drawMoon(images: PaperImages, l: PaperLook, p: SkyPlaces, 
     val r = PaperBake.MOON_RADIUS * b.density + 1f
     val frac = p.moonFraction.coerceIn(0f, 1f)
     // Turned so the lit limb faces the sun (its place on the sky, even below the horizon).
-    val angle = (atan2((p.sunY - p.moonY).toDouble(), (p.sunX - p.moonX).toDouble()) * (180.0 / PI)).toFloat()
+    val angle = degrees(atan2((p.sunY - p.moonY).toDouble(), (p.sunX - p.moonX).toDouble())).toFloat()
     val path = Path().apply {
         // The bright limb: a half circle on the right; the terminator: half an ellipse.
         val k = 1f - 2f * frac

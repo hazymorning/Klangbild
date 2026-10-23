@@ -1,13 +1,11 @@
 package io.github.hazymorning.klangbild.dream
 
 import android.service.dreams.DreamService
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -17,8 +15,10 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import io.github.hazymorning.klangbild.graph
 import io.github.hazymorning.klangbild.render.ScreenSpec
-import io.github.hazymorning.klangbild.ui.KlangbildRoot
+import io.github.hazymorning.klangbild.render.of
+import io.github.hazymorning.klangbild.ui.KlangbildScreen
 import io.github.hazymorning.klangbild.ui.RootHooks
+import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -57,10 +57,11 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
                 setViewTreeLifecycleOwner(this@KlangbildDream)
                 setViewTreeSavedStateRegistryOwner(this@KlangbildDream)
                 setContent {
-                    val ui by controller.ui.collectAsStateWithLifecycle()
-                    val hooks = remember { RootHooks(positionOf = controller::positionOf, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock) }
+                    val hooks = remember {
+                        RootHooks(positionOf = controller::positionOf, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock, glyphs = AndroidGlyphs)
+                    }
                     // Any key ends the dream: it never tells which key opens the quick settings.
-                    KlangbildRoot(ui.copy(downHint = false), spec, hooks)
+                    KlangbildScreen(controller.ui, spec, hooks, keys = false)
                 }
             },
         )
