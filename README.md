@@ -1,21 +1,16 @@
 # Klangbild
 
-[![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#devices)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
-
 <picture>
   <source media="(prefers-reduced-motion: no-preference)" srcset="docs/screenshots/film.avif" type="image/avif">
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that's playing as a calm picture on your TV, so the biggest screen in the room is worth looking at while you listen. The design comes first. Everything has to look right from across the room, and whatever would make the picture busier stays out.
+Klangbild shows the music that's playing as a calm picture on your TV, made to suit the room it's in. Everything on the screen is balanced around the album cover and takes its colors from it. You choose the music on your phone as usual.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
-
-The album cover is the largest thing on the screen, with the title and artist beside it. There's no library, no search and nothing to press. You choose the music on your phone as usual, and the remote pauses and skips.
 
 Klangbild works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can play in time with your other speakers.
 
@@ -31,7 +26,6 @@ During the day the background is light, and at night it turns dark.
 
 ## More
 
-<a name="devices"></a>
 <details>
 <summary><b>Compatibility</b></summary>
 <br>
@@ -155,7 +149,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 <summary><b>Contributing</b></summary>
 <br>
 
-Design looks effortless when it's done well, and much of the work goes into what's left out. That's why ideas are best shared in the [Discussions](https://github.com/hazymorning/Klangbild/discussions) before anything is built. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues).
+Klangbild is a small project made for the joy of it. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
 
 </details>
 
