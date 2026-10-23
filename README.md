@@ -6,15 +6,13 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that's playing as a calm picture on your TV, made to suit the room it's in. Everything on the screen is balanced around the album cover and takes its colors from it. You choose the music on your phone as usual.
+Klangbild shows the music that's playing as a calm picture on your TV, made to look nice in the room it's in. Everything on the screen is balanced around the album cover and takes its colors from it. You choose the music on your phone as usual.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can play in time with your other speakers.
-
-During the day the background is light, and at night it turns dark.
+It works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can become a speaker.
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
@@ -30,7 +28,9 @@ During the day the background is light, and at night it turns dark.
 <summary><b>Compatibility</b></summary>
 <br>
 
-Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
+Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. This means older fire TV sticks probably won't work.
+
+Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 </details>
 
@@ -44,7 +44,7 @@ You need Home Assistant and a TV or box with Android TV 9 or later.
 <summary><b>1. Install Klangbild on your TV</b></summary>
 <br>
 
-Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself. The easiest way is to open the release page in the free Downloader app, select the APK and allow installs from unknown sources when Android asks.
+Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself.
 
 </details>
 
