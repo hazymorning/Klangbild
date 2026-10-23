@@ -195,20 +195,23 @@ class SetupHandlerTest {
     }
 
     @Test
-    fun `this TV plays as a speaker once ticked, and then it can be the speaker followed`() = runTest {
+    fun `this TV plays as a speaker once ticked, or once it is chosen as the speaker followed`() = runTest {
         val base = """"code":"${handler.code}","url":"192.168.1.5:8123","token":"""""
-        // "This TV" needs Music Assistant and the TV playing for it.
+        // "This TV" needs Music Assistant.
         assertThat(post("/api/save", """{$base,"entity":"this_tv","tvSpeaker":true}""").status).isEqualTo(400)
         assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"192.168.1.5:8095","maToken":"ma-secret","tvSpeaker":true}""").status).isEqualTo(200)
         assertThat(stored.tvSpeaker).isTrue()
         assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["tvSpeaker"]!!.jsonPrimitive.content).isEqualTo("true")
-        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095","tvSpeaker":false}""").status).isEqualTo(400)
-        assertThat(stored.entityId).isEqualTo("media_player.wz")
-        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095","tvSpeaker":true}""").status).isEqualTo(200)
+        assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"http://192.168.1.5:8095","tvSpeaker":false}""").status).isEqualTo(200)
+        assertThat(stored.tvSpeaker).isFalse()
+        // Chosen, it plays here, and the speaker followed before is kept to go back to.
+        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095","tvSpeaker":false}""").status).isEqualTo(200)
         assertThat(stored.entityId).isEqualTo("this_tv")
         assertThat(stored.speakerOn).isTrue()
+        assertThat(stored.otherSpeaker).isEqualTo("media_player.wz")
         // A page that does not know the checkbox leaves it as it was.
-        assertThat(post("/api/save", """{$base,"entity":"this_tv","maUrl":"http://192.168.1.5:8095"}""").status).isEqualTo(200)
+        assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"http://192.168.1.5:8095"}""").status).isEqualTo(200)
+        assertThat(stored.entityId).isEqualTo("media_player.wz")
         assertThat(stored.tvSpeaker).isTrue()
     }
 

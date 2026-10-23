@@ -357,7 +357,8 @@ object SetupPage {
   }
   function renderSpeakers(selected) {
     const box = ${'$'}('speakers'); box.textContent = '';
-    const tv = ${'$'}('tvSpeaker').checked ? [{ id: THIS_TV, name: T.thisTv, meta: T.thisTvMeta }] : [];
+    // This TV is a speaker to choose once Music Assistant is there; choosing it turns playing here on.
+    const tv = ${'$'}('tvSpeaker').checked || ${'$'}('maUrl').value.trim() ? [{ id: THIS_TV, name: T.thisTv, meta: T.thisTvMeta }] : [];
     const list = tv.concat(speakers || []);
     // A speaker Music Assistant plays on is mostly there twice: its own entity and Music Assistant's.
     ${'$'}('speakersTwice').hidden = !(speakers || []).some((sp) => sp.ma);
@@ -365,7 +366,8 @@ object SetupPage {
     list.forEach((sp) => {
       const row = document.createElement('label'); row.className = 'speaker';
       const r = document.createElement('input'); r.type = 'radio'; r.name = 'speaker'; r.value = sp.id;
-      r.checked = sp.id === selected; r.onchange = () => { ${'$'}('entity').value = sp.id; };
+      r.checked = sp.id === selected;
+      r.onchange = () => { ${'$'}('entity').value = sp.id; if (sp.id === THIS_TV) ${'$'}('tvSpeaker').checked = true; };
       const text = document.createElement('div');
       const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
       const meta = document.createElement('div'); meta.className = 'meta';
@@ -694,6 +696,7 @@ object SetupPage {
     if (!${'$'}('tvSpeaker').checked && ${'$'}('entity').value.trim() === THIS_TV) ${'$'}('entity').value = '';
     if (speakers) renderSpeakers(${'$'}('entity').value);
   };
+  ${'$'}('maUrl').oninput = () => { if (speakers) renderSpeakers(${'$'}('entity').value); };
   ${'$'}('code').oninput = () => { if (code().length === 6) load(); };
   if (params.has('signin')) history.replaceState(null, '', '/');
   load();

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
+import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.QuickAction
 import kotlin.math.roundToInt
@@ -135,6 +136,8 @@ data class Settings(
     val haRefreshToken: String? = null,
     val haClientId: String? = null,
     val entityId: String? = null,
+    /** The last speaker followed other than "This TV": the menu's Speaker goes back to it. */
+    val otherSpeaker: String? = null,
     val sunEntity: String = "sun.sun",
     val sleepAfterMinutes: Int = 10,
     val sleepAction: SleepAction = SleepAction.RELEASE,
@@ -217,6 +220,12 @@ data class Settings(
 
     /** This TV plays as a speaker: switched on, and Music Assistant set up. */
     val speakerOn: Boolean get() = tvSpeaker && hasMusicAssistant
+
+    /** Following [entity] (or "This TV"), keeping the speaker followed before it to go back to. */
+    fun following(entity: String): Settings = copy(
+        entityId = entity,
+        otherSpeaker = if (entity != EntityId.THIS_TV) entity else entityId?.takeIf { it != EntityId.THIS_TV } ?: otherSpeaker,
+    )
 
     /**
      * [haUrl] set to [url] with [credentials]. Credentials only ever go to the address they were
