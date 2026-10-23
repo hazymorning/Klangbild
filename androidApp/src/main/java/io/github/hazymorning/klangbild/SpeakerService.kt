@@ -17,38 +17,25 @@ import android.media.session.PlaybackState
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings.Global
+import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
+import io.github.hazymorning.klangbild.speaker.AndroidAudioThread
+import io.github.hazymorning.klangbild.speaker.AndroidClocks
 import io.github.hazymorning.klangbild.speaker.AudioTrackSink
 import io.github.hazymorning.klangbild.speaker.MonoClock
 import io.github.hazymorning.klangbild.speaker.Speaker
 import io.github.hazymorning.klangbild.speaker.SpeakerConnection
 import io.github.hazymorning.klangbild.speaker.SpeakerIdentity
+import io.github.hazymorning.klangbild.text.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import io.github.hazymorning.klangbild.text.R as TextR
-
-/** This TV's speaker while its service runs: its state for the rest of the app, and the speaker itself. */
-class SpeakerHub {
-    private val _status = MutableStateFlow(SpeakerStatus())
-    val status: StateFlow<SpeakerStatus> = _status.asStateFlow()
-
-    @Volatile var speaker: Speaker? = null
-        internal set
-
-    internal fun publish(status: SpeakerStatus) {
-        _status.value = status
-    }
-}
 
 /**
  * This TV as a speaker in Music Assistant: a foreground service of the media playback kind, so
@@ -129,11 +116,14 @@ class SpeakerService : Service() {
         }
         val speaker = Speaker(
             scope = scope,
-            http = graph.tokenHttp,
+            http = app.platform.speakerHttp,
             store = graph.speakerStore,
             url = url,
             identity = identity(),
             sinkFactory = { routed -> AudioTrackSink(MonoClock.SYSTEM, routed) },
+            audioThread = AndroidAudioThread(),
+            sleptUs = AndroidClocks::sleptSoFarUs,
+            log = AndroidLog,
         )
         hub.speaker = speaker
         speaker.start()
@@ -199,12 +189,13 @@ class SpeakerService : Service() {
     )
 
     private fun goForeground() {
+        val t = graph.localizer.texts.value
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, getString(TextR.string.speaker_channel), NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, t[Strings.speakerChannel], NotificationManager.IMPORTANCE_LOW))
         val notification = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(TextR.string.app_name))
-            .setContentText(getString(TextR.string.speaker_notification))
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(t[Strings.speakerNotification])
             .setCategory(Notification.CATEGORY_SERVICE)
             .setOngoing(true)
             .build()

@@ -49,7 +49,7 @@ android {
             // Signed with the debug key so that any build installs for testing. Published
             // releases are signed again in CI with the release key (ci/sign-release.sh).
             signingConfig = signingConfigs.getByName("debug")
-            // The modules bring the rules their libraries need (consumer-rules.pro).
+            // A layer brings the rules its libraries need (its consumer-rules.pro).
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
         debug {
@@ -65,9 +65,11 @@ android {
         unitTests.all {
             // FirstLaunchTest against the stand-in Home Assistant (ci/fake_ha.py): -Pklangbild.fakeHa=http://127.0.0.1:8123
             providers.gradleProperty("klangbild.fakeHa").orNull?.let { url -> it.systemProperty("klangbild.fakeHa", url) }
-            // LayersTest reads the app's own code and every layer's.
+            // LayersTest and TextsUsedTest read the app's own code and every layer's, and
+            // TextsUsedTest the texts.
             it.reads("klangbild.appCode", layout.projectDirectory.dir("src/main/java/io/github/hazymorning/klangbild"), "**/*.kt")
-            it.reads("klangbild.layers", layout.settingsDirectory.dir("layers"), "*/src/main/**/*.kt")
+            it.reads("klangbild.layers", layout.settingsDirectory.dir("layers"), "*/src/*Main/**/*.kt")
+            it.reads("klangbild.strings", layout.settingsDirectory.dir("layers/text/strings"), "values*/strings.xml")
         }
     }
 
@@ -91,14 +93,17 @@ dependencies {
     implementation(projects.domain)
     implementation(projects.landscape)
     implementation(projects.render)
+    implementation(projects.setup)
     implementation(projects.sound)
     implementation(projects.speaker)
     implementation(projects.text)
     implementation(projects.ui)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.compose.ui)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.okhttp)
+
+    testImplementation(libs.okhttp.mockwebserver)
 }

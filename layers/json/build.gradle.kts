@@ -1,12 +1,10 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.json"
-}
-
-dependencies {
-    // Its functions read the elements of kotlinx.serialization's JSON.
-    api(libs.kotlinx.serialization.json)
+kotlin {
+    sourceSets.commonMain.dependencies {
+        // Its functions read the elements of kotlinx.serialization's JSON.
+        api(libs.kotlinx.serialization.json)
+    }
 }

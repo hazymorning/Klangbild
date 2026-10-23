@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The name Android shows for the app and its screensaver. The app's own words are in the text layer. -->
+    <string name="app_name" translatable="false">Klangbild</string>
+</resources>

@@ -25,6 +25,26 @@ dependencyResolutionManagement {
         // shared egress IPs; Maven Central itself stays as fallback.
         maven("https://maven-central.storage-download.googleapis.com/maven2/")
         mavenCentral()
+        // Node.js and Yarn, for Karma, which runs the WebAssembly tests in a browser.
+        ivy("https://nodejs.org/dist") {
+            name = "Node.js"
+            patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("org.nodejs", "node") }
+        }
+        ivy("https://github.com/yarnpkg/yarn/releases/download") {
+            name = "Yarn"
+            patternLayout { artifact("v[revision]/[artifact](-v[revision]).[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.yarnpkg", "yarn") }
+        }
+        // Binaryen, which optimizes a layer's WebAssembly when it is built for release (assemble).
+        ivy("https://github.com/WebAssembly/binaryen/releases/download") {
+            name = "Binaryen"
+            patternLayout { artifact("version_[revision]/binaryen-version_[revision]-[classifier].[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.github.webassembly", "binaryen") }
+        }
     }
 }
 

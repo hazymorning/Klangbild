@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app's words in English, the default language; German is in values-de. Typography as in
+  the German texts: a no-break space ( ) keeps a short word that opens a sentence, an
+  article or a number with the word it belongs to; typographic quotes and apostrophes.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Values used on many lines -->
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="set_up">Set up</string>
+    <string name="connected">Connected</string>
+    <string name="connecting">Connecting…</string>
+
+    <!-- Settings menu: heading, hint, sections -->
+    <string name="menu_heading">Settings</string>
+    <string name="menu_hint">OK changes · Back to all settings</string>
+    <string name="menu_hint_groups">OK opens · Back closes</string>
+    <string name="section_picture">Picture</string>
+    <string name="section_info">Information</string>
+    <string name="section_lights">Lights</string>
+    <string name="section_landscape">Landscape</string>
+    <string name="section_remote">Remote</string>
+    <string name="section_timer">Timer</string>
+    <string name="section_system">System</string>
+    <string name="about_section_picture">How the picture looks: the queue, light or dark, colors and motion.</string>
+    <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next and the lyrics.</string>
+    <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
+    <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
+    <string name="about_section_remote">What the remote’s keys do.</string>
+    <string name="about_section_timer">The sleep timer, and when Klangbild turns off.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, playing here and the language.</string>
+
+    <!-- Settings menu: lines -->
+    <string name="entry_queue">Queue</string>
+    <string name="entry_appearance">Appearance</string>
+    <string name="entry_clock">Clock</string>
+    <string name="entry_progress">Progress bar</string>
+    <string name="entry_next">Next track</string>
+    <string name="entry_album">Album and year</string>
+    <string name="entry_group">Speaker group</string>
+    <string name="entry_volume">Volume</string>
+    <string name="entry_values">Values</string>
+    <string name="entry_lyrics">Lyrics</string>
+    <string name="entry_background">Background</string>
+    <string name="entry_intensity">Intensity</string>
+    <string name="entry_motion">Motion</string>
+    <string name="entry_brightness">Brightness</string>
+    <string name="entry_off_lights">Lights that are off</string>
+    <string name="entry_landscape_pause">When paused</string>
+    <string name="entry_landscape_playing">While playing</string>
+    <string name="entry_mini_player">Mini player</string>
+    <string name="entry_remote">Control music</string>
+    <string name="entry_up_down">Up and down</string>
+    <string name="entry_spoken">Audiobooks, podcasts</string>
+    <string name="entry_sleep_timer">Sleep timer</string>
+    <string name="entry_sleep_after">Turn off after</string>
+    <string name="entry_sleep_action">When turning off</string>
+    <string name="entry_language">Language</string>
+    <string name="entry_play_here">Play here</string>
+
+    <!-- Settings menu: values -->
+    <string name="queue_list">List</string>
+    <string name="queue_flow">Cover Flow</string>
+    <string name="appearance_auto">Automatic</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="volume_on_change">When it changes</string>
+    <string name="volume_always">Always</string>
+    <string name="background_plain">Plain</string>
+    <string name="background_cover">Cover colors</string>
+    <string name="intensity_strong">Strong</string>
+    <string name="intensity_normal">Normal</string>
+    <string name="intensity_low">Low</string>
+    <string name="motion_slow">Slow</string>
+    <string name="motion_medium">Medium</string>
+    <string name="motion_fast">Fast</string>
+    <string name="mini_player_left">Bottom left</string>
+    <string name="mini_player_right">Bottom right</string>
+    <string name="off_lights_turn_on">Turn on</string>
+    <string name="off_lights_leave">Leave off</string>
+    <string name="up_down_landscape">Landscape, menu</string>
+    <string name="up_down_volume">Volume</string>
+    <string name="spoken_jump">Jump</string>
+    <string name="spoken_change">Change track</string>
+    <string name="sleep_chapter_end">End of chapter</string>
+    <string name="sleep_episode_end">End of episode</string>
+    <string name="sleep_book_end">End of audiobook</string>
+    <string name="sleep_track_end">End of track</string>
+    <string name="sleep_action_close">Close app</string>
+    <string name="sleep_action_release">Screen saver</string>
+    <string name="link_rejected">Access denied</string>
+    <string name="ma_not_set_up">Not set up</string>
+    <string name="needs_music_assistant">Needs Music Assistant</string>
+    <string name="ma_rejected">Token rejected</string>
+    <string name="ma_unreachable">Unreachable</string>
+    <string name="language_system">System language</string>
+    <string name="language_english" translatable="false">English</string>
+    <string name="language_german" translatable="false">Deutsch</string>
+    <plurals name="seconds">
+        <item quantity="one">One second</item>
+        <item quantity="other">%s seconds</item>
+    </plurals>
+    <plurals name="minutes">
+        <item quantity="one">One minute</item>
+        <item quantity="other">%s minutes</item>
+    </plurals>
+    <plurals name="hours">
+        <item quantity="one">One hour</item>
+        <item quantity="other">%s hours</item>
+    </plurals>
+
+    <!-- Settings menu: what each line does -->
+    <string name="about_queue_off">One large cover beside the title.</string>
+    <string name="about_queue_list">The next tracks as a list beside the cover.</string>
+    <string name="about_queue_list_set_up">The next tracks as a list beside the cover. It needs Music Assistant: without it, the last line names only the next track.</string>
+    <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts.</string>
+    <string name="about_appearance_auto">Light by day, dark from sunset to sunrise, by the sun’s position in Home Assistant.</string>
+    <string name="about_appearance_light">Always light: a light background, dark type.</string>
+    <string name="about_appearance_dark">Always dark: a dark background, light type.</string>
+    <string name="about_clock">The time in the top line.</string>
+    <string name="about_progress">The bar with the time played and the length. Turned off, a key press still shows it briefly.</string>
+    <string name="about_next">The next track in the queue, in the last line.</string>
+    <string name="about_album">The album’s name and year below the artists.</string>
+    <string name="about_group">When other speakers play along, the time is followed by “Living room + 5” or “Everywhere”.</string>
+    <string name="about_volume_on_change">When the volume changes, it shows next to the clock for a few seconds.</string>
+    <string name="about_volume_always">The volume always shows next to the clock.</string>
+    <string name="about_volume_off">The volume never shows.</string>
+    <string name="about_values_set_up">Values from Home Assistant next to the time, like the outside temperature. OK shows the QR code; choose them on your phone.</string>
+    <string name="about_values_on">Your values from Home Assistant stand next to the time. You change them on your phone, through Home Assistant below.</string>
+    <string name="about_values_off">Your values from Home Assistant stay hidden. Right shows them next to the time.</string>
+    <string name="about_lyrics_on">The words of the song beside the cover, the line being sung in the middle.</string>
+    <string name="about_lyrics_off">Title, artist and album beside the cover. Right shows the words where Music Assistant has them.</string>
+    <string name="about_lyrics_set_up">The words come from Music Assistant. OK shows the QR code to set it up on your phone.</string>
+    <string name="about_background_cover">The cover’s colors fill the whole screen in soft gradients. The progress bar takes their hue.</string>
+    <string name="about_background_plain">A calm background: dark with the cover’s light, or light with its shadow.</string>
+    <string name="about_intensity_cover">How strongly the cover’s colors tint the background.</string>
+    <string name="about_intensity_cover_strong">Strong: rich colors.</string>
+    <string name="about_intensity_cover_normal">Normal is how Klangbild is meant to look.</string>
+    <string name="about_intensity_cover_low">Low: muted colors.</string>
+    <string name="about_intensity_cover_off_light">Off: almost no color.</string>
+    <string name="about_intensity_cover_off_dark">Off: only the cover on black.</string>
+    <string name="about_intensity_light">How much of the cover’s color the light background takes.</string>
+    <string name="about_intensity_light_strong">Strong: a clear tint.</string>
+    <string name="about_intensity_light_normal">Normal is how Klangbild is meant to look.</string>
+    <string name="about_intensity_light_low">Low: only a hint.</string>
+    <string name="about_intensity_light_off">Off: no color.</string>
+    <string name="about_intensity_dark">How brightly the cover lights the background around it.</string>
+    <string name="about_intensity_dark_strong">Strong suits bright rooms.</string>
+    <string name="about_intensity_dark_normal">Normal is how Klangbild is meant to look.</string>
+    <string name="about_intensity_dark_low">Low suits dark evenings.</string>
+    <string name="about_intensity_dark_off">Off: only the cover, no light.</string>
+    <string name="about_motion_both">How fast the colors in the background and in the lights flow.</string>
+    <string name="about_motion_lights">How fast the lights’ colors flow. On screen, only with cover colors.</string>
+    <string name="about_motion_screen">How fast the cover colors flow in the background.</string>
+    <string name="about_motion_off">Off: they stand still.</string>
+    <string name="about_motion_slow">Slow: barely noticeable.</string>
+    <string name="about_motion_medium">Medium: clear, but calm.</string>
+    <string name="about_motion_fast">Fast: visibly moving.</string>
+    <string name="about_motion_playing">Only while music plays.</string>
+    <string name="about_lights_set_up">Your lights glow in the cover’s colors. OK shows the QR code; on your phone you choose them from Home Assistant.</string>
+    <string name="about_lights_off">The lights keep their own light. Right switches them on.</string>
+    <string name="about_lights_only_on">Lights that are off stay off. One you switch on joins in.</string>
+    <string name="about_lights_switch_on">Lights that are off go on with the music and off again after it.</string>
+    <string name="about_lights_on">Each light glows in one of the picture’s colors, this bright by day. In the evening and at night they dim by themselves. After the music they are as before.</string>
+    <string name="about_landscape_pause_off">When the music is paused, the cover stays; after three minutes the clock appears.</string>
+    <string name="about_landscape_pause">When the music is paused this long, a paper landscape appears whose light follows the real time of day. Any key brings the cover back.</string>
+    <string name="about_landscape_playing_off_volume">While music plays, the cover stays.</string>
+    <string name="about_landscape_playing_off">While music plays, the cover stays. The landscape is always there: arrow up.</string>
+    <string name="about_landscape_playing">If music plays this long with no key pressed, the landscape comes with the mini player in a corner.</string>
+    <string name="about_mini_player_left">Cover, title and progress, lower left in the landscape.</string>
+    <string name="about_mini_player_right">Cover, title and progress, lower right in the landscape.</string>
+    <string name="about_mini_player_off">Just the landscape, no player.</string>
+    <string name="about_remote_on">OK pauses and plays on; left and right change the track.</string>
+    <string name="about_remote_off">The remote does not control the music; holding OK still opens this menu.</string>
+    <string name="about_up_down_volume">Arrow up and down change the speaker’s volume; the quick settings are not available then.</string>
+    <string name="about_up_down_landscape">Arrow up shows the landscape; up again or Back brings the cover back. Arrow down opens the quick settings at the bottom; down again closes them.</string>
+    <string name="about_spoken_jump">With audiobooks and podcasts, left jumps back 15 seconds, right ahead 30 seconds. Held, they go to the previous or next chapter.</string>
+    <string name="about_spoken_change">Left and right change the track with audiobooks and podcasts too.</string>
+    <string name="about_sleep_timer_off">Pauses the music after a while, or at the end of a chapter. Klangbild must be running.</string>
+    <string name="about_sleep_timer_at">The music pauses at %s.</string>
+    <string name="about_sleep_timer_end">The music pauses at the %s.</string>
+    <string name="sleep_end_chapter">end of the chapter</string>
+    <string name="sleep_end_episode">end of the episode</string>
+    <string name="sleep_end_book">end of the audiobook</string>
+    <string name="sleep_end_track">end of the track</string>
+    <string name="about_sleep_after">When no music plays, Klangbild turns off after this time.</string>
+    <string name="about_sleep_action_close">Klangbild closes and returns to the home screen.</string>
+    <string name="about_sleep_action_release">The TV takes over: its screen saver or standby.</string>
+    <string name="about_connection_set_up">OK shows the QR code. On your phone you sign in to Home Assistant and choose the speaker.</string>
+    <string name="about_connection">OK shows the QR code. On your phone you change address, sign-in and speaker.</string>
+    <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
+    <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
+    <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
+    <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>
+    <string name="about_play_here_off">Music Assistant can play music on this TV too, in time with your other speakers. Once you turn it on, this TV shows up there under its own name.</string>
+    <string name="about_play_here_on">This TV is one of Music Assistant’s speakers and keeps playing while Klangbild is closed. When music starts here, Klangbild shows it.</string>
+    <string name="about_play_here_followed">This TV is the speaker Klangbild follows, so it keeps playing here. To turn it off, choose another speaker on your phone first. OK shows the QR code.</string>
+    <string name="about_play_here_unreachable">Music Assistant doesn’t answer on port 8927 right now, so this TV can’t play yet. Klangbild keeps trying.</string>
+    <string name="about_play_here_too_old">To play on this TV, Music Assistant needs version 2.10.7 or later.</string>
+    <string name="about_play_here_too_new">Your Music Assistant is newer than this version of Klangbild. Once Klangbild is updated, this TV plays again.</string>
+    <string name="about_play_here_refused">Music Assistant didn’t let this TV in. You can pair it there with the code from the setup page on your phone.</string>
+    <string name="about_play_here_no_key">This TV can’t open its key for Music Assistant at the moment, so it can’t play yet. Klangbild keeps trying.</string>
+
+    <!-- Quick settings -->
+    <string name="quick_queue">Queue</string>
+    <string name="quick_landscape">Landscape</string>
+    <string name="quick_lyrics">Lyrics</string>
+    <string name="quick_favorite">Favorite</string>
+    <string name="quick_lights">Lights</string>
+    <string name="quick_shuffle">Shuffle</string>
+    <string name="quick_party">Party code</string>
+    <string name="quick_settings">Settings</string>
+    <string name="quick_open">Open</string>
+    <string name="favorite_add">Add</string>
+    <string name="favorite_adding">Adding…</string>
+    <string name="favorite_added">Added</string>
+    <!-- The quick settings' own buttons (set up on the phone): what OK does, and how it went -->
+    <string name="action_run">Run</string>
+    <string name="action_activate">Activate</string>
+    <string name="action_press">Press</string>
+    <string name="action_done">Done</string>
+    <string name="action_failed">Failed</string>
+
+    <!-- Status line and stage -->
+    <string name="status_paused">Paused</string>
+    <string name="status_muted">Muted</string>
+    <string name="status_volume">Volume %s</string>
+    <string name="status_pause_at">Pauses at %s</string>
+    <string name="status_speed">Speed %s×</string>
+    <string name="group_everywhere">Everywhere</string>
+    <plurals name="group_speakers">
+        <item quantity="one">%s speaker</item>
+        <item quantity="other">%s speakers</item>
+    </plurals>
+    <!-- Numbers up to twelve in words, capitalized for the start of a label: "Three speakers" -->
+    <string-array name="count_words">
+        <item>Zero</item>
+        <item>One</item>
+        <item>Two</item>
+        <item>Three</item>
+        <item>Four</item>
+        <item>Five</item>
+        <item>Six</item>
+        <item>Seven</item>
+        <item>Eight</item>
+        <item>Nine</item>
+        <item>Ten</item>
+        <item>Eleven</item>
+        <item>Twelve</item>
+    </string-array>
+    <string name="volume_muted">muted</string>
+    <string name="stage_link_down">Reconnecting…</string>
+    <string name="stage_next">Up next</string>
+    <!-- The queue's list beside the cover: how many tracks follow, and how long they play ("11 tracks · 48 min") -->
+    <plurals name="queue_tracks">
+        <item quantity="one">%s track</item>
+        <item quantity="other">%s tracks</item>
+    </plurals>
+    <string name="queue_minutes">%1$s min</string>
+    <string name="queue_hours">%1$s h</string>
+    <string name="queue_hours_minutes">%1$s h %2$s min</string>
+    <string name="hint_down_key">Arrow down</string>
+    <string name="hint_down">opens the quick settings</string>
+    <string name="chapter_number">Chapter %d</string>
+    <string name="artists_others">and others</string>
+
+    <!-- Rest screen -->
+    <string name="rest_connecting">Connecting…</string>
+    <string name="rest_offline">Home Assistant can’t be reached.</string>
+    <string name="rest_speaker">Speaker</string>
+    <string name="rest_unavailable">Not available right now.</string>
+    <string name="rest_entity_missing">Home Assistant doesn’t know “%s”.\nHold OK to set up.</string>
+    <string name="rest_this_speaker">this speaker</string>
+    <string name="landscape_waiting">Preparing the landscape…</string>
+
+    <!-- Setup on the TV -->
+    <string name="setup_first_run">Set up with your phone</string>
+    <string name="setup_rejected">Home Assistant rejected the access.</string>
+    <string name="setup_change">Change connection</string>
+    <string name="setup_text">Scan the code with your camera. On the page you sign in to Home Assistant and choose the speaker.</string>
+    <string name="setup_text_rejected">Scan the code and sign in to Home Assistant again on the page.</string>
+    <string name="setup_back">Back closes</string>
+    <string name="setup_code">Code</string>
+    <string name="setup_in_browser">or in a browser: </string>
+    <string name="setup_no_network">No network connection</string>
+
+    <!-- This TV as a speaker: the notification its service always has -->
+    <string name="speaker_channel">Music on this TV</string>
+    <string name="speaker_notification">Music Assistant can play here.</string>
+
+    <!-- Frame statistics (debug overlay): a readout with units, not a sentence that needs plurals -->
+    <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d frames/s · slowest %2$s ms · %3$d late</string>
+    <!-- The sound feed in the debug overlay: how exactly its times are known -->
+    <string name="debug_sound_exact">Exact timing</string>
+    <string name="debug_sound_close">Close timing</string>
+    <string name="debug_sound_none">No sound</string>
+    <!-- The setup page on the phone -->
+    <string name="page_title">Set up Klangbild</string>
+    <string name="page_subtitle">Setup for the TV</string>
+    <string name="page_code_heading">Code</string>
+    <string name="page_code_label">The six-digit code on the TV</string>
+    <string name="page_ha_heading">1 · Home Assistant</string>
+    <string name="page_address">Address</string>
+    <string name="page_sign_in">Sign in with Home Assistant</string>
+    <string name="page_sign_in_hint">Home Assistant’s own sign-in page opens. Afterwards you come back here.</string>
+    <string name="page_token_toggle">Use a long-lived access token instead</string>
+    <string name="page_token_label">Long-lived access token</string>
+    <string name="page_token_hint">In Home Assistant: Profile → Security → Long-lived access tokens → Create token.</string>
+    <string name="page_find">Find speakers</string>
+    <string name="page_speaker_heading">2 · Speaker</string>
+    <string name="page_speakers_twice">Many speakers show up here twice. Choose the one marked Music Assistant, since only that one brings the queue and the lyrics.</string>
+    <string name="page_speakers_empty">Connect Home Assistant first, then the speakers show here.</string>
+    <string name="page_entity_label">or enter the entity directly</string>
+    <string name="page_entity_placeholder">media_player.living_room</string>
+    <string name="page_no_speakers">No media players found.</string>
+    <string name="page_general_heading">3 · General</string>
+    <string name="page_sleep_before">Turn off after</string>
+    <string name="page_sleep_after">minutes of silence, then:</string>
+    <string name="page_release">The TV’s screen saver</string>
+    <string name="page_close">Close the app</string>
+    <string name="page_clock">Show the clock</string>
+    <string name="page_remote">The remote controls the music (OK: pause, ◀ ▶: track)</string>
+    <string name="page_ma_heading">4 · Music Assistant (optional)</string>
+    <string name="page_ma_hint">For the queue: with Music Assistant, the list shows what comes next, and Cover Flow all of it, what played and what comes.</string>
+    <string name="page_ma_token_placeholder">From Music Assistant</string>
+    <string name="page_ma_token_hint">Create a long-lived access token in Music Assistant under Settings → Profile. Leave it empty if you don’t need it.</string>
+    <string name="page_tv_speaker">Play music from Music Assistant on this TV</string>
+    <string name="page_tv_speaker_hint">This TV then shows up in Music Assistant as a speaker under its own name and plays in time with your other speakers, also while Klangbild is closed.</string>
+    <string name="page_pair_toggle">Pairing code</string>
+    <string name="page_pair_hint">Only needed if Music Assistant asks to pair this TV: enter this code there.</string>
+    <string name="page_this_tv">This TV</string>
+    <string name="page_this_tv_meta">What Music Assistant plays on this TV</string>
+    <string name="page_lights_heading">5 · Lights (optional)</string>
+    <string name="page_lights_hint">Your lights glow in the cover’s colors. Klangbild remembers how they were and restores them after the music.</string>
+    <string name="page_lights_empty">Connect Home Assistant first, then the lights show here.</string>
+    <string name="page_no_lights">No lights found.</string>
+    <string name="page_light_left">Left</string>
+    <string name="page_light_center">Middle</string>
+    <string name="page_light_right">Right</string>
+    <string name="page_none">None</string>
+    <string name="page_landscape_heading">6 · Landscape</string>
+    <string name="page_landscape_hint">The paper landscape that appears when the music is paused: sun, moon and stars stand where they stand for you now. Clouds, rain and snow follow the weather.</string>
+    <string name="page_weather">Weather</string>
+    <string name="page_weather_auto">Automatic</string>
+    <string name="page_weather_none">None: always a clear sky</string>
+    <string name="page_actions_heading">7 · Buttons (optional)</string>
+    <string name="page_actions_hint">Your own buttons in the quick settings (arrow down on the remote). Each one runs a script or an automation, activates a scene, presses a button or switches something on and off.</string>
+    <string name="page_actions_empty">Connect Home Assistant first, then your scripts and scenes show here.</string>
+    <string name="page_no_actions">No scripts, scenes, buttons or switches found.</string>
+    <string name="page_action_name">Name</string>
+    <string name="page_action_what">What it does</string>
+    <string name="page_action_add">Add a button</string>
+    <string name="page_action_remove">Remove</string>
+    <string name="page_search">Search by name</string>
+    <string name="page_search_none">Nothing found.</string>
+    <string name="page_search_more">Type more to narrow it down.</string>
+    <string name="page_variables">Variables</string>
+    <string name="page_variables_hint">The script gets the speaker as the variable player. Add more one per line, as name: value.</string>
+    <string name="page_variables_example">name: value</string>
+    <string name="page_more_variables">More variables</string>
+    <string name="page_show">Show</string>
+    <string name="page_show_always">Always</string>
+    <string name="page_show_when">Only when</string>
+    <string name="page_entity">Entity</string>
+    <string name="page_state">State</string>
+    <string name="page_test_is">is</string>
+    <string name="page_test_is_not">is not</string>
+    <string name="page_test_above">above</string>
+    <string name="page_test_below">below</string>
+    <string name="page_condition_hint">A list counts its entries: group_members above 1 means the speaker plays in a group.</string>
+    <string name="page_condition_number">Above and below need a number.</string>
+    <string name="page_now">Now: %s</string>
+    <string name="page_values_heading">8 · Values (optional)</string>
+    <string name="page_values_hint">Values from Home Assistant next to the time, like the outside temperature. Each one shows an entity’s state or one of its attributes.</string>
+    <string name="page_values_empty">Connect Home Assistant first, then your entities show here.</string>
+    <string name="page_no_entities">No entities found.</string>
+    <string name="page_value_name">Name (optional)</string>
+    <string name="page_value_what">Shows</string>
+    <string name="page_value_add">Add a value</string>
+    <string name="page_save">Save</string>
+    <string name="page_connecting">Connecting to Home Assistant…</string>
+    <string name="page_failed">That didn’t work.</string>
+    <string name="page_connected">Connected. Please choose the speaker.</string>
+    <string name="page_tv_unreachable">The TV can’t be reached.</string>
+    <string name="page_saved">Saved.</string>
+    <string name="page_token_kept">The saved token stays; paste one only to change it</string>
+    <string name="page_signing_in">Opening Home Assistant’s sign-in…</string>
+    <string name="page_signed_in">Signed in to Home Assistant.</string>
+    <string name="page_signin_failed">The sign-in didn’t work. Please try again.</string>
+    <string name="page_with_token">Connected with a long-lived access token.</string>
+
+    <!-- The setup page's answers -->
+    <string name="setup_error_request">Invalid request.</string>
+    <string name="setup_error_code">The code is wrong. Please enter the code from the TV.</string>
+    <string name="setup_error_not_allowed">Not allowed.</string>
+    <string name="setup_error_not_found">Not found.</string>
+    <string name="setup_error_internal">Internal error.</string>
+    <string name="setup_error_address">Please enter Home Assistant’s address, for example http://192.168.1.10:8123.</string>
+    <string name="setup_error_credentials">Please sign in to Home Assistant or paste a long-lived access token.</string>
+    <string name="setup_error_ma_address">Music Assistant’s address is invalid.</string>
+    <string name="setup_error_ma_token">Please paste Music Assistant’s access token, or clear the address.</string>
+    <string name="setup_error_ma_rejected">Music Assistant rejected the access token.</string>
+    <string name="setup_error_ma_unreachable">Music Assistant doesn’t answer at this address. Please check it, or clear the address to go without.</string>
+    <string name="setup_error_this_tv">This TV can be the speaker only while it plays music from Music Assistant.</string>
+    <string name="setup_error_speaker">Please choose a speaker.</string>
+    <string name="setup_error_sleep">The time must be between 1 and 720 minutes.</string>
+    <string name="setup_error_lights">Please pick only lights.</string>
+    <string name="setup_error_weather">Please choose a weather entity.</string>
+    <string name="setup_error_actions">Each button needs a script, a scene, an automation, a button or a switch, and a condition needs a value.</string>
+    <string name="setup_error_values">Each value needs an entity.</string>
+    <string name="setup_saved">Saved. The TV connects to Home Assistant now.</string>
+    <string name="discover_rejected">Home Assistant rejected the access.</string>
+    <string name="discover_unexpected">Home Assistant doesn’t answer as expected (HTTP %d).</string>
+    <string name="discover_cleartext">Unencrypted http:// is only allowed in the home network. Please use https://.</string>
+    <string name="discover_unreachable">Home Assistant can’t be reached at %s.</string>
+    <string name="discover_invalid_address">The address is invalid.</string>
+    <string name="discover_garbled">Home Assistant’s answer couldn’t be read.</string>
+
+    <!-- Entity states on the setup page -->
+    <string name="entity_state_playing">playing</string>
+    <string name="entity_state_paused">paused</string>
+    <string name="entity_state_idle">ready</string>
+    <string name="entity_state_off">off</string>
+    <string name="entity_state_on">on</string>
+    <string name="entity_state_unavailable">unavailable</string>
+    <string name="entity_state_buffering">loading</string>
+    <string name="entity_state_standby">standby</string>
+    <string name="entity_state_unknown">unknown</string>
+    <string name="weather_sunny">sunny</string>
+    <string name="weather_clear_night">clear</string>
+    <string name="weather_partlycloudy">partly cloudy</string>
+    <string name="weather_cloudy">cloudy</string>
+    <string name="weather_fog">fog</string>
+    <string name="weather_rain">rain</string>
+    <string name="weather_snow">snow</string>
+    <string name="weather_hail">hail</string>
+    <string name="weather_thunderstorm">thunderstorm</string>
+    <string name="weather_windy">windy</string>
+    <string name="weather_exceptional">exceptional</string>
+</resources>

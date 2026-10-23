@@ -4,8 +4,11 @@ import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -64,7 +67,7 @@ class SpeakerServiceTest {
         try {
             var started: Intent? = null
             until { shadowOf(app).nextStartedService?.also { started = it } != null }
-            assertWithMessage("the service started").that(started?.component?.className).isEqualTo(SpeakerService::class.java.name)
+            assertThat(started?.component?.className, name = "the service started").isEqualTo(SpeakerService::class.java.name)
             val service = Robolectric.buildService(SpeakerService::class.java, started).create().startCommand(0, 1)
             until { app.graph.speakerHub.speaker != null }
             assertThat(app.graph.speakerHub.speaker).isNotNull()

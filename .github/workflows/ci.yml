@@ -139,6 +139,22 @@ jobs:
       - name: Tests and pictures
         run: ./gradlew testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true "-Pklangbild.sendspin=$RUNNER_TEMP/sendspin/bin/python" --continue --stacktrace
 
+      # How many tests ran on each platform. On a pull request, the pictures before the change
+      # come with the same count for the branch it goes into.
+      - name: Count the tests
+        if: always()
+        shell: python3 {0}
+        run: |
+          import collections, glob, os, xml.etree.ElementTree as ET
+          ran, skipped = collections.Counter(), collections.Counter()
+          for path in glob.glob("**/build/test-results/*/*.xml", recursive=True):
+              for case in ET.parse(path).iter("testcase"):
+                  (skipped if case.find("skipped") is not None else ran)[path.split("/")[-2]] += 1
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("| Test task | Ran | Skipped |\n| --- | --: | --: |\n")
+              for task in sorted(ran | skipped):
+                  summary.write(f"| {task} | {ran[task]} | {skipped[task]} |\n")
+
       # Each module renders its pictures into a folder of its own; together they are one tree.
       - name: Gather the pictures
         if: always()
@@ -192,6 +208,20 @@ jobs:
 
       - name: Render the pictures
         run: ./gradlew testDebugUnitTest -Pklangbild.pictures -Proborazzi.test.record=true --continue --stacktrace
+
+      # How many tests the branch the pull request goes into ran, counted as the tests job counts.
+      - name: Count the tests
+        shell: python3 {0}
+        run: |
+          import collections, glob, os, xml.etree.ElementTree as ET
+          ran, skipped = collections.Counter(), collections.Counter()
+          for path in glob.glob("**/build/test-results/*/*.xml", recursive=True):
+              for case in ET.parse(path).iter("testcase"):
+                  (skipped if case.find("skipped") is not None else ran)[path.split("/")[-2]] += 1
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("| Test task | Ran | Skipped |\n| --- | --: | --: |\n")
+              for task in sorted(ran | skipped):
+                  summary.write(f"| {task} | {ran[task]} | {skipped[task]} |\n")
 
       # Each module renders its pictures into a folder of its own; together they are one tree.
       - name: Gather the pictures

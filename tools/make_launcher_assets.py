@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "androidApp", "src", "main", "res")
-FONT = os.path.join(ROOT, "layers", "ui", "src", "main", "res", "font", "jost.ttf")
+FONT = os.path.join(ROOT, "layers", "ui", "src", "androidMain", "res", "font", "jost.ttf")
 LOGO = os.path.join(ROOT, "tools", "logo.svg")
 
 INK = (232, 242, 255)

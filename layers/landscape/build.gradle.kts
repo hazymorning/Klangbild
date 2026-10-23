@@ -1,18 +1,18 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
     id("klangbild.compose")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.landscape"
-
-    defaultConfig {
-        consumerProguardFiles("consumer-rules.pro")
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.color)
+            implementation(projects.math)
+            api(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.atomicfu)
+        }
+        commonTest.dependencies {
+            implementation(projects.textTesting)
+        }
     }
-}
-
-dependencies {
-    implementation(projects.color)
-    implementation(projects.math)
-    implementation(libs.suncalc)
 }

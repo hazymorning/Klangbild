@@ -1,16 +1,31 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.sendspin"
-}
-
-dependencies {
-    implementation(projects.json)
-    // Curve25519, ChaCha20-Poly1305 and SHA-256 for Sendspin's Noise channel, through the lightweight
-    // API only (no JCA provider is registered): the platform has no X25519 below API 33.
-    implementation(libs.bouncycastle)
-    // A message's payload is JSON.
-    api(libs.kotlinx.serialization.json)
+kotlin {
+    android {
+        optimization {
+            consumerKeepRules.publish = true
+            consumerKeepRules.file("consumer-rules.pro")
+        }
+    }
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.json)
+            api(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.atomicfu)
+            implementation(libs.cryptography.core)
+            implementation(libs.cryptography.random)
+            implementation(libs.kotlinx.io.core)
+        }
+        // The primitives on the JVM: BouncyCastle's, which Android's own providers lack below API 33.
+        androidMain.dependencies {
+            implementation(libs.cryptography.provider.jdk.bc)
+            implementation(libs.bouncycastle)
+        }
+        jvmMain.dependencies {
+            implementation(libs.cryptography.provider.jdk.bc)
+            implementation(libs.bouncycastle)
+        }
+    }
 }

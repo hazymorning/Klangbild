@@ -1,13 +1,14 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
     id("klangbild.compose")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.color"
-}
-
-dependencies {
-    // The wall turns with the sun, also by the clock alone (CoverPaletteTest).
-    testImplementation(projects.domain)
+kotlin {
+    sourceSets.commonMain.dependencies {
+        implementation(projects.math)
+    }
+    sourceSets.commonTest.dependencies {
+        // The wall turns with the sun, also by the clock alone (CoverPaletteTest).
+        implementation(projects.domain)
+    }
 }

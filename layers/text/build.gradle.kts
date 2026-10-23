@@ -1,21 +1,33 @@
+import io.github.hazymorning.klangbild.gradle.GenerateTexts
+
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
     id("klangbild.compose")
     id("klangbild.robolectric")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.text"
+// The words of strings/values*/strings.xml and their languages' formats, as Kotlin.
+val generateTexts = tasks.register<GenerateTexts>("generateTexts") {
+    strings = layout.projectDirectory.dir("strings")
+    output = layout.buildDirectory.dir("generated/texts")
 }
 
-dependencies {
-    // The words come as a StateFlow and as a composition local.
-    api(platform(libs.compose.bom))
-    api(libs.compose.runtime)
-    api(libs.kotlinx.coroutines.core)
-    implementation(libs.androidx.annotation)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.compose.ui)
-
-    testImplementation(projects.textTesting)
+kotlin {
+    sourceSets {
+        commonMain {
+            kotlin.srcDir(generateTexts.flatMap { it.output })
+            dependencies {
+                api(libs.compose.runtime)
+                api(libs.kotlinx.coroutines.core)
+                api(libs.kotlinx.datetime)
+            }
+        }
+        androidMain.dependencies {
+            implementation(libs.androidx.annotation)
+            implementation(libs.androidx.core.ktx)
+        }
+        commonTest.dependencies {
+            implementation(projects.textTesting)
+        }
+    }
 }

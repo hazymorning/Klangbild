@@ -1,22 +1,25 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
+    id("klangbild.compose")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.lights"
-}
-
-dependencies {
-    implementation(projects.color)
-    implementation(projects.config)
-    implementation(projects.data)
-    implementation(projects.domain)
-    implementation(projects.landscape)
-    implementation(projects.math)
-    implementation(projects.render)
-    // The lights run in the scope they are given.
-    api(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.serialization.json)
-
-    testImplementation(libs.kotlinx.coroutines.test)
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.color)
+            implementation(projects.config)
+            implementation(projects.data)
+            implementation(projects.domain)
+            implementation(projects.landscape)
+            implementation(projects.math)
+            implementation(projects.render)
+            // The lights run in the scope they are given.
+            api(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.atomicfu)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
+        }
+    }
 }
