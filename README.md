@@ -9,13 +9,17 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.
+Klangbild shows the music that's playing as a calm picture on your TV, so the biggest screen in the room is worth looking at while you listen.
+
+I made it because I care a lot about design, and these days most apps look rushed and alike to me. It's a personal project, and an opinionated one. Everything has to look right from across the room, and whatever would make the picture busier stays out.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. Through Sendspin, the TV can also play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
+The album cover is the largest thing on the screen, with the title and artist beside it. There's no library, no search and nothing to press. You choose the music on your phone as usual, and the remote pauses and skips.
+
+Klangbild works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can play in time with your other speakers.
 
 During the day the background is light, and at night it turns dark.
 
@@ -153,7 +157,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 <summary><b>Contributing</b></summary>
 <br>
 
-Klangbild is a small project made for the joy of it, and it's meant to be a calm picture of the music in the room rather than another media player. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
+Design looks effortless when it's done well, and much of the work goes into what's left out. That's why ideas are best shared in the [Discussions](https://github.com/hazymorning/Klangbild/discussions) before anything is built. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues).
 
 </details>
 
