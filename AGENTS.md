@@ -98,7 +98,9 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   the version catalog. minSdk is 28 because the v3 release signature needs it.
 - Kotlin and lint warnings fail the build. Give every suppression a one-line reason.
 - In a layer, `testDebugUnitTest` runs its tests on all three targets (`allTests`). `--tests`
-  needs one target's task: `testAndroidHostTest` (Robolectric), `jvmTest` or `wasmJsNodeTest`.
+  needs one target's task: `testAndroidHostTest`, `jvmTest` or `wasmJsBrowserTest`. The
+  WebAssembly tests run in headless Chrome through Karma (`CHROME_BIN` points to it; as root,
+  Chrome needs `--no-sandbox`).
 - Gradle and Robolectric try Google's Maven mirror first, since Maven Central rate-limits shared
   IPs.
 - Picture tests render screens and assert nothing. They're annotated with
@@ -130,8 +132,9 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Every layer is a Kotlin Multiplatform library in `layers/<package>/` with android, jvm and
   wasmJs targets. Its code is in commonMain, which uses no `android.*` or `java.*`, so a desktop
   or web app would need only its entry point and its platform's implementations. What a layer
-  needs from its platform is an interface in commonMain, with Android's implementation in
-  androidMain. Compiling for wasmJs catches JVM-only calls that the other builds let through.
+  needs from its platform is an interface or an `expect` in commonMain, with Android's
+  implementation in androidMain. Compiling for wasmJs catches JVM-only calls that the other
+  builds let through.
 - The app itself is `androidApp/`, since AGP 9 doesn't allow Kotlin Multiplatform in an app
   module, with MainActivity, KlangbildApp and its `AndroidPlatform` (what `AppGraph` needs from
   Android), SpeakerService, the screensaver, the manifest and the launcher resources.
@@ -142,14 +145,15 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
   dependencies point downward. Project dependencies are `implementation`, and an external library
   is `api` only when its types appear in the module's API.
 - All strings are in `layers/text/strings/`, which the build turns into Kotlin (`GenerateTexts`,
-  read as `texts[Strings.x]`), so `Texts` works the same everywhere. The fonts are Compose
-  resources of `:ui`. A layer ships the R8 rules its libraries need in `consumer-rules.pro`.
-- Tests are in commonTest, which runs on all three targets, unless they need Robolectric or a JVM
-  library (androidHostTest). Tests live in the module of their package. A test that needs a layer
-  above its own goes in the lowest module that depends on that layer, like `ProgressTest` in data.
-  Test helpers shared by several layers are separate modules (`art-testing`, `text-testing`,
-  `domain-testing`, `app-testing`). A test that reads a file outside its module gets the path from
-  the build (`reads` in build-logic).
+  read as `texts[Strings.x]`), so `Texts` works the same everywhere. The fonts are Android
+  resources of `:ui`, which its `skikoMain` (the JVM and the browser) reads as Compose resources.
+  A layer ships the R8 rules its libraries need in `consumer-rules.pro`.
+- Tests are in commonTest, which runs on all three targets, unless they need Android or Robolectric
+  (androidHostTest) or only the JVM (jvmTest). Tests live in the module of their package. A test
+  that needs a layer above its own goes in the lowest module that depends on that layer, like
+  `ProgressTest` in data. Test helpers shared by several layers are separate modules (`art-testing`,
+  `text-testing`, `domain-testing`, `app-testing`). A test that reads a file outside its module gets
+  the path from the build (`reads` in build-logic).
 
 From the bottom up:
 
