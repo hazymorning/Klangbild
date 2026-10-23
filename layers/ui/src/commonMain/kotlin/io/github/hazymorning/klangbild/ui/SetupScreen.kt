@@ -136,7 +136,7 @@ fun SetupScreen(
     // text and the address on balanced lines).
     val measurer = rememberTextMeasurer()
     val local = LocalDensity.current
-    val widest = remember(reason, info, layout, local, t) {
+    val widest = remember(reason, info, layout, local, t, faces) {
         val column = with(local) { layout.columnWidth.dp.roundToPx() }
         val balancer = lineBalancer(measurer)
         val plain = listOf(AnnotatedString("Klangbild") to name, AnnotatedString(code) to codeStyle)

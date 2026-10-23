@@ -387,7 +387,7 @@ private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () ->
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val faces = faces()
-    val key = layout.columnWidth to density
+    val key = Triple(layout.columnWidth, density, faces)
     fun plan() = planLyrics(view.lyrics, layout.columnWidth, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
     if (LocalStill.current) return remember(view, key) { view.keep(key, plan(), place()) }
     val ready = view.planFor(key)

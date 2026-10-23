@@ -105,8 +105,8 @@ private fun MusicLabel(m: LabelText, side: LabelSide, inks: () -> IntArray, cove
     val artistStyle = remember(faces) { faces.textType(ARTIST_SP, 460) }
     val measurer = rememberTextMeasurer(cacheSize = 8)
     val widthPx = (box.textWidth * density).roundToInt()
-    val title = remember(text, widthPx) { fitWords(measurer, text.title, titleStyle, widthPx) }
-    val artist = remember(text, widthPx) {
+    val title = remember(text, widthPx, titleStyle) { fitWords(measurer, text.title, titleStyle, widthPx) }
+    val artist = remember(text, widthPx, artistStyle) {
         val options = text.artistOptions()
         options.firstOrNull { measurer.measure(AnnotatedString(it), artistStyle, maxLines = 1, softWrap = false).size.width <= widthPx }
             ?: options.lastOrNull()?.let { fitWords(measurer, it, artistStyle, widthPx) }

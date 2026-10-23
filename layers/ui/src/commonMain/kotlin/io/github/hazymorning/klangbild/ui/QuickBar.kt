@@ -201,10 +201,10 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     // never moves the others; only the last one is as wide as what it says now (nothing stands
     // after it).
     val density = LocalDensity.current.density
-    val widths = remember(keys, labels, values.last(), density) {
+    val widths = remember(keys, labels, values.last(), density, labelStyle, valueStyle) {
         quickWidths(quick, measurer, labelStyle, valueStyle, density)
     }
-    val reaches = remember(keys, labels, density) { quickWidths(quick, measurer, labelStyle, valueStyle, density, widest = true) }
+    val reaches = remember(keys, labels, density, labelStyle, valueStyle) { quickWidths(quick, measurer, labelStyle, valueStyle, density, widest = true) }
     val lefts = widths.runningFold(QuickGrid.LEFT) { x, w -> x + w + QuickGrid.GAP }.dropLast(1)
     val cursor = quick.cursor.coerceIn(0, keys.size - 1)
     // A row longer than the room glides to show the chosen entry whole (by its widest value, so a
