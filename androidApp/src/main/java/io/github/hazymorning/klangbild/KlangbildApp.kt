@@ -67,7 +67,14 @@ class AndroidPlatform(context: Context) : Platform {
         },
     )
 
-    override val tokenHttp: HttpClient = httpClient(OkHttp.create { preconfigured = tokenOkHttp })
+    override val tokenHttp: HttpClient = httpClient(
+        OkHttp.create {
+            preconfigured = tokenOkHttp
+            // A WebSocket given up (Home Assistant's after a missed pong) still closes normally; a
+            // server that doesn't answer is cut off after a second instead of OkHttp's minute.
+            config { webSocketCloseTimeout(1, TimeUnit.SECONDS) }
+        },
+    )
 
     /** Play here's connection, a token's too, made when it is first needed. */
     val speakerHttp: HttpClient by lazy { speakerClient(tokenOkHttp) }

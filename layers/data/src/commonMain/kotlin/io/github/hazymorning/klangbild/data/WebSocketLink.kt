@@ -57,6 +57,8 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
                 session = this
                 listener.onOpen(this@WebSocketLink)
                 for (frame in incoming) {
+                    // Once given up or left by its scope, the link passes nothing on.
+                    if (ended.value) continue
                     when (frame) {
                         is Frame.Text -> listener.onText(frame.readText())
                         is Frame.Binary -> listener.onBinary(frame.data)
@@ -92,7 +94,7 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
     /** Queues [bytes]; false when the connection is not open (any more). */
     fun send(bytes: ByteArray): Boolean = session?.outgoing?.trySend(Frame.Binary(true, bytes))?.isSuccess == true
 
-    /** Closes the connection normally, after whatever is queued; one not open yet is dropped. */
+    /** Closes the connection normally, after whatever is queued; one not open yet is given up ([cancel]). */
     fun close() {
         val s = session
         if (s == null || !s.outgoing.trySend(Frame.Close(CloseReason(NORMAL_CLOSURE, ""))).isSuccess) cancel()
@@ -100,7 +102,8 @@ class WebSocketLink(scope: CoroutineScope, http: HttpClient, url: String, privat
 
     /**
      * Gives the connection up at once: the listener hears of it as a failure, unless it has
-     * ended already, and the socket closes on its own.
+     * ended already, and nothing more. The socket itself closes normally, and a server that
+     * doesn't answer is cut off after the client's close timeout.
      */
     fun cancel() {
         job.cancel()
