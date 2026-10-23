@@ -17,11 +17,14 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -48,7 +51,7 @@ internal class QueueReader(
     private val latest: () -> PlayerSnapshot?,
     /** The player as last published (while a new song waits, still the one before). */
     private val shown: () -> PlayerSnapshot?,
-    private val lock: Any,
+    private val lock: SynchronizedObject,
     /** How often the queue is read again while music plays. */
     private val queueRefreshMs: Long,
     /** How long a new song may wait for the queue to describe it. */

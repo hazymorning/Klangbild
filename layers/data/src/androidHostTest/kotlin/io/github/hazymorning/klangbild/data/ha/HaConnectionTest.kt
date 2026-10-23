@@ -1,7 +1,22 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsAll
+import assertk.assertions.contains
+import assertk.assertions.containsAtLeast
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotNull
+import assertk.assertions.single
+import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.httpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,17 +35,16 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
-import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * Talks to a scripted fake Home Assistant over a real local WebSocket and its REST API: the
@@ -41,7 +55,7 @@ import kotlin.random.Random
 class HaConnectionTest {
     private lateinit var server: MockWebServer
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val http = OkHttpClient()
+    private val http = httpClient(OkHttp.create())
     private val sockets = CopyOnWriteArrayList<WebSocket>()
     private val received = CopyOnWriteArrayList<JsonObject>()
     private val restPaths = CopyOnWriteArrayList<String>()
@@ -57,7 +71,7 @@ class HaConnectionTest {
     /** The states the REST API knows. */
     private val states = ConcurrentHashMap<String, String>()
 
-    @Before
+    @BeforeTest
     fun setUp() {
         server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -69,7 +83,7 @@ class HaConnectionTest {
         states["media_player.kueche"] = state("media_player.kueche", "playing", """{"friendly_name":"Küche"}""", "18:00:00")
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         scope.cancel()
         server.close()
@@ -108,6 +122,11 @@ class HaConnectionTest {
     }
 
     private inner class FakeHa : WebSocketListener() {
+        // As Home Assistant does, a close is answered.
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(1000, null)
+        }
+
         override fun onOpen(webSocket: WebSocket, response: Response) {
             upgrades.incrementAndGet()
             sockets += webSocket
@@ -194,7 +213,7 @@ class HaConnectionTest {
         // Where Home Assistant stands and its entity registry, asked once on the side.
         assertThat(withTimeout(5_000) { conn.config.first { it != null } }!!["time_zone"]).isEqualTo(JsonPrimitive("Europe/Berlin"))
         val registry = withTimeout(5_000) { conn.registry.first { it != null } }!!
-        assertThat(registry).containsExactly(RegistryEntry("button.wz_favorite", "music_assistant", "d1", "favorite_now_playing"))
+        assertThat(registry).containsExactlyInAnyOrder(RegistryEntry("button.wz_favorite", "music_assistant", "d1", "favorite_now_playing"))
         conn.stop()
     }
 
@@ -216,7 +235,7 @@ class HaConnectionTest {
         sockets.last().send(event("light.flur", state("light.flur", "on", "{}", "18:02:00")))
         sockets.last().send(event("media_player.wz", state("media_player.wz", "paused", "{}", "18:02:00")))
         val now = withTimeout(5_000) { conn.entities.first { it["media_player.wz"]?.state == "paused" } }
-        assertThat(now.keys).containsExactly("media_player.wz")
+        assertThat(now.keys).containsExactlyInAnyOrder("media_player.wz")
         // Removed from Home Assistant: gone here too.
         sockets.last().send(event("media_player.wz", "null"))
         withTimeout(5_000) { conn.entities.first { it.isEmpty() } }
@@ -232,10 +251,10 @@ class HaConnectionTest {
         conn.watch(setOf("media_player.kueche"))
         val both = withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.kueche") } }
         assertThat(both.getValue("media_player.kueche").string("friendly_name")).isEqualTo("Küche")
-        assertThat(both).containsKey("media_player.wz")
+        assertThat(both.keys).contains("media_player.wz")
         val subs = ofType("subscribe_trigger")
         assertThat(subs).hasSize(2)
-        assertThat(subs[1]["trigger"]!!.jsonObject["entity_id"]!!.jsonArray.map { it.jsonPrimitive.content }).containsExactly("media_player.kueche")
+        assertThat(subs[1]["trigger"]!!.jsonObject["entity_id"]!!.jsonArray.map { it.jsonPrimitive.content }).containsExactlyInAnyOrder("media_player.kueche")
 
         // A change of the extra entity arrives like any other.
         val extraId = subs[1]["id"]!!.jsonPrimitive.content
@@ -245,7 +264,7 @@ class HaConnectionTest {
         // The group breaks up: the second subscription ends, its entity leaves.
         conn.watch(emptySet())
         val alone = withTimeout(5_000) { conn.entities.first { !it.containsKey("media_player.kueche") } }
-        assertThat(alone).containsKey("media_player.wz")
+        assertThat(alone.keys).contains("media_player.wz")
         withTimeout(5_000) { while (ofType("unsubscribe_events").isEmpty()) delay(20) }
         assertThat(ofType("unsubscribe_events").single()["subscription"]!!.jsonPrimitive.content).isEqualTo(extraId)
         conn.stop()
@@ -256,7 +275,7 @@ class HaConnectionTest {
         val conn = connection()
         conn.start(config(), listOf("media_player.gone", "sun.sun"))
         val missing = withTimeout(5_000) { conn.missing.first { it.isNotEmpty() } }
-        assertThat(missing).containsExactly("media_player.gone")
+        assertThat(missing).containsExactlyInAnyOrder("media_player.gone")
         assertThat(conn.entities.value.keys).doesNotContain("media_player.gone")
         conn.stop()
     }
@@ -331,7 +350,7 @@ class HaConnectionTest {
                 waits.size >= 3
             }
         }
-        assertThat(waits.map { it.attempt }).containsExactly(1, 2, 3).inOrder()
+        assertThat(waits.map { it.attempt }).containsExactly(1, 2, 3)
         conn.stop()
     }
 }

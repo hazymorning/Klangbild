@@ -5,6 +5,9 @@ import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlin.concurrent.Volatile
 
 /**
  * The one sound feed for what shows: this TV's own playback while the music shown plays here
@@ -19,11 +22,11 @@ internal class SoundSelection(
     @Volatile private var current: SoundFeed = SoundFeed.None
     private var readers = 0
     private var milkdrop: MilkdropSound? = null
+    private val lock = SynchronizedObject()
 
     override fun read(nowUs: Long, out: SoundFrame): Boolean = current.read(nowUs, out)
 
-    @Synchronized
-    override fun reading(on: Boolean) {
+    override fun reading(on: Boolean): Unit = synchronized(lock) {
         val before = readers
         readers = (readers + if (on) 1 else -1).coerceAtLeast(0)
         if (before == 0 && readers > 0) current.reading(true)
@@ -31,8 +34,7 @@ internal class SoundSelection(
     }
 
     /** Music Assistant's MilkDrop feed for the address set up, or none without Music Assistant. */
-    @Synchronized
-    fun useMilkdrop(feed: MilkdropSound?) {
+    fun useMilkdrop(feed: MilkdropSound?): Unit = synchronized(lock) {
         if (feed === milkdrop) return
         val old = milkdrop
         milkdrop = feed
@@ -41,8 +43,7 @@ internal class SoundSelection(
     }
 
     /** What shows and plays now decides the feed. */
-    @Synchronized
-    fun update(state: SourceState, speaker: SpeakerStatus) {
+    fun update(state: SourceState, speaker: SpeakerStatus): Unit = synchronized(lock) {
         val player = state.player
         val here = speaker.playing && state.speaker != null && state.speaker == state.ownSpeaker
         val queue = player?.activeQueue?.takeIf { player.isMusicAssistant }

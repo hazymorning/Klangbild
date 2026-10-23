@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ma
 
+import io.github.hazymorning.klangbild.data.formEncode
 import io.github.hazymorning.klangbild.data.ha.ArtworkUrls
 import io.github.hazymorning.klangbild.domain.Chapter
 import io.github.hazymorning.klangbild.domain.Chapters
@@ -144,7 +145,7 @@ object MaQueue {
         val songPicture = playing?.string("image_url")?.let { url ->
             when {
                 url.startsWith("https://") || url.startsWith("$baseUrl/") -> url
-                url.startsWith("http://") -> "$baseUrl/imageproxy?path=${java.net.URLEncoder.encode(url, "UTF-8")}&provider=builtin&size=$PROXY_SIZE"
+                url.startsWith("http://") -> "$baseUrl/imageproxy?path=${formEncode(url)}&provider=builtin&size=$PROXY_SIZE"
                 else -> null
             }
         }

@@ -13,6 +13,7 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
@@ -58,6 +59,10 @@ class MultiplatformConventionPlugin : Plugin<Project> {
             }
         }
         configureTests()
+        tasks.withType<KotlinJsTest>().configureEach {
+            // As much room as the JVM's tests have (the speaker's simulated playback needs it).
+            nodeJsArgs += "--max-old-space-size=3072"
+        }
         // The WebAssembly tests run on Node.js, which comes from the repositories declared in
         // settings.gradle.kts, as every other download does (the root project's is set there).
         plugins.withType<WasmNodeJsPlugin> {

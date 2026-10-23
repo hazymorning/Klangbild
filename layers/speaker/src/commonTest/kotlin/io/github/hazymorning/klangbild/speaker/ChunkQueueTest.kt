@@ -1,7 +1,10 @@
 package io.github.hazymorning.klangbild.speaker
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
+import kotlin.test.Test
 
 class ChunkQueueTest {
     /** [frames] stereo frames whose left samples count up from [from]. */

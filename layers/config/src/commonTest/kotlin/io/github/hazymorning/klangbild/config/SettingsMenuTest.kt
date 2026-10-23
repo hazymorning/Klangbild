@@ -1,7 +1,17 @@
 package io.github.hazymorning.klangbild.config
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactly
+import assertk.assertions.doesNotContain
+import assertk.assertions.endsWith
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
@@ -10,12 +20,8 @@ import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.text.TestTexts
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
+import kotlin.test.Test
 
-@RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
 class SettingsMenuTest {
     private val de = TestTexts.german
     private val configured = Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.wz")
@@ -146,25 +152,25 @@ class SettingsMenuTest {
     @Test
     fun `sections stay together in menu order`() {
         val sections = SettingsMenu.entries.map { it.section }
-        assertThat(sections).isInOrder(compareBy<MenuSection> { it.ordinal })
+        assertThat(sections).isEqualTo(sections.sortedBy { it.ordinal })
     }
 
     @Test
     fun `the first level shows the groups, each saying what is in it, and every setting is in one`() {
         val groups = SettingsMenu.groups(de)
-        assertThat(groups.map { it.label }).containsExactly("Bild", "Informationen", "Licht", "Landschaft", "Fernbedienung", "Timer", "System").inOrder()
+        assertThat(groups.map { it.label }).containsExactly("Bild", "Informationen", "Licht", "Landschaft", "Fernbedienung", "Timer", "System")
         for (g in groups) {
             assertThat(g.entry).isNull()
             assertThat(g.description).endsWith(".")
             assertThat(SettingsMenu.rows(configured, MenuContext(), de, g.section!!)).isNotEmpty()
         }
-        assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactlyElementsIn(SettingsMenu.entries).inOrder()
+        assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactly(*(SettingsMenu.entries).toTypedArray())
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
             MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
-        ).inOrder()
+        )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
             MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE,
-        ).inOrder()
+        )
     }
 
     @Test
@@ -198,8 +204,8 @@ class SettingsMenuTest {
         val en = TestTexts.english()
         assertThat(SettingsMenu.label(MenuEntry.PLAY_HERE, en)).isEqualTo("Play here")
         val said = SpeakerLink.entries.associateWith { SettingsMenu.description(MenuEntry.PLAY_HERE, on, MenuContext(speaker = it), en) }
-        assertThat(said[SpeakerLink.TOO_OLD]).contains("2.10.7")
-        assertThat(said[SpeakerLink.UNREACHABLE]).contains("8927")
+        assertThat(said[SpeakerLink.TOO_OLD]).isNotNull().contains("2.10.7")
+        assertThat(said[SpeakerLink.UNREACHABLE]).isNotNull().contains("8927")
         assertThat(said[SpeakerLink.CONNECTED]).isEqualTo(said[SpeakerLink.CONNECTING])
         // What keeps it from playing is said only while it is on.
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, withMa, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).doesNotContain("2.10.7")

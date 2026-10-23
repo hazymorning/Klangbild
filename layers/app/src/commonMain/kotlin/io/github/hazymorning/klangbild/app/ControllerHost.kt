@@ -1,21 +1,24 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CoroutineScope
+import kotlin.concurrent.Volatile
 
 /**
  * What the parts of [NowPlayingController] (the menus, seeking, the sleep timer) need from it.
  * Keys arrive on the main thread, ticks and Home Assistant's reports on background threads, so
- * whatever changes together changes under [lock], the controller itself. A field another thread
+ * whatever changes together changes under [lock], the controller's. A field another thread
  * reads on its own (the main thread asking whether a menu is open) is also `@Volatile`.
  */
 internal interface ControllerHost {
-    val lock: Any
+    val lock: SynchronizedObject
     val scope: CoroutineScope
     val now: () -> Long
 
@@ -30,6 +33,9 @@ internal interface ControllerHost {
 
     /** The words in the language shown. */
     val texts: Texts
+
+    /** The app's log. */
+    val log: Log
 
     /** The language chosen. */
     var language: AppLanguage

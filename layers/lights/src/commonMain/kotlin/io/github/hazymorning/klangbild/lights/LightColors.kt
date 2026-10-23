@@ -3,10 +3,10 @@ package io.github.hazymorning.klangbild.lights
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
-import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.render.FieldScene
 import io.github.hazymorning.klangbild.landscape.PaperLook
 import io.github.hazymorning.klangbild.landscape.SheetId
+import io.github.hazymorning.klangbild.math.smoothstep
+import io.github.hazymorning.klangbild.render.FieldScene
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -43,8 +43,8 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
         val p = t / ROTATE_S + i
         val k = floor(p)
         val f = smoothstep(HOLD, 1f, (p - k).toFloat())
-        val a = colors[Math.floorMod(k.toLong(), n.toLong()).toInt()]
-        val b = colors[Math.floorMod(k.toLong() + 1, n.toLong()).toInt()]
+        val a = colors[k.toLong().mod(n.toLong()).toInt()]
+        val b = colors[(k.toLong() + 1).mod(n.toLong()).toInt()]
         mixOklab(a, b, f, out)
     }
 

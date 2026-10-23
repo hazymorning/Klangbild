@@ -1,11 +1,23 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
+import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.data.isSuccessful
+import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
+import io.ktor.http.ContentType
+import io.ktor.http.HeaderValueParam
+import io.ktor.http.HttpMethod
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -14,12 +26,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /** Music Assistant rejected the token. */
 class MaAuthException : IOException("Music Assistant rejected the token")
@@ -36,7 +42,7 @@ class MaUnknownCommandException(command: String) : IOException("Music Assistant 
  * address set up; the cleartext guard of the shared client keeps plain HTTP inside the home
  * network.
  */
-class MaClient(private val http: OkHttpClient, val baseUrl: String, private val token: String) {
+class MaClient(private val http: HttpClient, val baseUrl: String, private val token: String) {
 
     /** The items of queue [queueId] from [offset], at most [limit], in play order. */
     suspend fun items(queueId: String, offset: Int, limit: Int): JsonArray {
@@ -117,49 +123,47 @@ class MaClient(private val http: OkHttpClient, val baseUrl: String, private val 
      * on a version without the command.
      */
     suspend fun lyrics(track: JsonObject): Pair<String?, String?> {
-        return when (val answer = command(LYRICS_COMMAND, buildJsonObject { put("track", track) }, slowHttp, LYRICS_TIMEOUT_MS)) {
+        return when (val answer = command(LYRICS_COMMAND, buildJsonObject { put("track", track) }, slow = true)) {
             is JsonArray -> answer.getOrNull(0).string() to answer.getOrNull(1).string()
             is JsonObject -> answer["lyrics"].string() to answer["lrc_lyrics"].string()
             else -> null to null
         }
     }
 
-    /** The text of a JSON string; null for anything else. */
-
-    /** The same connections, with room for an answer that takes a while (the lyrics). */
-    private val slowHttp: OkHttpClient by lazy { http.newBuilder().readTimeout(LYRICS_TIMEOUT_MS, TimeUnit.MILLISECONDS).build() }
-
-    /** One command; canceling the coroutine cancels the request. */
-    private suspend fun command(
-        name: String,
-        args: JsonObject,
-        client: OkHttpClient = http,
-        timeoutMs: Long = CALL_TIMEOUT_MS,
-    ): JsonElement {
+    /**
+     * One command; canceling the coroutine cancels the request. A [slow] one has room for an
+     * answer that takes a while (the lyrics): the time it may wait for the next bytes is the
+     * call's own.
+     */
+    private suspend fun command(name: String, args: JsonObject, slow: Boolean = false): JsonElement {
         val body = buildJsonObject {
             put("message_id", name)
             put("command", name)
             put("args", args)
         }
-        val request = Request.Builder()
-            .url("$baseUrl/api")
-            .header("Authorization", "Bearer $token")
-            .post(body.toString().toRequestBody(JSON))
-            .build()
-        val text = client.fetch(request, timeoutMs) { response ->
-            if (response.code == 401 || response.code == 403) throw MaAuthException()
+        val text = http.fetch(
+            if (slow) LYRICS_TIMEOUT_MS else CALL_TIMEOUT_MS,
+            {
+                method = HttpMethod.Post
+                url("$baseUrl/api")
+                header("Authorization", "Bearer $token")
+                setBody(TextContent(body.toString(), JSON))
+            },
+            readTimeoutMs = if (slow) LYRICS_TIMEOUT_MS else null,
+        ) { response ->
+            val code = response.status.value
+            if (code == 401 || code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
-            if (response.code == 400 && response.peekBody(UNKNOWN_PEEK_BYTES).string().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
-            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", response.code)
-            response.body.source().let { src ->
-                if (!src.request(MAX_ANSWER_BYTES)) src.readUtf8() else throw IOException("Answer too large")
-            }
+            if (code == 400 && response.bodyBytes(UNKNOWN_PEEK_BYTES).decodeToString().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
+            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", code)
+            response.textBelow(MAX_ANSWER_BYTES)
         }
         return withContext(Dispatchers.Default) { Json.parseToJsonElement(text) }
     }
 
     companion object {
-        private val JSON = "application/json".toMediaType()
+        /** JSON in UTF-8, as the commands are sent. */
+        private val JSON = ContentType("application", "json", listOf(HeaderValueParam("charset", "utf-8")))
 
         private val proxyLink = Regex("""^(https?://[^/?#]+)/imageproxy[/?]""")
 

@@ -1,7 +1,18 @@
 package io.github.hazymorning.klangbild.speaker
 
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.Assert
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
+import assertk.assertions.isTrue
+import assertk.assertions.startsWith
+import assertk.assertions.support.expected
+import assertk.assertions.support.show
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.sendspin.ClockMap
 import io.github.hazymorning.klangbild.sendspin.Hello
@@ -17,13 +28,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import okhttp3.OkHttpClient
 import org.junit.Assume.assumeTrue
-import org.junit.Before
-import org.junit.Test
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.random.asKotlinRandom
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * The speaker's connection against the reference implementation Music Assistant runs: aiosendspin
@@ -36,7 +48,7 @@ class SendspinEndToEndTest {
     /** The script that starts the reference server, ci/sendspin_server.py, as the build names it. */
     private val server: String? = System.getProperty("klangbild.sendspinServer")
 
-    @Before
+    @BeforeTest
     fun needsTheServer() = assumeTrue("needs -Pklangbild.sendspin=<python with aiosendspin 10.2.0>", python != null)
 
     /** The server, its events line by line as they come. */
@@ -133,15 +145,15 @@ class SendspinEndToEndTest {
 
     private class Chunk(val serverUs: Long, val firstFrame: Int, val frames: Int, val arrivalUs: Long, val dueUs: Long?, val steady: Boolean, val clears: Int)
 
-    private val random = SecureRandom()
+    private val random = SecureRandom().asKotlinRandom()
     private val identity = KeyPair.generate(random)
-    private val pairingPsk = ByteArray(32).also(random::nextBytes)
+    private val pairingPsk = random.nextBytes(ByteArray(32))
     private val hello = Hello("Klangbild test", "Test box", "Klangbild", "test", bufferCapacity = 2_000_000, beats = false, beatBufferCapacity = 0)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private fun connect(server: Server, speaker: Speaker): SpeakerConnection {
         val port = field(server.await("READY"), "port")
-        val connection = SpeakerConnection(SpeakerConnection.client(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
+        val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
             speaker.end = ended
             Session(transport, identity, pairingPsk, { speaker.records }, hello, speaker, { System.nanoTime() / 1_000 }, random)
         })
@@ -165,7 +177,7 @@ class SendspinEndToEndTest {
                 val deadline = System.nanoTime() + 5_000_000_000L
                 while (speaker.chunks.size < field(sent, "n").toInt() && System.nanoTime() < deadline) Thread.sleep(20)
                 assertThat(speaker.chunks).hasSize(field(sent, "n").toInt())
-                assertWithMessage("chunks with a sample out of place").that(speaker.chunks.filterNot { it.steady }).isEmpty()
+                assertThat(speaker.chunks.filterNot { it.steady }, name = "chunks with a sample out of place").isEmpty()
 
                 // Before and after the clear, each chunk follows the one before: in its samples and its time.
                 for (part in speaker.chunks.groupBy { it.clears }.values) {
@@ -181,7 +193,7 @@ class SendspinEndToEndTest {
                     assertThat(ahead).isGreaterThan(0L)
                     assertThat(ahead).isLessThan(6_500_000L)
                 }
-                assertThat(speaker.events).containsAtLeast("player true", "start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end").inOrder()
+                assertThat(speaker.events).containsInOrder("player true", "start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end")
                 // The commands came back in the speaker's state.
                 assertThat(server.all.last { it.startsWith("CLIENT_STATE") }).contains("\"volume\":30,\"muted\":false,\"output_delay_ms\":20")
             } finally {
@@ -219,7 +231,7 @@ class SendspinEndToEndTest {
         }.apply { start() }
         Server("--play-seconds", "4", "--clear-after", "2", "--end", "--linger", "2").use { server ->
             val port = field(server.await("READY"), "port")
-            val connection = SpeakerConnection(SpeakerConnection.client(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
+            val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
                 speaker.end = ended
                 Session(transport, identity, pairingPsk, { speaker.records }, hello, feeding, { System.nanoTime() / 1_000 }, random)
             })
@@ -244,7 +256,7 @@ class SendspinEndToEndTest {
         }
         assertThat(sink.musicFrames).isGreaterThan(48_000 * 3)
         // Every stretch played on time, within the player role's millisecond.
-        assertWithMessage("runs played off time").that(errors.filter { (_, e) -> e !in -1_000L..1_000L }.map { (r, e) -> "${r.counter}+${r.frames}: $e us" }).isEmpty()
+        assertThat(errors.filter { (_, e) -> e !in -1_000L..1_000L }.map { (r, e) -> "${r.counter}+${r.frames}: $e us" }, name = "runs played off time").isEmpty()
     }
 
     @Test
@@ -256,8 +268,8 @@ class SendspinEndToEndTest {
                 val serverId = field(server.all.first { it.startsWith("READY") }, "server_id")
                 server.await("PAIRED")
                 server.await("PLAYER_READY")
-                assertThat(speaker.records.map { it.serverId }).containsExactly(serverId)
-                assertThat(speaker.events).containsAtLeast("paired", "used $serverId", "player true").inOrder()
+                assertThat(speaker.records.map { it.serverId }).containsExactlyInAnyOrder(serverId)
+                assertThat(speaker.events).containsInOrder("paired", "used $serverId", "player true")
                 assertThat(connection.link.value).isEqualTo(SpeakerLink.CONNECTED)
             } finally {
                 connection.stop("shutdown")
@@ -265,5 +277,12 @@ class SendspinEndToEndTest {
             assertThat(server.await("DONE")).contains("exit_code=0")
         }
         scope.cancel()
+    }
+
+    /** The [expected] items come in this order, with any others between them. */
+    private fun Assert<List<String>>.containsInOrder(vararg expected: String) = given { actual ->
+        var next = 0
+        for (item in actual) if (next < expected.size && item == expected[next]) next++
+        if (next < expected.size) expected("to contain in order:${show(expected.toList())} but was:${show(actual)}")
     }
 }

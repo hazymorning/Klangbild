@@ -1,9 +1,11 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.data.ha.StationPictures.Offer
 import io.github.hazymorning.klangbild.data.ha.StationPictures.Rank
-import org.junit.Test
+import kotlin.test.Test
 
 /**
  * A station's picture as Music Assistant offers it through Home Assistant: the station's first,

@@ -1,77 +1,66 @@
 package io.github.hazymorning.klangbild.config
 
-import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.MutablePreferences
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
 /**
- * The settings on disk (DataStore). Tokens are sealed before they are written ([SecretBox]);
+ * The settings on disk ([store]). Tokens are sealed before they are written ([SecretBox]);
  * what is not stored reads as [Settings]' own default, and so does a value this version does
  * not know.
  */
-class SettingsStore(private val context: Context, private val secrets: SecretBox = KeystoreSecretBox()) {
+class SettingsStore(private val store: ValueStore, private val secrets: SecretBox) {
     private val defaults = Settings()
 
     private object Keys {
-        val url = stringPreferencesKey("ha_url")
-        val token = stringPreferencesKey("ha_token")
-        val refreshToken = stringPreferencesKey("ha_refresh_token")
-        val clientId = stringPreferencesKey("ha_client_id")
-        val entity = stringPreferencesKey("entity_id")
-        val sun = stringPreferencesKey("sun_entity")
-        val sleepMinutes = intPreferencesKey("sleep_minutes")
-        val sleepAction = stringPreferencesKey("sleep_action")
-        val clock = booleanPreferencesKey("show_clock")
-        val remote = booleanPreferencesKey("remote_control")
-        val progressBar = booleanPreferencesKey("show_time_line")
-        val next = booleanPreferencesKey("show_next")
-        val album = booleanPreferencesKey("show_album")
-        val group = booleanPreferencesKey("show_group")
-        val volume = stringPreferencesKey("volume_display")
-        val intensity = stringPreferencesKey("light_level")
-        val volumeKeys = booleanPreferencesKey("volume_keys")
-        val appearance = stringPreferencesKey("appearance")
-        val queue = stringPreferencesKey("queue")
+        val url = stringKey("ha_url")
+        val token = stringKey("ha_token")
+        val refreshToken = stringKey("ha_refresh_token")
+        val clientId = stringKey("ha_client_id")
+        val entity = stringKey("entity_id")
+        val sun = stringKey("sun_entity")
+        val sleepMinutes = intKey("sleep_minutes")
+        val sleepAction = stringKey("sleep_action")
+        val clock = booleanKey("show_clock")
+        val remote = booleanKey("remote_control")
+        val progressBar = booleanKey("show_time_line")
+        val next = booleanKey("show_next")
+        val album = booleanKey("show_album")
+        val group = booleanKey("show_group")
+        val volume = stringKey("volume_display")
+        val intensity = stringKey("light_level")
+        val volumeKeys = booleanKey("volume_keys")
+        val appearance = stringKey("appearance")
+        val queue = stringKey("queue")
 
         /** The view of versions before the queue's setting: SINGLE or FLOW. Read once, then removed. */
-        val formerView = stringPreferencesKey("view")
-        val lyrics = booleanPreferencesKey("lyrics")
-        val maUrl = stringPreferencesKey("ma_url")
-        val maToken = stringPreferencesKey("ma_token")
-        val tvSpeaker = booleanPreferencesKey("tv_speaker")
-        val background = stringPreferencesKey("background")
-        val motion = stringPreferencesKey("motion")
-        val lightsLeft = stringPreferencesKey("bars_left")
-        val lightsCenter = stringPreferencesKey("bars_center")
-        val lightsRight = stringPreferencesKey("bars_right")
-        val roomLightBrightness = stringPreferencesKey("bar_level")
-        val lightsOnlyOn = booleanPreferencesKey("lights_only_on")
-        val spokenSkip = booleanPreferencesKey("spoken_skip")
-        val landscapePause = intPreferencesKey("vista_pause_s")
-        val landscapePlaying = intPreferencesKey("vista_playing_s")
-        val miniPlayer = stringPreferencesKey("mini_player")
-        val weather = stringPreferencesKey("weather_entity")
-        val quickActions = stringPreferencesKey("quick_actions")
-        val quickSeen = booleanPreferencesKey("quick_seen")
-        val ownValues = stringPreferencesKey("own_values")
-        val showValues = booleanPreferencesKey("show_values")
+        val formerView = stringKey("view")
+        val lyrics = booleanKey("lyrics")
+        val maUrl = stringKey("ma_url")
+        val maToken = stringKey("ma_token")
+        val tvSpeaker = booleanKey("tv_speaker")
+        val background = stringKey("background")
+        val motion = stringKey("motion")
+        val lightsLeft = stringKey("bars_left")
+        val lightsCenter = stringKey("bars_center")
+        val lightsRight = stringKey("bars_right")
+        val roomLightBrightness = stringKey("bar_level")
+        val lightsOnlyOn = booleanKey("lights_only_on")
+        val spokenSkip = booleanKey("spoken_skip")
+        val landscapePause = intKey("vista_pause_s")
+        val landscapePlaying = intKey("vista_playing_s")
+        val miniPlayer = stringKey("mini_player")
+        val weather = stringKey("weather_entity")
+        val quickActions = stringKey("quick_actions")
+        val quickSeen = booleanKey("quick_seen")
+        val ownValues = stringKey("own_values")
+        val showValues = booleanKey("show_values")
     }
 
-    val settings: Flow<Settings> = context.dataStore.data.map(::read)
+    val settings: Flow<Settings> = store.data.map(::read)
 
     /** Stores [s], every setting of it. */
     suspend fun write(s: Settings) {
-        context.dataStore.edit { p -> write(p, s) }
+        store.edit { p -> write(p, s) }
     }
 
     /**
@@ -79,7 +68,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
      * stored before secrets were sealed are sealed, and the view becomes how the queue shows.
      */
     suspend fun migrate() {
-        context.dataStore.edit { migrate(it) }
+        store.edit { migrate(it) }
     }
 
     /**
@@ -87,7 +76,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
      * key: rewriting every setting would open the sealed tokens, and one that cannot be opened at
      * that moment would be lost.
      */
-    internal fun migrate(p: MutablePreferences) {
+    internal fun migrate(p: MutableMap<String, Any>) {
         val plain = listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }
         if (plain) write(p, read(p))
         val view = p[Keys.formerView] ?: return
@@ -96,7 +85,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
     }
 
     /** The settings as [p] stores them; what an earlier version stored is read with its current meaning. */
-    internal fun read(p: Preferences): Settings =
+    internal fun read(p: Map<String, Any>): Settings =
         Settings(
             haUrl = p[Keys.url],
             haToken = p[Keys.token]?.let(secrets::open),
@@ -137,11 +126,11 @@ class SettingsStore(private val context: Context, private val secrets: SecretBox
             showValues = p[Keys.showValues] ?: defaults.showValues,
         )
 
-    private fun write(p: MutablePreferences, s: Settings) {
-        fun putOrRemove(key: Preferences.Key<String>, value: String?) {
+    private fun write(p: MutableMap<String, Any>, s: Settings) {
+        fun putOrRemove(key: StoreKey<String>, value: String?) {
             if (value.isNullOrBlank()) p.remove(key) else p[key] = value
         }
-        fun putSecret(key: Preferences.Key<String>, value: String?) = putOrRemove(key, value?.takeIf { it.isNotBlank() }?.let(secrets::seal))
+        fun putSecret(key: StoreKey<String>, value: String?) = putOrRemove(key, value?.takeIf { it.isNotBlank() }?.let(secrets::seal))
         putOrRemove(Keys.url, s.haUrl)
         putSecret(Keys.token, s.haToken)
         putSecret(Keys.refreshToken, s.haRefreshToken)

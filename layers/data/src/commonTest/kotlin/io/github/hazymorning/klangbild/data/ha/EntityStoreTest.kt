@@ -1,11 +1,16 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.EntityState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.junit.Test
+import kotlin.test.Test
 
 class EntityStoreTest {
     private fun state(s: String): EntityState = EntityState.of(Json.parseToJsonElement(s).jsonObject)!!

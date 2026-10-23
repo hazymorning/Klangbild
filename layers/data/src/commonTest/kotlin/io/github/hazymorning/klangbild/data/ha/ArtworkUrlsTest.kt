@@ -1,7 +1,9 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.isEqualTo
+import kotlin.test.Test
 
 class ArtworkUrlsTest {
     @Test
@@ -37,6 +39,6 @@ class ArtworkUrlsTest {
                 "https://i.scdn.co/image/ab67616d0000b273xyz",
                 "https://i.scdn.co/image/ab67616d00001e02xyz",
                 "http://ha/api/x",
-            ).inOrder()
+            )
     }
 }

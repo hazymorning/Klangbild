@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.app
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.Settings
@@ -12,16 +14,17 @@ import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.WeatherGlide
 import io.github.hazymorning.klangbild.landscape.WeatherMood
 import io.github.hazymorning.klangbild.lights.LightSlot
-import org.junit.Test
-import java.time.ZoneId
-import java.time.ZonedDateTime
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.math.abs
+import kotlin.test.Test
 
 class LightTargetsTest {
     private val settings = Settings(roomLights = RoomLights("light.left", "light.middle", "light.right"))
     /** It pours outside. */
     private val ui = UiState(source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40, weather = "pouring"))
-    private val noon = ZonedDateTime.of(2026, 10, 10, 13, 0, 0, 0, ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private val noon = LocalDateTime(2026, 10, 10, 13, 0).toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds()
 
     /** The lights' colors (linear sRGB) for the landscape showing [weather] at [t]. */
     private fun lights(weather: WeatherGlide, t: Long): List<Float> {

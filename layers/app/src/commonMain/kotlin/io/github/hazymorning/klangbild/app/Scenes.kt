@@ -6,6 +6,8 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +16,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.concurrent.Volatile
 
 /**
  * How scenes are lit: the wall, how much color a light wall takes (the light level, which also
@@ -44,6 +47,7 @@ class Scenes(
 ) {
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val cache = LinkedHashMap<String, ArtworkScene>()
+    private val lock = SynchronizedObject()
     private val building = HashMap<String, Job>()
 
     /**
@@ -53,7 +57,7 @@ class Scenes(
      */
     @Volatile var frame = Frame(ScreenSpec.TV_1080, flow = false)
         set(value) {
-            synchronized(cache) {
+            synchronized(lock) {
                 if (value != field) {
                     building.values.forEach { it.cancel() }
                     building.clear()
@@ -68,10 +72,10 @@ class Scenes(
 
     /** The scene for [track] if it is ready and lit as [look]. */
     fun ready(track: TrackInfo, look: Look): ArtworkScene? =
-        synchronized(cache) { cache[track.sceneKey] }?.takeIf { look.fits(it) }
+        synchronized(lock) { cache[track.sceneKey] }?.takeIf { look.fits(it) }
 
     /** Whether [track]'s scene is on its way. */
-    fun pending(track: TrackInfo): Boolean = synchronized(cache) { track.sceneKey in building }
+    fun pending(track: TrackInfo): Boolean = synchronized(lock) { track.sceneKey in building }
 
     /**
      * Starts making [track]'s scene for [look] unless it is ready or on its way: re-lit if an
@@ -79,7 +83,7 @@ class Scenes(
      */
     fun prepare(track: TrackInfo, look: Look, done: (ArtworkScene) -> Unit = {}) {
         val key = track.sceneKey
-        synchronized(cache) {
+        synchronized(lock) {
             if (cache[key]?.let(look::fits) == true || key in building) return
             val old = cache[key]
             val forFrame = frame
@@ -89,7 +93,7 @@ class Scenes(
 
     /** Lets go of every scene (nothing is shown any more, or memory is short). */
     fun clear() {
-        synchronized(cache) {
+        synchronized(lock) {
             building.values.forEach { it.cancel() }
             building.clear()
             cache.clear()
@@ -98,7 +102,7 @@ class Scenes(
 
     /** Stops building scenes that are no longer wanted (skipped past quickly), by [TrackInfo.sceneKey]. */
     fun retain(keys: Set<String>) {
-        synchronized(cache) {
+        synchronized(lock) {
             val stale = building.filterKeys { it !in keys }
             stale.values.forEach { it.cancel() }
             building.keys.removeAll(stale.keys)
@@ -119,7 +123,7 @@ class Scenes(
             // A broken image, out of memory and the like: the generated figure always works.
             runCatching { withContext(dispatcher) { build(track, look, forFrame, withCover = false) } }.getOrNull()
         }
-        synchronized(cache) {
+        synchronized(lock) {
             // Only its own place: the same song's scene for another frame may be on its way by now.
             if (building[key] === me) building.remove(key)
             if (scene == null || frame != forFrame) return

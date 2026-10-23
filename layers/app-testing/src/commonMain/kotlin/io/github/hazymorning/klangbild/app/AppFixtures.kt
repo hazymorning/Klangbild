@@ -17,6 +17,10 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
+import io.github.hazymorning.klangbild.text.testZone
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 
 /**
  * Test content up to the controller: the test catalog's tracks, the scenes made of their covers,
@@ -34,10 +38,10 @@ abstract class AppFixtures {
     val TV_4K = ScreenSpec(3840, 2160, 4f)
 
     /** Renders use Berlin time on 8 October 2026. */
-    val zone: java.time.ZoneId = java.time.ZoneId.of("Europe/Berlin")
+    val zone: TimeZone = testZone("Europe/Berlin")
 
     fun at(hour: Int, minute: Int, day: Int = 8): Long =
-        java.time.ZonedDateTime.of(2026, 10, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
+        LocalDateTime(2026, 10, day, hour, minute).toInstant(zone).toEpochMilliseconds()
 
     fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalog.SCHEME + cover.name }
 

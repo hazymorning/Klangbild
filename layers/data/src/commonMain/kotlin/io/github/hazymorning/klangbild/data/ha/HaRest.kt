@@ -2,22 +2,24 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
 
 /**
  * The parts of Home Assistant's REST API Klangbild uses
  * (https://developers.home-assistant.io/docs/api/rest): one entity's state, and all of them and
  * every action for the setup page. Requests carry the access token and go only to [HaAuth.baseUrl].
  */
-class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
+class HaRest(private val http: HttpClient, private val auth: HaAuth) {
     /** What `GET /api/states/<entity_id>` found. */
     sealed interface Fetched {
         data class Found(val state: EntityState) : Fetched
@@ -62,16 +64,13 @@ class HaRest(private val http: OkHttpClient, private val auth: HaAuth) {
     private suspend fun <T> get(path: String, read: (Int, String) -> T): T {
         var token = auth.accessToken()
         repeat(2) { attempt ->
-            val request = Request.Builder()
-                .url(auth.baseUrl + path)
-                .header("Authorization", "Bearer $token")
-                .build()
-            val (code, text) = http.fetch(request, CALL_TIMEOUT_MS) { response ->
-                val body = response.body.source().let { src ->
-                    if (src.request(MAX_ANSWER_BYTES)) throw IOException("Answer too large") else src.readUtf8()
-                }
-                response.code to body
-            }
+            val (code, text) = http.fetch(
+                CALL_TIMEOUT_MS,
+                {
+                    url(auth.baseUrl + path)
+                    header("Authorization", "Bearer $token")
+                },
+            ) { response -> response.status.value to response.textBelow(MAX_ANSWER_BYTES) }
             if (code == 401 && attempt == 0 && auth.refreshable) {
                 auth.invalidate(token)
                 token = auth.accessToken()

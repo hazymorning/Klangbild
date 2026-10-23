@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SleepTimer
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,7 +33,7 @@ internal class SleepControl(private val host: ControllerHost) {
             val track = (host.ui.screen as? Screen.Stage)?.track
             val choices = timer.choices(track)
             val i = choices.indexOf(timer.choice).coerceAtLeast(0) + direction
-            val next = if (wrap) choices[Math.floorMod(i, choices.size)] else choices[i.coerceIn(0, choices.size - 1)]
+            val next = if (wrap) choices[i.mod(choices.size)] else choices[i.coerceIn(0, choices.size - 1)]
             if (next != timer.choice) timer.set(next, host.now())
             host.recompute()
         }

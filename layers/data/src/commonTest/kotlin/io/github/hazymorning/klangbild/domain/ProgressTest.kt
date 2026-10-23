@@ -1,8 +1,12 @@
 package io.github.hazymorning.klangbild.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.data.ha.ClockSkew
-import org.junit.Test
+import kotlin.test.Test
 
 class ProgressTest {
     private val track = TrackInfo("Song", durationMs = 200_000)
@@ -46,8 +50,8 @@ class ProgressTest {
         // Server says we are 1 s behind what is shown: glide, do not jump.
         smooth.onReport("a", rawNowMs = 9_000, nowMs = 0)
         assertThat(smooth.display("a", 9_000, 0)).isEqualTo(10_000)
-        assertThat(smooth.display("a", 9_700, 700)).isIn(9_700L..10_100L)
-        assertThat(smooth.display("a", 13_000, 4_000)).isIn(13_000L..13_010L)
+        assertThat(smooth.display("a", 9_700, 700)).isNotNull().isBetween(9_700L, 10_100L)
+        assertThat(smooth.display("a", 13_000, 4_000)).isNotNull().isBetween(13_000L, 13_010L)
         // A seek of 60 s is shown immediately.
         smooth.onReport("a", rawNowMs = 73_000, nowMs = 4_000)
         assertThat(smooth.display("a", 73_000, 4_000)).isEqualTo(73_000)

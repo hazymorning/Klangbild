@@ -1,18 +1,32 @@
 package io.github.hazymorning.klangbild.data
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.data.ha.ArtworkUrls
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaUrls
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.math.RecentMap
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.url
+import io.ktor.http.contentLength
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.LinkedHashMap
+import kotlin.time.Clock
+
+/**
+ * Turns the bytes of a picture into a bitmap, or null when they are none. Larger sources are
+ * subsampled on decode: by powers of two, while both sides stay at least half of
+ * [ArtworkLoader.MAX_DECODE_PX] and the longer one is above it, then further until the picture
+ * holds no more pixels than a square of [ArtworkLoader.MAX_DECODE_PX].
+ */
+fun interface PictureDecoder {
+    fun decode(bytes: ByteArray): ImageBitmap?
+}
 
 /**
  * Fetches and decodes covers. Tries the upgraded (larger) URL first, then the original, then
@@ -20,21 +34,19 @@ import java.util.LinkedHashMap
  * Returns null when there is no cover at all; the scene then paints a Chladni figure.
  */
 class ArtworkLoader(
-    private val http: OkHttpClient,
+    private val http: HttpClient,
     /** For Home Assistant's own pictures, which carry the token: follows no redirect. */
-    private val tokenHttp: OkHttpClient,
+    private val tokenHttp: HttpClient,
     /** How the current connection signs in to Home Assistant, if there is one. */
     private val haAuth: () -> HaAuth?,
-    private val now: () -> Long = System::currentTimeMillis,
+    private val decoder: PictureDecoder,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
-    private val cache = object : LinkedHashMap<String, Bitmap>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > MAX_DECODED
-    }
+    private val lock = SynchronizedObject()
+    private val cache = RecentMap<String, ImageBitmap>(MAX_DECODED)
 
     /** Guessed addresses that gave no picture lately, and when: they are not asked again for a while. */
-    private val failed = object : LinkedHashMap<String, Long>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?) = size > MAX_FAILED
-    }
+    private val failed = RecentMap<String, Long>(MAX_FAILED)
 
     /** A few downloads and decodes at a time: a whole cover flow at once would hold every source in memory. */
     private val slots = Semaphore(MAX_LOADS)
@@ -45,11 +57,11 @@ class ArtworkLoader(
      * rendition guessed from the address gets a shorter time than the address itself, and a
      * guess that failed is not tried again for [RETRY_FAILED_MS].
      */
-    suspend fun load(track: TrackInfo): Bitmap? {
+    suspend fun load(track: TrackInfo): ImageBitmap? {
         val originals = listOfNotNull(track.artworkUrl, track.artworkFallbackUrl).toSet()
         for (url in ArtworkUrls.candidates(track.artworkUrl, track.artworkFallbackUrl)) {
-            synchronized(cache) { cache[url] }?.let { return it }
-            if (synchronized(failed) { failed[url] }?.let { now() - it < RETRY_FAILED_MS } == true) continue
+            synchronized(lock) { cache[url] }?.let { return it }
+            if (synchronized(lock) { failed[url] }?.let { now() - it < RETRY_FAILED_MS } == true) continue
             val timeout = if (url in originals) CALL_TIMEOUT_MS else UPGRADE_TIMEOUT_MS
             val bmp = slots.withPermit {
                 val bytes = try {
@@ -59,45 +71,49 @@ class ArtworkLoader(
                 } catch (_: Exception) {
                     null
                 }
-                bytes?.let { withContext(Dispatchers.Default) { decode(it) } }
+                bytes?.let { withContext(Dispatchers.Default) { decoder.decode(it) } }
             }
             if (bmp == null) {
                 // Only guesses are remembered: the addresses Home Assistant gives may work again any moment.
-                if (url !in originals) synchronized(failed) { failed[url] = now() }
+                if (url !in originals) synchronized(lock) { failed[url] = now() }
                 continue
             }
-            synchronized(cache) { cache[url] = bmp }
+            synchronized(lock) { cache[url] = bmp }
             return bmp
         }
         return null
     }
 
     /** Forgets the decoded covers (the screen is gone, or memory is short). */
-    fun clear() = synchronized(cache) { cache.clear() }
+    fun clear() = synchronized(lock) { cache.clear() }
 
     private suspend fun fetch(url: String, timeoutMs: Long): ByteArray? {
-        val builder = Request.Builder().url(url)
         val auth = haAuth()
+        val token: String?
         val client = if (auth != null && HaUrls.isHaHost(auth.baseUrl, url)) {
-            val token = try {
+            token = try {
                 auth.accessToken()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
                 null
             }
-            token?.let { builder.header("Authorization", "Bearer $it") }
             tokenHttp
         } else {
+            token = null
             http
         }
-        return client.fetch(builder.build(), timeoutMs) { response ->
+        return client.fetch(
+            timeoutMs,
+            {
+                url(url)
+                token?.let { header("Authorization", "Bearer $it") }
+            },
+        ) { response ->
             if (!response.isSuccessful) return@fetch null
             // A cover is a few megabytes at most; anything far larger is not read at all.
-            if (response.body.contentLength() > MAX_BYTES) return@fetch null
-            val source = response.body.source()
-            if (source.request(MAX_BYTES + 1)) return@fetch null
-            source.readByteArray()
+            if ((response.contentLength() ?: -1L) > MAX_BYTES) return@fetch null
+            response.bodyBytes(MAX_BYTES + 1).takeIf { it.size <= MAX_BYTES }
         }
     }
 
@@ -121,22 +137,5 @@ class ArtworkLoader(
         private const val MAX_DECODED = 4
         private const val MAX_FAILED = 64
         private const val MAX_LOADS = 2
-
-        fun decode(bytes: ByteArray): Bitmap? {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-            val w = bounds.outWidth
-            val h = bounds.outHeight
-            var sample = 1
-            while (minOf(w, h) / (sample * 2) >= MAX_DECODE_PX / 2 && maxOf(w, h) / sample > MAX_DECODE_PX) sample *= 2
-            // However odd its shape, no picture takes more memory than a square of MAX_DECODE_PX.
-            while ((w / sample).toLong() * (h / sample) > MAX_DECODE_PX.toLong() * MAX_DECODE_PX) sample *= 2
-            val opts = BitmapFactory.Options().apply {
-                inSampleSize = sample
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-            return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-        }
     }
 }

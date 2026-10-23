@@ -3,7 +3,16 @@ package io.github.hazymorning.klangbild.config
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasLength
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.OwnValue
@@ -13,9 +22,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 /**
  * The quick settings' own buttons: what each kind of entity does, how they are kept, and how
@@ -48,9 +57,9 @@ class QuickActionsTest {
     @Test
     fun `buttons are kept as names and entities, and what cannot be read is left out`() {
         val text = QuickActions.encode(listOf(ungroup, movie))
-        assertThat(QuickActions.decode(text)).containsExactly(ungroup, movie).inOrder()
+        assertThat(QuickActions.decode(text)).containsExactly(ungroup, movie)
         assertThat(QuickActions.decode("""[{"name":"Front door","entity":"lock.front"},{"name":"Go","entity":"script.go"},7,"x"]"""))
-            .containsExactly(QuickAction("Go", "script.go"))
+            .containsExactlyInAnyOrder(QuickAction("Go", "script.go"))
         assertThat(QuickActions.decode("not json")).isEmpty()
         assertThat(QuickActions.decode(null)).isEmpty()
     }
@@ -70,7 +79,7 @@ class QuickActionsTest {
         val grouped = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1")
         val party = QuickAction("Party", "script.party", vars, grouped)
         val scene = QuickAction("Movie", "scene.movie", condition = Condition("sun.sun", null, Condition.Test.IS, "below_horizon"))
-        assertThat(QuickActions.decode(QuickActions.encode(listOf(party, scene)))).containsExactly(party, scene).inOrder()
+        assertThat(QuickActions.decode(QuickActions.encode(listOf(party, scene)))).containsExactly(party, scene)
         // Variables only go to a script; odd names, too many variables and odd conditions don't make a button.
         assertThat(QuickActions.valid("Movie", "scene.movie", vars)!!.variables).isEmpty()
         assertThat(QuickActions.from(obj("""{"entity":"script.x","variables":{"not ok":1}}"""))).isNull()
@@ -80,7 +89,7 @@ class QuickActionsTest {
         assertThat(QuickActions.from(obj("""{"entity":"script.x","when":{"entity":"sensor.t","test":"near","value":"1"}}"""))).isNull()
         assertThat(QuickActions.from(obj("""{"entity":"script.x","when":{"entity":"sensor.t","attribute":"a b","test":"is","value":"1"}}"""))).isNull()
         // What the buttons need followed: their entities and what their conditions look at.
-        assertThat(QuickActions.entities(listOf(party, scene))).containsExactly("script.party", "media_player.wz", "scene.movie", "sun.sun").inOrder()
+        assertThat(QuickActions.entities(listOf(party, scene)).toList()).containsExactly("script.party", "media_player.wz", "scene.movie", "sun.sun")
     }
 
     @Test
@@ -109,7 +118,7 @@ class QuickActionsTest {
     @Test
     fun `the store keeps the buttons`(): Unit = runBlocking {
         val context: Context = ApplicationProvider.getApplicationContext()
-        val store = SettingsStore(context)
+        val store = SettingsStore(settingsValues(context), KeystoreSecretBox())
         val grouped = ungroup.copy(
             variables = Json.parseToJsonElement("""{"mode":"all"}""").jsonObject,
             condition = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1"),
@@ -117,8 +126,8 @@ class QuickActionsTest {
         val values = listOf(OwnValue("Outside", "sensor.outside"), OwnValue("", "weather.home", "temperature"))
         store.write(Settings(quickActions = listOf(grouped, party), ownValues = values, showValues = false))
         val back = store.settings.first()
-        assertThat(back.quickActions).containsExactly(grouped, party).inOrder()
-        assertThat(back.ownValues).containsExactly(*values.toTypedArray()).inOrder()
+        assertThat(back.quickActions).containsExactly(grouped, party)
+        assertThat(back.ownValues).containsExactly(*values.toTypedArray())
         assertThat(back.showValues).isFalse()
         store.write(back.copy(quickActions = emptyList(), ownValues = emptyList()))
         assertThat(store.settings.first().quickActions).isEmpty()
@@ -130,15 +139,15 @@ class QuickActionsTest {
         val s = Settings(quickActions = listOf(ungroup, movie, party))
         val ctx = QuickContext(music = true, actions = mapOf(0 to ActionState.READY, 2 to ActionState.ON))
         val rows = QuickMenu.rows(s, ctx, en)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS).inOrder()
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS)
         // The scene's entity is not there (unavailable): its button is left out, the others keep their places.
-        assertThat(rows.filter { it.item == QuickItem.ACTION }.map { it.key.action }).containsExactly(0, 2).inOrder()
+        assertThat(rows.filter { it.item == QuickItem.ACTION }.map { it.key.action }).containsExactly(0, 2)
         assertThat(rows[2].label).isEqualTo("Ungroup")
         assertThat(rows[2].value).isEqualTo("Run")
         assertThat(rows[3].value).isEqualTo("On")
         // Every value a button can show, so its place never changes width.
-        assertThat(rows[2].values).containsExactly("Run", "Done", "Failed").inOrder()
-        assertThat(rows[3].values).containsExactly("On", "Off", "Failed").inOrder()
+        assertThat(rows[2].values).containsExactly("Run", "Done", "Failed")
+        assertThat(rows[3].values).containsExactly("On", "Off", "Failed")
     }
 
     @Test

@@ -1,8 +1,8 @@
 package io.github.hazymorning.klangbild.config
 
-import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.domain.ActionKind
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.StringId
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 
 /**
@@ -31,16 +31,16 @@ enum class FavoriteState {
  * then the buttons set up on the phone ([ACTION], whose names are their own), then the way into
  * all settings ([SETTINGS]).
  */
-enum class QuickItem(@StringRes val label: Int?) {
-    QUEUE(R.string.quick_queue),
-    LANDSCAPE(R.string.quick_landscape),
-    LYRICS(R.string.quick_lyrics),
-    PARTY(R.string.quick_party),
-    FAVORITE(R.string.quick_favorite),
-    LIGHTS(R.string.quick_lights),
-    SHUFFLE(R.string.quick_shuffle),
+enum class QuickItem(val label: StringId?) {
+    QUEUE(Strings.quickQueue),
+    LANDSCAPE(Strings.quickLandscape),
+    LYRICS(Strings.quickLyrics),
+    PARTY(Strings.quickParty),
+    FAVORITE(Strings.quickFavorite),
+    LIGHTS(Strings.quickLights),
+    SHUFFLE(Strings.quickShuffle),
     ACTION(null),
-    SETTINGS(R.string.quick_settings),
+    SETTINGS(Strings.quickSettings),
 }
 
 /** Which entry: a built-in one, or the button at [action] (its place among the buttons set up). */
@@ -114,45 +114,45 @@ object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String, muted: Boolean = false) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t), muted))
         row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
-        row(QuickItem.LANDSCAPE, t[if (ctx.landscape) R.string.on else R.string.off])
+        row(QuickItem.LANDSCAPE, t[if (ctx.landscape) Strings.on else Strings.off])
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
-        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) R.string.on else R.string.off])
+        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) Strings.on else Strings.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
-        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) R.string.off else R.string.on])
-        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) R.string.on else R.string.off])
+        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) Strings.off else Strings.on])
+        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) Strings.on else Strings.off])
         s.quickActions.forEachIndexed { i, a ->
             val kind = a.kind ?: return@forEachIndexed
             val state = ctx.actions[i] ?: return@forEachIndexed
             add(QuickRow(QuickKey(QuickItem.ACTION, i), a.name, actionValue(kind, state, t), actionValues(kind, t)))
         }
-        row(QuickItem.SETTINGS, t[R.string.quick_open])
+        row(QuickItem.SETTINGS, t[Strings.quickOpen])
     }
 
-    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) R.string.off else R.string.on]
+    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) Strings.off else Strings.on]
 
     fun favoriteValue(f: FavoriteState, t: Texts): String = t[
         when (f) {
-            FavoriteState.NONE -> R.string.favorite_add
-            FavoriteState.BUSY -> R.string.favorite_adding
-            FavoriteState.DONE -> R.string.favorite_added
-            FavoriteState.FAILED -> R.string.action_failed
+            FavoriteState.NONE -> Strings.favoriteAdd
+            FavoriteState.BUSY -> Strings.favoriteAdding
+            FavoriteState.DONE -> Strings.favoriteAdded
+            FavoriteState.FAILED -> Strings.actionFailed
         },
     ]
 
     /** A button's value: what it does, how it went, or (a switch) whether it is on. */
     fun actionValue(kind: ActionKind, state: ActionState, t: Texts): String = t[
         when (state) {
-            ActionState.DONE -> R.string.action_done
-            ActionState.FAILED -> R.string.action_failed
-            ActionState.ON -> R.string.on
-            ActionState.OFF -> R.string.off
+            ActionState.DONE -> Strings.actionDone
+            ActionState.FAILED -> Strings.actionFailed
+            ActionState.ON -> Strings.on
+            ActionState.OFF -> Strings.off
             ActionState.READY -> when (kind) {
-                ActionKind.RUN -> R.string.action_run
-                ActionKind.ACTIVATE -> R.string.action_activate
-                ActionKind.PRESS -> R.string.action_press
-                ActionKind.TOGGLE -> R.string.off
+                ActionKind.RUN -> Strings.actionRun
+                ActionKind.ACTIVATE -> Strings.actionActivate
+                ActionKind.PRESS -> Strings.actionPress
+                ActionKind.TOGGLE -> Strings.off
             }
         },
     ]
@@ -169,9 +169,9 @@ object QuickMenu {
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
         QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LANDSCAPE, QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[R.string.on], t[R.string.off])
+        QuickItem.LANDSCAPE, QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
-        QuickItem.SETTINGS -> listOf(t[R.string.quick_open])
+        QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
     }
 
     /**
@@ -183,7 +183,7 @@ object QuickMenu {
         var i = order.indexOf(q)
         repeat(order.size) {
             i += direction
-            i = if (wrap) Math.floorMod(i, order.size) else i.coerceIn(0, order.size - 1)
+            i = if (wrap) i.mod(order.size) else i.coerceIn(0, order.size - 1)
             if (order[i] != QueueDisplay.LIST || list) return order[i]
         }
         return q

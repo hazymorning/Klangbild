@@ -1,8 +1,16 @@
 package io.github.hazymorning.klangbild.data.ma
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,18 +26,17 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
-import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString.Companion.toByteString
-import org.junit.After
-import org.junit.Test
 import java.nio.ByteBuffer
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 /** The MilkDrop plugin's relay as a sound feed, against a stand-in relay that speaks its 2.10.7 protocol. */
 class MilkdropSoundTest {
@@ -80,13 +87,13 @@ class MilkdropSoundTest {
         server.start()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         scope.cancel()
         server.close()
     }
 
-    private fun feed() = MilkdropSound(OkHttpClient(), scope, server.url("/").toString().trimEnd('/'), "ma-token")
+    private fun feed() = MilkdropSound(httpClient(OkHttp.create()), scope, server.url("/").toString().trimEnd('/'), "ma-token")
 
     /** One window of a 1 kHz tone at 48 kHz whose last sample is heard at [lastHeardUs] on the relay's clock. */
     private fun window(lastHeardUs: Long, amplitude: Double, index: Int) = ByteBuffer.allocate(9 + 1024).apply {
@@ -116,10 +123,10 @@ class MilkdropSoundTest {
         // The beat comes after the windows.
         withTimeout(5_000) { while (!sound.read(at, out) || out.beatUs == SoundFrame.NO_BEAT) delay(20) }
         assertThat(out.timing).isEqualTo(SoundTiming.CLOSE)
-        assertThat(out.loudness).isWithin(0.03f).of(0.9f)
+        assertThat(out.loudness).isCloseTo(0.9f, 0.03f)
         // Its time is within a window of the moment asked for, the clock mapped to a few milliseconds.
-        assertThat(at - out.timeUs).isIn(com.google.common.collect.Range.closed(-5_000L, windowUs + 5_000L))
-        assertThat(out.beatUs - startUs).isIn(com.google.common.collect.Range.closed(95_000L, 105_000L))
+        assertThat(at - out.timeUs).isBetween(-5_000L, windowUs + 5_000L)
+        assertThat(out.beatUs - startUs).isBetween(95_000L, 105_000L)
         assertThat(out.downbeat).isTrue()
         // A new song: what was sent ahead goes.
         relay!!.send("""{"type": "stream/clear"}""")

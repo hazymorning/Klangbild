@@ -1,7 +1,8 @@
 package io.github.hazymorning.klangbild.speaker
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import kotlin.test.Test
 
 class ArrivalDelaysTest {
     @Test

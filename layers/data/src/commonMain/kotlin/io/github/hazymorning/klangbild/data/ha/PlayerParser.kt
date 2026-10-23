@@ -8,14 +8,13 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.json.string
+import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
-import java.time.OffsetDateTime
-import java.time.format.DateTimeParseException
 import kotlin.math.roundToLong
 
 /** Maps Home Assistant entity states and Music Assistant queue responses to domain types. */
@@ -33,8 +32,8 @@ object PlayerParser {
 
     /** ISO-8601 → epoch millis; HA omits fractional seconds when they are zero. */
     fun parseInstant(iso: String?): Long? = try {
-        iso?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() }
-    } catch (_: DateTimeParseException) {
+        iso?.let { DateTimeComponents.Formats.ISO_DATE_TIME_OFFSET.parse(it).toInstantUsingOffset().toEpochMilliseconds() }
+    } catch (_: IllegalArgumentException) {
         null
     }
 

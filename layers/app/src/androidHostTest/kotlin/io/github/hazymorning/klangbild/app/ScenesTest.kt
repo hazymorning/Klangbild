@@ -1,12 +1,20 @@
 package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isSameInstanceAs
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.data.AndroidPictureDecoder
 import io.github.hazymorning.klangbild.data.ArtworkLoader
+import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,16 +23,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.Test
 
 /**
  * A switch to Cover Flow and straight back lets go of the scene still being made for Cover Flow:
@@ -37,19 +44,19 @@ class ScenesTest {
     /** How often a cover was asked for. The first ask hangs until it is canceled; later ones find no cover, and the figure steps in. */
     private val asked = AtomicInteger()
 
-    private val http = OkHttpClient.Builder().addInterceptor { chain ->
+    private val http = httpClient(OkHttp.create { addInterceptor { chain ->
         if (asked.getAndIncrement() == 0) {
             while (!chain.call().isCanceled()) Thread.sleep(5)
             throw IOException("canceled")
         }
         Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(404).message("Not found").body("".toResponseBody()).build()
-    }.build()
+    } })
 
     @Test
     fun `a switch back never waits for a scene made for the frame left`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
-            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }))
+            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder))
             val screen = ScreenSpec(960, 540, 1f)
             val track = TrackInfo("Song", listOf("A"), artworkUrl = "http://192.168.1.5:8095/cover.jpg")
             val look = Look(Appearance.DARK, 1f)
@@ -71,7 +78,7 @@ class ScenesTest {
             assertThat(scenes.ready(track, look)).isSameInstanceAs(scene)
             assertThat(scenes.pending(track)).isFalse()
             // The cover was asked for again, and its first ask let go.
-            assertThat(asked.get()).isAtLeast(2)
+            assertThat(asked.get()).isGreaterThanOrEqualTo(2)
         } finally {
             scope.cancel()
         }

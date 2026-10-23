@@ -3,9 +3,16 @@ package io.github.hazymorning.klangbild.speaker
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.collect.Range
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.first
+import assertk.assertions.isBetween
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isNotNull
+import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.config.SecretBox
+import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
@@ -16,11 +23,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assume.assumeTrue
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 
 /**
  * The speaker as a whole (its store, connection, playback and audio thread) against aiosendspin
@@ -59,22 +66,23 @@ class SpeakerEndToEndTest {
         }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val context: Context = ApplicationProvider.getApplicationContext()
-        val store = SpeakerStore(context, PlainBox)
+        val store = SpeakerStore(speakerValues(context), PlainBox)
         val sink = RealTimeSink()
         val port = await("READY").split(' ').first { it.startsWith("port=") }.substringAfter('=')
         val speaker = Speaker(
-            scope, OkHttpClient(), store, "ws://127.0.0.1:$port/sendspin",
+            scope, speakerClient(OkHttpClient()), store, "ws://127.0.0.1:$port/sendspin",
             SpeakerIdentity("Living room TV", "Test box", "Klangbild", "test"),
             sinkFactory = { sink },
+            audioThread = AndroidAudioThread(setup = {}),
             sleptUs = { 0 },
-            audioThreadSetup = {},
+            log = AndroidLog,
         )
         try {
             speaker.start()
             await("PLAYER_READY")
             assertThat(speaker.status.value.link).isEqualTo(SpeakerLink.CONNECTED)
             assertThat(speaker.status.value.clientId).isNotNull()
-            assertThat(speaker.pairingToken).startsWith("SP:0")
+            assertThat(speaker.pairingToken).isNotNull().startsWith("SP:0")
             // Its own playback as a sound feed: what is heard now, timed by the output.
             speaker.sound.reading(true)
             await("STREAM_STARTED")
@@ -85,7 +93,7 @@ class SpeakerEndToEndTest {
             while (!music() && System.nanoTime() < heardBy) Thread.sleep(20)
             assertThat(heard.bands.sum()).isGreaterThan(0f)
             assertThat(heard.timing).isEqualTo(SoundTiming.EXACT)
-            assertThat(System.nanoTime() / 1_000 - heard.timeUs).isIn(Range.closed(0L, 40_000L))
+            assertThat(System.nanoTime() / 1_000 - heard.timeUs).isBetween(0L, 40_000L)
             await("COMMAND")
             await("STREAM_ENDED")
             // Playing while the stream ran, quiet once it ended.

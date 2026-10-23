@@ -1,8 +1,15 @@
 package io.github.hazymorning.klangbild.config
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContainKey
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.EntityId
-import org.junit.Test
+import kotlin.test.Test
 
 class LaunchExtrasTest {
     @Test
@@ -95,7 +102,7 @@ class LaunchExtrasTest {
         val extras = LaunchExtras.fromLink(
             mapOf("light" to "dezent", "album" to "aus", "ha_url" to "http://evil", "token" to "x", "entity" to "media_player.x", "setup" to "true"),
         )
-        assertThat(extras.keys).containsExactly("light", "album")
+        assertThat(extras.keys).containsExactlyInAnyOrder("light", "album")
         val s = LaunchExtras.applyTo(Settings(), extras)
         assertThat(s.intensity).isEqualTo(Intensity.SUBTLE)
         assertThat(s.showAlbum).isFalse()
@@ -112,7 +119,7 @@ class LaunchExtrasTest {
         assertThat(s.landscapePauseSeconds).isEqualTo(30)
         assertThat(s.landscapePlayingSeconds).isEqualTo(600)
         assertThat(s.miniPlayer).isEqualTo(MiniPlayer.RIGHT)
-        assertThat(s.weatherEntities).containsExactly("weather.home")
+        assertThat(s.weatherEntities).containsExactlyInAnyOrder("weather.home")
         val off = LaunchExtras.applyTo(s, mapOf("fensterblick_pause" to "aus", "mini_player" to "aus", "weather" to "keine"))
         assertThat(off.landscapePauseSeconds).isEqualTo(0)
         assertThat(off.miniPlayer).isEqualTo(MiniPlayer.OFF)
@@ -124,7 +131,7 @@ class LaunchExtrasTest {
         assertThat(LaunchExtras.session(mapOf("fensterblick" to "aus")).landscape).isEqualTo(LandscapeRequest.HIDE)
         // A link may show it and set its options. The weather entity stays with the setup page.
         val link = LaunchExtras.fromLink(mapOf("fensterblick" to "an", "mini_player" to "links", "weather" to "weather.x"))
-        assertThat(link.keys).containsExactly("fensterblick", "mini_player")
+        assertThat(link.keys).containsExactlyInAnyOrder("fensterblick", "mini_player")
     }
 
     @Test
@@ -167,7 +174,7 @@ class LaunchExtrasTest {
         assertThat(LaunchExtras.hasStoredExtras(mapOf("bar_level" to "50"))).isTrue()
         // A link may set the lights' level, never which lights.
         assertThat(LaunchExtras.fromLink(mapOf("lights_level" to "50", "lights_left" to "light.x", "landscape" to "on")).keys)
-            .containsExactly("lights_level", "landscape")
+            .containsExactlyInAnyOrder("lights_level", "landscape")
     }
 
     @Test
@@ -189,7 +196,7 @@ class LaunchExtrasTest {
         assertThat(queue("queue" to "sideways")).isEqualTo(QueueDisplay.FLOW)
         assertThat(queue("queue" to "sideways", from = QueueDisplay.LIST)).isEqualTo(QueueDisplay.LIST)
         // A link may set it, under either name.
-        assertThat(LaunchExtras.fromLink(mapOf("queue" to "list", "view" to "flow")).keys).containsExactly("queue", "view")
+        assertThat(LaunchExtras.fromLink(mapOf("queue" to "list", "view" to "flow")).keys).containsExactlyInAnyOrder("queue", "view")
         assertThat(LaunchExtras.hasStoredExtras(mapOf("queue" to "list"))).isTrue()
     }
 

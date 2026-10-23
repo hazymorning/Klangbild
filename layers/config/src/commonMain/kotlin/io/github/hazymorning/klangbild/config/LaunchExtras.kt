@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.config
 
-import android.content.Intent
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaUrls
 import io.github.hazymorning.klangbild.domain.EntityId
@@ -228,20 +227,6 @@ object LaunchExtras {
     }
 
     fun hasStoredExtras(extras: Map<String, Any?>) = canonical(extras).keys.any { it in stored }
-
-    fun fromIntent(intent: Intent?): Map<String, Any?> {
-        val out = LinkedHashMap<String, Any?>()
-        intent?.extras?.let { b ->
-            for (key in b.keySet()) {
-                @Suppress("DEPRECATION") // Bundle.get is the only call that reads an extra of any type.
-                out[key] = b.get(key)
-            }
-        }
-        intent?.data?.takeIf { it.scheme == DEEP_LINK_SCHEME && it.isHierarchical }?.let { uri ->
-            out += fromLink(uri.queryParameterNames.associateWith { uri.getQueryParameter(it) })
-        }
-        return out
-    }
 
     /** `klangbild://open?light=subtle&album=off` */
     const val DEEP_LINK_SCHEME = "klangbild"

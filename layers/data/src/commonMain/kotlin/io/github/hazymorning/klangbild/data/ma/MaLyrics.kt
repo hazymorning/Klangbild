@@ -2,12 +2,16 @@ package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.domain.Lrc
 import io.github.hazymorning.klangbild.domain.Lyrics
+import io.github.hazymorning.klangbild.math.RecentMap
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 /**
  * The words of the song that plays and of the one up next, from Music Assistant. A queue item
@@ -22,16 +26,15 @@ import kotlinx.coroutines.launch
 class MaLyrics(
     private val client: MaClient,
     private val scope: CoroutineScope,
-    private val now: () -> Long = System::currentTimeMillis,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** Something new is known about a song that plays or comes next. */
     private val changed: () -> Unit,
 ) {
     /** What is known of a song's words: synced [lyrics], or null for none. A failed call has [failedAt]. */
     class Known(val lyrics: Lyrics?, internal val failedAt: Long? = null)
 
-    private val known = object : LinkedHashMap<String, Known>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Known>?) = size > KEEP
-    }
+    private val known = RecentMap<String, Known>(KEEP)
+    private val lock = SynchronizedObject()
 
     /** The songs still to ask about, the one that plays first. */
     private var wanted: List<QueueSong> = emptyList()
@@ -44,13 +47,12 @@ class MaLyrics(
     private var supported = true
 
     /** What is known of the words of the song at [uri]; null while nothing is. */
-    @Synchronized
-    fun known(uri: String): Known? = known[uri]
+    fun known(uri: String): Known? = synchronized(lock) { known[uri] }
 
     /** The songs whose words are wanted now: the one that plays, then the one up next. */
     fun want(songs: List<QueueSong>) {
         var found = false
-        synchronized(this) {
+        synchronized(lock) {
             val t = now()
             for (song in songs) {
                 // A failed call is tried again after a while, should the song come again.
@@ -74,8 +76,7 @@ class MaLyrics(
     }
 
     /** Stops asking (the connection ends). */
-    @Synchronized
-    fun stop() {
+    fun stop(): Unit = synchronized(lock) {
         job?.cancel()
         job = null
         asking = null
@@ -97,13 +98,13 @@ class MaLyrics(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: MaUnknownCommandException) {
-                synchronized(this@MaLyrics) { supported = false }
+                synchronized(lock) { supported = false }
                 Known(null)
             } catch (_: Exception) {
                 Known(null, failedAt = now())
             }
             val me = coroutineContext.job
-            val kept = synchronized(this@MaLyrics) {
+            val kept = synchronized(lock) {
                 // Canceled after the answer came (its song is no longer wanted, or asking stopped): dropped.
                 if (job !== me) return@launch
                 job = null

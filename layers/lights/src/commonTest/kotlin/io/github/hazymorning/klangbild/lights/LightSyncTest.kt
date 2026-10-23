@@ -1,6 +1,23 @@
 package io.github.hazymorning.klangbild.lights
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isBetween
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import assertk.assertions.single
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
@@ -26,7 +43,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import org.junit.Test
+import kotlin.test.Test
 
 /** The lights behind the TV against a stand-in Home Assistant, in virtual time. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -242,20 +259,20 @@ class LightSyncTest {
         assertThat(ha.to(left)).hasSize(1)
         assertThat(ha.to(right)).hasSize(1)
         // Their states were saved first, in Home Assistant's own snapshot scenes.
-        assertThat(ha.named("scene.create").map { it.data.toString() }).containsExactly(
+        assertThat(ha.named("scene.create").map { it.data.toString() }).containsExactlyInAnyOrder(
             """{"scene_id":"klangbild_tv_left","snapshot_entities":["light.tv_left"]}""",
             """{"scene_id":"klangbild_tv_right","snapshot_entities":["light.tv_right"]}""",
         )
         // And they are given back as they were.
         s.update(null)
         testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
-        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
-        assertThat(ha.named("scene.turn_on").map { it.transition }.toSet()).containsExactly(LightSync.RESTORE_TRANSITION_MS / 1000.0)
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.named("scene.turn_on").map { it.transition }.toSet()).containsExactlyInAnyOrder(LightSync.RESTORE_TRANSITION_MS / 1000.0)
         val back = ha.states.value.getValue(left)
         assertThat(back.number("color_temp_kelvin")).isEqualTo(2700.0)
         assertThat(back.number("brightness")).isEqualTo(180.0)
         // The scenes are deleted when done.
-        assertThat(ha.named("scene.delete").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.named("scene.delete").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.scenes).isEmpty()
     }
 
@@ -273,7 +290,7 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(3_000)
         assertThat(ha.to(right)).hasSize(1)
         assertThat(ha.to(left)).hasSize(1)
-        assertThat(ha.scenes.keys).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.scenes.keys).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
     }
 
     @Test
@@ -285,11 +302,11 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(30_000)
         assertThat(ha.to(left)).hasSize(1)
         assertThat(ha.to(right)).isEmpty()
-        assertThat(ha.scenes.keys).containsExactly("scene.klangbild_tv_left")
+        assertThat(ha.scenes.keys).containsExactlyInAnyOrder("scene.klangbild_tv_left")
         ha.byHand(right, "on", buildJsonObject { put("brightness", 120) })
         testScheduler.advanceTimeBy(3_000)
         assertThat(ha.to(right)).hasSize(1)
-        assertThat(ha.scenes.keys).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.scenes.keys).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         // Given back on, as it was when it joined in.
         s.update(null)
         testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
@@ -341,7 +358,7 @@ class LightSyncTest {
         // The light that was off: dimmed, then its scene (off). The other keeps its colors: no call.
         assertThat(back.filter { it.id == left || it.id == "scene.klangbild_tv_left" }).isEmpty()
         assertThat(back.single { it.id == right }.brightness).isEqualTo(LightSync.DARKEST)
-        assertThat(back.filter { it.id == "scene.klangbild_tv_right" }.map { it.name }).containsExactly("scene.turn_on", "scene.delete").inOrder()
+        assertThat(back.filter { it.id == "scene.klangbild_tv_right" }.map { it.name }).containsExactly("scene.turn_on", "scene.delete")
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
         // It stays off with the next song; the other goes back as it was after the music.
         s.update(target("b", f = fourColors()).copy(onlyOn = true))
@@ -371,7 +388,7 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(5_000)
         // Dimmed, then its scene (off), and nothing after: never saved again nor taken back.
         val back = ha.calls.drop(before)
-        assertThat(back.filter { it.id == right }.map { it.brightness }).containsExactly(LightSync.DARKEST)
+        assertThat(back.filter { it.id == right }.map { it.brightness }).containsExactlyInAnyOrder(LightSync.DARKEST)
         assertThat(back.filter { it.name == "scene.create" }).isEmpty()
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
         // Switched on by hand, it follows the music again.
@@ -394,7 +411,7 @@ class LightSyncTest {
         assertThat(ha.scenes.keys).contains("scene.klangbild_tv_right")
         val (pre, up) = ha.to(right)
         assertThat(pre.brightness).isEqualTo(LightSync.DARKEST)
-        assertThat(up.brightness).isGreaterThan(LightSync.DARKEST)
+        assertThat(up.brightness).isNotNull().isGreaterThan(LightSync.DARKEST)
     }
 
     @Test
@@ -421,8 +438,8 @@ class LightSyncTest {
         // The next song reaches both lights again.
         s.update(target("b", f = fourColors()))
         testScheduler.advanceTimeBy(10_000)
-        assertThat(ha.to(left).size).isAtLeast(2)
-        assertThat(ha.to(right).size).isAtLeast(2)
+        assertThat(ha.to(left).size).isGreaterThanOrEqualTo(2)
+        assertThat(ha.to(right).size).isGreaterThanOrEqualTo(2)
         assertThat(ha.to(left).last().brightness).isNotNull()
     }
 
@@ -433,7 +450,7 @@ class LightSyncTest {
         s.attach(ha)
         s.update(target("a"))
         testScheduler.advanceTimeBy(3_000)
-        assertThat(ha.followed).containsExactly(left, right)
+        assertThat(ha.followed).containsExactlyInAnyOrder(left, right)
         // The light that was on goes straight to its color ...
         val l = ha.to(left).single()
         assertThat(l.service).isEqualTo("turn_on")
@@ -468,10 +485,10 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(5_000)
         // A white light gets a white in its own range; never a color it would turn into another white.
         val w = ha.to(white).single().data!!
-        assertThat(w.keys).containsExactly("color_temp_kelvin", "brightness", "transition")
-        assertThat(w["color_temp_kelvin"]!!.jsonPrimitive.int).isIn(2_200..6_500)
+        assertThat(w.keys).containsExactlyInAnyOrder("color_temp_kelvin", "brightness", "transition")
+        assertThat(w["color_temp_kelvin"]!!.jsonPrimitive.int).isBetween(2_200, 6_500)
         // A dimmer gets a brightness, and no fade it cannot do.
-        assertThat(ha.to(dimmer).single().data!!.keys).containsExactly("brightness")
+        assertThat(ha.to(dimmer).single().data!!.keys).containsExactlyInAnyOrder("brightness")
         // A plain switch is only switched on, with nothing else.
         val p = ha.to(plug).single()
         assertThat(p.service).isEqualTo("turn_on")
@@ -499,8 +516,8 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(5_000)
         val after = ha.calls.drop(before)
         // One call per light, for the last song, in a long fade.
-        assertThat(after.map { it.id }).containsExactly(left, right)
-        assertThat(after.map { it.transition }.toSet()).containsExactly(LightSync.TRACK_TRANSITION_MS / 1000.0)
+        assertThat(after.map { it.id }).containsExactlyInAnyOrder(left, right)
+        assertThat(after.map { it.transition }.toSet()).containsExactlyInAnyOrder(LightSync.TRACK_TRANSITION_MS / 1000.0)
     }
 
     @Test
@@ -541,10 +558,10 @@ class LightSyncTest {
             testScheduler.advanceTimeBy(500)
         }
         val drift = ha.to(left).drop(1)
-        assertThat(drift.size).isAtMost(31)
+        assertThat(drift.size).isLessThanOrEqualTo(31)
         assertThat(drift).isNotEmpty()
-        assertThat(drift.map { it.transition }.toSet()).containsExactly(LightSync.DRIFT_TRANSITION_MS / 1000.0)
-        assertThat(ha.to(left).zipWithNext { a, b -> b.at - a.at }.minOrNull()!!).isAtLeast(LightSync.MIN_GAP_MS)
+        assertThat(drift.map { it.transition }.toSet()).containsExactlyInAnyOrder(LightSync.DRIFT_TRANSITION_MS / 1000.0)
+        assertThat(ha.to(left).zipWithNext { a, b -> b.at - a.at }.minOrNull()!!).isGreaterThanOrEqualTo(LightSync.MIN_GAP_MS)
     }
 
     @Test
@@ -565,7 +582,7 @@ class LightSyncTest {
         s.update(null)
         testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
         assertThat(ha.to(left)).hasSize(1)
-        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_right")
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_right")
         val back = ha.states.value.getValue(right)
         assertThat(back.number("brightness")).isEqualTo(90.0)
         assertThat(back.number("color_temp_kelvin")).isEqualTo(4000.0)
@@ -608,10 +625,10 @@ class LightSyncTest {
         // they go back with a fade.
         s.update(null)
         testScheduler.advanceTimeBy(LightSync.PAUSE_DELAY_MS + 2_000)
-        assertThat(ha.followed).containsExactly(left, right)
+        assertThat(ha.followed).containsExactlyInAnyOrder(left, right)
         val dim = ha.calls.drop(before).filter { it.domain == "light" }
-        assertThat(dim.map { it.id }).containsExactly(left, right)
-        assertThat(dim.map { it.transition }.toSet()).containsExactly(LightSync.PAUSE_TRANSITION_MS / 1000.0)
+        assertThat(dim.map { it.id }).containsExactlyInAnyOrder(left, right)
+        assertThat(dim.map { it.transition }.toSet()).containsExactlyInAnyOrder(LightSync.PAUSE_TRANSITION_MS / 1000.0)
         // After a while they go back as they were, in a fade, the one that was off dimmed first;
         // then they are let go.
         testScheduler.advanceTimeBy(LightSync.IDLE_RELEASE_MS + 5_000)
@@ -635,7 +652,7 @@ class LightSyncTest {
         // Over the clock the lights are switched off (or cleared) in the menu: no waiting five minutes.
         s.update(null, chosen = emptySet())
         testScheduler.advanceTimeBy(5_000)
-        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
         assertThat(ha.states.value.getValue(right).state).isEqualTo("off")
         assertThat(ha.followed).isEmpty()
@@ -652,7 +669,7 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(1_000)
         s.update(null, chosen = setOf("light.shelf", "light.window"))
         testScheduler.advanceTimeBy(5_000)
-        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+        assertThat(ha.named("scene.turn_on").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
         assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
     }
@@ -675,7 +692,7 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(5_000)
         // The next song's colors go to the other light only: the green one is theirs.
         assertThat(ha.to(left)).hasSize(before)
-        assertThat(ha.to(right).size).isAtLeast(2)
+        assertThat(ha.to(right).size).isGreaterThanOrEqualTo(2)
     }
 
     @Test
@@ -707,7 +724,7 @@ class LightSyncTest {
         // The stage goes while their snapshots are still being made.
         s.update(null)
         testScheduler.advanceTimeBy(6_000)
-        assertThat(ha.followed).containsExactly(left, right)
+        assertThat(ha.followed).containsExactlyInAnyOrder(left, right)
     }
 
     @Test
@@ -766,7 +783,7 @@ class LightSyncTest {
         assertThat(on.service).isEqualTo("turn_on")
         assertThat(on.brightness).isEqualTo(120)
         assertThat(on.data!!["color_temp_kelvin"]).isEqualTo(JsonPrimitive(3000))
-        assertThat(back.filter { it.id == right }.map { it.service }).containsExactly("turn_on", "turn_off").inOrder()
+        assertThat(back.filter { it.id == right }.map { it.service }).containsExactly("turn_on", "turn_off")
         assertThat(back.last { it.id == right }.data).isNull()
     }
 
@@ -783,7 +800,7 @@ class LightSyncTest {
         testScheduler.advanceTimeBy(5_000)
         assertThat(job.isCompleted).isTrue()
         assertThat(ha.calls.drop(before).filter { it.name == "scene.turn_on" }.map { it.id })
-            .containsExactly("scene.klangbild_tv_left", "scene.klangbild_tv_right")
+            .containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(120.0)
         assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
         // Nothing more after that.
@@ -806,13 +823,13 @@ class LightSyncTest {
         assertThat(sky.y).isLessThan(day.y - 0.05f)
         // A pure green stays a real color: Home Assistant fits it to what the light can show.
         val green = LightColor.of(floatArrayOf(0f, 1f, 0f), warmth = 0f)
-        assertThat(green.x + green.y).isAtMost(1f)
+        assertThat(green.x + green.y).isLessThanOrEqualTo(1f)
         assertThat(green.y).isGreaterThan(0.5f)
         // Never below the floor while on.
         assertThat(LightColor.brightness(0f)).isEqualTo(LightColor.FLOOR)
         assertThat(LightColor.brightness(0.2f)).isEqualTo(51)
         // A white light: warm for a warm color, cool for a cool one, always within its range.
         assertThat(LightColor.kelvin(floatArrayOf(0.8f, 0.2f, 0.05f), 0f, 2_200, 6_500)).isLessThan(LightColor.kelvin(floatArrayOf(0.1f, 0.3f, 0.9f), 0f, 2_200, 6_500))
-        assertThat(LightColor.kelvin(floatArrayOf(0.1f, 0.3f, 0.9f), 0f, 2_200, 4_000)).isAtMost(4_000)
+        assertThat(LightColor.kelvin(floatArrayOf(0.1f, 0.3f, 0.9f), 0f, 2_200, 4_000)).isLessThanOrEqualTo(4_000)
     }
 }

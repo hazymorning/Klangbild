@@ -50,7 +50,7 @@ rootProject.name = "Klangbild"
 
 // The layers, from the bottom up, each a module of its own in layers/ that is named as its
 // package; the -testing modules hold helpers that the tests of several layers share.
-for (module in listOf("math", "json", "color", "text", "text-testing", "sound", "art", "domain", "sendspin", "landscape")) {
+for (module in listOf("math", "json", "color", "text", "text-testing", "sound", "art", "domain", "sendspin", "landscape", "render", "art-testing", "domain-testing", "data", "config", "lights", "setup", "speaker", "app", "app-testing")) {
     include(":$module")
     project(":$module").projectDir = file("layers/$module")
 }

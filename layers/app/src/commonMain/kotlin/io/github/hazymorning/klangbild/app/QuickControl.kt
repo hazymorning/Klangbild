@@ -1,25 +1,26 @@
 package io.github.hazymorning.klangbild.app
 
-import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
-import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
+import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import android.util.Log
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 
 /**
  * The quick settings while they are open (down on the remote): which entry the cursor is on,
@@ -228,7 +229,7 @@ internal class QuickControl(private val host: ControllerHost) {
             val result = src.favorite()
             val ok = result.isSuccess
             // What Home Assistant or Music Assistant answered, for `adb logcat -s Klangbild`.
-            result.exceptionOrNull()?.let { Log.w(NowPlayingController.TAG, "Favorite failed: ${it.message ?: it.javaClass.simpleName}") }
+            result.exceptionOrNull()?.let { host.log.warn("Favorite failed: ${it.message ?: it::class.simpleName}") }
             synchronized(host.lock) {
                 if (favorite?.first == track.key) favorite = track.key to if (ok) FavoriteState.DONE else FavoriteState.FAILED
             }

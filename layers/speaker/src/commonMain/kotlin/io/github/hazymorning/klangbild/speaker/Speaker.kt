@@ -1,9 +1,8 @@
 package io.github.hazymorning.klangbild.speaker
 
-import android.os.Process
-import android.os.SystemClock
-import android.util.Log
+import dev.whyoleg.cryptography.random.CryptographyRandom
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.sendspin.B64
@@ -18,8 +17,12 @@ import io.github.hazymorning.klangbild.sendspin.Session
 import io.github.hazymorning.klangbild.sendspin.SessionEnd
 import io.github.hazymorning.klangbild.sendspin.Transport
 import io.github.hazymorning.klangbild.sound.PcmSound
+import io.ktor.client.HttpClient
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,10 +30,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import java.security.SecureRandom
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
+import kotlin.concurrent.Volatile
+import kotlin.random.Random
 
 /** How this speaker introduces itself: the TV's name, and what it is. */
 class SpeakerIdentity(val name: String, val productName: String?, val manufacturer: String?, val softwareVersion: String?)
@@ -47,19 +48,21 @@ class SpeakerIdentity(val name: String, val productName: String?, val manufactur
  */
 class Speaker(
     private val scope: CoroutineScope,
-    private val http: OkHttpClient,
+    /** Pings the server now and then ([SpeakerConnection.PING_MS]). */
+    private val http: HttpClient,
     private val store: SpeakerStore,
     /** Music Assistant's Sendspin address (`ws://host:8927/sendspin`). */
     private val url: String,
     private val identity: SpeakerIdentity,
     /** The audio output, told how to report a change of route. */
     private val sinkFactory: (routed: () -> Unit) -> AudioSink,
-    private val monotonic: MonoClock = MonoClock.SYSTEM,
+    /** The thread the audio plays on. */
+    private val audioThread: AudioThread,
     /** How long the device has slept in all, in microseconds (the monotonic clock stands still meanwhile). */
-    private val sleptUs: () -> Long = ::sleptSoFarUs,
-    /** Readies the audio thread (a high priority). */
-    private val audioThreadSetup: () -> Unit = { Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO) },
-    private val random: SecureRandom = SecureRandom(),
+    private val sleptUs: () -> Long,
+    private val log: Log,
+    private val monotonic: MonoClock = MonoClock.SYSTEM,
+    private val random: Random = CryptographyRandom,
     /** How long to wait before asking the keystore again for a key it could not open. */
     private val keyRetry: () -> Backoff = { Backoff(KEY_FIRST_RETRY_MS, KEY_LAST_RETRY_MS) },
 ) {
@@ -89,7 +92,7 @@ class Speaker(
     private val kept = MutableStateFlow<Kept?>(null)
 
     /** Starting and stopping, and the connection they make and end, change together. */
-    private val lifecycle = Any()
+    private val lifecycle = SynchronizedObject()
 
     /** Music Assistant says the group plays (`group/update`); a stream that starts says so too. */
     @Volatile private var groupPlaying = true
@@ -99,13 +102,11 @@ class Speaker(
     @Volatile private var outputDelayMs = 0
     @Volatile private var minBufferMs = ArrivalDelays.FLOOR_MS
 
-    /** The audio thread and what it waits for. */
-    private val lock = ReentrantLock()
-    private val streamCame = lock.newCondition()
+    /** The audio thread and what wakes it: a stream that came, or the end. */
+    private val streamCame = Channel<Unit>(Channel.CONFLATED)
     @Volatile private var running = false
     @Volatile private var streaming = false
     @Volatile private var keepOpenUntilUs = 0L
-    private var thread: Thread? = null
 
     /** The token a person enters into Music Assistant to pair it with this speaker (null until the speaker has its key). */
     val pairingToken: String?
@@ -123,7 +124,7 @@ class Speaker(
             running = true
             jobs = listOf(scope.launch { connect() }, scope.launch { watch() }, scope.launch { keep() })
         }
-        thread = Thread({ audioLoop() }, "Klangbild speaker").also { it.start() }
+        audioThread.start { audioLoop() }
     }
 
     /** Disconnects with `client/goodbye` ([reason]) and lets the output go. */
@@ -135,10 +136,8 @@ class Speaker(
             connection = null
             jobs.forEach { it.cancel() }
         }
-        lock.withLock {
-            streaming = false
-            streamCame.signalAll()
-        }
+        streaming = false
+        streamCame.trySend(Unit)
         _status.update { SpeakerStatus(link = SpeakerLink.OFF, clientId = it.clientId) }
     }
 
@@ -180,16 +179,16 @@ class Speaker(
             beats = true,
             beatBufferCapacity = BEAT_BUFFER_BYTES,
         )
-        val c = SpeakerConnection(SpeakerConnection.client(http), scope, url, { transport, ended -> newSession(transport, key, psk, hello, ended) })
+        val c = SpeakerConnection(http, scope, url, { transport, ended -> newSession(transport, key, psk, hello, ended) })
         // A stop that came meanwhile leaves no connection behind.
         synchronized(lifecycle) {
             if (!running) return
             connection = c
             c.start()
         }
-        Log.i(TAG, "Speaker connecting to Music Assistant")
+        log.info("Speaker connecting to Music Assistant")
         c.link.collect { link ->
-            if (link == SpeakerLink.CONNECTED && _status.value.link != SpeakerLink.CONNECTED) Log.i(TAG, "Speaker connected to Music Assistant")
+            if (link == SpeakerLink.CONNECTED && _status.value.link != SpeakerLink.CONNECTED) log.info("Speaker connected to Music Assistant")
             _status.update { it.copy(link = link) }
         }
     }
@@ -208,7 +207,7 @@ class Speaker(
             val psk = m.pairingPsk
             if (key != null && psk != null) return Triple(m, key, psk)
             if (_status.value.link != SpeakerLink.NO_KEY) {
-                Log.w(TAG, "The speaker's key cannot be opened at the moment; it stays away and tries again")
+                log.warn("The speaker's key cannot be opened at the moment; it stays away and tries again")
                 _status.value = SpeakerStatus(link = SpeakerLink.NO_KEY)
             }
             delay(wait.nextDelayMs())
@@ -228,7 +227,7 @@ class Speaker(
             delay(WATCH_MS)
             val now = sleptUs()
             if (now - slept > SLEEP_US) {
-                Log.i(TAG, "The device slept: the speaker's clock starts again")
+                log.info("The device slept: the speaker's clock starts again")
                 session?.clockReset()
                 playback.resync()
             }
@@ -263,25 +262,25 @@ class Speaker(
     }
 
     /** The audio thread: plays while a stream runs and a while after it, waits otherwise. */
-    private fun audioLoop() {
-        audioThreadSetup()
-        while (running) {
-            val wanted = streaming || monotonic.nowUs() < keepOpenUntilUs
-            if (!wanted) {
-                playback.close()
-                lock.withLock {
-                    while (running && !streaming) streamCame.await()
+    private suspend fun audioLoop() {
+        try {
+            while (running) {
+                val wanted = streaming || monotonic.nowUs() < keepOpenUntilUs
+                if (!wanted) {
+                    playback.close()
+                    while (running && !streaming) streamCame.receive()
+                    continue
                 }
-                continue
+                if (!playback.open()) {
+                    // No output (none on this device, or it is busy): tried again in a moment.
+                    delay(OPEN_RETRY_MS)
+                    continue
+                }
+                if (!playback.step()) playback.close()
             }
-            if (!playback.open()) {
-                // No output (none on this device, or it is busy): tried again in a moment.
-                Thread.sleep(OPEN_RETRY_MS)
-                continue
-            }
-            if (!playback.step()) playback.close()
+        } finally {
+            playback.close()
         }
-        playback.close()
     }
 
     /** What one session tells the speaker. */
@@ -297,10 +296,8 @@ class Speaker(
         }
 
         override fun streamStart() {
-            lock.withLock {
-                streaming = true
-                streamCame.signalAll()
-            }
+            streaming = true
+            streamCame.trySend(Unit)
             groupPlaying = true
             playingNow()
         }
@@ -358,7 +355,7 @@ class Speaker(
         override fun paired(record: PairingRecord) {
             records = listOf(record) + records.filter { it.serverId != record.serverId }
             scope.launch { store.remember(record) }
-            Log.i(TAG, "The speaker is paired with Music Assistant")
+            log.info("The speaker is paired with Music Assistant")
         }
 
         override fun used(serverId: String) {
@@ -372,14 +369,12 @@ class Speaker(
 
         override fun ended(end: SessionEnd, detail: String) {
             if (streaming) streamEnd()
-            Log.i(TAG, "Speaker connection ended: $end ($detail)")
+            log.info("Speaker connection ended: $end ($detail)")
             onEnded(end, detail)
         }
     }
 
     companion object {
-        private const val TAG = "Klangbild"
-
         /** Music Assistant may send this far ahead (player@v1's `buffer_capacity`). */
         const val BUFFER_SECONDS = 10
 
@@ -410,27 +405,5 @@ class Speaker(
          */
         const val SLEEP_US = 100_000L
         const val OPEN_RETRY_MS = 1_000L
-
-        /**
-         * Time spent asleep so far: the boot clock runs through sleep, the monotonic one does not.
-         * Of a few readings the one taken most quickly counts, so a thread held up between two
-         * reads never looks like a sleep.
-         */
-        fun sleptSoFarUs(): Long {
-            var best = Long.MAX_VALUE
-            var slept = 0L
-            repeat(CLOCK_READS) {
-                val before = System.nanoTime()
-                val boot = SystemClock.elapsedRealtimeNanos()
-                val after = System.nanoTime()
-                if (after - before < best) {
-                    best = after - before
-                    slept = (boot - (before + after) / 2) / 1_000
-                }
-            }
-            return slept
-        }
-
-        private const val CLOCK_READS = 3
     }
 }

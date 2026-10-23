@@ -1,11 +1,20 @@
 package io.github.hazymorning.klangbild.data.ma
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.domain.MediaKind
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import org.junit.Test
+import kotlin.test.Test
 
 /** Music Assistant's queue items (as `player_queues/items` returns them) as tracks around the current one. */
 class MaQueueTest {
@@ -36,7 +45,7 @@ class MaQueueTest {
         val w = MaQueue.window(items, offset = 10, currentIndex = 11, baseUrl = base)
         val played = w.played.single()
         assertThat(played.title).isEqualTo("Neonlicht über der A40")
-        assertThat(played.artists).containsExactly("Lumen Drive")
+        assertThat(played.artists).containsExactlyInAnyOrder("Lumen Drive")
         assertThat(played.album).isEqualTo("Nachtfahrt")
         assertThat(played.year).isEqualTo(2024)
         assertThat(played.durationMs).isEqualTo(251_000L)
@@ -113,15 +122,15 @@ class MaQueueTest {
         val w = MaQueue.window(spoken, offset = 0, currentIndex = 0, baseUrl = base)
         val book = w.current!!
         assertThat(book.kind).isEqualTo(MediaKind.AUDIOBOOK)
-        assertThat(book.artists).containsExactly("Franz Kafka", "Max Brod").inOrder()
+        assertThat(book.artists).containsExactly("Franz Kafka", "Max Brod")
         assertThat(book.album).isNull()
         // Sorted by start; each ends where the next begins, the last at the book's end.
-        assertThat(book.chapters.map { it.name }).containsExactly("Verhaftung", "Gespräch mit Frau Grubach", "003").inOrder()
-        assertThat(book.chapters.map { it.endMs }).containsExactly(1_834_200L, 3_600_000L, 32_400_000L).inOrder()
-        assertThat(w.speed).isWithin(1e-6f).of(1.25f)
+        assertThat(book.chapters.map { it.name }).containsExactly("Verhaftung", "Gespräch mit Frau Grubach", "003")
+        assertThat(book.chapters.map { it.endMs }).containsExactly(1_834_200L, 3_600_000L, 32_400_000L)
+        assertThat(w.speed).isCloseTo(1.25f, 1e-6f)
         val episode = w.coming.single()
         assertThat(episode.kind).isEqualTo(MediaKind.PODCAST)
-        assertThat(episode.artists).containsExactly("Zeit für Wissen")
+        assertThat(episode.artists).containsExactlyInAnyOrder("Zeit für Wissen")
         assertThat(episode.chapters).isEmpty()
         // Music plays at its own pace.
         assertThat(MaQueue.window(items, offset = 10, currentIndex = 11, baseUrl = base).speed).isEqualTo(1f)
@@ -146,7 +155,7 @@ class MaQueueTest {
         val w = MaQueue.window(songs, offset = 0, currentIndex = 0, baseUrl = base)
         val current = w.currentSong!!
         assertThat(current.uri).isEqualTo("library://track/12")
-        assertThat(current.lrcLyrics).startsWith("[00:05.00]")
+        assertThat(current.lrcLyrics).isNotNull().startsWith("[00:05.00]")
         assertThat(current.lyrics).isNull()
         // The item as Music Assistant gave it, to ask for its words with.
         assertThat(current.item["name"].toString()).isEqualTo("\"Neonlicht über der A40\"")

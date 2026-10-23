@@ -1,15 +1,15 @@
 package io.github.hazymorning.klangbild.speaker
 
-import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.MutablePreferences
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import dev.whyoleg.cryptography.random.CryptographyRandom
 import io.github.hazymorning.klangbild.config.SecretBox
+import io.github.hazymorning.klangbild.config.ValueStore
+import io.github.hazymorning.klangbild.config.booleanKey
+import io.github.hazymorning.klangbild.config.contains
+import io.github.hazymorning.klangbild.config.get
+import io.github.hazymorning.klangbild.config.intKey
+import io.github.hazymorning.klangbild.config.remove
+import io.github.hazymorning.klangbild.config.set
+import io.github.hazymorning.klangbild.config.stringKey
 import io.github.hazymorning.klangbild.sendspin.B64
 import io.github.hazymorning.klangbild.sendspin.KeyPair
 import io.github.hazymorning.klangbild.sendspin.Noise
@@ -22,9 +22,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.security.SecureRandom
-
-private val Context.speakerStore: DataStore<Preferences> by preferencesDataStore(name = "speaker")
+import kotlin.random.Random
 
 /**
  * What the speaker keeps about itself. [identity] is null when one is stored but cannot be
@@ -48,16 +46,14 @@ class SpeakerMemory(
  * like the tokens; each value is written on its own, so one that cannot be opened is never lost
  * by writing another.
  */
-class SpeakerStore(private val store: DataStore<Preferences>, private val secrets: SecretBox, private val random: SecureRandom = SecureRandom()) {
-    constructor(context: Context, secrets: SecretBox) : this(context.speakerStore, secrets)
-
+class SpeakerStore(private val store: ValueStore, private val secrets: SecretBox, private val random: Random = CryptographyRandom) {
     private object Keys {
-        val identity = stringPreferencesKey("identity")
-        val pairingPsk = stringPreferencesKey("pairing_psk")
-        val records = stringPreferencesKey("pairing_records")
-        val outputDelay = intPreferencesKey("output_delay_ms")
-        val volume = intPreferencesKey("volume")
-        val muted = booleanPreferencesKey("muted")
+        val identity = stringKey("identity")
+        val pairingPsk = stringKey("pairing_psk")
+        val records = stringKey("pairing_records")
+        val outputDelay = intKey("output_delay_ms")
+        val volume = intKey("volume")
+        val muted = booleanKey("muted")
     }
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -66,7 +62,7 @@ class SpeakerStore(private val store: DataStore<Preferences>, private val secret
     suspend fun load(): SpeakerMemory {
         store.edit { p ->
             if (Keys.identity !in p) p[Keys.identity] = seal(KeyPair.generate(random).privateKey)
-            if (Keys.pairingPsk !in p) p[Keys.pairingPsk] = seal(ByteArray(Noise.KEY_BYTES).also(random::nextBytes))
+            if (Keys.pairingPsk !in p) p[Keys.pairingPsk] = seal(random.nextBytes(ByteArray(Noise.KEY_BYTES)))
             // Stored while the keystore could not seal them: sealed now, if it can.
             for (key in listOf(Keys.identity, Keys.pairingPsk, Keys.records)) {
                 val stored = p[key] ?: continue
@@ -121,7 +117,7 @@ class SpeakerStore(private val store: DataStore<Preferences>, private val secret
         }
     }
 
-    private fun writeRecords(p: MutablePreferences, list: List<PairingRecord>) {
+    private fun writeRecords(p: MutableMap<String, Any>, list: List<PairingRecord>) {
         if (list.isEmpty()) {
             p.remove(Keys.records)
             return

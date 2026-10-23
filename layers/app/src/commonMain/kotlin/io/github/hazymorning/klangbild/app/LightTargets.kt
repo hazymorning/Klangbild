@@ -3,21 +3,21 @@ package io.github.hazymorning.klangbild.app
 import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SunClock
-import io.github.hazymorning.klangbild.lights.CoverLightColors
-import io.github.hazymorning.klangbild.lights.LightSync
-import io.github.hazymorning.klangbild.lights.LandscapeLightColors
-import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.render.FieldScene
+import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.Place
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.World
-import java.time.ZoneId
+import io.github.hazymorning.klangbild.lights.CoverLightColors
+import io.github.hazymorning.klangbild.lights.LandscapeLightColors
+import io.github.hazymorning.klangbild.lights.LightSync
+import io.github.hazymorning.klangbild.math.smoothstep
+import io.github.hazymorning.klangbild.render.FieldScene
+import kotlinx.datetime.TimeZone
 
 /**
  * What the lights are to show: the landscape's light while it shows, else the colors of the
@@ -85,7 +85,7 @@ internal class LightTargets(
      * a little: the lights follow in long fades anyway.
      */
     private fun landscapeColors(src: SourceState, landscape: LandscapeUi): LandscapeLightColors {
-        val zone = ZoneId.systemDefault()
+        val zone = TimeZone.currentSystemDefault()
         val place = src.place?.let { (lat, lon) -> Place(lat, lon) } ?: World.guessPlace(zone)
         val sky = landscapeClock.sky()
         val weather = landscape.weather.at(now())

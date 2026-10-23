@@ -1,13 +1,19 @@
 package io.github.hazymorning.klangbild.setup
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.data.httpClient
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,15 +23,14 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
-import okhttp3.OkHttpClient
-import org.junit.After
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import java.io.IOException
 import java.net.InetAddress
 import java.net.Socket
 import java.net.URI
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 /**
  * The setup server on real sockets: what has arrived is answered, even when the answer ends the
@@ -52,14 +57,14 @@ class SetupServerTest {
         wrongCodeDelayMs = 0L,
     )
 
-    @After
+    @AfterTest
     fun tearDown() {
         if (::server.isInitialized) server.stop()
         scope.cancel()
     }
 
     private fun start(): URI {
-        server = SetupServer(scope, handler, addressProvider = { InetAddress.getLoopbackAddress() })
+        server = SocketSetupServer(scope, handler, addressProvider = { InetAddress.getLoopbackAddress() })
         server.start()
         return URI(server.origin!!)
     }
@@ -160,8 +165,7 @@ class SetupServerTest {
             // Serving: a page comes back, and the server waits for the next connection.
             assertThat(get(at, "/favicon.ico")).startsWith("HTTP/1.1 204")
             server.stop()
-            assertWithMessage("a connection got in after the stop in round $round")
-                .that(runCatching { Socket(at.host, at.port).close() }.isFailure).isTrue()
+            assertThat(runCatching { Socket(at.host, at.port).close() }.isFailure, "a connection got in after the stop in round $round").isTrue()
         }
     }
 
@@ -177,14 +181,14 @@ class SetupServerTest {
     @Test
     fun `without an address of its own nothing listens, until there is one`() {
         var address: InetAddress? = null
-        server = SetupServer(scope, handler, addressProvider = { address })
+        server = SocketSetupServer(scope, handler, addressProvider = { address })
         server.start()
         val info = server.info.value!!
         assertThat(info.url).isNull()
         assertThat(info.code).isEqualTo(handler.code)
         val loopback = InetAddress.getLoopbackAddress()
         for (port in SetupServer.PORTS) {
-            assertWithMessage("port $port").that(runCatching { Socket(loopback, port).close() }.isFailure).isTrue()
+            assertThat(runCatching { Socket(loopback, port).close() }.isFailure, name = "port $port").isTrue()
         }
         // Asked again (the screen asks every second), it keeps its code.
         server.start()
@@ -204,8 +208,8 @@ class SetupServerTest {
             }
             ha.start()
             val t = TestTexts.english()
-            val found = SetupServer.discover(OkHttpClient(), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
-            assertThat((found as DiscoverResult.Failed).message).isEqualTo(t.format(R.string.discover_unexpected, 502))
+            val found = SetupServer.discover(httpClient(OkHttp.create()), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
+            assertThat((found as DiscoverResult.Failed).message).isEqualTo(t.format(Strings.discoverUnexpected, 502))
         }
     }
 }

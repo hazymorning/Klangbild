@@ -1,8 +1,13 @@
 package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.data.AndroidLog
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.domain.LinkState
@@ -14,6 +19,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +27,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 /**
  * A jump with the remote belongs to the item it was made for: when another item plays before the
@@ -56,7 +62,8 @@ class SeekingTest {
     private var ui = UiState(screen = Screen.Stage(a, PlayerStatus.PAUSED, null), source = at(a, 600_000L))
 
     private val host = object : ControllerHost {
-        override val lock: Any = this
+        override val lock = SynchronizedObject()
+        override val log: Log = AndroidLog
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
         override val settings get() = Settings()
@@ -83,7 +90,7 @@ class SeekingTest {
         assertThat(seeking.position(host.now())).isEqualTo(630_000L)
         test.advanceTimeBy(Seeking.SETTLE_MS + 100)
         test.runCurrent()
-        assertThat(seeks).containsExactly(630_000L)
+        assertThat(seeks).containsExactlyInAnyOrder(630_000L)
     }
 
     @Test

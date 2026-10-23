@@ -1,25 +1,33 @@
 package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.data.AndroidLog
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.domain.SourceState
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CoroutineScope
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.test.Test
 
 /**
  * The settings menu on the TV: it opens on its groups, OK or right opens one, back goes up a
@@ -35,7 +43,8 @@ class MenuControlTest {
     private var applied = 0
 
     private val host = object : ControllerHost {
-        override val lock: Any = this
+        override val lock = SynchronizedObject()
+        override val log: Log = AndroidLog
         override val scope = CoroutineScope(EmptyCoroutineContext)
         override val now: () -> Long = { 0L }
         override val settings get() = Settings()
@@ -103,7 +112,7 @@ class MenuControlTest {
     fun `the menu opens on its groups, OK opens one, back goes up a level and then out`() {
         menu.open()
         assertThat(state().section).isNull()
-        assertThat(state().rows.map { it.label }).containsExactly("Picture", "Information", "Lights", "Landscape", "Remote", "Timer", "System").inOrder()
+        assertThat(state().rows.map { it.label }).containsExactly("Picture", "Information", "Lights", "Landscape", "Remote", "Timer", "System")
         // Left on a group does nothing; right or OK opens it on its first line.
         menu.move(+1)
         menu.change(-1, wrap = false)

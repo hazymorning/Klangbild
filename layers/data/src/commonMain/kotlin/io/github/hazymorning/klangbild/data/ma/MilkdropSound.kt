@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.WebSocketLink
+import io.github.hazymorning.klangbild.data.WebUrl.Companion.toWebUrl
 import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.sendspin.ClockMap
 import io.github.hazymorning.klangbild.sendspin.Outgoing
@@ -9,8 +11,12 @@ import io.github.hazymorning.klangbild.sendspin.int64
 import io.github.hazymorning.klangbild.sound.SoundAnalyzer
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
-import io.github.hazymorning.klangbild.sound.SoundTiming
 import io.github.hazymorning.klangbild.sound.SoundTimeline
+import io.github.hazymorning.klangbild.sound.SoundTiming
+import io.github.hazymorning.klangbild.sound.monotonicMicros
+import io.ktor.client.HttpClient
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -25,13 +31,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import okio.ByteString
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -49,30 +48,29 @@ import kotlin.math.roundToLong
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MilkdropSound(
-    private val http: OkHttpClient,
+    private val http: HttpClient,
     private val scope: CoroutineScope,
     /** Music Assistant's address (`http://host:8095`). */
     private val baseUrl: String,
     private val token: String,
-    private val nowUs: () -> Long = { System.nanoTime() / 1_000 },
+    private val nowUs: () -> Long = ::monotonicMicros,
     private val backoff: () -> Backoff = { Backoff(RETRY_MS, LAST_RETRY_MS) },
 ) : SoundFeed {
     private val timeline = SoundTimeline()
     private var readers = 0
     private var player: String? = null
     private var job: Job? = null
+    private val lock = SynchronizedObject()
 
     override fun read(nowUs: Long, out: SoundFrame): Boolean = timeline.read(nowUs, out)
 
-    @Synchronized
-    override fun reading(on: Boolean) {
+    override fun reading(on: Boolean): Unit = synchronized(lock) {
         readers = (readers + if (on) 1 else -1).coerceAtLeast(0)
         listen()
     }
 
     /** The Music Assistant player whose sound is wanted (its queue's id), or none. */
-    @Synchronized
-    fun follow(playerId: String?) {
+    fun follow(playerId: String?): Unit = synchronized(lock) {
         if (playerId == player) return
         player = playerId
         listen()
@@ -98,7 +96,7 @@ class MilkdropSound(
 
     private sealed interface Event {
         class Text(val text: String) : Event
-        class Binary(val bytes: ByteString) : Event
+        class Binary(val bytes: ByteArray) : Event
         object Closed : Event
     }
 
@@ -115,28 +113,29 @@ class MilkdropSound(
         /** Until the connection ends; whether it heard music. */
         suspend fun run(playerId: String): Boolean {
             val events = Channel<Event>(Channel.UNLIMITED)
-            val url = baseUrl.toHttpUrl().newBuilder().addPathSegment(PATH).addQueryParameter("player", playerId).build()
-            val socket = http.newWebSocket(
-                Request.Builder().url(url).build(),
-                object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        webSocket.send(buildJsonObject { put("type", "auth"); put("token", token) }.toString())
+            val url = baseUrl.toWebUrl().newBuilder().addPathSegment(PATH).addQueryParameter("player", playerId).build()
+            val socket = WebSocketLink(
+                scope,
+                http,
+                url.toString(),
+                object : WebSocketLink.Listener {
+                    override fun onOpen(socket: WebSocketLink) {
+                        socket.send(buildJsonObject { put("type", "auth"); put("token", token) }.toString())
                     }
 
-                    override fun onMessage(webSocket: WebSocket, text: String) {
+                    override fun onText(text: String) {
                         events.trySend(Event.Text(text))
                     }
 
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    override fun onBinary(bytes: ByteArray) {
                         events.trySend(Event.Binary(bytes))
                     }
 
-                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                        webSocket.close(NORMAL_CLOSURE, null)
+                    override fun onClosed(code: Int, reason: String) {
                         events.trySend(Event.Closed)
                     }
 
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    override fun onFailure(error: Throwable) {
                         events.trySend(Event.Closed)
                     }
                 },
@@ -169,11 +168,11 @@ class MilkdropSound(
                                 "error" -> return heard
                             }
                         }
-                        is Event.Binary -> if (authorized && binary(event.bytes.toByteArray())) heard = true
+                        is Event.Binary -> if (authorized && binary(event.bytes)) heard = true
                     }
                 }
             } finally {
-                socket.close(NORMAL_CLOSURE, null)
+                socket.close()
             }
         }
 
@@ -240,7 +239,6 @@ class MilkdropSound(
 
     companion object {
         const val PATH = "milkdrop_visualizer"
-        private const val NORMAL_CLOSURE = 1000
 
         private const val WAVEFORM = 22
         private const val BEAT = 17

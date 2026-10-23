@@ -1,24 +1,27 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.LightBridge
+import io.github.hazymorning.klangbild.data.NowPlayingSource
+import io.github.hazymorning.klangbild.data.RemoteCommand
+import io.github.hazymorning.klangbild.data.ma.MaClient
+import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.domain.ActionKind
-import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.data.NowPlayingSource
-import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.domain.SourceState
-import io.github.hazymorning.klangbild.data.ma.MaClient
-import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
+import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.domain.SpeakerSwitch
-import io.github.hazymorning.klangbild.data.Backoff
-import io.github.hazymorning.klangbild.data.LightBridge
+import io.ktor.client.HttpClient
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,7 +34,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import okhttp3.OkHttpClient
+import kotlin.concurrent.Volatile
+import kotlin.math.pow
+import kotlin.time.Clock
 
 /**
  * Home Assistant as the source: the configured media_player plus `sun.sun`, the weather and
@@ -44,13 +49,13 @@ import okhttp3.OkHttpClient
  * ([SpeakerSwitch]), on the same connection.
  */
 class HaSource(
-    http: OkHttpClient,
+    http: HttpClient,
     private val scope: CoroutineScope,
     private val config: HaConfig,
     /** The speaker chosen: an entity, or [EntityId.THIS_TV] for this TV's own. */
     private val playerEntity: String,
     private val sunEntity: String = "sun.sun",
-    private val now: () -> Long = System::currentTimeMillis,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val ma: MaClient? = null,
     /** The weather entities to read the sky's cover from, the first that exists counts (none: no weather). */
     private val weatherEntities: List<String> = emptyList(),
@@ -75,6 +80,9 @@ class HaSource(
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
+
+    /** What changes together changes under this lock, the queue's reader's too. */
+    private val lock = SynchronizedObject()
     private val _state = MutableStateFlow(SourceState(link = LinkState.CONNECTING))
     override val state: StateFlow<SourceState> = _state.asStateFlow()
 
@@ -103,7 +111,7 @@ class HaSource(
 
     private val queue = QueueReader(
         scope, connection, { speakerShown }, config.baseUrl, ma, now,
-        latest = { lastSnapshot }, shown = { _state.value.player }, lock = this,
+        latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock,
         queueRefreshMs = queueRefreshMs, detailsWaitMs = detailsWaitMs, queueSettleMs = queueSettleMs, maQueueMs = maQueueMs,
     ) { publish(connection.status.value, connection.entities.value) }
 
@@ -293,8 +301,7 @@ class HaSource(
     }
 
     /** Called from the status/entity collector and after queue refreshes, serialized. */
-    @Synchronized
-    private fun publish(status: HaStatus, entities: Map<String, EntityState>) {
+    private fun publish(status: HaStatus, entities: Map<String, EntityState>): Unit = synchronized(lock) {
         val t = now()
         val link = when (status) {
             HaStatus.Connected -> LinkState.CONNECTED
@@ -518,6 +525,6 @@ internal fun kmh(value: Double, unit: String?): Double? = when (unit) {
     "kn" -> value * 1.852
     "ft/s" -> value * 1.09728
     // Beaufort's own formula: v = 0.836 B^1.5 m/s.
-    "Beaufort" -> 0.836 * 3.6 * Math.pow(value.coerceAtLeast(0.0), 1.5)
+    "Beaufort" -> 0.836 * 3.6 * value.coerceAtLeast(0.0).pow(1.5)
     else -> null
 }

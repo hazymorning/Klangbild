@@ -1,24 +1,28 @@
 package io.github.hazymorning.klangbild.config
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.mutablePreferencesOf
-import androidx.datastore.preferences.core.preferencesOf
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotEqualTo
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import assertk.assertions.startsWith
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.domain.QuickAction
-import java.lang.reflect.Modifier
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.lang.reflect.Modifier
+import kotlin.test.Test
 
 /** Tokens are kept sealed: written sealed, read back opened, and old plain ones sealed on the next start. */
 @RunWith(AndroidJUnit4::class)
@@ -41,7 +45,7 @@ class SettingsStoreTest {
     @Test
     fun `tokens are stored sealed, read back as they were, and only kept for their address`(): Unit = runBlocking {
         val box = FakeBox()
-        val store = SettingsStore(context, box)
+        val store = SettingsStore(settingsValues(context), box)
         val signedIn = Settings().withHa("http://192.168.1.5:8123", HaCredentials.SignedIn("refresh-secret", "http://192.168.1.23:8765/"))
             .withMa("http://192.168.1.5:8095", "ma-secret")
             .copy(entityId = "media_player.living_room")
@@ -104,61 +108,61 @@ class SettingsStoreTest {
         val defaults = Settings()
         for (field in Settings::class.java.declaredFields.filter { !Modifier.isStatic(it.modifiers) }) {
             field.isAccessible = true
-            assertWithMessage("${field.name} is set apart from its default").that(field.get(changed)).isNotEqualTo(field.get(defaults))
+            assertThat(field.get(changed), name = "${field.name} is set apart from its default").isNotEqualTo(field.get(defaults))
         }
-        val store = SettingsStore(context, FakeBox())
+        val store = SettingsStore(settingsValues(context), FakeBox())
         store.write(changed)
         assertThat(store.settings.first()).isEqualTo(changed)
     }
 
     @Test
     fun `the view an earlier version stored becomes how the queue shows, and its key goes`() {
-        val store = SettingsStore(context, FakeBox())
-        val view = stringPreferencesKey("view")
-        val queue = stringPreferencesKey("queue")
+        val store = SettingsStore(settingsValues(context), FakeBox())
+        val view = "view"
+        val queue = "queue"
         // Cover Flow stays Cover Flow, and the single cover, which had no list, is the queue off.
-        fun after(stored: String): Preferences = mutablePreferencesOf(view to stored).also { store.migrate(it) }
+        fun after(stored: String): Map<String, Any> = mutableMapOf<String, Any>(view to stored).also { store.migrate(it) }
         assertThat(after("FLOW")[queue]).isEqualTo("FLOW")
         assertThat(after("SINGLE")[queue]).isEqualTo("OFF")
         assertThat(after("SINGLE").contains(view)).isFalse()
         assertThat(store.read(after("FLOW")).queue).isEqualTo(QueueDisplay.FLOW)
         // Read before the step has run, it means the same.
-        assertThat(store.read(preferencesOf(view to "FLOW")).queue).isEqualTo(QueueDisplay.FLOW)
-        assertThat(store.read(preferencesOf(view to "SINGLE")).queue).isEqualTo(QueueDisplay.OFF)
+        assertThat(store.read(mapOf(view to "FLOW")).queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(store.read(mapOf(view to "SINGLE")).queue).isEqualTo(QueueDisplay.OFF)
         // A value it does not know reads as the default, and the queue's own key wins.
-        assertThat(store.read(preferencesOf(view to "ELSEWHERE")).queue).isEqualTo(Settings().queue)
-        assertThat(store.read(preferencesOf(view to "FLOW", queue to "LIST")).queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(store.read(mapOf(view to "ELSEWHERE")).queue).isEqualTo(Settings().queue)
+        assertThat(store.read(mapOf(view to "FLOW", queue to "LIST")).queue).isEqualTo(QueueDisplay.LIST)
     }
 
     @Test
     fun `moving the view touches nothing else, not even a token that cannot be opened now`() {
         // The keystore cannot open the sealed token at this moment: it must stay as it is.
-        val store = SettingsStore(context, FakeBox(opening = false))
-        val token = stringPreferencesKey("ha_token")
-        val url = stringPreferencesKey("ha_url")
-        val p = mutablePreferencesOf(stringPreferencesKey("view") to "FLOW", token to "sealed:terces", url to "http://192.168.1.5:8123")
+        val store = SettingsStore(settingsValues(context), FakeBox(opening = false))
+        val p = mutableMapOf<String, Any>("view" to "FLOW", "ha_token" to "sealed:terces", "ha_url" to "http://192.168.1.5:8123")
         store.migrate(p)
-        assertThat(p.asMap().mapKeys { it.key.name }).containsExactly(
-            "queue", "FLOW",
-            "ha_token", "sealed:terces",
-            "ha_url", "http://192.168.1.5:8123",
+        assertThat(p).isEqualTo(
+            mapOf(
+                "queue" to "FLOW",
+                "ha_token" to "sealed:terces",
+                "ha_url" to "http://192.168.1.5:8123",
+            ),
         )
     }
 
     @Test
     fun `tokens stored by an earlier version are sealed on the next start`(): Unit = runBlocking {
         // An earlier version wrote the token as it is.
-        SettingsStore(context, FakeBox(sealing = false))
+        SettingsStore(settingsValues(context), FakeBox(sealing = false))
             .write(Settings().withHa("http://192.168.1.5:8123", HaCredentials.LongLived("long-lived-secret")))
 
         val box = FakeBox()
-        val store = SettingsStore(context, box)
+        val store = SettingsStore(settingsValues(context), box)
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
         assertThat(box.stored).contains("long-lived-secret")
         store.migrate()
         box.stored.clear()
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
-        assertThat(box.stored).containsExactly("sealed:" + "long-lived-secret".reversed())
+        assertThat(box.stored).containsExactlyInAnyOrder("sealed:" + "long-lived-secret".reversed())
     }
 
     @Test

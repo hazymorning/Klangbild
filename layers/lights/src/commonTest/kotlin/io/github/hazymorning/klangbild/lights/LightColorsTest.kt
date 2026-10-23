@@ -1,17 +1,18 @@
 package io.github.hazymorning.klangbild.lights
 
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Oklab
-import io.github.hazymorning.klangbild.render.CoverField
-import io.github.hazymorning.klangbild.render.FieldScene
 import io.github.hazymorning.klangbild.landscape.PaperLight
 import io.github.hazymorning.klangbild.landscape.SkyState
-import org.junit.Test
+import io.github.hazymorning.klangbild.render.CoverField
+import io.github.hazymorning.klangbild.render.FieldScene
 import kotlin.math.sqrt
+import kotlin.test.Test
 
 /** Three lights with a color each: from the cover, and in the landscape from its own light. */
 class LightColorsTest {
@@ -36,8 +37,8 @@ class LightColorsTest {
         val (l, c, r) = lights(CoverLightColors(field(red, yellow, blue), moving = false)).map(::lab)
         for ((a, b) in listOf(l to c, c to r, l to r)) assertThat(distance(a, b)).isGreaterThan(0.09f)
         // Red sits on the left of the cover, blue on its right.
-        assertWithMessage("left light red").that(l.a).isGreaterThan(0.08f)
-        assertWithMessage("right light blue").that(r.b).isLessThan(-0.08f)
+        assertThat(l.a, name = "left light red").isGreaterThan(0.08f)
+        assertThat(r.b, name = "right light blue").isLessThan(-0.08f)
     }
 
     @Test
@@ -65,11 +66,11 @@ class LightColorsTest {
     fun `the landscape's light is the sun's glow on its side at dusk and the fire's warmth on its side at night`() {
         // Sunset in the west: to the right of a window looking south.
         val dusk = lights(LandscapeLightColors(PaperLight.look(SkyState(sunElevation = 1f, sunAzimuth = 260f)), fireOnRight = true)).map(::lab)
-        assertWithMessage("the sun's side warmer").that(dusk[2].b).isGreaterThan(dusk[0].b + 0.02f)
+        assertThat(dusk[2].b, name = "the sun's side warmer").isGreaterThan(dusk[0].b + 0.02f)
         // Night, the fire on the left: that light is the warm one, the sky above blue.
         val night = lights(LandscapeLightColors(PaperLight.look(SkyState(sunElevation = -30f, sunAzimuth = 0f)), fireOnRight = false)).map(::lab)
-        assertWithMessage("the fire's side warm").that(night[0].b).isGreaterThan(night[2].b + 0.02f)
-        assertWithMessage("the sky above blue").that(night[1].b).isLessThan(0f)
+        assertThat(night[0].b, name = "the fire's side warm").isGreaterThan(night[2].b + 0.02f)
+        assertThat(night[1].b, name = "the sky above blue").isLessThan(0f)
     }
 
     @Test
@@ -81,6 +82,6 @@ class LightColorsTest {
         val amber = LightColor.whiteXy(2700f)
         for (c in noon) assertThat(LightColor.of(c, 0f).distance(amber)).isGreaterThan(0.06f)
         val sky = LightColor.of(noon[1], 0f)
-        assertWithMessage("the sky's light blue").that(sky.y).isLessThan(0.3f)
+        assertThat(sky.y, name = "the sky's light blue").isLessThan(0.3f)
     }
 }

@@ -11,7 +11,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
  * A module the Compose compiler compiles: the screens, the app, and every layer whose classes
  * the screens take as they are. The compiler sees a class as stable only when it compiled it
  * itself, so the layers below the screens go through it too, so the screens can still skip what
- * hasn't changed when they recompose.
+ * hasn't changed when they recompose. A layer with Compose's graphics below it takes this too:
+ * Compose Multiplatform's plugin brings Skia's WebAssembly runtime to its browser tests.
  */
 class ComposeConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {

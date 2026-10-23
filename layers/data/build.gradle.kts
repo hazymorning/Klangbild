@@ -9,6 +9,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.domain)
             implementation(projects.json)
+            implementation(projects.math)
             implementation(projects.sendspin)
             implementation(projects.sound)
             // Its API hands out flows and covers, takes Ktor's clients and speaks Home Assistant's JSON.

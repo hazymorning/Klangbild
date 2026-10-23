@@ -1,21 +1,40 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.domain.QuickAction
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.doesNotContainKey
+import assertk.assertions.endsWith
+import assertk.assertions.hasSize
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
-import kotlinx.coroutines.flow.MutableStateFlow
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -28,18 +47,17 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
-import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * The source against a stand-in Home Assistant (and Music Assistant): what it asks, and how
@@ -48,7 +66,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class HaSourceTest {
     private lateinit var ha: MockWebServer
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val http = OkHttpClient()
+    private val http = httpClient(OkHttp.create())
     private val sockets = CopyOnWriteArrayList<WebSocket>()
     private val calls = CopyOnWriteArrayList<JsonObject>()
     private val maCommands = CopyOnWriteArrayList<String>()
@@ -73,7 +91,7 @@ class HaSourceTest {
     private var tv = """{"friendly_name":"Fernseher","supported_features":17413}"""
     private val triggers = CopyOnWriteArrayList<Pair<String, String>>()
 
-    @Before
+    @BeforeTest
     fun setUp() {
         ha = MockWebServer()
         ha.dispatcher = object : Dispatcher() {
@@ -98,7 +116,7 @@ class HaSourceTest {
         ha.start()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         scope.cancel()
         ha.close()
@@ -118,6 +136,11 @@ class HaSourceTest {
     }
 
     private inner class FakeHa : WebSocketListener() {
+        // As Home Assistant does, a close is answered.
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(1000, null)
+        }
+
         override fun onOpen(webSocket: WebSocket, response: Response) {
             sockets += webSocket
             webSocket.send("""{"type":"auth_required","ha_version":"2026.10.0"}""")
@@ -311,7 +334,7 @@ class HaSourceTest {
         s.send(io.github.hazymorning.klangbild.data.RemoteCommand.NEXT)
         withTimeout(5_000) { while (calls.size < 2) delay(20) }
         delay(200)
-        assertThat(calls.map { it["service"]!!.jsonPrimitive.content }).containsExactly("media_play_pause", "media_next_track").inOrder()
+        assertThat(calls.map { it["service"]!!.jsonPrimitive.content }).containsExactly("media_play_pause", "media_next_track")
         s.stop()
     }
 
@@ -437,9 +460,9 @@ class HaSourceTest {
             val track = p.track!!
             assertThat(track.kind).isEqualTo(MediaKind.AUDIOBOOK)
             assertThat(track.album).isNull()
-            assertThat(track.artists).containsExactly("Franz Kafka")
-            assertThat(track.chapters.map { it.name }).containsExactly("Verhaftung", "Gespräch mit Frau Grubach").inOrder()
-            assertThat(p.speed).isWithin(1e-6f).of(1.25f)
+            assertThat(track.artists).containsExactlyInAnyOrder("Franz Kafka")
+            assertThat(track.chapters.map { it.name }).containsExactly("Verhaftung", "Gespräch mit Frau Grubach")
+            assertThat(p.speed).isCloseTo(1.25f, 1e-6f)
             assertThat(maCommands).contains("player_queues/items")
             s.stop()
         } finally {
@@ -466,7 +489,7 @@ class HaSourceTest {
         assertThat(t.source).isEqualTo("Radio Paradise")
         assertThat(t.album).isNull()
         // The song's picture as Home Assistant has it, never the station's logo instead.
-        assertThat(t.artworkUrl).endsWith("cache=song")
+        assertThat(t.artworkUrl).isNotNull().endsWith("cache=song")
         s.stop()
     }
 
@@ -528,18 +551,18 @@ class HaSourceTest {
         s.start()
         fun picture() = s.state.value.player!!.track!!.artworkUrl
         withTimeout(5_000) { s.state.first { it.queueKnown } }
-        assertThat(picture()).endsWith("cache=station")
+        assertThat(picture()).isNotNull().endsWith("cache=station")
         // Music Assistant has found the song's picture.
         report("entity_picture" to "https://img.example/love-and-hate.jpg")
         withTimeout(5_000) { s.state.first { it.player?.track?.artworkUrl?.contains("love-and-hate") == true } }
         // For a while it shows the station's again (with a new token): the song's stays.
         report("entity_picture" to stationPicture.replace("token=t", "token=u"))
         delay(400)
-        assertThat(picture()).contains("love-and-hate")
+        assertThat(picture()).isNotNull().contains("love-and-hate")
         // The next song starts with the station's picture.
         report("media_title" to "Spinning", "media_artist" to "Other", "entity_picture" to stationPicture)
         withTimeout(5_000) { s.state.first { it.player?.track?.title == "Spinning" } }
-        assertThat(picture()).endsWith("cache=station")
+        assertThat(picture()).isNotNull().endsWith("cache=station")
         s.stop()
     }
 
@@ -553,7 +576,7 @@ class HaSourceTest {
         }
         val sent = calls.filter { it["domain"]?.jsonPrimitive?.content != "music_assistant" }
         assertThat(sent.map { it["domain"]!!.jsonPrimitive.content + "." + it["service"]!!.jsonPrimitive.content })
-            .containsExactly("script.turn_on", "scene.turn_on", "automation.trigger", "input_button.press", "input_boolean.toggle").inOrder()
+            .containsExactly("script.turn_on", "scene.turn_on", "automation.trigger", "input_button.press", "input_boolean.toggle")
         assertThat(sent[0]["target"].toString()).isEqualTo("""{"entity_id":"script.ungroup_speakers"}""")
         assertThat(sent[0]["service_data"].toString()).isEqualTo("""{"variables":{"player":"media_player.wz"}}""")
         assertThat(sent.drop(1).none { "service_data" in it }).isTrue()
@@ -590,7 +613,7 @@ class HaSourceTest {
         s.followEntities(setOf("sensor.outside"))
         val state = withTimeout(5_000) { s.state.first { it.entities["sensor.outside"] != null && it.precision.isNotEmpty() && it.temperatureUnit != null } }
         assertThat(state.entities.getValue("sensor.outside").state).isEqualTo("12.345")
-        assertThat(state.precision).containsExactly("sensor.outside", 1)
+        assertThat(state.precision).isEqualTo(mapOf("sensor.outside" to 1))
         assertThat(state.temperatureUnit).isEqualTo("°C")
         s.stop()
     }
@@ -646,8 +669,8 @@ class HaSourceTest {
         withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }
         delay(300)
         // Never first with Home Assistant's small picture or without the year.
-        assertThat(seen.map { it.artworkUrl }.distinct()).containsExactly("https://cdn.example/erstes.jpg")
-        assertThat(seen.map { it.year }.distinct()).containsExactly(2024)
+        assertThat(seen.map { it.artworkUrl }.distinct()).containsExactlyInAnyOrder("https://cdn.example/erstes.jpg")
+        assertThat(seen.map { it.year }.distinct()).containsExactlyInAnyOrder(2024)
         watch.cancel()
         s.stop()
     }
@@ -726,7 +749,7 @@ class HaSourceTest {
             // A song added to play next: Music Assistant says so, and the cards to come follow.
             titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied")
             val changed = withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
-            assertThat(changed.coming.map { it.title }).containsExactly("Eingeschoben", "Zweites Lied").inOrder()
+            assertThat(changed.coming.map { it.title }).containsExactly("Eingeschoben", "Zweites Lied")
             // How many follow, as Music Assistant now says.
             assertThat(changed.remaining).isEqualTo(2)
             // A song moved further down: the same song next and as many to come, yet the order follows.
@@ -810,8 +833,8 @@ class HaSourceTest {
         s.start()
         val track = withTimeout(5_000) { s.state.first { it.player?.track != null } }.player!!.track!!
         // Shown as Home Assistant has it, once the wait is over.
-        assertThat(System.currentTimeMillis() - started).isAtLeast(750L)
-        assertThat(track.artworkUrl).contains("/api/media_player_proxy/")
+        assertThat(System.currentTimeMillis() - started).isGreaterThanOrEqualTo(750L)
+        assertThat(track.artworkUrl).isNotNull().contains("/api/media_player_proxy/")
         s.stop()
     }
 
@@ -851,10 +874,10 @@ class HaSourceTest {
             val first = withTimeout(5_000) { s.state.first { it.lyrics != null } }
             val known = first.lyrics!!
             assertThat(known.key).isEqualTo(first.player!!.track!!.key)
-            assertThat(known.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
+            assertThat(known.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile")
             // Asked ahead for the song up next, and only for it.
             withTimeout(5_000) { while (asked.isEmpty()) delay(20) }
-            assertThat(asked).containsExactly("library://track/2")
+            assertThat(asked).containsExactlyInAnyOrder("library://track/2")
             delay(300)
             // It starts: its words are there with it.
             queueAnswer = { queueOf(item("Zweites Lied", "zweites"), null) }
@@ -901,8 +924,8 @@ class HaSourceTest {
     @Test
     fun `a weather entity's wind is read in its own unit`() {
         assertThat(kmh(10.0, null)).isEqualTo(10.0)
-        assertThat(kmh(10.0, "m/s")).isWithin(0.01).of(36.0)
-        assertThat(kmh(10.0, "mph")).isWithin(0.01).of(16.09)
+        assertThat(kmh(10.0, "m/s")).isNotNull().isCloseTo(36.0, 0.01)
+        assertThat(kmh(10.0, "mph")).isNotNull().isCloseTo(16.09, 0.01)
         assertThat(kmh(10.0, "furlongs")).isNull()
     }
 
@@ -1039,11 +1062,11 @@ class HaSourceTest {
             assertThat(maCommands).contains("time")
             // Valid half a second before Music Assistant answered, on Home Assistant's clock (here this one's).
             assertThat(precise.skewMs).isEqualTo(0L)
-            assertThat(p.positionAtEpochMs!! - (answeredAt - 500)).isIn(com.google.common.collect.Range.closed(-50L, 50L))
+            assertThat(p.positionAtEpochMs!! - (answeredAt - 500)).isBetween(-50L, 50L)
             // A quarter of a second ahead of Home Assistant's whole seconds, as Music Assistant says, as
             // closely as its clock is known (half a round trip).
             val home = 61_000 + (p.positionAtEpochMs!! - reportedAtMs)
-            assertThat(p.positionMs!! - home).isIn(com.google.common.collect.Range.closed(200L, 300L))
+            assertThat(p.positionMs!! - home).isBetween(200L, 300L)
             // A pause lets go of Music Assistant's position: playing again, Home Assistant's stands
             // until Music Assistant says it plays too. Its states are stamped with this clock's time
             // now, as Home Assistant's would be: their stamps tell Klangbild how its clock stands.

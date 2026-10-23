@@ -1,18 +1,22 @@
 package io.github.hazymorning.klangbild.setup
 
+import dev.whyoleg.cryptography.random.CryptographyRandom
 import io.github.hazymorning.klangbild.config.OwnValues
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SleepAction
+import io.github.hazymorning.klangbild.data.formEncode
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.data.ha.HaUrls
-import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.EntityId
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -25,10 +29,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
-import java.net.URLEncoder
-import java.security.MessageDigest
-import java.security.SecureRandom
-import java.util.Base64
+import kotlin.concurrent.Volatile
+import kotlin.io.encoding.Base64
+import kotlin.random.Random
+import kotlin.time.Clock
 
 /** One speaker offered on the setup page. */
 data class SpeakerOption(val entityId: String, val name: String, val state: String, val musicAssistant: Boolean)
@@ -132,14 +136,15 @@ class SetupHandler(
     private val maGuess: () -> String? = { null },
     private val ownSpeaker: () -> String? = { null },
     private val pairingToken: () -> String? = { null },
-    private val random: SecureRandom = SecureRandom(),
-    private val now: () -> Long = System::currentTimeMillis,
+    private val random: Random = CryptographyRandom,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** A wrong code is answered only after this long: guessing a code takes days, not minutes. */
     private val wrongCodeDelayMs: Long = WRONG_CODE_DELAY_MS,
 ) {
     @Volatile var code: String = newCode()
         private set
     private var failures = 0
+    private val lock = SynchronizedObject()
 
     /** Called when the code changed (the TV redraws the QR code). */
     @Volatile var onCodeChanged: (String) -> Unit = {}
@@ -155,8 +160,7 @@ class SetupHandler(
 
     private fun newCode(): String = (0 until 6).joinToString("") { random.nextInt(10).toString() }
 
-    @Synchronized
-    fun rotateCode() {
+    fun rotateCode(): Unit = synchronized(lock) {
         code = newCode()
         failures = 0
         onCodeChanged(code)
@@ -170,9 +174,8 @@ class SetupHandler(
         if (dropped != null) revoke(dropped.url, dropped.refreshToken)
     }
 
-    @Synchronized
-    private fun codeMatches(candidate: String?): Boolean {
-        val ok = candidate != null && MessageDigest.isEqual(candidate.trim().toByteArray(), code.toByteArray())
+    private fun codeMatches(candidate: String?): Boolean = synchronized(lock) {
+        val ok = candidate != null && same(candidate.trim().encodeToByteArray(), code.encodeToByteArray())
         if (!ok) {
             failures++
             if (failures >= MAX_FAILURES) rotateCode()
@@ -195,8 +198,8 @@ class SetupHandler(
             req.method == "POST" && req.path == "/api/signin" -> withCode(req, t) { body -> signInJson(body, t) }
             req.method == "POST" && req.path == "/api/discover" -> withCode(req, t) { body -> discoverJson(body, t) }
             req.method == "POST" && req.path == "/api/save" -> withCode(req, t) { body -> saveJson(body, t) }
-            req.path.startsWith("/api/") -> MiniHttp.Response.json(405, error(t[R.string.setup_error_not_allowed]))
-            else -> MiniHttp.Response.text(404, t[R.string.setup_error_not_found])
+            req.path.startsWith("/api/") -> MiniHttp.Response.json(405, error(t[Strings.setupErrorNotAllowed]))
+            else -> MiniHttp.Response.text(404, t[Strings.setupErrorNotFound])
         }
     }
 
@@ -204,11 +207,11 @@ class SetupHandler(
         val body = try {
             json.parseToJsonElement(req.bodyText.ifBlank { "{}" }).jsonObject
         } catch (_: Exception) {
-            return MiniHttp.Response.json(400, error(t[R.string.setup_error_request]))
+            return MiniHttp.Response.json(400, error(t[Strings.setupErrorRequest]))
         }
         if (!codeMatches(body.string("code"))) {
             delay(wrongCodeDelayMs)
-            return MiniHttp.Response.json(403, error(t[R.string.setup_error_code]))
+            return MiniHttp.Response.json(403, error(t[Strings.setupErrorCode]))
         }
         return block(body)
     }
@@ -250,9 +253,9 @@ class SetupHandler(
     /** Starts a sign-in: the address of Home Assistant's login page, for this request only. */
     private fun signInJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
-        val client = clientId() ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_not_allowed]))
-        val state = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(STATE_BYTES).also(random::nextBytes))
+            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
+        val client = clientId() ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorNotAllowed]))
+        val state = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(random.nextBytes(ByteArray(STATE_BYTES)))
         authorization = Authorization(state, url, client, now())
         val authorize = "$url/auth/authorize?response_type=code" +
             "&client_id=${enc(client)}&redirect_uri=${enc(redirectUri(client))}&state=${enc(state)}"
@@ -271,7 +274,7 @@ class SetupHandler(
         val state = req.query["state"]
         val authCode = req.query["code"]
         if (pending == null || state == null || authCode == null) return redirect(SIGN_IN_FAILED)
-        val valid = MessageDigest.isEqual(state.toByteArray(), pending.state.toByteArray()) && now() - pending.at <= SIGN_IN_MS
+        val valid = same(state.encodeToByteArray(), pending.state.encodeToByteArray()) && now() - pending.at <= SIGN_IN_MS
         if (!valid) return redirect(SIGN_IN_FAILED)
         authorization = null
         val tokens = try {
@@ -299,8 +302,8 @@ class SetupHandler(
 
     private suspend fun discoverJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
-        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_credentials]))
+            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
+        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorCredentials]))
         return when (val r = discover(url, credentials)) {
             is DiscoverResult.Failed -> MiniHttp.Response.json(200, buildJsonObject {
                 put("ok", false)
@@ -387,26 +390,26 @@ class SetupHandler(
     private suspend fun saveJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val current = settings()
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_address]))
-        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_credentials]))
+            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
+        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorCredentials]))
         val ha = current.withHa(url, credentials)
-        val withMa = maSettings(ha, body) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_address]))
-        if (withMa.maUrl != null && withMa.maToken == null) return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_token]))
+        val withMa = maSettings(ha, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaAddress]))
+        if (withMa.maUrl != null && withMa.maToken == null) return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaToken]))
         if (withMa.hasMusicAssistant && (withMa.maUrl != current.maUrl || withMa.maToken != current.maToken)) {
             when (checkMa(withMa.maUrl!!, withMa.maToken!!)) {
                 MaLink.CONNECTED -> Unit
-                MaLink.AUTH_FAILED -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_rejected]))
-                MaLink.UNREACHABLE -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_ma_unreachable]))
+                MaLink.AUTH_FAILED -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaRejected]))
+                MaLink.UNREACHABLE -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaUnreachable]))
             }
         }
         val tvSpeaker = body.bool("tvSpeaker") ?: current.tvSpeaker
         val entity = body.string("entity")?.trim()?.takeIf { EntityId.isValid(it) || it == EntityId.THIS_TV }
-            ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_speaker]))
+            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorSpeaker]))
         // "This TV" follows the TV's own speaker, which needs Music Assistant and the TV playing for it.
-        if (entity == EntityId.THIS_TV && !(tvSpeaker && withMa.hasMusicAssistant)) return MiniHttp.Response.json(400, error(t[R.string.setup_error_this_tv]))
+        if (entity == EntityId.THIS_TV && !(tvSpeaker && withMa.hasMusicAssistant)) return MiniHttp.Response.json(400, error(t[Strings.setupErrorThisTv]))
         val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
-        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[R.string.setup_error_sleep]))
+        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[Strings.setupErrorSleep]))
         val action = when (body.string("sleepAction")) {
             "close" -> SleepAction.CLOSE
             "release" -> SleepAction.RELEASE
@@ -418,7 +421,7 @@ class SetupHandler(
             current.roomLights
         } else {
             val ids = lightKeys.map { k -> body.string(k)?.trim().orEmpty() }
-            if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return MiniHttp.Response.json(400, error(t[R.string.setup_error_lights]))
+            if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return MiniHttp.Response.json(400, error(t[Strings.setupErrorLights]))
             RoomLights(ids[0].ifEmpty { null }, ids[1].ifEmpty { null }, ids[2].ifEmpty { null })
         }
         // The landscape's weather: "" finds Home Assistant's own, "none" keeps the sky fair; absent stays as it was.
@@ -427,23 +430,23 @@ class SetupHandler(
             "" -> null
             Settings.NO_WEATHER -> Settings.NO_WEATHER
             else -> w.takeIf { EntityId.isWeather(it) }
-                ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_weather]))
+                ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorWeather]))
         }
         // The quick settings' own buttons only when the page showed them; an empty list removes them.
         val actions = when (val list = body["actions"]) {
             null -> current.quickActions
             is JsonArray -> list.take(QuickActions.MAX).map { e ->
-                QuickActions.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_actions]))
+                QuickActions.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorActions]))
             }
-            else -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_actions]))
+            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorActions]))
         }
         // The values in the status line, likewise.
         val values = when (val list = body["values"]) {
             null -> current.ownValues
             is JsonArray -> list.take(OwnValues.MAX).map { e ->
-                OwnValues.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[R.string.setup_error_values]))
+                OwnValues.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
             }
-            else -> return MiniHttp.Response.json(400, error(t[R.string.setup_error_values]))
+            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
         }
         val updated = withMa.copy(
             weatherEntity = weather,
@@ -472,7 +475,7 @@ class SetupHandler(
         if (old != null && oldUrl != null && old != updated.haCredentials) revoke(oldUrl, old.refreshToken)
         return MiniHttp.Response.json(200, buildJsonObject {
             put("ok", true)
-            put("message", t[R.string.setup_saved])
+            put("message", t[Strings.setupSaved])
         }.toString())
     }
 
@@ -491,7 +494,15 @@ class SetupHandler(
         put("message", message)
     }.toString()
 
-    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+    private fun enc(s: String) = formEncode(s)
+
+    /** Whether [a] and [b] are the same, in a time that doesn't tell where they differ. */
+    private fun same(a: ByteArray, b: ByteArray): Boolean {
+        if (b.isEmpty()) return a.isEmpty()
+        var differ = a.size - b.size
+        for (i in a.indices) differ = differ or (a[i].toInt() xor b[if (i < b.size) i else 0].toInt())
+        return differ == 0
+    }
 
     private fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
 

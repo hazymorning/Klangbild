@@ -2,18 +2,21 @@ package io.github.hazymorning.klangbild.data
 
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isLessThanOrEqualTo
+import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import okhttp3.OkHttpClient
 import okio.Buffer
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.ByteArrayOutputStream
+import kotlin.test.Test
 
 /** Covers are fetched with limits: no download beyond a cover's weight, no picture beyond a cover's size. */
 @RunWith(AndroidJUnit4::class)
@@ -26,9 +29,9 @@ class ArtworkLoaderTest {
 
     @Test
     fun `odd shapes are subsampled to the size of a large square`() {
-        val wide = ArtworkLoader.decode(png(9000, 600))!!
-        assertThat(wide.width.toLong() * wide.height).isAtMost(ArtworkLoader.MAX_DECODE_PX.toLong() * ArtworkLoader.MAX_DECODE_PX)
-        val square = ArtworkLoader.decode(png(3000, 3000))!!
+        val wide = AndroidPictureDecoder.decode(png(9000, 600))!!
+        assertThat(wide.width.toLong() * wide.height).isLessThanOrEqualTo(ArtworkLoader.MAX_DECODE_PX.toLong() * ArtworkLoader.MAX_DECODE_PX)
+        val square = AndroidPictureDecoder.decode(png(3000, 3000))!!
         assertThat(square.width).isEqualTo(1500)
     }
 
@@ -38,7 +41,7 @@ class ArtworkLoaderTest {
             server.start()
             server.enqueue(MockResponse.Builder().body(Buffer().write(ByteArray((ArtworkLoader.MAX_BYTES + 1).toInt()))).build())
             server.enqueue(MockResponse.Builder().body(Buffer().write(png(64, 64))).build())
-            val loader = OkHttpClient().let { http -> ArtworkLoader(http, http, { null }) }
+            val loader = httpClient(OkHttp.create()).let { http -> ArtworkLoader(http, http, { null }, AndroidPictureDecoder) }
             assertThat(loader.load(TrackInfo("x", artworkUrl = server.url("/huge.png").toString()))).isNull()
             assertThat(loader.load(TrackInfo("y", artworkUrl = server.url("/cover.png").toString()))!!.width).isEqualTo(64)
         }

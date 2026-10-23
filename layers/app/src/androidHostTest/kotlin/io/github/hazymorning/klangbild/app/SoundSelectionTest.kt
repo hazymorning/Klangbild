@@ -1,6 +1,11 @@
 package io.github.hazymorning.klangbild.app
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.data.ma.MilkdropSound
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
@@ -12,16 +17,16 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import okhttp3.OkHttpClient
-import org.junit.After
-import org.junit.Test
 import java.util.concurrent.TimeUnit
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 /** Which feed the sound comes from: this TV's own playback, Music Assistant's MilkDrop feed, or nothing. */
 class SoundSelectionTest {
@@ -31,7 +36,7 @@ class SoundSelectionTest {
         start()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         scope.cancel()
         relay.close()
@@ -78,7 +83,7 @@ class SoundSelectionTest {
     @Test
     fun `another Music Assistant speaker is heard through the MilkDrop feed, and only while read`() {
         val sound = SoundSelection { null }
-        sound.useMilkdrop(MilkdropSound(OkHttpClient(), scope, relay.url("/").toString().trimEnd('/'), "ma-token"))
+        sound.useMilkdrop(MilkdropSound(httpClient(OkHttp.create()), scope, relay.url("/").toString().trimEnd('/'), "ma-token"))
         sound.update(shown("media_player.kitchen"), SpeakerStatus())
         assertThat(relay.takeRequest(300, TimeUnit.MILLISECONDS)).isNull()
         sound.reading(true)
@@ -92,7 +97,7 @@ class SoundSelectionTest {
     @Test
     fun `a player that is not Music Assistant's has no sound`() {
         val sound = SoundSelection { Own() }
-        sound.useMilkdrop(MilkdropSound(OkHttpClient(), scope, relay.url("/").toString().trimEnd('/'), "ma-token"))
+        sound.useMilkdrop(MilkdropSound(httpClient(OkHttp.create()), scope, relay.url("/").toString().trimEnd('/'), "ma-token"))
         sound.reading(true)
         sound.update(shown("media_player.radio", playing.copy(activeQueue = null, isMusicAssistant = false)), SpeakerStatus())
         assertThat(sound.read(0, SoundFrame())).isFalse()

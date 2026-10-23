@@ -11,17 +11,6 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Seals the tokens Klangbild keeps (Home Assistant's and Music Assistant's) before they are stored. */
-interface SecretBox {
-    fun seal(plain: String): String
-
-    /** The secret in [stored]: a sealed one opened, one stored before sealing as it is; null when it cannot be opened. */
-    fun open(stored: String): String?
-
-    /** Whether [stored] was written before secrets were sealed (it is sealed on the next write). */
-    fun isPlain(stored: String): Boolean
-}
-
 /**
  * Seals secrets with AES-GCM under a key that lives in the Android Keystore and never leaves it,
  * on top of the app's private storage (which is excluded from backups). A file copied off the

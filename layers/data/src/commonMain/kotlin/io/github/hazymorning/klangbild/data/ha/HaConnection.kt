@@ -1,8 +1,13 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.WebSocketLink
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.json.string
+import io.ktor.client.HttpClient
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -30,14 +36,8 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import java.io.IOException
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
 
 /** Where and how to reach Home Assistant. */
 data class HaConfig(val auth: HaAuth) {
@@ -91,7 +91,7 @@ data class RegistryEntry(
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HaConnection(
-    private val http: OkHttpClient,
+    private val http: HttpClient,
     private val scope: CoroutineScope,
     private val pingIntervalMs: Long = 30_000,
     private val pongTimeoutMs: Long = 10_000,
@@ -235,7 +235,7 @@ class HaConnection(
             } catch (e: HaAuthRejectedException) {
                 SessionEnd.AuthInvalid(e.message)
             } catch (e: Exception) {
-                SessionEnd.Lost(e.message ?: e.javaClass.simpleName)
+                SessionEnd.Lost(e.message ?: e::class.simpleName)
             } finally {
                 session = null
             }
@@ -284,12 +284,19 @@ class HaConnection(
     /** An answer, which may itself be null. */
     private class Answer(val value: JsonElement?)
 
-    private inner class Session(val socket: WebSocket) {
-        private val nextId = AtomicInteger(1)
-        val pending = ConcurrentHashMap<Int, CompletableDeferred<JsonElement?>>()
+    private inner class Session(val socket: WebSocketLink) {
+        private val nextId = atomic(1)
+        private val lock = SynchronizedObject()
+        private val pending = HashMap<Int, CompletableDeferred<JsonElement?>>()
         @Volatile var lastPong = 0L
 
         fun send(obj: JsonObject): Boolean = socket.send(obj.toString())
+
+        /** The call waiting for the answer [id], if any. */
+        fun waiter(id: Int): CompletableDeferred<JsonElement?>? = synchronized(lock) { pending[id] }
+
+        /** Every call still waiting gives up (the connection ended). */
+        fun cancelAll() = synchronized(lock) { pending.values.toList() }.forEach { it.cancel() }
 
         /**
          * Sends a command and waits for its answer. No answer in time, or a connection that
@@ -299,7 +306,7 @@ class HaConnection(
         suspend fun command(timeoutMs: Long, build: (Int) -> JsonObject): JsonElement? {
             val id = nextId.getAndIncrement()
             val deferred = CompletableDeferred<JsonElement?>()
-            pending[id] = deferred
+            synchronized(lock) { pending[id] = deferred }
             try {
                 if (!send(build(id))) throw IOException("socket closed")
                 val answer = withTimeoutOrNull(timeoutMs) { Answer(deferred.await()) }
@@ -309,7 +316,7 @@ class HaConnection(
                 currentCoroutineContext().ensureActive()
                 throw IOException("connection lost", e)
             } finally {
-                pending.remove(id)
+                synchronized(lock) { pending.remove(id) }
             }
         }
 
@@ -329,23 +336,17 @@ class HaConnection(
         val token = config.auth.accessToken()
         val rest = HaRest(http, config.auth)
         val events = Channel<WsEvent>(Channel.UNLIMITED)
-        val request = Request.Builder().url(HaUrls.webSocketUrl(config.baseUrl)).build()
-        val socket = http.newWebSocket(request, object : WebSocketListener() {
-            override fun onMessage(webSocket: WebSocket, text: String) {
+        val socket = WebSocketLink(this, http, HaUrls.webSocketUrl(config.baseUrl), object : WebSocketLink.Listener {
+            override fun onText(text: String) {
                 events.trySend(WsEvent.Text(text))
             }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                webSocket.close(1000, null)
+            override fun onClosed(code: Int, reason: String) {
                 events.trySend(WsEvent.Closed(code, reason))
             }
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                events.trySend(WsEvent.Closed(code, reason))
-            }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                events.trySend(WsEvent.Failure(t))
+            override fun onFailure(error: Throwable) {
+                events.trySend(WsEvent.Failure(error))
             }
         })
         val s = Session(socket)
@@ -370,7 +371,7 @@ class HaConnection(
                 else -> return@coroutineScope SessionEnd.Lost("unexpected auth answer")
             }
             session = s
-            s.lastPong = System.currentTimeMillis()
+            s.lastPong = now()
 
             // --- subscribe ---------------------------------------------------------------
             val store = EntityStore()
@@ -448,14 +449,14 @@ class HaConnection(
                 while (isActive) {
                     delay(pingIntervalMs)
                     val id = s.nextId()
-                    val sentAt = System.currentTimeMillis()
+                    val sentAt = now()
                     s.send(buildJsonObject {
                         put("id", id)
                         put("type", "ping")
                     })
                     delay(pongTimeoutMs)
                     if (s.lastPong < sentAt) {
-                        socket.cancel() // dead connection: triggers onFailure, then a reconnect
+                        socket.cancel() // dead connection: a failure, then a reconnect
                         break
                     }
                 }
@@ -505,7 +506,7 @@ class HaConnection(
                                         if (entity !in followed()) continue
                                         val changed = if (state == null) store.remove(entity) else store.put(state)
                                         if (state != null) {
-                                            clockSkew.addSample(System.currentTimeMillis() - (state.lastUpdated * 1000).toLong())
+                                            clockSkew.addSample(now() - (state.lastUpdated * 1000).toLong())
                                             if (entity in _missing.value) _missing.value = _missing.value - entity
                                         }
                                         if (changed) publish()
@@ -513,7 +514,7 @@ class HaConnection(
                                     "result" -> {
                                         val ok = (msg["success"] as? JsonPrimitive)?.booleanOrNull == true
                                         val error = msg["error"] as? JsonObject
-                                        val waiter = id?.let { s.pending[it] }
+                                        val waiter = id?.let { s.waiter(it) }
                                         when {
                                             waiter != null -> if (ok) {
                                                 waiter.complete(msg["result"])
@@ -542,7 +543,7 @@ class HaConnection(
                                             id != null && id == extraSub && !ok -> extraSub = null
                                         }
                                     }
-                                    "pong" -> s.lastPong = System.currentTimeMillis()
+                                    "pong" -> s.lastPong = now()
                                 }
                             }
                         }
@@ -554,7 +555,7 @@ class HaConnection(
             } finally {
                 pinger.cancel()
                 extraWatcher.cancel()
-                s.pending.values.forEach { it.cancel() }
+                s.cancelAll()
             }
         } finally {
             socket.cancel()
@@ -612,7 +613,7 @@ class HaConnection(
 
     private fun lost(ev: WsEvent): SessionEnd = when (ev) {
         is WsEvent.Closed -> SessionEnd.Lost("closed ${ev.code}")
-        is WsEvent.Failure -> SessionEnd.Lost(ev.error.message ?: ev.error.javaClass.simpleName)
+        is WsEvent.Failure -> SessionEnd.Lost(ev.error.message ?: ev.error::class.simpleName)
         is WsEvent.Text -> SessionEnd.Lost(null)
     }
 
@@ -628,6 +629,8 @@ class HaConnection(
     }
 
     private fun JsonObject.type(): String? = string("type")
+
+    private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 }
 
 /**
@@ -637,15 +640,14 @@ class HaConnection(
  * off would show a progress bar that is always a few seconds wrong.
  */
 class ClockSkew(private val window: Int = 24) {
+    private val lock = SynchronizedObject()
     private val samples = ArrayDeque<Long>()
 
-    @Synchronized
-    fun addSample(localMinusServerMs: Long) {
+    fun addSample(localMinusServerMs: Long): Unit = synchronized(lock) {
         samples.addLast(localMinusServerMs)
         while (samples.size > window) samples.removeFirst()
     }
 
     /** Local minus server time in ms (0 until the first sample). */
-    @get:Synchronized
-    val offsetMs: Long get() = samples.minOrNull() ?: 0L
+    val offsetMs: Long get() = synchronized(lock) { samples.minOrNull() ?: 0L }
 }

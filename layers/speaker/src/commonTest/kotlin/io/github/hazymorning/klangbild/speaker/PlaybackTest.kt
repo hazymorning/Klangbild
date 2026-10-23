@@ -1,11 +1,20 @@
 package io.github.hazymorning.klangbild.speaker
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isBetween
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isLessThan
+import assertk.assertions.isLessThanOrEqualTo
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.sendspin.ClockMap
-import org.junit.Test
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.test.Test
 
 /**
  * The playback against a simulated output on a simulated clock: an output whose crystal runs
@@ -174,8 +183,8 @@ class PlaybackTest {
         run(p, server, 1.0)
         val (first, at) = sink.presented.first()
         assertThat(first).isEqualTo(1L)
-        assertThat(abs(at - server.meantUs(1, 0))).isAtMost(25L)
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(abs(at - server.meantUs(1, 0))).isLessThanOrEqualTo(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -191,7 +200,7 @@ class PlaybackTest {
             // Drift is worked off frame by frame, never by putting it in place at once again.
             assertThat(p.resyncs).isEqualTo(1L)
             // 100 ppm over two minutes is 576 frames.
-            assertThat(p.corrections).isAtLeast(500L)
+            assertThat(p.corrections).isGreaterThanOrEqualTo(500L)
         }
     }
 
@@ -202,7 +211,7 @@ class PlaybackTest {
         p.outputDelayUs = 150_000
         val server = Server(p.queue, startServerUs = now + OFFSET_US + 400_000)
         run(p, server, 2.0)
-        assertThat(errorsAfter(sink, server, 0, delayUs = 150_000).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0, delayUs = 150_000).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -214,7 +223,7 @@ class PlaybackTest {
         run(p, server, 2.0)
         val (first, _) = sink.presented.first()
         assertThat(first).isGreaterThan(24_000L)
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -227,7 +236,7 @@ class PlaybackTest {
         run(p, server, 6.0)
         val missing = sink.presented.map { it.first }.filter { it in (100L * 960 + 1)..(113L * 960) }
         assertThat(missing).isEmpty()
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
         assertThat(p.resyncs).isEqualTo(2L)
     }
 
@@ -247,7 +256,7 @@ class PlaybackTest {
         assertThat(sink.presented.filter { it.first < 1_000_000 && it.second > seekAt }).isEmpty()
         val newOnes = sink.presented.filter { it.first >= 1_000_000 }
         assertThat(newOnes.first().first).isEqualTo(1_000_000L)
-        assertThat(newOnes.maxOf { abs(it.second - server.meantUs(it.first, 0)) }).isAtMost(25L)
+        assertThat(newOnes.maxOf { abs(it.second - server.meantUs(it.first, 0)) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -256,7 +265,7 @@ class PlaybackTest {
         val p = playback(sink)
         val server = Server(p.queue, startServerUs = now + OFFSET_US + 300_000)
         run(p, server, 2.0)
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -268,7 +277,7 @@ class PlaybackTest {
         sink.underrunCount++
         run(p, server, 1.0)
         assertThat(p.resyncs).isEqualTo(2L)
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -282,8 +291,8 @@ class PlaybackTest {
         sink.frozen = false
         val back = now
         run(p, server, 2.0)
-        assertThat(p.resyncs).isAtLeast(2L)
-        assertThat(errorsAfter(sink, server, back + 200_000).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(p.resyncs).isGreaterThanOrEqualTo(2L)
+        assertThat(errorsAfter(sink, server, back + 200_000).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -305,7 +314,7 @@ class PlaybackTest {
         val server = Server(p.queue, startServerUs = now + OFFSET_US + 100_000)
         run(p, server, 2.0)
         // The first 100 ms could not be placed in time and were dropped, the rest is on time.
-        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isAtMost(25L)
+        assertThat(errorsAfter(sink, server, 0).maxOf { abs(it) }).isLessThanOrEqualTo(25L)
     }
 
     @Test
@@ -322,14 +331,14 @@ class PlaybackTest {
         assertThat(after.first()).isGreaterThan(9_900)
         assertThat(after.last()).isEqualTo(0)
         // 10 000 down to nothing in 960 frames: about 10 a frame, never a jump.
-        for (i in 1 until after.size) assertThat(after[i - 1] - after[i]).isIn(0..11)
+        for (i in 1 until after.size) assertThat(after[i - 1] - after[i]).isBetween(0, 11)
     }
 
     @Test
     fun `the volume curve is Sendspin's`() {
         assertThat(Playback.gainOf(100)).isEqualTo(1f)
         assertThat(Playback.gainOf(0)).isEqualTo(0f)
-        assertThat(Playback.gainOf(50)).isWithin(1e-4f).of(0.35355f)
+        assertThat(Playback.gainOf(50)).isCloseTo(0.35355f, 1e-4f)
     }
 
     private companion object {

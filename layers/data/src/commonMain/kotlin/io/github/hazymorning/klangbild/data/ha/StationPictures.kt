@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.domain.pictureId
+import io.github.hazymorning.klangbild.math.RecentMap
 
 /**
  * Which picture a station's song shows. Home Assistant shows Music Assistant's choice of the
@@ -35,14 +36,10 @@ internal class StationPictures {
     private val left = HashSet<String>()
 
     /** The song each picture was first seen with, by identity: the most recent few. */
-    private val firstSeen = object : LinkedHashMap<String, String>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > MEMORY
-    }
+    private val firstSeen = RecentMap<String, String>(MEMORY)
 
     /** Pictures known to be the station's, by identity: the most recent few. */
-    private val stations = object : LinkedHashMap<String, Unit>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Unit>?) = size > MEMORY
-    }
+    private val stations = RecentMap<String, Unit>(MEMORY)
 
     /** The picture for [song] (its identity) from [offers], best first among equals; null when there is none at all. */
     fun choose(song: String, offers: List<Offer>): Offer? {

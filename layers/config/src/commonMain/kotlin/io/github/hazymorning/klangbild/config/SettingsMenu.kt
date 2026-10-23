@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.config
 
-import androidx.annotation.StringRes
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.LinkState
@@ -9,50 +8,52 @@ import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.text.AppLanguage
-import io.github.hazymorning.klangbild.text.R
+import io.github.hazymorning.klangbild.text.Plurals
+import io.github.hazymorning.klangbild.text.StringId
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 
 /** The groups of the settings, in order: the menu's first level. [about] says what is in one. */
-enum class MenuSection(@StringRes val title: Int, @StringRes val about: Int) {
-    PICTURE(R.string.section_picture, R.string.about_section_picture),
-    INFO(R.string.section_info, R.string.about_section_info),
-    LIGHTS(R.string.section_lights, R.string.about_section_lights),
-    LANDSCAPE(R.string.section_landscape, R.string.about_section_landscape),
-    REMOTE(R.string.section_remote, R.string.about_section_remote),
-    TIMER(R.string.section_timer, R.string.about_section_timer),
-    SYSTEM(R.string.section_system, R.string.about_section_system),
+enum class MenuSection(val title: StringId, val about: StringId) {
+    PICTURE(Strings.sectionPicture, Strings.aboutSectionPicture),
+    INFO(Strings.sectionInfo, Strings.aboutSectionInfo),
+    LIGHTS(Strings.sectionLights, Strings.aboutSectionLights),
+    LANDSCAPE(Strings.sectionLandscape, Strings.aboutSectionLandscape),
+    REMOTE(Strings.sectionRemote, Strings.aboutSectionRemote),
+    TIMER(Strings.sectionTimer, Strings.aboutSectionTimer),
+    SYSTEM(Strings.sectionSystem, Strings.aboutSectionSystem),
 }
 
-/** One setting, in its group's order; [label] is 0 for a line named after what it connects to. */
-enum class MenuEntry(val section: MenuSection, @StringRes val label: Int) {
-    QUEUE(MenuSection.PICTURE, R.string.entry_queue),
-    APPEARANCE(MenuSection.PICTURE, R.string.entry_appearance),
-    BACKGROUND(MenuSection.PICTURE, R.string.entry_background),
-    INTENSITY(MenuSection.PICTURE, R.string.entry_intensity),
-    MOTION(MenuSection.PICTURE, R.string.entry_motion),
-    CLOCK(MenuSection.INFO, R.string.entry_clock),
-    PROGRESS_BAR(MenuSection.INFO, R.string.entry_progress),
-    NEXT(MenuSection.INFO, R.string.entry_next),
-    ALBUM(MenuSection.INFO, R.string.entry_album),
-    GROUP(MenuSection.INFO, R.string.entry_group),
-    VOLUME(MenuSection.INFO, R.string.entry_volume),
-    VALUES(MenuSection.INFO, R.string.entry_values),
-    LYRICS(MenuSection.INFO, R.string.entry_lyrics),
-    BRIGHTNESS(MenuSection.LIGHTS, R.string.entry_brightness),
-    OFF_LIGHTS(MenuSection.LIGHTS, R.string.entry_off_lights),
-    LANDSCAPE_PAUSE(MenuSection.LANDSCAPE, R.string.entry_landscape_pause),
-    LANDSCAPE_PLAYING(MenuSection.LANDSCAPE, R.string.entry_landscape_playing),
-    MINI_PLAYER(MenuSection.LANDSCAPE, R.string.entry_mini_player),
-    REMOTE(MenuSection.REMOTE, R.string.entry_remote),
-    UP_DOWN(MenuSection.REMOTE, R.string.entry_up_down),
-    SPOKEN(MenuSection.REMOTE, R.string.entry_spoken),
-    SLEEP_TIMER(MenuSection.TIMER, R.string.entry_sleep_timer),
-    SLEEP_AFTER(MenuSection.TIMER, R.string.entry_sleep_after),
-    SLEEP_ACTION(MenuSection.TIMER, R.string.entry_sleep_action),
-    CONNECTION(MenuSection.SYSTEM, 0),
-    MUSIC_ASSISTANT(MenuSection.SYSTEM, 0),
-    PLAY_HERE(MenuSection.SYSTEM, R.string.entry_play_here),
-    LANGUAGE(MenuSection.SYSTEM, R.string.entry_language),
+/** One setting, in its group's order; [label] is null for a line named after what it connects to. */
+enum class MenuEntry(val section: MenuSection, val label: StringId?) {
+    QUEUE(MenuSection.PICTURE, Strings.entryQueue),
+    APPEARANCE(MenuSection.PICTURE, Strings.entryAppearance),
+    BACKGROUND(MenuSection.PICTURE, Strings.entryBackground),
+    INTENSITY(MenuSection.PICTURE, Strings.entryIntensity),
+    MOTION(MenuSection.PICTURE, Strings.entryMotion),
+    CLOCK(MenuSection.INFO, Strings.entryClock),
+    PROGRESS_BAR(MenuSection.INFO, Strings.entryProgress),
+    NEXT(MenuSection.INFO, Strings.entryNext),
+    ALBUM(MenuSection.INFO, Strings.entryAlbum),
+    GROUP(MenuSection.INFO, Strings.entryGroup),
+    VOLUME(MenuSection.INFO, Strings.entryVolume),
+    VALUES(MenuSection.INFO, Strings.entryValues),
+    LYRICS(MenuSection.INFO, Strings.entryLyrics),
+    BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
+    OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
+    LANDSCAPE_PAUSE(MenuSection.LANDSCAPE, Strings.entryLandscapePause),
+    LANDSCAPE_PLAYING(MenuSection.LANDSCAPE, Strings.entryLandscapePlaying),
+    MINI_PLAYER(MenuSection.LANDSCAPE, Strings.entryMiniPlayer),
+    REMOTE(MenuSection.REMOTE, Strings.entryRemote),
+    UP_DOWN(MenuSection.REMOTE, Strings.entryUpDown),
+    SPOKEN(MenuSection.REMOTE, Strings.entrySpoken),
+    SLEEP_TIMER(MenuSection.TIMER, Strings.entrySleepTimer),
+    SLEEP_AFTER(MenuSection.TIMER, Strings.entrySleepAfter),
+    SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
+    CONNECTION(MenuSection.SYSTEM, null),
+    MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
+    PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
+    LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
 }
 
 /**
@@ -138,7 +139,7 @@ object SettingsMenu {
     fun label(e: MenuEntry, t: Texts): String = when (e) {
         MenuEntry.CONNECTION -> HOME_ASSISTANT
         MenuEntry.MUSIC_ASSISTANT -> MUSIC_ASSISTANT
-        else -> t[e.label]
+        else -> t[checkNotNull(e.label)]
     }
 
     /** Where a slider stands: the lights' brightness. */
@@ -156,226 +157,225 @@ object SettingsMenu {
         MenuEntry.GROUP -> onOff(s.showGroup, t)
         MenuEntry.VOLUME -> t[
             when (s.volumeDisplay) {
-                VolumeDisplay.ON_CHANGE -> R.string.volume_on_change
-                VolumeDisplay.ALWAYS -> R.string.volume_always
-                VolumeDisplay.OFF -> R.string.off
+                VolumeDisplay.ON_CHANGE -> Strings.volumeOnChange
+                VolumeDisplay.ALWAYS -> Strings.volumeAlways
+                VolumeDisplay.OFF -> Strings.off
             },
         ]
-        MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[R.string.set_up] else onOff(s.showValues, t)
-        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[R.string.needs_music_assistant] else onOff(s.lyrics, t)
-        MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) R.string.background_cover else R.string.background_plain]
+        MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[Strings.setUp] else onOff(s.showValues, t)
+        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.lyrics, t)
+        MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
             when (s.motion) {
-                MotionLevel.OFF -> R.string.off
-                MotionLevel.GENTLE -> R.string.motion_slow
-                MotionLevel.MEDIUM -> R.string.motion_medium
-                MotionLevel.LIVELY -> R.string.motion_fast
+                MotionLevel.OFF -> Strings.off
+                MotionLevel.GENTLE -> Strings.motionSlow
+                MotionLevel.MEDIUM -> Strings.motionMedium
+                MotionLevel.LIVELY -> Strings.motionFast
             },
         ]
         MenuEntry.BRIGHTNESS -> when {
-            !s.roomLights.isSet -> t[R.string.set_up]
-            s.roomLightBrightness == RoomLightBrightness.OFF -> t[R.string.off]
+            !s.roomLights.isSet -> t[Strings.setUp]
+            s.roomLightBrightness == RoomLightBrightness.OFF -> t[Strings.off]
             else -> t.percent(s.roomLightBrightness.percent)
         }
         MenuEntry.OFF_LIGHTS -> t[
             when {
-                !s.roomLights.isSet -> R.string.set_up
-                s.lightsOnlyOn -> R.string.off_lights_leave
-                else -> R.string.off_lights_turn_on
+                !s.roomLights.isSet -> Strings.setUp
+                s.lightsOnlyOn -> Strings.offLightsLeave
+                else -> Strings.offLightsTurnOn
             },
         ]
         MenuEntry.APPEARANCE -> t[
             when (s.appearance) {
-                AppearanceMode.AUTO -> R.string.appearance_auto
-                AppearanceMode.LIGHT -> R.string.appearance_light
-                AppearanceMode.DARK -> R.string.appearance_dark
+                AppearanceMode.AUTO -> Strings.appearanceAuto
+                AppearanceMode.LIGHT -> Strings.appearanceLight
+                AppearanceMode.DARK -> Strings.appearanceDark
             },
         ]
         MenuEntry.INTENSITY -> t[
             when (s.intensity) {
-                Intensity.STRONG -> R.string.intensity_strong
-                Intensity.NORMAL -> R.string.intensity_normal
-                Intensity.SUBTLE -> R.string.intensity_low
-                Intensity.OFF -> R.string.off
+                Intensity.STRONG -> Strings.intensityStrong
+                Intensity.NORMAL -> Strings.intensityNormal
+                Intensity.SUBTLE -> Strings.intensityLow
+                Intensity.OFF -> Strings.off
             },
         ]
         MenuEntry.LANDSCAPE_PAUSE -> delay(s.landscapePauseSeconds, t)
         MenuEntry.LANDSCAPE_PLAYING -> delay(s.landscapePlayingSeconds, t)
         MenuEntry.MINI_PLAYER -> t[
             when (s.miniPlayer) {
-                MiniPlayer.LEFT -> R.string.mini_player_left
-                MiniPlayer.RIGHT -> R.string.mini_player_right
-                MiniPlayer.OFF -> R.string.off
+                MiniPlayer.LEFT -> Strings.miniPlayerLeft
+                MiniPlayer.RIGHT -> Strings.miniPlayerRight
+                MiniPlayer.OFF -> Strings.off
             },
         ]
         MenuEntry.REMOTE -> onOff(s.remoteControl, t)
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.up_down_volume else R.string.up_down_landscape]
-        MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.spoken_jump else R.string.spoken_change]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.upDownVolume else Strings.upDownLandscape]
+        MenuEntry.SPOKEN -> t[if (s.spokenSkip) Strings.spokenJump else Strings.spokenChange]
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
-        MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) R.string.sleep_action_close else R.string.sleep_action_release]
+        MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.sleepActionClose else Strings.sleepActionRelease]
         MenuEntry.CONNECTION -> t[
             when {
-                !s.isConfigured -> R.string.set_up
-                ctx.link == LinkState.CONNECTED -> R.string.connected
-                ctx.link == LinkState.AUTH_FAILED -> R.string.link_rejected
-                else -> R.string.connecting
+                !s.isConfigured -> Strings.setUp
+                ctx.link == LinkState.CONNECTED -> Strings.connected
+                ctx.link == LinkState.AUTH_FAILED -> Strings.linkRejected
+                else -> Strings.connecting
             },
         ]
         MenuEntry.MUSIC_ASSISTANT -> t[
             when {
-                !s.hasMusicAssistant -> R.string.ma_not_set_up
-                ctx.ma == MaLink.CONNECTED -> R.string.connected
-                ctx.ma == MaLink.AUTH_FAILED -> R.string.ma_rejected
-                ctx.ma == MaLink.UNREACHABLE -> R.string.ma_unreachable
-                else -> R.string.connecting
+                !s.hasMusicAssistant -> Strings.maNotSetUp
+                ctx.ma == MaLink.CONNECTED -> Strings.connected
+                ctx.ma == MaLink.AUTH_FAILED -> Strings.maRejected
+                ctx.ma == MaLink.UNREACHABLE -> Strings.maUnreachable
+                else -> Strings.connecting
             },
         ]
-        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[R.string.needs_music_assistant] else onOff(s.tvSpeaker, t)
+        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.tvSpeaker, t)
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
     }
 
     fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
         MenuEntry.QUEUE -> t[
             when (s.queue) {
-                QueueDisplay.OFF -> R.string.about_queue_off
-                QueueDisplay.LIST -> if (s.hasMusicAssistant) R.string.about_queue_list else R.string.about_queue_list_set_up
-                QueueDisplay.FLOW -> R.string.about_queue_flow
+                QueueDisplay.OFF -> Strings.aboutQueueOff
+                QueueDisplay.LIST -> if (s.hasMusicAssistant) Strings.aboutQueueList else Strings.aboutQueueListSetUp
+                QueueDisplay.FLOW -> Strings.aboutQueueFlow
             },
         ]
         MenuEntry.APPEARANCE -> t[
             when (s.appearance) {
-                AppearanceMode.AUTO -> R.string.about_appearance_auto
-                AppearanceMode.LIGHT -> R.string.about_appearance_light
-                AppearanceMode.DARK -> R.string.about_appearance_dark
+                AppearanceMode.AUTO -> Strings.aboutAppearanceAuto
+                AppearanceMode.LIGHT -> Strings.aboutAppearanceLight
+                AppearanceMode.DARK -> Strings.aboutAppearanceDark
             },
         ]
-        MenuEntry.CLOCK -> t[R.string.about_clock]
-        MenuEntry.PROGRESS_BAR -> t[R.string.about_progress]
-        MenuEntry.NEXT -> t[R.string.about_next]
-        MenuEntry.ALBUM -> t[R.string.about_album]
-        MenuEntry.GROUP -> t[R.string.about_group]
+        MenuEntry.CLOCK -> t[Strings.aboutClock]
+        MenuEntry.PROGRESS_BAR -> t[Strings.aboutProgress]
+        MenuEntry.NEXT -> t[Strings.aboutNext]
+        MenuEntry.ALBUM -> t[Strings.aboutAlbum]
+        MenuEntry.GROUP -> t[Strings.aboutGroup]
         MenuEntry.VOLUME -> t[
             when (s.volumeDisplay) {
-                VolumeDisplay.ON_CHANGE -> R.string.about_volume_on_change
-                VolumeDisplay.ALWAYS -> R.string.about_volume_always
-                VolumeDisplay.OFF -> R.string.about_volume_off
+                VolumeDisplay.ON_CHANGE -> Strings.aboutVolumeOnChange
+                VolumeDisplay.ALWAYS -> Strings.aboutVolumeAlways
+                VolumeDisplay.OFF -> Strings.aboutVolumeOff
             },
         ]
         MenuEntry.VALUES -> t[
             when {
-                s.ownValues.isEmpty() -> R.string.about_values_set_up
-                s.showValues -> R.string.about_values_on
-                else -> R.string.about_values_off
+                s.ownValues.isEmpty() -> Strings.aboutValuesSetUp
+                s.showValues -> Strings.aboutValuesOn
+                else -> Strings.aboutValuesOff
             },
         ]
         MenuEntry.LYRICS -> t[
             when {
-                !s.hasMusicAssistant -> R.string.about_lyrics_set_up
-                s.lyrics -> R.string.about_lyrics_on
-                else -> R.string.about_lyrics_off
+                !s.hasMusicAssistant -> Strings.aboutLyricsSetUp
+                s.lyrics -> Strings.aboutLyricsOn
+                else -> Strings.aboutLyricsOff
             },
         ]
-        MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) R.string.about_background_cover else R.string.about_background_plain]
+        MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.aboutBackgroundCover else Strings.aboutBackgroundPlain]
         MenuEntry.INTENSITY -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
             val what = when {
-                s.background == BackgroundMode.COVER && s.roomLights.isSet -> R.string.about_motion_both
-                s.roomLights.isSet -> R.string.about_motion_lights
-                else -> R.string.about_motion_screen
+                s.background == BackgroundMode.COVER && s.roomLights.isSet -> Strings.aboutMotionBoth
+                s.roomLights.isSet -> Strings.aboutMotionLights
+                else -> Strings.aboutMotionScreen
             }
             val how = when (s.motion) {
-                MotionLevel.OFF -> R.string.about_motion_off
-                MotionLevel.GENTLE -> R.string.about_motion_slow
-                MotionLevel.MEDIUM -> R.string.about_motion_medium
-                MotionLevel.LIVELY -> R.string.about_motion_fast
+                MotionLevel.OFF -> Strings.aboutMotionOff
+                MotionLevel.GENTLE -> Strings.aboutMotionSlow
+                MotionLevel.MEDIUM -> Strings.aboutMotionMedium
+                MotionLevel.LIVELY -> Strings.aboutMotionFast
             }
-            sentences(t[what], t[how], t[R.string.about_motion_playing])
+            sentences(t[what], t[how], t[Strings.aboutMotionPlaying])
         }
         MenuEntry.BRIGHTNESS -> t[
             when {
-                !s.roomLights.isSet -> R.string.about_lights_set_up
-                s.roomLightBrightness == RoomLightBrightness.OFF -> R.string.about_lights_off
-                else -> R.string.about_lights_on
+                !s.roomLights.isSet -> Strings.aboutLightsSetUp
+                s.roomLightBrightness == RoomLightBrightness.OFF -> Strings.aboutLightsOff
+                else -> Strings.aboutLightsOn
             },
         ]
         MenuEntry.OFF_LIGHTS -> t[
             when {
-                !s.roomLights.isSet -> R.string.about_lights_set_up
-                s.lightsOnlyOn -> R.string.about_lights_only_on
-                else -> R.string.about_lights_switch_on
+                !s.roomLights.isSet -> Strings.aboutLightsSetUp
+                s.lightsOnlyOn -> Strings.aboutLightsOnlyOn
+                else -> Strings.aboutLightsSwitchOn
             },
         ]
-        MenuEntry.LANDSCAPE_PAUSE -> t[if (s.landscapePauseSeconds == 0) R.string.about_landscape_pause_off else R.string.about_landscape_pause]
+        MenuEntry.LANDSCAPE_PAUSE -> t[if (s.landscapePauseSeconds == 0) Strings.aboutLandscapePauseOff else Strings.aboutLandscapePause]
         MenuEntry.LANDSCAPE_PLAYING -> t[
             when {
-                s.landscapePlayingSeconds != 0 -> R.string.about_landscape_playing
-                s.volumeKeys -> R.string.about_landscape_playing_off_volume
-                else -> R.string.about_landscape_playing_off
+                s.landscapePlayingSeconds != 0 -> Strings.aboutLandscapePlaying
+                s.volumeKeys -> Strings.aboutLandscapePlayingOffVolume
+                else -> Strings.aboutLandscapePlayingOff
             },
         ]
         MenuEntry.MINI_PLAYER -> t[
             when (s.miniPlayer) {
-                MiniPlayer.LEFT -> R.string.about_mini_player_left
-                MiniPlayer.RIGHT -> R.string.about_mini_player_right
-                MiniPlayer.OFF -> R.string.about_mini_player_off
+                MiniPlayer.LEFT -> Strings.aboutMiniPlayerLeft
+                MiniPlayer.RIGHT -> Strings.aboutMiniPlayerRight
+                MiniPlayer.OFF -> Strings.aboutMiniPlayerOff
             },
         ]
-        MenuEntry.REMOTE -> t[if (s.remoteControl) R.string.about_remote_on else R.string.about_remote_off]
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) R.string.about_up_down_volume else R.string.about_up_down_landscape]
-        MenuEntry.SPOKEN -> t[if (s.spokenSkip) R.string.about_spoken_jump else R.string.about_spoken_change]
+        MenuEntry.REMOTE -> t[if (s.remoteControl) Strings.aboutRemoteOn else Strings.aboutRemoteOff]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.aboutUpDownVolume else Strings.aboutUpDownLandscape]
+        MenuEntry.SPOKEN -> t[if (s.spokenSkip) Strings.aboutSpokenJump else Strings.aboutSpokenChange]
         MenuEntry.SLEEP_TIMER -> when {
-            ctx.sleep == SleepChoice.OFF -> t[R.string.about_sleep_timer_off]
-            ctx.sleepAt != null -> t.format(R.string.about_sleep_timer_at, t.clock(ctx.sleepAt))
-            else -> t.format(R.string.about_sleep_timer_end, t[endPhrase(ctx.sleep, ctx.kind)])
+            ctx.sleep == SleepChoice.OFF -> t[Strings.aboutSleepTimerOff]
+            ctx.sleepAt != null -> t.format(Strings.aboutSleepTimerAt, t.clock(ctx.sleepAt))
+            else -> t.format(Strings.aboutSleepTimerEnd, t[endPhrase(ctx.sleep, ctx.kind)])
         }
-        MenuEntry.SLEEP_AFTER -> t[R.string.about_sleep_after]
-        MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) R.string.about_sleep_action_close else R.string.about_sleep_action_release]
-        MenuEntry.CONNECTION -> t[if (!s.isConfigured) R.string.about_connection_set_up else R.string.about_connection]
-        MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) R.string.about_ma_set_up else R.string.about_ma]
+        MenuEntry.SLEEP_AFTER -> t[Strings.aboutSleepAfter]
+        MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.aboutSleepActionClose else Strings.aboutSleepActionRelease]
+        MenuEntry.CONNECTION -> t[if (!s.isConfigured) Strings.aboutConnectionSetUp else Strings.aboutConnection]
+        MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
-        MenuEntry.LANGUAGE -> t[R.string.about_language]
+        MenuEntry.LANGUAGE -> t[Strings.aboutLanguage]
     }
 
     /**
      * What playing here does, or, while it is on, what keeps it from playing: that comes first,
      * also while this TV is the speaker followed.
      */
-    @StringRes
-    private fun playHere(s: Settings, speaker: SpeakerLink): Int = when {
-        !s.hasMusicAssistant -> R.string.about_play_here_set_up
-        !s.tvSpeaker -> R.string.about_play_here_off
+    private fun playHere(s: Settings, speaker: SpeakerLink): StringId = when {
+        !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
+        !s.tvSpeaker -> Strings.aboutPlayHereOff
         else -> when (speaker) {
-            SpeakerLink.UNREACHABLE -> R.string.about_play_here_unreachable
-            SpeakerLink.TOO_OLD -> R.string.about_play_here_too_old
-            SpeakerLink.TOO_NEW -> R.string.about_play_here_too_new
-            SpeakerLink.REFUSED -> R.string.about_play_here_refused
-            SpeakerLink.NO_KEY -> R.string.about_play_here_no_key
+            SpeakerLink.UNREACHABLE -> Strings.aboutPlayHereUnreachable
+            SpeakerLink.TOO_OLD -> Strings.aboutPlayHereTooOld
+            SpeakerLink.TOO_NEW -> Strings.aboutPlayHereTooNew
+            SpeakerLink.REFUSED -> Strings.aboutPlayHereRefused
+            SpeakerLink.NO_KEY -> Strings.aboutPlayHereNoKey
             SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED ->
-                if (followsThisTv(s)) R.string.about_play_here_followed else R.string.about_play_here_on
+                if (followsThisTv(s)) Strings.aboutPlayHereFollowed else Strings.aboutPlayHereOn
         }
     }
 
     /** What "Intensity" does: with the cover's colors how strong they are, else how the cover lights the wall. */
     private fun intensity(s: Settings, ctx: MenuContext, t: Texts): String {
         val (what, how) = when {
-            s.background == BackgroundMode.COVER -> R.string.about_intensity_cover to when (s.intensity) {
-                Intensity.STRONG -> R.string.about_intensity_cover_strong
-                Intensity.NORMAL -> R.string.about_intensity_cover_normal
-                Intensity.SUBTLE -> R.string.about_intensity_cover_low
-                Intensity.OFF -> if (ctx.appearance == Appearance.LIGHT) R.string.about_intensity_cover_off_light else R.string.about_intensity_cover_off_dark
+            s.background == BackgroundMode.COVER -> Strings.aboutIntensityCover to when (s.intensity) {
+                Intensity.STRONG -> Strings.aboutIntensityCoverStrong
+                Intensity.NORMAL -> Strings.aboutIntensityCoverNormal
+                Intensity.SUBTLE -> Strings.aboutIntensityCoverLow
+                Intensity.OFF -> if (ctx.appearance == Appearance.LIGHT) Strings.aboutIntensityCoverOffLight else Strings.aboutIntensityCoverOffDark
             }
-            ctx.appearance == Appearance.LIGHT -> R.string.about_intensity_light to when (s.intensity) {
-                Intensity.STRONG -> R.string.about_intensity_light_strong
-                Intensity.NORMAL -> R.string.about_intensity_light_normal
-                Intensity.SUBTLE -> R.string.about_intensity_light_low
-                Intensity.OFF -> R.string.about_intensity_light_off
+            ctx.appearance == Appearance.LIGHT -> Strings.aboutIntensityLight to when (s.intensity) {
+                Intensity.STRONG -> Strings.aboutIntensityLightStrong
+                Intensity.NORMAL -> Strings.aboutIntensityLightNormal
+                Intensity.SUBTLE -> Strings.aboutIntensityLightLow
+                Intensity.OFF -> Strings.aboutIntensityLightOff
             }
-            else -> R.string.about_intensity_dark to when (s.intensity) {
-                Intensity.STRONG -> R.string.about_intensity_dark_strong
-                Intensity.NORMAL -> R.string.about_intensity_dark_normal
-                Intensity.SUBTLE -> R.string.about_intensity_dark_low
-                Intensity.OFF -> R.string.about_intensity_dark_off
+            else -> Strings.aboutIntensityDark to when (s.intensity) {
+                Intensity.STRONG -> Strings.aboutIntensityDarkStrong
+                Intensity.NORMAL -> Strings.aboutIntensityDarkNormal
+                Intensity.SUBTLE -> Strings.aboutIntensityDarkLow
+                Intensity.OFF -> Strings.aboutIntensityDarkOff
             }
         }
         return sentences(t[what], t[how])
@@ -426,8 +426,8 @@ object SettingsMenu {
 
     /** "Off", "Five seconds", "15 seconds", "Three minutes" and so on. */
     fun delay(seconds: Int, t: Texts): String = when {
-        seconds <= 0 -> t[R.string.off]
-        seconds < 60 -> t.plural(R.plurals.seconds, seconds, t.countWord(seconds))
+        seconds <= 0 -> t[Strings.off]
+        seconds < 60 -> t.plural(Plurals.seconds, seconds, t.countWord(seconds))
         else -> duration(seconds / 60, t)
     }
 
@@ -435,9 +435,9 @@ object SettingsMenu {
     fun duration(minutes: Int, t: Texts): String {
         val hours = minutes / 60
         return if (minutes % 60 == 0 && hours in 1..MAX_WORD_COUNT) {
-            t.plural(R.plurals.hours, hours, t.countWord(hours))
+            t.plural(Plurals.hours, hours, t.countWord(hours))
         } else {
-            t.plural(R.plurals.minutes, minutes, t.countWord(minutes))
+            t.plural(Plurals.minutes, minutes, t.countWord(minutes))
         }
     }
 
@@ -449,42 +449,41 @@ object SettingsMenu {
 
     /** "Off", "30 minutes", "1 hour", "End of chapter", "End of episode" and so on. */
     fun sleepValue(choice: SleepChoice, kind: MediaKind?, t: Texts): String = when (choice) {
-        SleepChoice.OFF -> t[R.string.off]
-        SleepChoice.CHAPTER_END -> t[R.string.sleep_chapter_end]
+        SleepChoice.OFF -> t[Strings.off]
+        SleepChoice.CHAPTER_END -> t[Strings.sleepChapterEnd]
         SleepChoice.ITEM_END -> t[
             when (kind) {
-                MediaKind.PODCAST -> R.string.sleep_episode_end
-                MediaKind.AUDIOBOOK -> R.string.sleep_book_end
-                else -> R.string.sleep_track_end
+                MediaKind.PODCAST -> Strings.sleepEpisodeEnd
+                MediaKind.AUDIOBOOK -> Strings.sleepBookEnd
+                else -> Strings.sleepTrackEnd
             },
         ]
         else -> duration(choice.minutes, t)
     }
 
     /** "end of the chapter", for the sentence that says when the music pauses. */
-    @StringRes
-    private fun endPhrase(choice: SleepChoice, kind: MediaKind?): Int = when {
-        choice == SleepChoice.CHAPTER_END -> R.string.sleep_end_chapter
-        kind == MediaKind.PODCAST -> R.string.sleep_end_episode
-        kind == MediaKind.AUDIOBOOK -> R.string.sleep_end_book
-        else -> R.string.sleep_end_track
+    private fun endPhrase(choice: SleepChoice, kind: MediaKind?): StringId = when {
+        choice == SleepChoice.CHAPTER_END -> Strings.sleepEndChapter
+        kind == MediaKind.PODCAST -> Strings.sleepEndEpisode
+        kind == MediaKind.AUDIOBOOK -> Strings.sleepEndBook
+        else -> Strings.sleepEndTrack
     }
 
     /** How the queue shows, in a word: Off, List, Cover Flow. */
     fun queueValue(queue: QueueDisplay, t: Texts): String = t[
         when (queue) {
-            QueueDisplay.OFF -> R.string.off
-            QueueDisplay.LIST -> R.string.queue_list
-            QueueDisplay.FLOW -> R.string.queue_flow
+            QueueDisplay.OFF -> Strings.off
+            QueueDisplay.LIST -> Strings.queueList
+            QueueDisplay.FLOW -> Strings.queueFlow
         },
     ]
 
     /** A language as the menu names it: English and German in their own words, the system's in the language shown. */
     fun languageValue(language: AppLanguage, t: Texts): String = t[
         when (language) {
-            AppLanguage.SYSTEM -> R.string.language_system
-            AppLanguage.ENGLISH -> R.string.language_english
-            AppLanguage.GERMAN -> R.string.language_german
+            AppLanguage.SYSTEM -> Strings.languageSystem
+            AppLanguage.ENGLISH -> Strings.languageEnglish
+            AppLanguage.GERMAN -> Strings.languageGerman
         },
     ]
 
@@ -500,7 +499,7 @@ object SettingsMenu {
 
     private fun <T> move(order: List<T>, current: T, direction: Int, wrap: Boolean): T {
         val i = order.indexOf(current).coerceAtLeast(0) + direction
-        return if (wrap) order[Math.floorMod(i, order.size)] else order[i.coerceIn(0, order.size - 1)]
+        return if (wrap) order[i.mod(order.size)] else order[i.coerceIn(0, order.size - 1)]
     }
 
     /** The next offered value from [minutes] (which may be any value set from outside). */
@@ -513,7 +512,7 @@ object SettingsMenu {
         }
     }
 
-    private fun onOff(on: Boolean, t: Texts) = t[if (on) R.string.on else R.string.off]
+    private fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
 
     /** Sentences one after the other. */
     private fun sentences(vararg s: String) = s.joinToString(" ")

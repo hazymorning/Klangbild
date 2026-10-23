@@ -1,10 +1,15 @@
 package io.github.hazymorning.klangbild.speaker
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.WebSocketLink
+import io.github.hazymorning.klangbild.data.WebUrl.Companion.toWebUrlOrNull
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.sendspin.Session
 import io.github.hazymorning.klangbild.sendspin.SessionEnd
 import io.github.hazymorning.klangbild.sendspin.Transport
+import io.github.hazymorning.klangbild.sound.monotonicMicros
+import io.ktor.client.HttpClient
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -20,16 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import okio.ByteString
-import okio.ByteString.Companion.toByteString
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.Volatile
 
 /**
  * The speaker's connection to Music Assistant (client-initiated, connection.md): a WebSocket to
@@ -39,7 +35,8 @@ import java.util.concurrent.atomic.AtomicReference
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SpeakerConnection(
-    private val http: OkHttpClient,
+    /** Pings the server every [PING_MS] (messaging.md: the liveness mechanism). */
+    private val http: HttpClient,
     private val scope: CoroutineScope,
     private val url: String,
     /** A new session for a connection; it reports its end through the given callback. */
@@ -91,7 +88,7 @@ class SpeakerConnection(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                SessionEnd.LOST to (e.message ?: e.javaClass.simpleName)
+                SessionEnd.LOST to (e.message ?: e::class.simpleName.orEmpty())
             } finally {
                 session = null
             }
@@ -124,45 +121,37 @@ class SpeakerConnection(
     /** One connection, from opening the socket to the session's end. */
     private suspend fun runSession(connected: () -> Unit): Pair<SessionEnd, String> = coroutineScope {
         val done = CompletableDeferred<Pair<SessionEnd, String>>()
-        // Set by whichever comes first: the socket opening on OkHttp's thread, or newWebSocket returning here.
-        val socket = AtomicReference<WebSocket?>(null)
+        // Set by whichever comes first: the socket opening on the connection's thread, or its making returning here.
+        val link = atomic<WebSocketLink?>(null)
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean = socket.get()?.send(text) == true
-            override fun sendBinary(bytes: ByteArray): Boolean = socket.get()?.send(bytes.toByteString()) == true
+            override fun sendText(text: String): Boolean = link.value?.send(text) == true
+            override fun sendBinary(bytes: ByteArray): Boolean = link.value?.send(bytes) == true
             override fun close() {
                 // A close frame after whatever is queued (a goodbye), never cutting it off.
-                socket.get()?.close(NORMAL_CLOSURE, null)
+                link.value?.close()
             }
         }
         val s = newSession(transport) { end, detail -> done.complete(end to detail) }
         session = s
-        val request = Request.Builder().url(url).build()
-        val opened = http.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                socket.compareAndSet(null, webSocket)
+        val opened = WebSocketLink(scope, http, url, object : WebSocketLink.Listener {
+            override fun onOpen(socket: WebSocketLink) {
+                link.compareAndSet(null, socket)
                 s.start()
             }
 
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                s.onText(text)
-            }
+            override fun onText(text: String) = s.onText(text)
 
-            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            override fun onBinary(bytes: ByteArray) {
                 // The receive time is taken as the message arrives (messaging.md, "Receive timestamps").
-                val arrival = System.nanoTime() / 1_000
-                s.onBinary(bytes.toByteArray(), arrival)
+                val arrival = monotonicMicros()
+                s.onBinary(bytes, arrival)
             }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                webSocket.close(1000, null)
-                s.onClosed(byServer = true)
-            }
+            override fun onClosed(code: Int, reason: String) = s.onClosed(byServer = true)
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = s.onClosed(byServer = true)
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = s.onClosed(byServer = false)
+            override fun onFailure(error: Throwable) = s.onClosed(byServer = false)
         })
-        socket.compareAndSet(null, opened)
+        link.compareAndSet(null, opened)
         try {
             // The handshake, the hellos and the activation within a while, or the attempt ends.
             val active = withTimeoutOrNull(handshakeTimeoutMs) {
@@ -205,16 +194,15 @@ class SpeakerConnection(
 
         /** The address of Music Assistant's Sendspin server for clients that connect themselves. */
         fun urlFor(maUrl: String): String? {
-            val host = maUrl.toHttpUrlOrNull()?.host ?: return null
+            val host = maUrl.toWebUrlOrNull()?.host ?: return null
             val literal = if (host.contains(':')) "[$host]" else host
             return "ws://$literal:$PORT$PATH"
         }
 
         const val PORT = 8927
-        private const val NORMAL_CLOSURE = 1000
         const val PATH = "/sendspin"
 
-        /** Pings keep the connection known to be alive (messaging.md: the liveness mechanism). */
-        fun client(http: OkHttpClient): OkHttpClient = http.newBuilder().pingInterval(15, TimeUnit.SECONDS).build()
+        /** How often the client pings the server, which keeps the connection known to be alive. */
+        const val PING_MS = 15_000L
     }
 }

@@ -2,17 +2,26 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.fetch
+import io.github.hazymorning.klangbild.data.formBody
+import io.github.hazymorning.klangbild.data.isSuccessful
+import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.json.string
+import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
+import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
-import okhttp3.FormBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
 
 /** How Klangbild signs in to Home Assistant. */
 sealed interface HaCredentials {
@@ -44,10 +53,10 @@ data class HaTokens(val accessToken: String, val refreshToken: String?, val expi
  * tried again: the credentials are rejected until someone signs in anew.
  */
 class HaAuth(
-    private val http: OkHttpClient,
+    private val http: HttpClient,
     val baseUrl: String,
     val credentials: HaCredentials,
-    private val now: () -> Long = System::currentTimeMillis,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val lock = Mutex()
     @Volatile private var cached: String? = (credentials as? HaCredentials.LongLived)?.token
@@ -69,11 +78,11 @@ class HaAuth(
         val tokens = tokenRequest(
             http,
             baseUrl,
-            FormBody.Builder()
-                .add("grant_type", "refresh_token")
-                .add("refresh_token", signedIn.refreshToken)
-                .add("client_id", signedIn.clientId)
-                .build(),
+            formBody(
+                "grant_type" to "refresh_token",
+                "refresh_token" to signedIn.refreshToken,
+                "client_id" to signedIn.clientId,
+            ),
         ) { reason -> rejected = reason }
         cached = tokens.accessToken
         expiresAt = now() + tokens.expiresInS * 1000L
@@ -98,6 +107,9 @@ class HaAuth(
         /** The token endpoint's answers are small; anything larger is not one. */
         private const val MAX_ANSWER_BYTES = 64L * 1024
 
+        /** How the token endpoint takes its fields. */
+        private val FORM = ContentType.Application.FormUrlEncoded
+
         /** One call to the token endpoint gets this long. */
         private const val CALL_TIMEOUT_MS = 15_000L
 
@@ -107,28 +119,20 @@ class HaAuth(
          * Exchanges the authorization code [code] from Home Assistant's login page for tokens.
          * [clientId] must be the one the login page was opened with.
          */
-        suspend fun exchangeCode(http: OkHttpClient, baseUrl: String, code: String, clientId: String): HaTokens =
+        suspend fun exchangeCode(http: HttpClient, baseUrl: String, code: String, clientId: String): HaTokens =
             tokenRequest(
                 http,
                 baseUrl,
-                FormBody.Builder()
-                    .add("grant_type", "authorization_code")
-                    .add("code", code)
-                    .add("client_id", clientId)
-                    .build(),
+                formBody("grant_type" to "authorization_code", "code" to code, "client_id" to clientId),
             ) { }
 
         /**
          * Revokes [refreshToken] and every access token it gave (when Klangbild signs in anew or
          * goes over to another Home Assistant). Home Assistant always answers 200.
          */
-        suspend fun revoke(http: OkHttpClient, baseUrl: String, refreshToken: String) {
-            val request = Request.Builder()
-                .url("$baseUrl/auth/revoke")
-                .post(FormBody.Builder().add("token", refreshToken).build())
-                .build()
+        suspend fun revoke(http: HttpClient, baseUrl: String, refreshToken: String) {
             try {
-                http.fetch(request, CALL_TIMEOUT_MS) { }
+                http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/revoke", formBody("token" to refreshToken)) }) { }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -136,31 +140,34 @@ class HaAuth(
             }
         }
 
+        /** A POST of the form [form] to [url]. */
+        private fun HttpRequestBuilder.post(url: String, form: String) {
+            method = HttpMethod.Post
+            url(url)
+            setBody(TextContent(form, FORM))
+        }
+
         private suspend fun tokenRequest(
-            http: OkHttpClient,
+            http: HttpClient,
             baseUrl: String,
-            body: FormBody,
+            form: String,
             onRejected: (String) -> Unit,
-        ): HaTokens {
-            val request = Request.Builder().url("$baseUrl/auth/token").post(body).build()
-            return http.fetch(request, CALL_TIMEOUT_MS) { response ->
-                val text = response.body.source().let { src ->
-                    if (src.request(MAX_ANSWER_BYTES)) throw IOException("Answer too large") else src.readUtf8()
-                }
-                if (response.code in 400..499) {
-                    val reason = runCatching { (json.parseToJsonElement(text) as? JsonObject)?.string("error") }.getOrNull()
-                        ?: "HTTP ${response.code}"
-                    onRejected(reason)
-                    throw HaAuthRejectedException(reason)
-                }
-                if (!response.isSuccessful) throw HttpStatusException("Home Assistant", response.code)
-                val o = json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
-                HaTokens(
-                    accessToken = o.string("access_token") ?: throw IOException("No access token"),
-                    refreshToken = o.string("refresh_token"),
-                    expiresInS = (o["expires_in"] as? JsonPrimitive)?.intOrNull ?: DEFAULT_EXPIRY_S,
-                )
+        ): HaTokens = http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/token", form) }) { response ->
+            val text = response.textBelow(MAX_ANSWER_BYTES)
+            val code = response.status.value
+            if (code in 400..499) {
+                val reason = runCatching { (json.parseToJsonElement(text) as? JsonObject)?.string("error") }.getOrNull()
+                    ?: "HTTP $code"
+                onRejected(reason)
+                throw HaAuthRejectedException(reason)
             }
+            if (!response.isSuccessful) throw HttpStatusException("Home Assistant", code)
+            val o = json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
+            HaTokens(
+                accessToken = o.string("access_token") ?: throw IOException("No access token"),
+                refreshToken = o.string("refresh_token"),
+                expiresInS = (o["expires_in"] as? JsonPrimitive)?.intOrNull ?: DEFAULT_EXPIRY_S,
+            )
         }
 
         /** Home Assistant's access tokens last 30 minutes. */

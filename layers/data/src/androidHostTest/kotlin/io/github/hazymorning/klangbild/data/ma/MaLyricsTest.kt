@@ -1,6 +1,16 @@
 package io.github.hazymorning.klangbild.data.ma
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import io.github.hazymorning.klangbild.data.httpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,14 +26,13 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
-import okhttp3.OkHttpClient
-import org.junit.After
-import org.junit.Test
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 /**
  * The words of the songs on stage and up next, against a stand-in Music Assistant: what is asked,
@@ -48,12 +57,12 @@ class MaLyricsTest {
         start()
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val client = MaClient(OkHttpClient(), server.url("/").toString().trimEnd('/'), "ma-token")
+    private val client = MaClient(httpClient(OkHttp.create()), server.url("/").toString().trimEnd('/'), "ma-token")
     private var clock = 1_000_000L
     private val changes = AtomicInteger()
     private val lyrics = MaLyrics(client, scope, now = { clock }) { changes.incrementAndGet() }
 
-    @After
+    @AfterTest
     fun stop() {
         scope.cancel()
         server.close()
@@ -92,11 +101,11 @@ class MaLyricsTest {
         lyrics.want(listOf(song(1), song(2)))
         until { asked.size == 1 }
         delay(300)
-        assertThat(asked).containsExactly("library://track/1")
+        assertThat(asked).containsExactlyInAnyOrder("library://track/1")
         hold.countDown()
         until { lyrics.known("library://track/2") != null }
-        assertThat(asked).containsExactly("library://track/1", "library://track/2").inOrder()
-        assertThat(lyrics.known("library://track/1")!!.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile").inOrder()
+        assertThat(asked).containsExactly("library://track/1", "library://track/2")
+        assertThat(lyrics.known("library://track/1")!!.lyrics!!.lines.map { it.text }).containsExactly("Erste Zeile", "Zweite Zeile")
         // Earlier versions may send the synced words in the plain field.
         assertThat(lyrics.known("library://track/2")!!.lyrics).isNotNull()
         // Kept by the song's URI: asked once.
@@ -118,7 +127,7 @@ class MaLyricsTest {
         hold.countDown()
         until { asked.size >= 3 }
         delay(300)
-        assertThat(asked.take(3)).containsExactly("library://track/1", "library://track/3", "library://track/4").inOrder()
+        assertThat(asked.take(3)).containsExactly("library://track/1", "library://track/3", "library://track/4")
         assertThat(lyrics.known("library://track/1")).isNull()
     }
 
@@ -129,7 +138,7 @@ class MaLyricsTest {
         lyrics.want(listOf(song(1)))
         withTimeout(MaClient.CALL_TIMEOUT_MS + 6_000) { while (lyrics.known("library://track/1") == null) delay(50) }
         assertThat(lyrics.known("library://track/1")!!.lyrics).isNotNull()
-        assertThat(changes.get()).isAtLeast(1)
+        assertThat(changes.get()).isGreaterThanOrEqualTo(1)
     }
 
     @Test
@@ -141,7 +150,7 @@ class MaLyricsTest {
         assertThat(lyrics.known("library://track/2")!!.lyrics).isNull()
         lyrics.want(listOf(song(3, lrc = lrc), song(4)))
         delay(300)
-        assertThat(asked).containsExactly("library://track/1")
+        assertThat(asked).containsExactlyInAnyOrder("library://track/1")
         assertThat(lyrics.known("library://track/3")!!.lyrics).isNotNull()
         assertThat(lyrics.known("library://track/4")!!.lyrics).isNull()
     }

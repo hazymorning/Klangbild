@@ -1,25 +1,32 @@
 package io.github.hazymorning.klangbild.data.ma
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.domain.MaLink
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.OkHttpClient
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import org.junit.After
-import org.junit.Test
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 /** Music Assistant's HTTP API against a stand-in server. */
 class MaClientTest {
     private val server = MockWebServer().apply { start() }
     private val base = server.url("/").toString().trimEnd('/')
-    private val client = MaClient(OkHttpClient(), base, "ma-token")
+    private val client = MaClient(httpClient(OkHttp.create()), base, "ma-token")
 
-    @After
+    @AfterTest
     fun stop() = server.close()
 
     @Test
@@ -65,14 +72,14 @@ class MaClientTest {
         server.enqueue(MockResponse.Builder().body("null").build())
         assertThat(client.partyUrl()).isNull()
         val commands = (1..4).map { Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content }
-        assertThat(commands).containsExactly("party/player", "party/url", "party/player", "party/url").inOrder()
+        assertThat(commands).containsExactly("party/player", "party/url", "party/player", "party/url")
     }
 
     @Test
-    fun `a server without the party plugin says it does not know the question`() = runBlocking {
+    fun `a server without the party plugin says it does not know the question`(): Unit = runBlocking {
         server.enqueue(MockResponse.Builder().code(400).body("Invalid Command: party/player").build())
         val unknown = runCatching { client.partyPlayer() }.exceptionOrNull()
-        assertThat(unknown).isInstanceOf(MaUnknownCommandException::class.java)
+        assertThat(unknown).isNotNull().isInstanceOf<MaUnknownCommandException>()
     }
 
     @Test

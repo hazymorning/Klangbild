@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.speaker
 
 import io.github.hazymorning.klangbild.sendspin.ClockMap
+import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.pow
 

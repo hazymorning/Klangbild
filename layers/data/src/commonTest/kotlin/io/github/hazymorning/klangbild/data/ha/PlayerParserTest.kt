@@ -1,13 +1,22 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.junit.Test
+import kotlin.test.Test
 
 class PlayerParserTest {
     private val base = "http://192.168.1.5:8123"
@@ -33,7 +42,7 @@ class PlayerParserTest {
         assertThat(p.activeQueue).isEqualTo("q1")
         val t = p.track!!
         assertThat(t.title).isEqualTo("Bohemian Rhapsody (Remastered 2011)")
-        assertThat(t.artists).containsExactly("Queen", "David Bowie").inOrder()
+        assertThat(t.artists).containsExactly("Queen", "David Bowie")
         assertThat(t.durationMs).isEqualTo(355_000)
         assertThat(t.artworkUrl).isEqualTo("http://192.168.1.6:8095/imageproxy/ab?size=1024&fmt=jpg")
         assertThat(t.artworkFallbackUrl).isEqualTo("http://192.168.1.5:8123/api/media_player_proxy/media_player.wz?token=t&cache=c")
@@ -51,8 +60,8 @@ class PlayerParserTest {
             ),
             base,
         )
-        assertThat(leader.groupMembers).containsExactly("media_player.kueche", "media_player.bad").inOrder()
-        assertThat(leader.volume).isWithin(1e-6f).of(0.35f)
+        assertThat(leader.groupMembers).containsExactly("media_player.kueche", "media_player.bad")
+        assertThat(leader.volume).isNotNull().isCloseTo(0.35f, 1e-6f)
         assertThat(leader.muted).isFalse()
 
         // A member lists the leader first. It is one of the others, too.
@@ -60,7 +69,7 @@ class PlayerParserTest {
             entity("playing", """{"media_title":"X","group_members":["media_player.kueche","media_player.wz"],"is_volume_muted":true}"""),
             base,
         )
-        assertThat(member.groupMembers).containsExactly("media_player.kueche")
+        assertThat(member.groupMembers).containsExactlyInAnyOrder("media_player.kueche")
         assertThat(member.volume).isNull()
         assertThat(member.muted).isTrue()
 
@@ -74,17 +83,17 @@ class PlayerParserTest {
     fun `shuffle as the player reports it, none where it cannot shuffle`() {
         // Music Assistant's players: SHUFFLE_SET (32768) among their features.
         val on = PlayerParser.player(entity("playing", """{"media_title":"X","shuffle":true,"supported_features":4127295}"""), base)
-        assertThat(on.shuffle).isTrue()
+        assertThat(on.shuffle).isNotNull().isTrue()
         val off = PlayerParser.player(entity("playing", """{"media_title":"X","shuffle":false,"supported_features":32768}"""), base)
-        assertThat(off.shuffle).isFalse()
+        assertThat(off.shuffle).isNotNull().isFalse()
         // Can shuffle, has not said yet: off.
         val unsaid = PlayerParser.player(entity("playing", """{"media_title":"X","supported_features":32768}"""), base)
-        assertThat(unsaid.shuffle).isFalse()
+        assertThat(unsaid.shuffle).isNotNull().isFalse()
         // Cannot shuffle (a radio app's player): no shuffle at all, whatever an attribute says.
         val cannot = PlayerParser.player(entity("playing", """{"media_title":"X","shuffle":false,"supported_features":21437}"""), base)
         assertThat(cannot.shuffle).isNull()
         // No features reported: the attribute alone.
-        assertThat(PlayerParser.player(entity("playing", """{"media_title":"X","shuffle":true}"""), base).shuffle).isTrue()
+        assertThat(PlayerParser.player(entity("playing", """{"media_title":"X","shuffle":true}"""), base).shuffle).isNotNull().isTrue()
         assertThat(PlayerParser.player(entity("playing", """{"media_title":"X"}"""), base).shuffle).isNull()
     }
 
@@ -115,7 +124,7 @@ class PlayerParserTest {
         )
         val q = PlayerParser.queue(response, "media_player.wz", base)!!
         assertThat(q.current!!.title).isEqualTo("Bohemian Rhapsody (Remastered 2011)")
-        assertThat(q.current!!.artists).containsExactly("Queen")
+        assertThat(q.current!!.artists).containsExactlyInAnyOrder("Queen")
         assertThat(q.current!!.artworkUrl).isEqualTo("https://i.scdn.co/image/ab67616d0000b273cafe")
         assertThat(q.next!!.title).isEqualTo("Mozart – Klaviersonate Nr. 11")
         assertThat(q.next!!.source).isEqualTo("SWR2")
@@ -134,7 +143,7 @@ class PlayerParserTest {
             base,
         )
         assertThat(group.isGroupPlayer).isTrue()
-        assertThat(group.groupMembers).containsExactly("media_player.kueche", "media_player.bad").inOrder()
+        assertThat(group.groupMembers).containsExactly("media_player.kueche", "media_player.bad")
         assertThat(PlayerParser.player(entity("playing", """{"media_title":"X","mass_player_type":"player"}"""), base).isGroupPlayer).isFalse()
     }
 
@@ -150,7 +159,7 @@ class PlayerParserTest {
             base,
         ).track!!
         assertThat(book.kind).isEqualTo(MediaKind.AUDIOBOOK)
-        assertThat(book.artists).containsExactly("Franz Kafka", "Max Brod").inOrder()
+        assertThat(book.artists).containsExactly("Franz Kafka", "Max Brod")
         assertThat(book.album).isNull()
         assertThat(book.durationMs).isEqualTo(32_400_000L)
         // Even a short blurb: a book has no album.
@@ -172,7 +181,7 @@ class PlayerParserTest {
             base,
         ).track!!
         assertThat(episode.kind).isEqualTo(MediaKind.PODCAST)
-        assertThat(episode.artists).containsExactly("Zeit für Wissen")
+        assertThat(episode.artists).containsExactlyInAnyOrder("Zeit für Wissen")
         assertThat(episode.album).isNull()
     }
 
@@ -184,7 +193,7 @@ class PlayerParserTest {
         ).track!!
         assertThat(song.kind).isEqualTo(MediaKind.MUSIC)
         // A band's own slash stays.
-        assertThat(song.artists).containsExactly("AC/DC")
+        assertThat(song.artists).containsExactlyInAnyOrder("AC/DC")
         assertThat(song.album).isEqualTo("Back in Black")
         val station = PlayerParser.player(
             entity("playing", """{"media_title":"Y","media_content_id":"radiobrowser--r://radio/swr2","media_album_name":"SWR2"}"""),

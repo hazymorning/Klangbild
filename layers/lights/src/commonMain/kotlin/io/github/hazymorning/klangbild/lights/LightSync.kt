@@ -4,6 +4,8 @@ import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.domain.EntityState
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,8 +27,11 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.time.Clock
 
 /**
  * Any lights Home Assistant controls, in the colors of what the screen shows: each light a color
@@ -60,7 +65,7 @@ import kotlin.math.abs
 @OptIn(ExperimentalCoroutinesApi::class)
 class LightSync(
     private val scope: CoroutineScope,
-    private val now: () -> Long = System::currentTimeMillis,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val context: CoroutineContext = Dispatchers.Default.limitedParallelism(1),
 ) {
     /** What the lights are to show now, set on every tick; null while nothing is on stage. */
@@ -137,6 +142,7 @@ class LightSync(
     @Volatile private var lastTarget: Target? = null
     @Volatile private var bridge: LightBridge? = null
     private var loop: Job? = null
+    private val lock = SynchronizedObject()
 
     /** The lights being given back: a new loop waits for it. */
     @Volatile private var releasing: Job? = null
@@ -187,8 +193,7 @@ class LightSync(
     }
 
     /** Asks the link for the states of the lights wanted now; whichever call comes last decides. */
-    @Synchronized
-    private fun follow() {
+    private fun follow(): Unit = synchronized(lock) {
         val ids = followed(target)
         if (ids.isNotEmpty()) followedAt = now()
         bridge?.follow(ids)
@@ -223,7 +228,7 @@ class LightSync(
     fun release(): Job {
         val b = bridge
         target = null
-        val old = synchronized(this) { loop.also { loop = null } }
+        val old = synchronized(lock) { loop.also { loop = null } }
         old?.cancel()
         val job = scope.launch(context) {
             old?.join()
@@ -233,8 +238,7 @@ class LightSync(
         return job
     }
 
-    @Synchronized
-    private fun ensureLoop() {
+    private fun ensureLoop(): Unit = synchronized(lock) {
         if (loop?.isActive == true || bridge == null) return
         // Lights still being given back are given back first.
         val giving = releasing
@@ -244,7 +248,7 @@ class LightSync(
                 step(now())
                 // Nothing taken over and nothing to show: the loop rests until it is needed again.
                 if (activeFor == null && target == null) {
-                    synchronized(this@LightSync) { loop = null }
+                    synchronized(lock) { loop = null }
                     break
                 }
                 withTimeoutOrNull(TICK_MS) { wake.receive() }
@@ -653,12 +657,15 @@ class LightSync(
         if (caps?.transition == true) put("transition", RESTORE_TRANSITION_MS / 1000.0)
     }
 
+    /** [v] to four decimals, as the lights take xy; a color that is none at all (NaN) is 0. */
+    private fun fourDecimals(v: Float): Double = (if (v.isNaN()) 0 else (v * 10_000).roundToInt()) / 10_000.0
+
     /** `light.turn_on` data for [shown] on a light with [caps]; [brightness] overrides the shown one. */
     private fun turnOn(shown: Shown, caps: Caps, brightness: Int?, transitionMs: Long?) = buildJsonObject {
         when (shown) {
             is Shown.Color -> putJsonArray("xy_color") {
-                add(Math.round(shown.xy.x * 10_000) / 10_000.0)
-                add(Math.round(shown.xy.y * 10_000) / 10_000.0)
+                add(fourDecimals(shown.xy.x))
+                add(fourDecimals(shown.xy.y))
             }
             is Shown.White -> put("color_temp_kelvin", shown.kelvin)
             else -> Unit

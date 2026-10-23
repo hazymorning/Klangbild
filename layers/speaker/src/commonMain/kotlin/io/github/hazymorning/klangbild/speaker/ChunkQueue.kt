@@ -1,5 +1,7 @@
 package io.github.hazymorning.klangbild.speaker
 
+import kotlin.concurrent.Volatile
+
 /**
  * The audio received and not yet played: PCM frames (16-bit stereo) in one ring, each chunk
  * with the server time of its first frame. One thread adds (the connection), one takes (the

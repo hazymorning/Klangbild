@@ -7,6 +7,8 @@ import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsMenu
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import kotlinx.atomicfu.locks.synchronized
+import kotlin.concurrent.Volatile
 
 /**
  * The settings menu while it is open: the group opened (none: the groups themselves), which line

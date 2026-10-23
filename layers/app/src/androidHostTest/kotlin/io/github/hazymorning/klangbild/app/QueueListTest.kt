@@ -1,13 +1,17 @@
 package io.github.hazymorning.klangbild.app
 
-import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.UpNext
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
@@ -17,13 +21,13 @@ class QueueListTest {
 
     @Test
     fun `the song the list announced moves it up by one, the rows and their small covers kept`() {
-        val cover = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+        val cover = ImageBitmap(4, 4)
         val list = QueueList(UpNext.of(listOf(song("A"), song("B"), song("C")), remaining = 3)!!, mapOf("q-A" to cover, "q-B" to cover))
         val up = list.movedUp(song("A"))!!
-        assertThat(up.upNext.rows.map { it.id }).containsExactly("q-B", "q-C").inOrder()
+        assertThat(up.upNext.rows.map { it.id }).containsExactly("q-B", "q-C")
         assertThat(up.upNext.count).isEqualTo(2)
         assertThat(up.upNext.durationMs).isEqualTo(400_000L)
-        assertThat(up.covers.keys).containsExactly("q-B")
+        assertThat(up.covers.keys).containsExactlyInAnyOrder("q-B")
         // A length not known stays unknown.
         assertThat(QueueList(UpNext.of(listOf(song("A", ms = null), song("B")), remaining = 2)!!).movedUp(song("A"))!!.upNext.durationMs).isNull()
     }

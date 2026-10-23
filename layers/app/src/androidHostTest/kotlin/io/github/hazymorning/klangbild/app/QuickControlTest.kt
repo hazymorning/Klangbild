@@ -1,31 +1,43 @@
 package io.github.hazymorning.klangbild.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
-import io.github.hazymorning.klangbild.domain.Condition
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.MiniPlayer
-import io.github.hazymorning.klangbild.domain.QuickAction
-import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QueueDisplay
+import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
-import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.data.AndroidLog
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
-import io.github.hazymorning.klangbild.domain.SourceState
+import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.EntityState
-import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.Lrc
+import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.SongLyrics
+import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SongLyrics
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.landscape.Weather
 import io.github.hazymorning.klangbild.landscape.WeatherGlide
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,9 +49,9 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.test.Test
 
 /**
  * The quick settings' own buttons on the TV: OK does what a button says, once at a time, and the
@@ -120,7 +132,8 @@ class QuickControlTest {
     private var menuOpened = 0
 
     private val host = object : ControllerHost {
-        override val lock: Any = this
+        override val lock = SynchronizedObject()
+        override val log: Log = AndroidLog
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
         override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen, queue = queue)
@@ -176,7 +189,7 @@ class QuickControlTest {
         quick.change()
         quick.change()
         test.runCurrent()
-        assertThat(source.ran).containsExactly(ungroup.entity)
+        assertThat(source.ran).containsExactlyInAnyOrder(ungroup.entity)
         source.answer.complete(true)
         test.runCurrent()
         assertThat(value(ungroup.entity)).isEqualTo("Done")
@@ -231,9 +244,9 @@ class QuickControlTest {
     fun `a button whose entity cannot be used is left out, and comes when it can`() {
         quick.open(menuOpen = false)
         val shown = rows().filter { it.item == QuickItem.ACTION }.map { it.label }
-        assertThat(shown).containsExactly("Ungroup", "Party").inOrder()
+        assertThat(shown).containsExactly("Ungroup", "Party")
         report(gone.entity to "2026-10-10T20:00:00+00:00")
-        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Ungroup", "Gone", "Party").inOrder()
+        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Ungroup", "Gone", "Party")
         ui = ui.copy(source = ui.source.copy(entities = emptyMap()))
         assertThat(rows().none { it.item == QuickItem.ACTION }).isTrue()
     }
@@ -245,9 +258,9 @@ class QuickControlTest {
         actions = listOf(ungroup.copy(condition = grouped), party)
         report("media_player.wz" to """playing|{"group_members":["media_player.wz"]}""")
         quick.open(menuOpen = false)
-        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Party")
+        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactlyInAnyOrder("Party")
         report("media_player.wz" to """playing|{"group_members":["media_player.wz","media_player.kitchen"]}""")
-        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Ungroup", "Party").inOrder()
+        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Ungroup", "Party")
         // Pressed, it ungroups: the condition ends, but the button still says it is done.
         choose(ungroup.entity)
         quick.change()
@@ -256,7 +269,7 @@ class QuickControlTest {
         report("media_player.wz" to """playing|{"group_members":["media_player.wz"]}""")
         assertThat(value(ungroup.entity)).isEqualTo("Done")
         test.advanceTimeBy(QuickControl.RESULT_MS + 100)
-        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Party")
+        assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactlyInAnyOrder("Party")
         // A condition on an entity Home Assistant does not have never holds.
         actions = listOf(ungroup.copy(condition = Condition("sensor.gone", null, Condition.Test.IS_NOT, "x")))
         assertThat(rows().none { it.item == QuickItem.ACTION }).isTrue()
@@ -272,7 +285,7 @@ class QuickControlTest {
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsRow() = rows().first { it.item == QuickItem.LYRICS }
         fun lyricsValue() = lyricsRow().value
-        assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS).inOrder()
+        assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS)
         assertThat(lyricsValue()).isEqualTo("Off")
         quick.move(+2)
         quick.change()
@@ -317,8 +330,8 @@ class QuickControlTest {
         quick.move(+1)
         quick.change()
         test.runCurrent()
-        assertThat(source.ran).containsExactly("script.group", "script.group")
-        assertThat(source.variables).containsExactly(join.variables, leave.variables).inOrder()
+        assertThat(source.ran).containsExactlyInAnyOrder("script.group", "script.group")
+        assertThat(source.variables).containsExactly(join.variables, leave.variables)
     }
 
     /** Opens the quick settings and goes right to [item]. */
@@ -415,7 +428,7 @@ class QuickControlTest {
         // Opened over the landscape, which they hold as it is.
         ui = ui.copy(landscape = LandscapeUi(null, null, MiniPlayer.LEFT, WeatherGlide.still(Weather.FAIR)))
         quick.open(menuOpen = false)
-        assertThat(quick.landscapeHeld).isTrue()
+        assertThat(quick.landscapeHeld).isNotNull().isTrue()
         fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
         assertThat(queueValue()).isEqualTo("Off")
         assertThat(quick.pending).isNull()
@@ -427,7 +440,7 @@ class QuickControlTest {
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(quick.pending).isNull()
         assertThat(landscapeLeft).isEqualTo(0)
-        assertThat(quick.landscapeHeld).isTrue()
+        assertThat(quick.landscapeHeld).isNotNull().isTrue()
         // Without Music Assistant only the next track is known: the list is passed over.
         quick.change()
         assertThat(queueValue()).isEqualTo("Cover Flow")
@@ -440,7 +453,7 @@ class QuickControlTest {
         assertThat(quick.pending).isNull()
         // Chosen, it leaves the landscape: the stage comes to show it.
         assertThat(landscapeLeft).isEqualTo(1)
-        assertThat(quick.landscapeHeld).isFalse()
+        assertThat(quick.landscapeHeld).isNotNull().isFalse()
         ui = ui.copy(landscape = null)
         // With Music Assistant, the list comes between: steps that follow quickly show only the last.
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))

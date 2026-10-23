@@ -1,9 +1,12 @@
 package io.github.hazymorning.klangbild.app
 
-import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.math.RecentMap
 import io.github.hazymorning.klangbild.render.SceneBuilder
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +17,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
 
 /**
  * The small covers of the queue's list, made off the main thread at their exact size (Lanczos,
@@ -27,7 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal class Thumbs(
     private val scope: CoroutineScope,
     private val artwork: ArtworkLoader,
-    private val now: () -> Long = System::currentTimeMillis,
+    private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val lane = Mutex()
@@ -35,13 +40,8 @@ internal class Thumbs(
     /** Figures standing in for a cover that took too long, and since when. */
     private val standIns = HashMap<String, Long>()
 
-    private val cache = object : LinkedHashMap<String, Bitmap>(KEEP + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean {
-            if (size <= KEEP) return false
-            eldest?.let { standIns.remove(it.key) }
-            return true
-        }
-    }
+    private val cache = RecentMap<String, ImageBitmap>(KEEP) { key, _ -> standIns.remove(key) }
+    private val lock = SynchronizedObject()
     private val building = HashMap<String, Job>()
 
     /** The side length of a small cover (px). A new length (another screen) drops every one made so far. */
@@ -52,7 +52,7 @@ internal class Thumbs(
         }
 
     /** [track]'s small cover, if it is made. */
-    fun ready(track: TrackInfo): Bitmap? = synchronized(cache) { cache[keyOf(track)] }
+    fun ready(track: TrackInfo): ImageBitmap? = synchronized(lock) { cache[keyOf(track)] }
 
     /**
      * Starts making [track]'s small cover unless it is made or on its way (a figure that stands
@@ -62,7 +62,7 @@ internal class Thumbs(
         val side = px
         if (side <= 0) return
         val key = keyOf(track)
-        synchronized(cache) {
+        synchronized(lock) {
             if (key in building) return
             if (key in cache && standIns[key]?.let { now() - it >= RETRY_MS } != true) return
             building[key] = scope.launch { make(track, key, side, done) }
@@ -72,7 +72,7 @@ internal class Thumbs(
     /** Lets go of the small covers still on their way for any song but [tracks]. */
     fun retain(tracks: Collection<TrackInfo>) {
         val keep = tracks.mapTo(HashSet()) { keyOf(it) }
-        synchronized(cache) {
+        synchronized(lock) {
             val gone = building.keys.filter { it !in keep }
             for (key in gone) building.remove(key)?.cancel()
         }
@@ -80,7 +80,7 @@ internal class Thumbs(
 
     /** Lets go of every small cover (nothing shows them any more, or memory is short). */
     fun clear() {
-        synchronized(cache) {
+        synchronized(lock) {
             building.values.forEach { it.cancel() }
             building.clear()
             cache.clear()
@@ -88,7 +88,7 @@ internal class Thumbs(
         }
     }
 
-    private class Loaded(val cover: Bitmap?)
+    private class Loaded(val cover: ImageBitmap?)
 
     private suspend fun make(track: TrackInfo, key: String, side: Int, done: () -> Unit) {
         val me = currentCoroutineContext()[Job]
@@ -105,7 +105,7 @@ internal class Thumbs(
         } catch (_: Throwable) {
             null
         }
-        synchronized(cache) {
+        synchronized(lock) {
             if (building[key] === me) building.remove(key)
             if (bitmap == null || side != px) return
             // A figure never replaces a cover that came before, nor the same figure standing in.

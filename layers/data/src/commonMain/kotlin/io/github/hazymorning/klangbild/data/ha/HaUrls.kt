@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import io.github.hazymorning.klangbild.data.WebUrl
+import io.github.hazymorning.klangbild.data.WebUrl.Companion.toWebUrlOrNull
 
 /**
  * URL handling for Home Assistant. Users type all sorts of things ("192.168.1.5:8123",
@@ -25,7 +25,7 @@ object HaUrls {
             val scheme = if (LocalNetwork.looksLocal(hostPart)) "http" else "https"
             s = "$scheme://$s"
         }
-        val url = s.toHttpUrlOrNull() ?: return null
+        val url = s.toWebUrlOrNull() ?: return null
         if (url.host.isEmpty()) return null
         val defaultPort = (url.scheme == "http" && url.port == 80) || (url.scheme == "https" && url.port == 443)
         val host = if (url.host.contains(':')) "[${url.host}]" else url.host
@@ -54,7 +54,7 @@ object HaUrls {
         if (p.isEmpty()) return null
         if (p.startsWith("http://", true) || p.startsWith("https://", true)) return p
         if (p.startsWith("//")) return (if (base.startsWith("https")) "https:" else "http:") + p
-        val b = base.toHttpUrlOrNull() ?: return null
+        val b = base.toWebUrlOrNull() ?: return null
         return b.resolve(if (p.startsWith("/")) p else "/$p")?.toString()
     }
 
@@ -66,8 +66,8 @@ object HaUrls {
      * artwork URLs (a streaming service's CDN, Music Assistant) must never see it.
      */
     fun isHaHost(base: String, url: String): Boolean {
-        val b: HttpUrl = base.toHttpUrlOrNull() ?: return false
-        val u: HttpUrl = url.toHttpUrlOrNull() ?: return false
+        val b: WebUrl = base.toWebUrlOrNull() ?: return false
+        val u: WebUrl = url.toWebUrlOrNull() ?: return false
         return b.host.equals(u.host, ignoreCase = true) && b.port == u.port && b.scheme == u.scheme
     }
 }

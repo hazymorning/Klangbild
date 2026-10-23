@@ -2,16 +2,27 @@ package io.github.hazymorning.klangbild.speaker
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import assertk.assertions.startsWith
+import io.github.hazymorning.klangbild.config.DataStoreValues
 import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.sendspin.PairingRecord
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
-import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.io.File
+import kotlin.test.Test
 
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
@@ -36,7 +47,7 @@ class SpeakerStoreTest {
     @get:Rule val folder = TemporaryFolder()
 
     /** A store of its own for each test, empty at first. */
-    private fun storeWith(box: SecretBox) = SpeakerStore(PreferenceDataStoreFactory.create { File(folder.root, "speaker.preferences_pb") }, box)
+    private fun storeWith(box: SecretBox) = SpeakerStore(DataStoreValues(PreferenceDataStoreFactory.create { File(folder.root, "speaker.preferences_pb") }), box)
 
     @Test
     fun `the identity is made once and kept, sealed`(): Unit = runBlocking {
@@ -46,7 +57,7 @@ class SpeakerStoreTest {
         val again = store.load()
         assertThat(first.identity).isNotNull()
         assertThat(again.identity!!.publicKey).isEqualTo(first.identity!!.publicKey)
-        assertThat(again.pairingPsk).isEqualTo(first.pairingPsk)
+        assertThat(again.pairingPsk).isNotNull().isEqualTo(first.pairingPsk!!)
         assertThat(box.sealed).hasSize(2)
     }
 
@@ -72,7 +83,7 @@ class SpeakerStoreTest {
         for (i in 1..10) store.remember(PairingRecord("server$i", ByteArray(32) { i.toByte() }))
         store.used("server5")
         val records = store.load().records
-        assertThat(records.map { it.serverId }).containsExactly("server5", "server10", "server9", "server8", "server7", "server6", "server4", "server3").inOrder()
+        assertThat(records.map { it.serverId }).containsExactly("server5", "server10", "server9", "server8", "server7", "server6", "server4", "server3")
         assertThat(records.first().psk).isEqualTo(ByteArray(32) { 5 })
         store.forget("server5")
         assertThat(store.load().records.map { it.serverId }).doesNotContain("server5")
@@ -105,11 +116,11 @@ class SpeakerStoreTest {
         store.used("server1")
         store.forget("server1")
         box.opening = true
-        assertThat(store.load().records.map { it.serverId }).containsExactly("server1")
+        assertThat(store.load().records.map { it.serverId }).containsExactlyInAnyOrder("server1")
         box.opening = false
         store.remember(PairingRecord("server2", ByteArray(32) { 2 }))
         box.opening = true
-        assertThat(store.load().records.map { it.serverId }).containsExactly("server2")
+        assertThat(store.load().records.map { it.serverId }).containsExactlyInAnyOrder("server2")
     }
 
     @Test
