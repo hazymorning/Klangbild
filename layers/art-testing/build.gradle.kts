@@ -1,7 +1,14 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
+    id("klangbild.compose")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.art.testing"
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.render)
+            // The covers are Compose's bitmaps.
+            api(libs.compose.ui)
+        }
+    }
 }

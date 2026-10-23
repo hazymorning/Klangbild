@@ -1,17 +1,17 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
     id("klangbild.compose")
     id("klangbild.robolectric")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.render"
-}
-
-dependencies {
-    implementation(projects.art)
-    implementation(projects.color)
-    implementation(projects.math)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.zxing.core)
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.art)
+            implementation(projects.color)
+            implementation(projects.math)
+            // The scene's pictures are Compose's bitmaps.
+            api(libs.compose.ui)
+        }
+    }
 }

@@ -1,12 +1,12 @@
 plugins {
-    id("klangbild.android.library")
+    id("klangbild.multiplatform")
 }
 
-android {
-    namespace = "io.github.hazymorning.klangbild.domain.testing"
-}
-
-dependencies {
-    implementation(projects.artTesting)
-    implementation(projects.domain)
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation(projects.artTesting)
+            implementation(projects.domain)
+        }
+    }
 }
