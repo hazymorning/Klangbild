@@ -74,6 +74,7 @@ class SettingsStoreTest {
             haRefreshToken = "refresh",
             haClientId = "http://192.168.1.23:8765/",
             entityId = "media_player.kitchen",
+            otherSpeaker = "media_player.living_room",
             sunEntity = "sun.home",
             sleepAfterMinutes = 45,
             sleepAction = SleepAction.CLOSE,

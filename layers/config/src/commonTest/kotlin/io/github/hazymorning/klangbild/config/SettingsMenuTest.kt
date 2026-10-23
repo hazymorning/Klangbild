@@ -102,6 +102,7 @@ class SettingsMenuTest {
                 MenuEntry.OFF_LIGHTS.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
+                MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
             val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE) + needs
@@ -168,7 +169,7 @@ class SettingsMenuTest {
             MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
-            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE,
+            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE,
         )
     }
 
@@ -217,5 +218,38 @@ class SettingsMenuTest {
         // What keeps it from playing is still said then.
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).contains("2.10.7")
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(speaker = SpeakerLink.NO_KEY), en)).contains("keeps trying")
+    }
+
+    @Test
+    fun `the speaker switches between the one followed and this TV, which then plays here`() {
+        val en = TestTexts.english()
+        assertThat(SettingsMenu.label(MenuEntry.SPEAKER, en)).isEqualTo("Speaker")
+        assertThat(SettingsMenu.value(MenuEntry.SPEAKER, configured, MenuContext(), de)).isEqualTo("Nur mit Music\u00A0Assistant")
+        assertThat(SettingsMenu.step(MenuEntry.SPEAKER, configured, +1)).isNull()
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        assertThat(SettingsMenu.value(MenuEntry.SPEAKER, withMa, MenuContext(speakerName = "Wohnzimmer"), de)).isEqualTo("Wohnzimmer")
+        // Until Home Assistant has told its name, the entity's stands in.
+        assertThat(SettingsMenu.value(MenuEntry.SPEAKER, withMa, MenuContext(), de)).isEqualTo("Wz")
+        val tv = SettingsMenu.step(MenuEntry.SPEAKER, withMa, +1)!!
+        assertThat(tv.entityId).isEqualTo(EntityId.THIS_TV)
+        assertThat(tv.speakerOn).isTrue()
+        assertThat(tv.otherSpeaker).isEqualTo("media_player.wz")
+        assertThat(SettingsMenu.value(MenuEntry.SPEAKER, tv, MenuContext(speakerName = "Wohnzimmer"), de)).isEqualTo("Dieser Fernseher")
+        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, tv)).isFalse()
+        // Back again, and this TV still plays as one of the speakers.
+        val back = SettingsMenu.step(MenuEntry.SPEAKER, tv, -1)!!
+        assertThat(back.entityId).isEqualTo("media_player.wz")
+        assertThat(back.tvSpeaker).isTrue()
+        // Playing here turned off while this TV is followed goes back too.
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, tv)).isFalse()
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, tv, MenuContext(), en)).contains("Turned off")
+        val off = SettingsMenu.step(MenuEntry.PLAY_HERE, tv, +1)!!
+        assertThat(off.entityId).isEqualTo("media_player.wz")
+        assertThat(off.tvSpeaker).isFalse()
+        // This TV chosen on the phone with no speaker before it: another one is chosen there.
+        val only = withMa.copy(entityId = EntityId.THIS_TV, tvSpeaker = true)
+        assertThat(SettingsMenu.step(MenuEntry.SPEAKER, only, +1)).isNull()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, only)).isTrue()
+        assertThat(SettingsMenu.description(MenuEntry.SPEAKER, only, MenuContext(), en)).contains("QR")
     }
 }

@@ -52,6 +52,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
+    SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
     PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
 }
@@ -70,6 +71,8 @@ data class MenuContext(
     val kind: MediaKind? = null,
     val language: AppLanguage = AppLanguage.SYSTEM,
     val speaker: SpeakerLink = SpeakerLink.OFF,
+    /** The name of the speaker followed, once Home Assistant has told it. */
+    val speakerName: String? = null,
 )
 
 /**
@@ -120,20 +123,24 @@ object SettingsMenu {
      * setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
-        MenuEntry.LYRICS, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
+        MenuEntry.LYRICS, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         else -> false
     }
 
     /**
-     * Whether Klangbild follows this TV's own speaker ("This TV" on the setup page): then it keeps
-     * playing here, and another speaker is chosen on the phone first.
+     * Whether Klangbild follows this TV's own speaker ("This TV"): then it keeps playing here, and
+     * leaving it goes back to the speaker followed before, or, without one, to the phone.
      */
     fun followsThisTv(s: Settings): Boolean = s.entityId == EntityId.THIS_TV && s.tvSpeaker
 
-    /** Whether OK on [e] opens the setup: what needs setting up first, and playing here while this TV is the speaker followed. */
-    fun opensSetup(e: MenuEntry, s: Settings): Boolean = needsSetup(e, s) || (e == MenuEntry.PLAY_HERE && followsThisTv(s))
+    /**
+     * Whether OK on [e] opens the setup: what needs setting up first, and leaving this TV while
+     * no other speaker was ever followed.
+     */
+    fun opensSetup(e: MenuEntry, s: Settings): Boolean =
+        needsSetup(e, s) || ((e == MenuEntry.SPEAKER || e == MenuEntry.PLAY_HERE) && followsThisTv(s) && s.otherSpeaker == null)
 
     /** A line's label; the two connection lines are named after what they connect to. */
     fun label(e: MenuEntry, t: Texts): String = when (e) {
@@ -232,6 +239,11 @@ object SettingsMenu {
                 else -> Strings.connecting
             },
         ]
+        MenuEntry.SPEAKER -> when {
+            !s.hasMusicAssistant -> t[Strings.needsMusicAssistant]
+            s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
+            else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
+        }
         MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.tvSpeaker, t)
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
     }
@@ -334,6 +346,13 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.aboutSleepActionClose else Strings.aboutSleepActionRelease]
         MenuEntry.CONNECTION -> t[if (!s.isConfigured) Strings.aboutConnectionSetUp else Strings.aboutConnection]
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
+        MenuEntry.SPEAKER -> t[
+            when {
+                !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
+                followsThisTv(s) && s.otherSpeaker == null -> Strings.aboutSpeakerThisTv
+                else -> Strings.aboutSpeaker
+            },
+        ]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
         MenuEntry.LANGUAGE -> t[Strings.aboutLanguage]
     }
@@ -352,7 +371,11 @@ object SettingsMenu {
             SpeakerLink.REFUSED -> Strings.aboutPlayHereRefused
             SpeakerLink.NO_KEY -> Strings.aboutPlayHereNoKey
             SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED ->
-                if (followsThisTv(s)) Strings.aboutPlayHereFollowed else Strings.aboutPlayHereOn
+                when {
+                    !followsThisTv(s) -> Strings.aboutPlayHereOn
+                    s.otherSpeaker == null -> Strings.aboutPlayHereFollowed
+                    else -> Strings.aboutPlayHereFollowedBack
+                }
         }
     }
 
@@ -397,7 +420,18 @@ object SettingsMenu {
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
-        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant || followsThisTv(s)) null else s.copy(tvSpeaker = !s.tvSpeaker)
+        // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
+        MenuEntry.SPEAKER -> when {
+            !s.hasMusicAssistant -> null
+            s.entityId == EntityId.THIS_TV -> s.otherSpeaker?.let(s::following)
+            else -> s.following(EntityId.THIS_TV).copy(tvSpeaker = true)
+        }
+        // Turned off while this TV is followed, it goes back to the speaker followed before.
+        MenuEntry.PLAY_HERE -> when {
+            !s.hasMusicAssistant -> null
+            followsThisTv(s) -> s.otherSpeaker?.let { s.following(it).copy(tvSpeaker = false) }
+            else -> s.copy(tvSpeaker = !s.tvSpeaker)
+        }
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
         MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null
