@@ -9,17 +9,17 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that's playing as a calm picture on your TV, like a record sleeve propped up on the shelf while the record plays. It's made for the room more than for the remote.
+Klangbild shows the music that's playing as a calm picture on your TV, so the biggest screen in the room is worth looking at while you listen.
 
-A title two pixels too low bothers me the way a wrong note bothers a musician. More and more apps look as if nobody had the time, and Klangbild is my attempt to give one screen the time it needs.
+I made it because I care a lot about design, and these days most apps look rushed and alike to me. It's a personal project, and an opinionated one. Everything has to look right from across the room, and whatever would make the picture busier stays out.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
-The album cover is the largest thing in the picture, with the title and artist beside it. There's no library, no search and no buttons on the screen. You choose the music on your phone as usual, and the remote pauses and skips.
+The album cover is the largest thing on the screen, with the title and artist beside it. There's no library, no search and nothing to press. You choose the music on your phone as usual, and the remote pauses and skips.
 
-Klangbild works with any media player in Home Assistant, and Music Assistant adds the queue, lyrics and audiobook chapters. Through Sendspin, the TV can play along with your other speakers, and the lights behind it can take on the cover's colors.
+Klangbild works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can play in time with your other speakers.
 
 During the day the background is light, and at night it turns dark.
 
@@ -154,12 +154,10 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 </details>
 
 <details>
-<summary><b>Why I made it</b></summary>
+<summary><b>Contributing</b></summary>
 <br>
 
-I write code too, and it mostly follows rules. Design has rules as well, but they're only where it starts. Done well, it looks so easy that few people see the work, let alone pay for it. So for me it has stayed more of a hobby, and Klangbild is what came of it. A lot of that work went into what isn't there.
-
-Ideas that fit are welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
+Design looks effortless when it's done well, and much of the work goes into what's left out. That's why ideas are best shared in the [Discussions](https://github.com/hazymorning/Klangbild/discussions) before anything is built. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues).
 
 </details>
 
