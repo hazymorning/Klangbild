@@ -5,13 +5,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Klangbild only shows what's playing and can't browse your library or pick music. For ideas and questions, please use [Discussions](https://github.com/hazymorning/Klangbild/discussions).
+        Ideas and questions go in the [Discussions](https://github.com/hazymorning/Klangbild/discussions).
   - type: checkboxes
     id: broken
     attributes:
       label: Before you report
       options:
-        - label: This is a bug, and I've read the [README](https://github.com/hazymorning/Klangbild#readme).
+        - label: This is a bug, and I've read the [README](https://github.com/hazymorning/Klangbild#readme) and checked the settings.
           required: true
   - type: textarea
     id: what-happened

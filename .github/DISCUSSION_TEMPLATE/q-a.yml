@@ -1,0 +1,19 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The [README](https://github.com/hazymorning/Klangbild#readme) and the short explanations in the settings menu already answer a lot.
+  - type: checkboxes
+    id: read
+    attributes:
+      label: Before you ask
+      options:
+        - label: I've read the README and looked through the settings.
+          required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What would you like to know, and what have you tried?
+    validations:
+      required: true
