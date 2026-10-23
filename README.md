@@ -1,21 +1,18 @@
 # Klangbild
 
-[![Android TV 9+](https://img.shields.io/badge/Android%20TV%209%2B-182B52?style=flat-square&logo=android&logoColor=A3DEF8)](#devices)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-182B52?style=flat-square&logo=homeassistant&logoColor=A3DEF8)](https://www.home-assistant.io)
-
 <picture>
   <source media="(prefers-reduced-motion: no-preference)" srcset="docs/screenshots/film.avif" type="image/avif">
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mockup-now-playing.jpg">
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-When you're listening to music at home, the TV usually just sits there. Switched off, it's a big black screen that's hard to ignore, and switched on, it's bright and busy in a way that doesn't suit the music. Klangbild gives it something calm to show instead.
+Klangbild shows the music that's playing as a calm picture on your TV, made to suit the room it's in. Everything on the screen is balanced around the album cover and takes its colors from it. You choose the music on your phone as usual.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
-Klangbild works with any media player in Home Assistant and shows the album cover with the song's title and artist beside it. Music Assistant adds what's coming up next, lyrics that follow along as the song plays, and chapters for audiobooks and podcasts. Through Sendspin, the TV can also play music itself, in time with your other speakers. And if Home Assistant controls the lights behind your TV, they can take on the colors of the album cover.
+Klangbild works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can play in time with your other speakers.
 
 During the day the background is light, and at night it turns dark.
 
@@ -23,13 +20,12 @@ During the day the background is light, and at night it turns dark.
 
 > [!NOTE]
 > **Klangbild is being built in two&nbsp;phases.**<br>
-> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful rather than psychedelic. Eventually, it will replace the landscape. Ideas are always welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and if you'd like the landscape to stay, just say so in the&nbsp;[poll](https://github.com/hazymorning/Klangbild/discussions/51).
+> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful rather than psychedelic. Eventually, it will replace the landscape. If you'd like the landscape to stay, just say so in the&nbsp;[poll](https://github.com/hazymorning/Klangbild/discussions/51).
 
 <a href="https://github.com/hazymorning/Klangbild/discussions/51"><picture><source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/screenshots/poll-small.png"><source media="(max-width: 640px)" srcset="docs/screenshots/poll-small-light.png"><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/poll.png"><img src="docs/screenshots/poll-light.png" alt="Should the landscape stay? Vote in the poll"></picture></a>
 
 ## More
 
-<a name="devices"></a>
 <details>
 <summary><b>Compatibility</b></summary>
 <br>
@@ -135,6 +131,9 @@ Press the down button on the remote to open the quick settings, where you can ch
 
 With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name and keeps playing even while Klangbild is closed.
 
+> **Important**<br>
+> "Play here" makes the TV a speaker, but Klangbild keeps following the speaker chosen on the setup page. To have it follow the TV, open Home Assistant under System in the settings, scan the code, choose "This TV" as the speaker and save.
+
 </details>
 
 <details>
@@ -153,7 +152,7 @@ You'll see morning light, a sunset or stars depending on when you look, and if H
 <summary><b>Contributing</b></summary>
 <br>
 
-Klangbild is a small project made for the joy of it, and it's meant to be a calm picture of the music in the room rather than another media player. Ideas and wishes are very welcome in the [Discussions](https://github.com/hazymorning/Klangbild/discussions), and bugs in the [issues](https://github.com/hazymorning/Klangbild/issues).
+Klangbild is a small project made for the joy of it. I’ve been putting a lot of soul into this and I’m working toward a particular vision for it, so I might be a bit picky with suggestions. If you have an idea that fits, the [Discussions](https://github.com/hazymorning/Klangbild/discussions/categories/ideas) are the place for it, and a look through the settings first often turns up what you're after. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues), and if you'd like to build something yourself, starting with a discussion can save you work.
 
 </details>
 

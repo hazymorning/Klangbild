@@ -1,0 +1,19 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to share an idea.
+  - type: checkboxes
+    id: read
+    attributes:
+      label: Before you post
+      options:
+        - label: I've read the [README](https://github.com/hazymorning/Klangbild#readme) and looked through the settings.
+          required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would you like Klangbild to do, and when would you use it? The situation helps more than a finished design.
+    validations:
+      required: true
