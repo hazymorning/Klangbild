@@ -41,7 +41,7 @@ are about equally wide, since the user loves balance: Compatibility, Setting it 
 queue, Sendspin, Landscape, Contributing, Data privacy, and the setup's three steps alike, never a
 personal "your" in them ("Your queue" read as odd). After the last step a `<br>` leaves the room
 below it that the other folds have. Leave a
-feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`: fields to fill in, never a Markdown template, whose raw text and comments land in the box) says so kindly and sends ideas, feature
+feature out rather than squeeze a sentence. Issues are for bugs: the issue form (`bug_report.yml`, "Something is broken": fields to fill in, never a Markdown template, whose raw text and comments land in the box) says in one line that Klangbild shows what plays and doesn't browse or choose music, asks with one required checkbox that what follows is broken and the README read (a paragraph alone was scrolled past, issue #68), says kindly that issues are for bugs and sends ideas, feature
 wishes and questions to the Discussions. The README's pictures are mockups in `docs/screenshots/`:
 the app's own screens (`ReadmeShotsTest`, with the colors the lights behind the TV would show) set
 in a room by `tools/make_readme_pictures.py`, made again when the look changes, and the download
