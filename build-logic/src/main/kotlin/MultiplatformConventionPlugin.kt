@@ -59,6 +59,9 @@ class MultiplatformConventionPlugin : Plugin<Project> {
             }
         }
         configureTests()
+        // A layer's tests answer to the app's test task's name too, so one command runs every
+        // module's: on Android (Robolectric), on the JVM and as WebAssembly.
+        tasks.register("testDebugUnitTest") { dependsOn("allTests") }
         tasks.withType<KotlinJsTest>().configureEach {
             // As much room as the JVM's tests have (the speaker's simulated playback needs it).
             nodeJsArgs += "--max-old-space-size=3072"

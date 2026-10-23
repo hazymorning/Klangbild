@@ -9,19 +9,31 @@ Apache License 2.0 (full text in Apache-2.0.txt)
   Startup, Tracing, VersionedParcelable, Window
   Copyright The Android Open Source Project
 
-  Kotlin standard library, kotlinx.coroutines, kotlinx.serialization
+  Compose Multiplatform (Animation, Foundation, Resources, Runtime, UI), Lifecycle and
+  SavedState for Compose Multiplatform
+  Copyright JetBrains s.r.o. and respective authors and developers, and The Android Open
+  Source Project
+
+  Kotlin standard library, kotlinx.coroutines, kotlinx.serialization, kotlinx-datetime,
+  kotlinx-io, atomicfu
   Copyright JetBrains s.r.o. and Kotlin Programming Language contributors
+
+  Ktor
+  Copyright JetBrains s.r.o. and contributors
 
   JetBrains Java Annotations
   Copyright JetBrains s.r.o.
 
-  OkHttp, Okio
+  cryptography-kotlin
+  Copyright Oleg Yukhnevich
+
+  OkHttp, Okio, and OkHttp's URL parsing, ported to Kotlin Multiplatform
   Copyright Square, Inc.
 
-  ZXing core
+  ZXing's QR code encoder, ported to Kotlin Multiplatform
   Copyright ZXing authors
 
-  commons-suncalc
+  commons-suncalc, ported to Kotlin Multiplatform
   Copyright Richard "Shred" Körber
 
   JSpecify
@@ -30,15 +42,24 @@ Apache License 2.0 (full text in Apache-2.0.txt)
   Guava ListenableFuture
   Copyright The Guava Authors
 
-BSD 3-Clause License (full text in Protobuf-BSD-3-Clause.txt)
+BSD 3-Clause License
 
-  Protocol Buffers, as repackaged in AndroidX DataStore
+  Protocol Buffers, as repackaged in AndroidX DataStore (Protobuf-BSD-3-Clause.txt)
   Copyright 2008 Google Inc.
 
-MIT License (full text in BouncyCastle-MIT.txt)
+  Skia's perspective mapping, ported to Kotlin Multiplatform (Skia-BSD-3-Clause.txt)
+  Copyright The Android Open Source Project and Google Inc.
+
+MIT License (full text in MIT.txt)
 
   Bouncy Castle Crypto APIs (bcprov), used for Sendspin's encryption
   Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.
+
+  normalize (Unicode normalization)
+  Copyright (c) 2021-2023 Doist
+
+  SLF4J API
+  Copyright (c) 2004-2023 QOS.ch
 
 SIL Open Font License 1.1
 
