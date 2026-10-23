@@ -49,12 +49,12 @@ release notes, commits, pull requests, issues, discussions and code comments.
 
 By kind:
 
-- **README:** short and addressed to the reader, with the longer parts in `<details>` sections. Only
-  the second paragraph, on why Klangbild exists, is in the first person. GitHub renders alerts like
-  `> [!NOTE]` only outside `<details>`, so use a plain quote inside one. The pictures are mockups in
-  `docs/screenshots/`. `ReadmeShotsTest` renders the screens and `tools/make_readme_pictures.py`
-  places them in a room. Run both again when the look changes. The download button links to
-  `releases/latest/download/klangbild.apk`, so every release's APK must be named `klangbild.apk`.
+- **README:** short, addressed to the reader and never in the first person, with the longer parts
+  in `<details>` sections. GitHub renders alerts like `> [!NOTE]` only outside `<details>`, so use
+  a plain quote inside one. The pictures are mockups in `docs/screenshots/`. `ReadmeShotsTest`
+  renders the screens and `tools/make_readme_pictures.py` places them in a room. Run both again
+  when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
+  every release's APK must be named `klangbild.apk`.
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better` and
   `### Bug fixes` as needed. Each file has a few short points in everyday words about what changed,
   without addressing the reader. Leave out technical details and precise-sounding claims like "to a
