@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Compose Multiplatform's resources are only read on the JVM and in the browser; on Android
+         the typefaces are Android resources, so the context this provider keeps for them is never
+         needed. -->
+    <application>
+        <provider
+            android:name="org.jetbrains.compose.resources.AndroidContextProvider"
+            tools:node="remove" />
+    </application>
+</manifest>
