@@ -159,7 +159,7 @@ From the bottom up:
 
 | Module | What's in it |
 | --- | --- |
-| math, json | small helpers like easing, a seeded random source, hashes and JSON strings |
+| math, json | small helpers like easing, a seeded random source and JSON strings |
 | text | every UI string, `Texts`, the language setting and how each region writes numbers and dates |
 | color | Oklab, cover palettes, the lamp light that tints every color (`Lamp`), the light and dark background, contrast |
 | art | generated art for tracks without a cover |

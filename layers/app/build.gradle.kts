@@ -24,7 +24,6 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.compose.ui)
             implementation(libs.kotlinx.atomicfu)
-            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(projects.textTesting)

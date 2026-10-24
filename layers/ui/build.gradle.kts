@@ -42,7 +42,6 @@ kotlin {
                 api(libs.compose.ui)
                 api(libs.kotlinx.coroutines.core)
                 implementation(libs.compose.resources)
-                implementation(libs.kotlinx.atomicfu)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.lifecycle.runtime.compose)
             }
