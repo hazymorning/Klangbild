@@ -173,12 +173,13 @@ object CoverPalette {
         val inkChroma = neutralChroma * (if (cover) 1.6f else 1f)
 
         // Three levels (lightness in Oklab): the title; artist, clock and the progress bar's
-        // fill; everything else. On black they look like white at 100 / 80 / 62 %, on paper they
-        // take the same steps down from near-black. Grays closer than that look like a mistake side by side.
+        // fill; everything else. They step down evenly, as far as the quietest can go: on black
+        // it keeps 4.5:1 with a quarter to spare. On paper they step up from near-black as far as
+        // 4.5:1 allows. Grays closer than that look like a mistake side by side.
         val levels = if (appearance == Appearance.DARK) {
             // On the cover's own colors the lower two levels stand a little lighter: they are read
             // against color, not black.
-            if (cover) floatArrayOf(0.94f, 0.82f, 0.71f) else floatArrayOf(0.93f, 0.80f, 0.665f)
+            if (cover) floatArrayOf(0.94f, 0.82f, 0.71f) else floatArrayOf(0.93f, 0.77f, 0.61f)
         } else {
             floatArrayOf(LIGHT_INK, LIGHT_INK + 0.13f, LIGHT_INK + 0.25f)
         }
