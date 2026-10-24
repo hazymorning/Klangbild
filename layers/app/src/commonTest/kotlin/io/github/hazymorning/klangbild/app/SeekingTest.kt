@@ -29,7 +29,8 @@ import kotlin.test.Test
 
 /**
  * A jump with the remote belongs to the item it was made for: when another item plays before the
- * jump is sent, the jump goes with its item, and the next one never lands on its place.
+ * jump is sent, the jump goes with its item, and the next one never lands on its place. A held
+ * key seeks the farther the longer it is held, and sends the place it reached once let go.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SeekingTest {
@@ -96,6 +97,32 @@ class SeekingTest {
         test.advanceTimeBy(Seeking.SETTLE_MS + 100)
         test.runCurrent()
         assertThat(seeks).isEmpty()
+        assertThat(seeking.position(host.now())).isEqualTo(0L)
+    }
+
+    @Test
+    fun aHeldKeySeeksFartherTheLongerItIsHeldAndSendsThePlaceOnceLetGo() {
+        seeking.hold(+1, 0)
+        assertThat(seeking.position(host.now())).isEqualTo(600_000L)
+        // Ten seconds a second at first, then faster: 15 s after a second, 75 s after three.
+        seeking.hold(+1, 1_000)
+        assertThat(seeking.position(host.now())).isEqualTo(615_000L)
+        seeking.hold(+1, 3_000)
+        assertThat(seeking.position(host.now())).isEqualTo(675_000L)
+        assertThat(Seeking.held(4_000)).isEqualTo(115_000L)
+        // Nothing goes to the player while the key is held, and the place reached goes as it is let go.
+        test.advanceTimeBy(Seeking.SETTLE_MS + 100)
+        test.runCurrent()
+        assertThat(seeks).isEmpty()
+        seeking.letGo()
+        test.runCurrent()
+        assertThat(seeks).containsExactlyInAnyOrder(675_000L)
+    }
+
+    @Test
+    fun aHeldKeyStopsAtTheItemsStart() {
+        seeking.hold(-1, 0)
+        seeking.hold(-1, 20_000)
         assertThat(seeking.position(host.now())).isEqualTo(0L)
     }
 

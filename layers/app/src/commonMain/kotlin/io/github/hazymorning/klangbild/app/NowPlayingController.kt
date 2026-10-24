@@ -570,6 +570,23 @@ class NowPlayingController(
     /** Held left or right: by chapters, else to the item before or after. */
     fun jump(direction: Int) = seeking.jump(direction)
 
+    /**
+     * Left and right change a song once let go, and held, seek through it: with a length to seek
+     * in, on a player that can.
+     */
+    val holdKeys: Boolean
+        get() {
+            val s = settings.value
+            val p = _ui.value.source.player
+            return s.remoteControl && !spokenKeys && (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && p?.abilities?.seek == true
+        }
+
+    /** Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1), the farther the longer. */
+    fun hold(direction: Int, heldMs: Long) = seeking.hold(direction, heldMs)
+
+    /** The key held is let go: the place it reached is sent. */
+    fun letGo() = seeking.letGo()
+
     // --- settings menu -------------------------------------------------------------------
 
     private val localEdits = atomic(0)

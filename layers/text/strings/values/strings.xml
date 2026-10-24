@@ -172,7 +172,7 @@
     <string name="about_mini_player_left">Cover, title and progress, lower left in the landscape.</string>
     <string name="about_mini_player_right">Cover, title and progress, lower right in the landscape.</string>
     <string name="about_mini_player_off">Just the landscape, no player.</string>
-    <string name="about_remote_on">OK pauses and plays on; left and right change the track.</string>
+    <string name="about_remote_on">OK pauses and plays on; left and right change the track. Held, they seek within it.</string>
     <string name="about_remote_off">The remote does not control the music; holding OK still opens this menu.</string>
     <string name="about_up_down_volume">Arrow up and down change the speaker’s volume; the quick settings are not available then.</string>
     <string name="about_up_down_landscape">Arrow up shows the landscape; up again or Back brings the cover back. Arrow down opens the quick settings at the bottom; down again closes them.</string>

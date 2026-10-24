@@ -160,7 +160,7 @@
     <string name="about_mini_player_left">Cover, Titel und Fortschritt unten links in der Landschaft.</string>
     <string name="about_mini_player_right">Cover, Titel und Fortschritt unten rechts in der Landschaft.</string>
     <string name="about_mini_player_off">Nur die Landschaft, kein Mini-Player.</string>
-    <string name="about_remote_on">OK hält die Musik an und spielt weiter, links und rechts wechseln den Titel.</string>
+    <string name="about_remote_on">OK hält die Musik an und spielt weiter, links und rechts wechseln den Titel. Gedrückt gehalten spulen sie darin.</string>
     <string name="about_remote_off">Die Fernbedienung steuert die Musik nicht; OK lange drücken öffnet weiter dieses Menü.</string>
     <string name="about_up_down_volume">Pfeil hoch und runter ändern die Lautstärke des Lautsprechers; die Schnelleinstellungen gibt es dann nicht.</string>
     <string name="about_up_down_landscape">Pfeil hoch zeigt die Landschaft; noch einmal hoch oder Zurück holt das Cover zurück. Pfeil runter öffnet unten die Schnelleinstellungen, noch einmal runter schließt sie.</string>
