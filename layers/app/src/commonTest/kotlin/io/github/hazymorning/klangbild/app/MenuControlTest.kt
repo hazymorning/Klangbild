@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -35,6 +36,7 @@ class MenuControlTest {
     private var shown = 0
     private var setup = 0
     private var applied = 0
+    private val updates = ArrayList<Boolean>()
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
@@ -50,6 +52,10 @@ class MenuControlTest {
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
+        override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0")
+        override fun update(ok: Boolean) {
+            updates += ok
+        }
         override fun recompute() {
             recomputed++
         }
@@ -172,5 +178,24 @@ class MenuControlTest {
         menu.change(+1, wrap = true)
         assertThat(setup).isEqualTo(1)
         assertThat(menu.isOpen).isFalse()
+    }
+
+    @Test
+    fun `the system group tells of a new version, OK on its line installs it, left or right hide its notice`() {
+        menu.open()
+        assertThat(state().rows.last().value).isEqualTo("New version")
+        repeat(6) { menu.move(+1) }
+        menu.change(+1, wrap = true)
+        assertThat(state().section).isEqualTo(MenuSection.SYSTEM)
+        repeat(10) { menu.move(+1) }
+        assertThat(state().rows[state().cursor].label).isEqualTo("Update")
+        assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
+        menu.change(+1, wrap = true)
+        menu.change(-1, wrap = false)
+        menu.change(+1, wrap = false)
+        // A held key does it once.
+        menu.change(+1, wrap = false, repeat = true)
+        assertThat(updates).containsExactly(true, false, false)
+        assertThat(applied).isEqualTo(0)
     }
 }

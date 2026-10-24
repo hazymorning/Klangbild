@@ -29,7 +29,7 @@
     <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when Klangbild turns off.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant, playing here and the language.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, playing here, the language and updates.</string>
 
     <!-- Settings menu: lines -->
     <string name="entry_queue">Queue</string>
@@ -58,6 +58,14 @@
     <string name="entry_sleep_action">When turning off</string>
     <string name="entry_language">Language</string>
     <string name="entry_speaker">Speaker</string>
+    <string name="entry_update">Update</string>
+    <string name="update_notice">New version</string>
+    <string name="update_current">Up to date</string>
+    <string name="update_checking">Checking</string>
+    <string name="update_unknown">Not checked</string>
+    <string name="update_version">Version %1$s</string>
+    <string name="update_downloading">Downloading</string>
+    <string name="update_failed">Didn’t work</string>
     <string name="entry_play_here">Play here</string>
 
     <!-- Settings menu: values -->
@@ -193,6 +201,13 @@
     <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
     <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
+    <string name="about_update_current">Klangbild %1$s is the newest version. When Klangbild starts, it asks GitHub for a new one at most once a day. OK asks now.</string>
+    <string name="about_update_unknown">When Klangbild starts, it asks GitHub for a new version at most once a day. No answer has come yet. OK asks now.</string>
+    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right hides the notice in the menu.</string>
+    <string name="about_update_hidden">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right shows the notice in the menu again.</string>
+    <string name="about_update_downloading">The new version is downloading. Then the TV asks whether to install it.</string>
+    <string name="about_update_failed">The new version couldn’t be downloaded. OK tries again.</string>
+    <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>
     <string name="about_speaker">The speaker Klangbild shows and the remote controls: the one chosen on your phone, or this TV, which then plays here.</string>
     <string name="about_speaker_this_tv">Klangbild follows this TV. To follow another speaker, choose it on your phone. OK shows the QR code.</string>
     <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>

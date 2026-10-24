@@ -55,6 +55,7 @@ import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.UpNext
 import io.github.hazymorning.klangbild.domain.UpNextRow
+import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.landscape.Weather
@@ -238,6 +239,8 @@ class NowPlayingController(
     private val pairingToken: () -> String? = { null },
     /** What this TV plays, as a sound feed, while it plays as a speaker. */
     ownSound: () -> SoundFeed? = { null },
+    /** Klangbild's own new versions; none where nothing looks for them. */
+    private val updates: Updates? = null,
 ) {
     // In the language shown from the first frame, the clock as the system has it.
     private val _ui = MutableStateFlow(UiState(texts = localizer.texts.value))
@@ -294,6 +297,10 @@ class NowPlayingController(
         override val texts: Texts get() = localizer.texts.value
         override val log: Log get() = this@NowPlayingController.log
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
+        override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
+        override fun update(ok: Boolean) {
+            if (ok) updates?.ok() else updates?.toggleNotice()
+        }
         override var language: AppLanguage
             get() = localizer.language
             set(value) {
@@ -401,15 +408,21 @@ class NowPlayingController(
         speakerJob = scope.launch {
             speaker.collect { status -> synchronized(lock) { soundSelection.update(_ui.value.source, status) } }
         }
+        updates?.let { u ->
+            updatesJob = scope.launch { u.info.collect { recompute() } }
+            u.checkIfDue()
+        }
     }
 
     private var textsJob: Job? = null
     private var speakerJob: Job? = null
+    private var updatesJob: Job? = null
 
     private fun stop() {
         settingsJob?.cancel()
         textsJob?.cancel()
         speakerJob?.cancel()
+        updatesJob?.cancel()
         ticker?.cancel()
         setupJob?.cancel()
         setupServer.stop()

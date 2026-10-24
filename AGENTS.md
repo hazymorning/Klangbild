@@ -200,6 +200,9 @@ From the bottom up:
   explicitly tells you to. Getting a release ready means writing `docs/releases/<tag>.md`,
   checking it and the README for em dashes and emoji, and, when asked, making a draft with a
   manual run.
+- When it starts, the app asks GitHub for the newest release (no beta or draft) at most once a
+  day (`Updates`), and the menu's Update line installs it through Android's installer, which asks
+  first. It downloads the release's `klangbild.apk`, so a release must have one.
 - The "Tidy up" workflow, run manually, keeps the newest calendar releases (ten by default),
   deletes the older ones with their tags, and deletes branches merged into main. The old 6.3.0 and
   6.4.0 releases stay.

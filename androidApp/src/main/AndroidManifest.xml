@@ -7,6 +7,8 @@
     <!-- This TV as a speaker: a foreground service that plays media. Both are normal permissions. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- A new version from the menu's Update line, which Android's installer asks about first. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- No signature permission of the app's own: after the key rotation an update that declares
          one again is refused (the original key has no permission capability in the lineage).
@@ -60,6 +62,17 @@
                 <data android:scheme="klangbild" />
             </intent-filter>
         </activity>
+
+        <!-- Hands a new version to Android's installer (see AndroidPlatform.install). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/updates" />
+        </provider>
 
         <!-- This TV as a speaker in Music Assistant, while the setting is on (see SpeakerService). -->
         <service

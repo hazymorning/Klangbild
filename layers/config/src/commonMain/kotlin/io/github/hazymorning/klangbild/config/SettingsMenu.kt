@@ -7,6 +7,8 @@ import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerLink
+import io.github.hazymorning.klangbild.domain.UpdateInfo
+import io.github.hazymorning.klangbild.domain.UpdateState
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Plurals
 import io.github.hazymorning.klangbild.text.StringId
@@ -55,12 +57,13 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
     PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
+    UPDATE(MenuSection.SYSTEM, Strings.entryUpdate),
 }
 
 /**
  * What the menu needs to know besides the settings: the connections and the wall as they are
  * now, the sleep timer ([sleep], pausing at [sleepAt]), what kind of thing plays, the language
- * chosen, and how this TV stands as a speaker ([speaker]).
+ * chosen, how this TV stands as a speaker ([speaker]), and Klangbild's own new versions.
  */
 data class MenuContext(
     val link: LinkState? = null,
@@ -73,6 +76,7 @@ data class MenuContext(
     val speaker: SpeakerLink = SpeakerLink.OFF,
     /** The name of the speaker followed, once Home Assistant has told it. */
     val speakerName: String? = null,
+    val update: UpdateInfo = UpdateInfo(),
 )
 
 /**
@@ -111,8 +115,11 @@ object SettingsMenu {
     /** The lines of [section]'s settings. */
     fun rows(s: Settings, ctx: MenuContext, t: Texts, section: MenuSection): List<MenuRow> = entriesOf(section).map { row(it, s, ctx, t) }
 
-    /** The menu's first level: a line for each group, saying what is in it. */
-    fun groups(t: Texts): List<MenuRow> = sections.map { MenuRow(null, t[it.title], "", t[it.about], section = it) }
+    /** The menu's first level: a line for each group, saying what is in it; System tells of a new version. */
+    fun groups(ctx: MenuContext, t: Texts): List<MenuRow> = sections.map {
+        val value = if (it == MenuSection.SYSTEM && ctx.update.notice) t[Strings.updateNotice] else ""
+        MenuRow(null, t[it.title], value, t[it.about], section = it)
+    }
 
     private fun row(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts) =
         MenuRow(e, label(e, t), value(e, s, ctx, t), description(e, s, ctx, t), level(e, s), dimmed = needsSetup(e, s))
@@ -246,6 +253,7 @@ object SettingsMenu {
         }
         MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.tvSpeaker, t)
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
+        MenuEntry.UPDATE -> updateValue(ctx.update, t)
     }
 
     fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
@@ -355,6 +363,34 @@ object SettingsMenu {
         ]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
         MenuEntry.LANGUAGE -> t[Strings.aboutLanguage]
+        MenuEntry.UPDATE -> updateAbout(ctx.update, t)
+    }
+
+    /** Where Klangbild stands with a new version, in a word or two. */
+    private fun updateValue(u: UpdateInfo, t: Texts): String {
+        val available = u.available
+        return when {
+            u.installed == null -> u.name.ifEmpty { t[Strings.updateUnknown] }
+            u.state == UpdateState.DOWNLOADING -> t[Strings.updateDownloading]
+            u.state == UpdateState.FAILED -> t[Strings.updateFailed]
+            available != null -> t.format(Strings.updateVersion, available.removePrefix("v"))
+            u.state == UpdateState.CHECKING -> t[Strings.updateChecking]
+            u.latest == null -> t[Strings.updateUnknown]
+            else -> t[Strings.updateCurrent]
+        }
+    }
+
+    /** What the Update line does now. */
+    private fun updateAbout(u: UpdateInfo, t: Texts): String {
+        val available = u.available
+        return when {
+            u.installed == null -> t[Strings.aboutUpdateOwn]
+            u.state == UpdateState.DOWNLOADING -> t[Strings.aboutUpdateDownloading]
+            u.state == UpdateState.FAILED -> t[Strings.aboutUpdateFailed]
+            available != null -> t.format(if (u.notice) Strings.aboutUpdateAvailable else Strings.aboutUpdateHidden, available.removePrefix("v"))
+            u.latest == null -> t[Strings.aboutUpdateUnknown]
+            else -> t.format(Strings.aboutUpdateCurrent, u.name)
+        }
     }
 
     /**
@@ -407,8 +443,8 @@ object SettingsMenu {
     /**
      * The settings after one step of [e]: [direction] -1 (left) or +1 (right, OK). Left and
      * right stop at the ends of a scale, OK ([wrap]) goes round. Switches simply flip. Null for
-     * the lines that are no setting (the connections, the sleep timer, the language) and for the
-     * lines that need something set up first ([opensSetup]: OK sets it up).
+     * the lines that are no setting (the connections, the sleep timer, the language, the update)
+     * and for the lines that need something set up first ([opensSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
@@ -448,7 +484,7 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> s.copy(
             sleepAction = if (s.sleepAction == SleepAction.CLOSE) SleepAction.RELEASE else SleepAction.CLOSE,
         )
-        MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE -> null
+        MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
     }
 
     /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */
