@@ -128,7 +128,7 @@ class CenteringTest {
     }
 
     @Test
-    fun theQueuesSpacesGrowFromARowToTheListAndTheListEndsWithTheCover() {
+    fun theQueuesSongStandsInTheMiddleItsSpacesGrowAndTheListEndsWithTheCover() {
         // Rows in Latin letters, so that each of a row's two lines has ink of its own right of the small covers.
         val coming = Catalog.cairoNights + Catalog.northernHours
         for (t in listOf(Fixtures.texts, TestTexts.english())) for (bar in listOf(true, false)) {
@@ -149,7 +149,13 @@ class CenteringTest {
             val meta = lines[2]
             val last = lines[song - 1]
             val rows = lines.drop(song).chunked(2)
-            assertThat(rows.size, name = "$case: rows").isEqualTo(if (bar) 4 else 5)
+            assertThat(rows.size, name = "$case: rows").isEqualTo(if (bar) 3 else 4)
+            // The song in the middle between the status line and the list: from the status line's
+            // baseline to the title's top as far as from the song's last line to the first row (with
+            // the bar its times, figures whose ink ends on the baseline: the bar of a four ends above).
+            val above = title.inkTop - status.baseline
+            val below = rows[0][0].inkTop - (if (bar) last.inkBottom else last.baseline)
+            assertThat(abs(above - below), name = "$case: above the song against below it").isLessThanOrEqualTo(3)
             // The spaces grow: within a row, between two rows, from the song to the list (more
             // than above the bar, which belongs to the song).
             val within = rows.maxOf { (words, artists) -> artists.inkTop - words.baseline }
