@@ -134,9 +134,9 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             entry == MenuEntry.SLEEP_TIMER -> sleep.step(direction, wrap)
             // The language is kept by the system (or, before API 33, by the app on its own).
             entry == MenuEntry.LANGUAGE -> host.language = SettingsMenu.stepLanguage(host.language, direction, wrap)
-            // OK installs a new version (or asks for one) while Klangbild asks for them at all; left
-            // and right turn that on and off, as OK does while it is off. A held OK does it once.
-            entry == MenuEntry.UPDATE && wrap && s.updateCheck -> if (!repeat) host.update()
+            // OK installs a new version or asks for one, also while Klangbild doesn't look for them
+            // by itself. A held OK does it once.
+            entry == MenuEntry.UPDATE -> if (wrap && !repeat) host.update()
             else -> SettingsMenu.step(entry, s, direction, wrap)?.let(host::applySettings)
         }
     }

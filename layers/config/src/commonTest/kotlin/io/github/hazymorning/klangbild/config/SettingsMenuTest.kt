@@ -102,7 +102,7 @@ class SettingsMenuTest {
         )
         for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(tvSpeaker = true), withLights, withValues)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
-            // (the system keeps it), and the lights and the values until they are set up.
+            // (the system keeps it), the update, and the lights and the values until they are set up.
             val needs = setOfNotNull(
                 MenuEntry.BRIGHTNESS.takeIf { !s.roomLights.isSet },
                 MenuEntry.OFF_LIGHTS.takeIf { !s.roomLights.isSet },
@@ -111,7 +111,7 @@ class SettingsMenuTest {
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
-            val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE) + needs
+            val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE) + needs
             for (ctx in contexts) {
                 for (row in SettingsMenu.sections.flatMap { SettingsMenu.rows(s, ctx, de, it) }) {
                     val entry = row.entry!!
@@ -176,11 +176,12 @@ class SettingsMenuTest {
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
             MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
+            MenuEntry.UPDATE_CHECK,
         )
     }
 
     @Test
-    fun `the update line says what is known of a new version, the system group tells of one, and asking can be turned off`() {
+    fun `the update line says what is known of a new version, the system group tells of one, and looking for them is a switch`() {
         fun ctx(latest: String?, state: UpdateState = UpdateState.IDLE, name: String = "2026.10.5") =
             MenuContext(update = UpdateInfo(name, latest, state))
         fun value(c: MenuContext) = SettingsMenu.value(MenuEntry.UPDATE, configured, c, de)
@@ -196,14 +197,20 @@ class SettingsMenuTest {
         fun system(c: MenuContext, s: Settings = configured) = SettingsMenu.groups(s, c, de).single { it.section == MenuSection.SYSTEM }.value
         assertThat(system(ctx("v2026.11.0"))).isEqualTo("Neue Version")
         assertThat(system(ctx("v2026.10.5"))).isEqualTo("")
-        // Turned off, Klangbild asks for nothing and tells of nothing; left and right switch it.
+        // Turned off, Klangbild looks for nothing by itself and the group tells of nothing; the
+        // Update line still says what is known, and only OK acts on it.
         assertThat(system(ctx("v2026.11.0"), off)).isEqualTo("")
-        assertThat(SettingsMenu.value(MenuEntry.UPDATE, off, ctx("v2026.11.0"), de)).isEqualTo("Aus")
-        assertThat(SettingsMenu.step(MenuEntry.UPDATE, configured, -1)).isEqualTo(off)
-        assertThat(SettingsMenu.step(MenuEntry.UPDATE, off, +1, wrap = true)).isEqualTo(configured)
-        // The explanation says what the keys do now.
-        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("schaltet die Suche nach neuen Versionen aus")
-        assertThat(SettingsMenu.description(MenuEntry.UPDATE, off, ctx("v2026.11.0"), de)).contains("schaltet das ein")
+        assertThat(SettingsMenu.value(MenuEntry.UPDATE, off, ctx(null), de)).isEqualTo("Nicht geprüft")
+        assertThat(SettingsMenu.step(MenuEntry.UPDATE, configured, -1)).isNull()
+        // Check for updates is a switch like the others.
+        assertThat(SettingsMenu.value(MenuEntry.UPDATE_CHECK, configured, ctx(null), de)).isEqualTo("An")
+        assertThat(SettingsMenu.value(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).isEqualTo("Aus")
+        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, configured, -1)).isEqualTo(off)
+        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, off, +1, wrap = true)).isEqualTo(configured)
+        // The explanations say what each line does now.
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("OK\u00A0lädt es")
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, configured, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).contains("OK\u00A0bei Update fragt trotzdem")
     }
 
     @Test

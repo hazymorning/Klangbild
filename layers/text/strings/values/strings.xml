@@ -59,6 +59,7 @@
     <string name="entry_language">Language</string>
     <string name="entry_speaker">Speaker</string>
     <string name="entry_update">Update</string>
+    <string name="entry_update_check">Check for updates</string>
     <string name="update_notice">New version</string>
     <string name="update_current">Up to date</string>
     <string name="update_checking">Checking</string>
@@ -201,10 +202,11 @@
     <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
     <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
-    <string name="about_update_current">Klangbild %1$s is the newest version. When Klangbild starts, it asks GitHub for a new one at most once a day. OK asks now, left or right turns this off.</string>
-    <string name="about_update_unknown">When Klangbild starts, it asks GitHub for a new version at most once a day. No answer has come yet. OK asks now, left or right turns this off.</string>
-    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right turns looking for new versions off.</string>
-    <string name="about_update_off">Klangbild doesn’t look for new versions. Left or right turns this on, and then it asks GitHub at most once a day when it starts.</string>
+    <string name="about_update_current">Klangbild %1$s is the newest version. OK asks GitHub again.</string>
+    <string name="about_update_unknown">It isn’t known yet whether there’s a new version. OK asks GitHub now.</string>
+    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it.</string>
+    <string name="about_update_check_on">When Klangbild starts, it asks GitHub for a new version at most once a day.</string>
+    <string name="about_update_check_off">Klangbild doesn’t look for new versions by itself. OK on Update still asks GitHub.</string>
     <string name="about_update_downloading">The new version is downloading. Then the TV asks whether to install it.</string>
     <string name="about_update_failed">The new version couldn’t be downloaded. OK tries again.</string>
     <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>

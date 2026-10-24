@@ -201,9 +201,9 @@ From the bottom up:
   checking it and the README for em dashes and emoji, and, when asked, making a draft with a
   manual run.
 - When it starts, the app asks GitHub for the newest release (no beta or draft) at most once a
-  day (`Updates`), unless the menu's Update line is turned off, and OK there installs it through
-  Android's installer, which asks first. It downloads the release's `klangbild.apk`, so a release
-  must have one.
+  day (`Updates`), unless Check for updates is off in the menu, and OK on Update installs it
+  through Android's installer, which asks first. It downloads the release's `klangbild.apk`, so a
+  release must have one.
 - The "Tidy up" workflow, run manually, keeps the newest calendar releases (ten by default),
   deletes the older ones with their tags, and deletes branches merged into main. The old 6.3.0 and
   6.4.0 releases stay.

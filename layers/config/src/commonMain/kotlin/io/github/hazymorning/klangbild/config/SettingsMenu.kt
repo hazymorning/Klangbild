@@ -58,6 +58,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
     UPDATE(MenuSection.SYSTEM, Strings.entryUpdate),
+    UPDATE_CHECK(MenuSection.SYSTEM, Strings.entryUpdateCheck),
 }
 
 /**
@@ -253,7 +254,8 @@ object SettingsMenu {
         }
         MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.tvSpeaker, t)
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
-        MenuEntry.UPDATE -> if (s.updateCheck) updateValue(ctx.update, t) else t[Strings.off]
+        MenuEntry.UPDATE -> updateValue(ctx.update, t)
+        MenuEntry.UPDATE_CHECK -> onOff(s.updateCheck, t)
     }
 
     fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
@@ -363,7 +365,14 @@ object SettingsMenu {
         ]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
         MenuEntry.LANGUAGE -> t[Strings.aboutLanguage]
-        MenuEntry.UPDATE -> if (s.updateCheck) updateAbout(ctx.update, t) else t[Strings.aboutUpdateOff]
+        MenuEntry.UPDATE -> updateAbout(ctx.update, t)
+        MenuEntry.UPDATE_CHECK -> t[
+            when {
+                ctx.update.installed == null -> Strings.aboutUpdateOwn
+                s.updateCheck -> Strings.aboutUpdateCheckOn
+                else -> Strings.aboutUpdateCheckOff
+            },
+        ]
     }
 
     /** Where Klangbild stands with a new version, in a word or two. */
@@ -484,9 +493,9 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> s.copy(
             sleepAction = if (s.sleepAction == SleepAction.CLOSE) SleepAction.RELEASE else SleepAction.CLOSE,
         )
-        // Left and right turn asking for new versions on and off; OK installs one (MenuControl).
-        MenuEntry.UPDATE -> s.copy(updateCheck = !s.updateCheck)
-        MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE -> null
+        MenuEntry.UPDATE_CHECK -> s.copy(updateCheck = !s.updateCheck)
+        // OK on Update installs a new version or asks for one (MenuControl).
+        MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
     }
 
     /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */

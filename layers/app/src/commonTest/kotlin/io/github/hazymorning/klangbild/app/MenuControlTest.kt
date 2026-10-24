@@ -183,30 +183,39 @@ class MenuControlTest {
     }
 
     @Test
-    fun `the system group tells of a new version, OK on its line installs it, left or right turn asking off`() {
+    fun `the system group tells of a new version, OK on its line installs it, and a switch below turns looking off`() {
         menu.open()
         assertThat(state().rows.last().value).isEqualTo("New version")
         repeat(6) { menu.move(+1) }
         menu.change(+1, wrap = true)
         assertThat(state().section).isEqualTo(MenuSection.SYSTEM)
-        repeat(10) { menu.move(+1) }
+        repeat(5) { menu.move(+1) }
         assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
-        // OK installs it, a held OK only once.
+        // OK installs it, a held OK only once; left and right change nothing there.
         menu.change(+1, wrap = true)
         menu.change(+1, wrap = true, repeat = true)
+        menu.change(-1, wrap = false)
         assertThat(updates).isEqualTo(1)
-        // Left turns asking off, and the notice goes; OK then turns it on again.
+        assertThat(settings.updateCheck).isTrue()
+        // Check for updates turns looking off, and the notice goes.
+        menu.move(+1)
+        assertThat(state().rows[state().cursor].label).isEqualTo("Check for updates")
+        assertThat(state().rows[state().cursor].value).isEqualTo("On")
         menu.change(-1, wrap = false)
         assertThat(settings.updateCheck).isFalse()
         assertThat(state().rows[state().cursor].value).isEqualTo("Off")
         menu.back()
         assertThat(state().rows.last().value).isEqualTo("")
+        // Off, OK on Update still asks; OK on the switch turns it on again.
         menu.change(+1, wrap = true)
         repeat(10) { menu.move(+1) }
+        menu.move(-1)
+        menu.change(+1, wrap = true)
+        assertThat(updates).isEqualTo(2)
+        menu.move(+1)
         menu.change(+1, wrap = true)
         assertThat(settings.updateCheck).isTrue()
-        assertThat(updates).isEqualTo(1)
         assertThat(applied).isEqualTo(2)
     }
 }
