@@ -24,6 +24,7 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
+import io.github.hazymorning.klangbild.ui.stage.ROW_COVER_CORNER
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -144,18 +145,20 @@ class CenteringTest {
             }
             // Right of the small covers: the song's lines (the status line, the title, artist and
             // album, the bar and its times), then each row's title and artists.
-            val lines = ink.lines(((layout.columnLeft + 36f) * 2).toInt(), 1920)
+            val lines = ink.lines(((layout.columnLeft + layout.rowCover + 6f) * 2).toInt(), 1920)
             val song = if (bar) 5 else 3
             val meta = lines[2]
             val last = lines[song - 1]
             val rows = lines.drop(song).chunked(2)
             assertThat(rows.size, name = "$case: rows").isEqualTo(if (bar) 3 else 4)
             // The song in the middle between the status line and the list: from the status line's
-            // baseline to the title's top as far as from the song's last line to the first row (with
-            // the bar its times, figures whose ink ends on the baseline: the bar of a four ends above).
+            // baseline to the title's top as far as from the song's last line to the first small
+            // cover (with the bar its times, figures whose ink ends on the baseline: the bar of a four
+            // ends above). A small cover stands a corner radius above its title's cap height.
+            fun coverTop(row: List<Line>) = row[0].baseline - 17f * Fonts.CAP_HEIGHT * 2f - ROW_COVER_CORNER * 2f
             val above = title.inkTop - status.baseline
-            val below = rows[0][0].inkTop - (if (bar) last.inkBottom else last.baseline)
-            assertThat(abs(above - below), name = "$case: above the song against below it").isLessThanOrEqualTo(3)
+            val below = coverTop(rows[0]) - (if (bar) last.inkBottom else last.baseline)
+            assertThat(abs(above - below), name = "$case: above the song against below it").isLessThanOrEqualTo(3f)
             // The spaces grow: within a row, between two rows, from the song to the list (more
             // than above the bar, which belongs to the song).
             val within = rows.maxOf { (words, artists) -> artists.inkTop - words.baseline }
@@ -167,9 +170,11 @@ class CenteringTest {
             // One step from row to row.
             val steps = rows.zipWithNext { a, b -> b[0].baseline - a[0].baseline }
             assertThat(steps.max() - steps.min(), name = "$case: the rows' steps").isLessThanOrEqualTo(2)
-            // The list ends where the cover does: the last row's descenders on the column's foot.
+            // The list ends where the cover's column does: the last small cover, a corner radius
+            // below its artists' descenders, on the column's foot.
             val foot = layout.footerBottom * 2f
-            assertThat(abs(rows.last()[1].baseline + 15f * Fonts.DESCENT * 2f - foot), name = "$case: the list's end against the column's foot").isLessThanOrEqualTo(3f)
+            val end = rows.last()[1].baseline + 15f * Fonts.DESCENT * 2f + ROW_COVER_CORNER * 2f
+            assertThat(abs(end - foot), name = "$case: the list's end against the column's foot").isLessThanOrEqualTo(3f)
             // Nothing of the list reaches past the column's foot, or beyond its right edge.
             assertThat(ink.box(left, foot.toInt() + 1, 1920, 1080, threshold = 24).right, name = "$case: below the column's foot").isEqualTo(-1)
             val right = ((layout.columnLeft + layout.columnWidth) * 2).toInt()

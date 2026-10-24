@@ -157,7 +157,7 @@ internal class QueuePlan(
     val rowsTop: Float,
     /** The room the bar takes above the rows, as it comes and goes. */
     val room: SlotRoom,
-    /** Where the column ends (px), and how far a row's artists hang below its small cover. */
+    /** Where the column ends (px), and how far a row's artists hang below their baseline. */
     val foot: Float,
     val rowDescent: Float,
     val appearance: Appearance,
@@ -315,8 +315,8 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val slotTop = y + BAR_GAP * d
 
     // The rows under the song, lower by the room the bar takes: as many whole ones as fit with the
-    // room it takes at rest, every one as tall as its small cover, its artists' descenders within
-    // the column. The song stands in the middle between the status line and the first row.
+    // room it takes at rest, every one as tall as its small cover, the last one ending on the
+    // column's foot. The song stands in the middle between the status line and the first row.
     val statusBaseline = (layout.statusTop * d).roundToInt() + (with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
@@ -325,7 +325,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val rowArtists = styles.label.merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
     val titleCap = cap(rowTitle)
     val descent = with(density) { rowArtists.fontSize.toPx() } * Fonts.DESCENT
-    val spacing = rowSpacing(foot - descent - statusBaseline - (y + rest), coverPx.toFloat(), d)
+    val spacing = rowSpacing(foot - statusBaseline - (y + rest), coverPx.toFloat(), d)
     val songTop = statusBaseline + spacing.part
     val rowsTop = songTop + y + spacing.part
     val rows = ArrayList<PlannedRow>(spacing.count)
@@ -376,16 +376,16 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
 }
 
 /**
- * How many rows the list shows and how far apart (px, from one's artists' baseline to the next
- * one's cap height), and the space above and below the song ([part]: from the status line's
- * baseline to its first cap height, and from its last baseline to the first row's cap height).
+ * How many rows the list shows and how far apart (px, from one small cover to the next), and the
+ * space above and below the song ([part]: from the status line's baseline to its first cap height,
+ * and from its last baseline to the first small cover).
  */
 private class RowSpacing(val count: Int, val gap: Float, val part: Float)
 
 /**
- * The rows for [room] px from the status line's baseline to the last row's baseline, less the
- * song's own height (the bar's room at rest counted), each row [row] px from its cap height to its
- * baseline: as many whole rows as fit [ROW_GAP_MIN] apart with the song [PART_SHARE] times as far
+ * The rows for [room] px from the status line's baseline to the column's foot, less the song's own
+ * height (the bar's room at rest counted), each row [row] px tall, its small cover's side: as many
+ * whole rows as fit [ROW_GAP_MIN] apart with the song [PART_SHARE] times as far
  * from the status line and from the first row, the spaces grown alike up to [ROW_GAP_MAX] between
  * rows, and what is left shared above and below the song. The count follows the room, not the
  * songs to come, so the song keeps its place as the queue runs short.
@@ -649,7 +649,7 @@ internal fun gliding(before: List<String>, now: List<String>): Set<String> {
  * one that comes into room comes in the last part, once its place is there.
  */
 private fun QueuePlan.shown(row: PlannedRow): Float {
-    fun fits(room: Float) = row.top + room + row.coverPx + rowDescent <= foot + 0.5f
+    fun fits(room: Float) = row.top + room + row.coverPx <= foot + 0.5f
     val now = fits(room.target)
     val was = fits(room.start)
     return when {
@@ -668,10 +668,12 @@ private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha:
     if (alpha <= 0.003f) return
     val words = alpha * textDim
     val x = plan.columnLeft
-    val baseline = y + plan.rowCap
+    // The two lines stand within the small cover's straight edge, a corner radius in from its top and bottom.
+    val inset = ROW_COVER_CORNER * density
+    val baseline = y + inset + plan.rowCap
     drawCover(plan, row, y, coverAlpha, filter)
     drawText(row.title, topLeft = Offset(x + plan.markWidth, baseline - row.title.firstBaseline), alpha = words)
-    row.artists?.let { drawText(it, topLeft = Offset(x + plan.markWidth, y + row.coverPx - it.firstBaseline), alpha = words) }
+    row.artists?.let { drawText(it, topLeft = Offset(x + plan.markWidth, y + row.coverPx - inset - plan.rowDescent - it.firstBaseline), alpha = words) }
     row.time?.let { drawText(it, topLeft = Offset(x + plan.columnWidth - it.size.width, baseline - it.firstBaseline), alpha = words) }
 }
 
@@ -700,20 +702,20 @@ private const val META_GAP = 12f
 private const val BAR_GAP = 20f
 
 /**
- * Between two rows, from one's artists' baseline to the next one's cap height (dp): at least this,
- * well over twice the room between a row's two lines...
+ * Between two rows' small covers (dp): at least this, so from one's artists' baseline to the next
+ * one's cap height stands well over twice the room between a row's two lines...
  */
-private const val ROW_GAP_MIN = 20f
+private const val ROW_GAP_MIN = 12f
 
 /** ...and at most this, so the rows still read as one list. */
-private const val ROW_GAP_MAX = 30f
+private const val ROW_GAP_MAX = 22f
 
 /**
- * Above the song (from the status line) and below it (from its bar's times to the first row), as
- * a share of the space between two rows: the widest spaces in the column, well over the one above
- * the bar, so the bar belongs to the song.
+ * Above the song (from the status line) and below it (from its bar's times to the first small
+ * cover), as a share of the space between two rows: the widest spaces in the column, well over
+ * the one above the bar, so the bar belongs to the song.
  */
-private const val PART_SHARE = 1.8f
+private const val PART_SHARE = 3f
 
 /** From a row's small cover to its title (dp). */
 private const val MARK_GAP = 12f
@@ -722,4 +724,4 @@ private const val MARK_GAP = 12f
 private const val TIME_GAP = 16f
 
 /** A row's small cover has its corners rounded a little (dp). */
-private const val ROW_COVER_CORNER = 2.5f
+internal const val ROW_COVER_CORNER = 2.5f
