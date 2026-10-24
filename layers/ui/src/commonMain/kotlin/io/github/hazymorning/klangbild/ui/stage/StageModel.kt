@@ -8,7 +8,6 @@ import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.render.ArtworkScene
-import io.github.hazymorning.klangbild.text.Plurals
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.datetime.TimeZone
@@ -31,6 +30,8 @@ class StageModel(
     val year: Int? = null,
     /** The progress bar is shown (setting, or a key was just pressed). */
     val progress: Boolean = true,
+    /** The progress bar stays (the setting); else [progress] shows it only for a moment after a key. */
+    val barStays: Boolean = true,
     /**
      * A line in the progress bar's place: the station of a radio without duration, or a
      * notice ("Reconnecting…"). Wins over the bar.
@@ -53,10 +54,7 @@ class StageModel(
      * and the progress bar shows only for a moment after a key ([progress]).
      */
     val lyrics: Lyrics? = null,
-    /**
-     * The queue as a list beside the cover, while it shows (and no words take the column): then
-     * the song stands at the top of the column and [next] says how much follows ("11 tracks · 48 min").
-     */
+    /** The queue as a list beside the cover, while it shows (and no words take the column): then the song stands at the top of the column. */
     val queue: QueueModel? = null,
 )
 
@@ -110,11 +108,6 @@ object StageTexts {
     /** "Spiegel im Spiegel · Arvo Pärt". */
     fun next(track: TrackInfo?, t: Texts): String? =
         track?.let { TrackText.from(it, t[Strings.artistsOthers]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
-
-    /** "11 tracks · 48 min": how many tracks follow and how long they play, as far as known; null when neither is. */
-    fun queue(count: Int?, durationMs: Long?, t: Texts): String? =
-        listOfNotNull(count?.let { t.plural(Plurals.queueTracks, it, t.number(it.toDouble(), 0)) }, durationMs?.let { TimeText.length(it, t) })
-            .joinToString(TimeText.SEPARATOR).ifEmpty { null }
 
     /** "Spiegel im Spiegel". */
     fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[Strings.artistsOthers]).title }

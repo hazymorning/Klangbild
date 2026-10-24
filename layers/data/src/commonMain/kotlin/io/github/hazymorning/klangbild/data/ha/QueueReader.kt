@@ -248,18 +248,6 @@ internal class QueueReader(
     }
 
     /**
-     * How many items follow the song [key] in the queue: as Music Assistant itself last said while
-     * it plays (the queue may have grown or shrunk since it started), else as Home Assistant's
-     * answer ([q]) has it. Null when neither tells.
-     */
-    fun remainingOf(q: QueueInfo?, key: String?): Int? {
-        val mine = maNext?.takeIf { q != null && it.key == key }?.basis
-        val index = if (mine != null) mine.first else q?.currentIndex
-        val total = if (mine != null) mine.third else q?.items
-        return if (index != null && total != null) (total - index - 1).coerceAtLeast(0) else null
-    }
-
-    /**
      * The song Music Assistant's queue announced as next, when [track] is it: described before
      * its own read (music only; a book's or an episode's chapters come with that read).
      */

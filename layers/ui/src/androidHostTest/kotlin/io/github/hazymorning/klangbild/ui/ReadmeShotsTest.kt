@@ -142,7 +142,7 @@ class ReadmeShotsTest {
             TrackInfo("Blue Hour", listOf("Northern Light Collective"), "Tides", 2023, 247_000, artworkUrl = cover(SyntheticCover.SALT_WATER)),
         )
         val scene = Fixtures.scene(morningFog)
-        val list = Fixtures.queueList(coming, remaining = coming.size)
+        val list = Fixtures.queueList(coming)
         shot("queue-list") {
             Stage(Fixtures.queueModel(morningFog, list, positionMs = 88_000L, clock = en.clock(Fixtures.at(21, 59), Fixtures.zone), group = "Living room", scene = scene, t = en))
         }

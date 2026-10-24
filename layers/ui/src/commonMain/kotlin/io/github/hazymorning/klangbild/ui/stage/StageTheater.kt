@@ -169,13 +169,12 @@ fun StageTheater(
     // The text: the old block leaves first (from where it stood), the new lines follow one after
     // another; a new look of the same song cross-fades in place. On the other wall the new lines
     // come up with the wall (their inks would otherwise stand at once, pale on the old paper).
-    // The queue's list changing beneath the same song: only "Up next" cross-fades, if its words change.
-    val newHeading = prevModel != null && prevModel.next != curModel.next
+    // The queue's list changing beneath the same song leaves the text as it stands.
     val textIn: (TextLine) -> Float = { line ->
         when {
             began != seen -> text.before(line)
             prev != null && kind == Change.WALL -> text.level(line) * p(0, total, Motion.Sine)
-            prev != null && kind == Change.ROWS -> if (line == TextLine.NEXT && newHeading) p(0, total) else 1f
+            prev != null && kind == Change.ROWS -> 1f
             else -> text.level(line)
         }
     }
@@ -190,7 +189,7 @@ fun StageTheater(
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
     val textOut: (TextLine) -> Float = { line ->
         when (kind) {
-            Change.ROWS -> if (line == TextLine.NEXT && newHeading) 1f - p(0, total) else 0f
+            Change.ROWS -> 0f
             else -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS))
         }
     }
@@ -198,7 +197,7 @@ fun StageTheater(
     // The queue's rows are the queue, not the song: they come the whole way also when another song
     // hurries a change (the skipped song's own lines stay down), so every change finds them whole
     // and moves them on from there. They glide when the list goes on from the one before (a new
-    // song moves it up, the queue changed), else they come and go with the text, as "Up next" does.
+    // song moves it up, the queue changed), else they come and go with the text, as its last line.
     val rowsIn: () -> Float = {
         when {
             began != seen -> 1f

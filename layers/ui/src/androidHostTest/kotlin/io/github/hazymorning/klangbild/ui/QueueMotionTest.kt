@@ -84,13 +84,13 @@ class QueueMotionTest {
         frames("swap", before, 100, 10, mapOf(1 to before.copy(queue = Fixtures.queueList(swapped, screen = mdpi))))
     }
 
-    /** The bar hidden by setting comes for a moment (a key): "Up next" and the rows make room as it fades in, the last row goes first. */
+    /** The bar hidden by setting comes for a moment (a key): the rows make room as it fades in, the last row goes first. */
     @Test
     fun theBarMakesRoomAsItComes() {
         var progress by mutableStateOf(false)
         val stage = at(0)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Fixtures.QueueTheater(stage, progress = progress) }
+        compose.setContent { Fixtures.QueueTheater(stage, progress = progress, barStays = false) }
         compose.mainClock.advanceTimeBy(100)
         compose.onRoot().captureRoboImage("build/screenshots/queue_motion/bar_00.png")
         progress = true

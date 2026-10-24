@@ -101,15 +101,13 @@ data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: 
 /** The queue as a list beside the cover: what comes next, and the small covers made so far, by [UpNextRow.id]. */
 data class QueueList(val upNext: UpNext, val covers: Map<String, ImageBitmap> = emptyMap()) {
     /**
-     * The list once its first row, [track], plays: the rows after it, one fewer to come and its
-     * length less. Null unless that is the song, or when nothing would be left.
+     * The list once its first row, [track], plays: the rows after it. Null unless that is the
+     * song, or when nothing would be left.
      */
     fun movedUp(track: TrackInfo): QueueList? {
         val first = upNext.rows.firstOrNull()?.takeIf { TrackMatch.sameTitle(it.track.title, track.title) } ?: return null
         val rows = upNext.rows.drop(1).ifEmpty { return null }
-        val count = upNext.count?.minus(1)
-        val durationMs = upNext.durationMs?.let { all -> first.track.durationMs?.let { all - it } }
-        return QueueList(UpNext(rows, count, durationMs), covers - first.id)
+        return QueueList(UpNext(rows), covers - first.id)
     }
 }
 
@@ -951,7 +949,7 @@ class NowPlayingController(
             val before = shown?.queue ?: return null
             return if (shown.track.key == track.key) before else before.movedUp(track)
         }
-        val upNext = UpNext.of(src.coming, src.remaining) ?: return null
+        val upNext = UpNext.of(src.coming) ?: return null
         return QueueList(upNext, upNext.rows.mapNotNull { row -> thumbs.ready(row.track)?.let { row.id to it } }.toMap())
     }
 

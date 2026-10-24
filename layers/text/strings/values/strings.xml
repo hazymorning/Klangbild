@@ -256,14 +256,6 @@
     <string name="volume_muted">muted</string>
     <string name="stage_link_down">Reconnecting…</string>
     <string name="stage_next">Up next</string>
-    <!-- The queue's list beside the cover: how many tracks follow, and how long they play ("11 tracks · 48 min") -->
-    <plurals name="queue_tracks">
-        <item quantity="one">%s track</item>
-        <item quantity="other">%s tracks</item>
-    </plurals>
-    <string name="queue_minutes">%1$s min</string>
-    <string name="queue_hours">%1$s h</string>
-    <string name="queue_hours_minutes">%1$s h %2$s min</string>
     <string name="hint_down_key">Arrow down</string>
     <string name="hint_down">opens the quick settings</string>
     <string name="chapter_number">Chapter %d</string>
