@@ -1,22 +1,13 @@
 package io.github.hazymorning.klangbild.ui
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
-import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.domain.Catalog
-import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.domain.Screen
-import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightColor
 import io.github.hazymorning.klangbild.lights.LightColors
@@ -24,7 +15,6 @@ import io.github.hazymorning.klangbild.lights.LightSlot
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
@@ -34,7 +24,6 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
-import java.time.ZonedDateTime
 import java.util.TimeZone
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -105,8 +94,8 @@ class ReadmeShotsTest {
     }
 
     /**
-     * The queue's three ways and the landscape, one after another on the same evening: first Salt
-     * Water with the queue off, on its own colors (the background "Cover colors").
+     * The queue's three ways, one after another on the same evening: first Salt Water with the
+     * queue off, on its own colors (the background "Cover colors").
      */
     @Test
     fun queueOff() {
@@ -145,22 +134,6 @@ class ReadmeShotsTest {
         val list = Fixtures.queueList(coming, remaining = coming.size)
         shot("queue-list") {
             Stage(Fixtures.queueModel(morningFog, list, positionMs = 88_000L, clock = en.clock(Fixtures.at(21, 59), Fixtures.zone), group = "Living room", scene = scene, t = en))
-        }
-    }
-
-    /** The landscape on a deep winter night: a thin moon, a sky full of stars, the campfire on the snow; the mini player bottom left. */
-    @Test
-    fun landscapeShot() {
-        val at = ZonedDateTime.of(2026, 1, 22, 19, 15, 0, 0, Fixtures.zone.toJavaZoneId()).toInstant().toEpochMilli()
-        val ui = UiState(
-            screen = Screen.Stage(polarNight, PlayerStatus.PAUSED, null),
-            stage = Fixtures.stage(polarNight),
-            source = SourceState(LinkState.CONNECTED, place = 52.52 to 13.40),
-            landscape = Fixtures.landscape(polarNight, PlayerStatus.PAUSED, MiniPlayer.LEFT, "clear-night"),
-        )
-        val landscapeClock = LandscapeClock(now = { at })
-        shot("landscape") {
-            LandscapeScreen(ui, ui.landscape!!, landscapeClock, positionOf = { 94_000L }, now = { at }, modifier = Modifier.fillMaxSize())
         }
     }
 

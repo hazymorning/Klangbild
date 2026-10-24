@@ -134,10 +134,6 @@ class OptionsTest {
 
     @Test fun menuSleep() = shot("menu_sleep") { MenuScreen(menu(MenuEntry.SLEEP_AFTER)) }
 
-    @Test fun menuLandscape() = shot("menu_landscape") {
-        MenuScreen(menu(MenuEntry.LANDSCAPE_PLAYING, configured.copy(landscapePlayingSeconds = 1800)))
-    }
-
     /** The list glides through the light when the cursor moves down by one line, then by three. */
     @Test fun menuGlide() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))

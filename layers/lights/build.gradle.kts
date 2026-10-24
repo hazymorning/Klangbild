@@ -10,7 +10,6 @@ kotlin {
             implementation(projects.config)
             implementation(projects.data)
             implementation(projects.domain)
-            implementation(projects.landscape)
             implementation(projects.math)
             implementation(projects.render)
             // The lights run in the scope they are given.

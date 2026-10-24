@@ -100,10 +100,6 @@ class SettingsStoreTest {
             roomLightBrightness = RoomLightBrightness.P90,
             lightsOnlyOn = true,
             spokenSkip = false,
-            landscapePauseSeconds = 600,
-            landscapePlayingSeconds = 1_800,
-            miniPlayer = MiniPlayer.RIGHT,
-            weatherEntity = "weather.home",
             quickActions = listOf(QuickAction("Ungroup", "script.ungroup", condition = Condition("media_player.kitchen", "group_members", Condition.Test.ABOVE, "1"))),
             ownValues = listOf(OwnValue("Outside", "sensor.outside_temperature")),
             quickSeen = true,
@@ -170,6 +166,21 @@ class SettingsStoreTest {
                 "ha_url" to "http://192.168.1.5:8123",
             ),
         )
+    }
+
+    @Test
+    fun `settings that no longer exist go, and only they`() {
+        val store = SettingsStore(settingsValues(context), FakeBox(opening = false))
+        val p = mutableMapOf<String, Any>(
+            "vista_pause_s" to 180,
+            "vista_playing_s" to 0,
+            "mini_player" to "LEFT",
+            "weather_entity" to "weather.home",
+            "ha_token" to "sealed:terces",
+            "queue" to "LIST",
+        )
+        store.migrate(p)
+        assertThat(p).isEqualTo(mapOf("ha_token" to "sealed:terces", "queue" to "LIST"))
     }
 
     @Test

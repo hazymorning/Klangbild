@@ -241,12 +241,6 @@ object CoverPalette {
     /** The most color text takes. */
     const val MAX_INK_CHROMA = 0.018f
 
-    /**
-     * The least lightness (Oklab) of three text levels on a dark ground, however dark the night
-     * (the landscape's label): the quietest still 4.5:1, the steps between the levels kept.
-     */
-    val NIGHT_INK_FLOOR = floatArrayOf(0.79f, 0.68f, 0.57f)
-
     /** The darkest the pale cover field gets (Oklab L): text is set against it. */
     const val FIELD_PALEST_DARK = 0.87f
 

@@ -79,10 +79,10 @@ interface SetupServer {
         }
 
         /**
-         * Asks Home Assistant at [url] for its media players, lights, weather entities, what a
-         * button can work and every entity for the values and conditions (REST `/api/states`),
-         * and for the fields its scripts declare (`/api/services`, as far as it answers), with
-         * [credentials]. Every failure becomes one calm sentence for the setup page.
+         * Asks Home Assistant at [url] for its media players, lights, what a button can work and
+         * every entity for the values and conditions (REST `/api/states`), and for the fields its
+         * scripts declare (`/api/services`, as far as it answers), with [credentials]. Every
+         * failure becomes one calm sentence for the setup page.
          */
         suspend fun discover(http: HttpClient, url: String, credentials: HaCredentials, t: Texts): DiscoverResult {
             val rest = HaRest(http, HaAuth(http, url, credentials))
@@ -139,11 +139,6 @@ interface SetupServer {
                 val id = o.id()?.takeIf { it.startsWith("light.") } ?: return@mapNotNull null
                 LightOption(id, o.name() ?: id, stateWord(o.state(), t))
             }.sortedBy { it.name.lowercase() }
-            // Weather entities: their clouds set the landscape's sky.
-            val weather = states.mapNotNull { o ->
-                val id = o.id()?.takeIf { it.startsWith("weather.") } ?: return@mapNotNull null
-                WeatherOption(id, o.name() ?: id, weatherWord(o.state(), t))
-            }.sortedBy { it.name.lowercase() }
             // What the quick settings' own buttons can work, by kind (scripts first), then by name;
             // a script with the fields it declares.
             val actions = states.mapNotNull { o ->
@@ -155,7 +150,7 @@ interface SetupServer {
                 val id = o.id() ?: return@mapNotNull null
                 entityOption(id, o.name() ?: id, o.state(), o.attrs())
             }.sortedBy { it.name.lowercase() }
-            return DiscoverResult.Ok(speakers, lights, weather, actions, entities)
+            return DiscoverResult.Ok(speakers, lights, actions, entities)
         }
 
         /**
@@ -251,22 +246,6 @@ interface SetupServer {
                 example = (f["example"] as? JsonPrimitive)?.content,
                 domains = (domains(config) + filters.flatMap(::domains)).distinct(),
             )
-        }
-
-        /** A weather condition (https://developers.home-assistant.io/docs/core/entity/weather) in words. */
-        private fun weatherWord(state: String, t: Texts) = when (state) {
-            "sunny" -> t[Strings.weatherSunny]
-            "clear-night" -> t[Strings.weatherClearNight]
-            "partlycloudy" -> t[Strings.weatherPartlycloudy]
-            "cloudy" -> t[Strings.weatherCloudy]
-            "fog" -> t[Strings.weatherFog]
-            "rainy", "pouring" -> t[Strings.weatherRain]
-            "snowy", "snowy-rainy" -> t[Strings.weatherSnow]
-            "hail" -> t[Strings.weatherHail]
-            "lightning", "lightning-rainy" -> t[Strings.weatherThunderstorm]
-            "windy", "windy-variant" -> t[Strings.weatherWindy]
-            "exceptional" -> t[Strings.weatherExceptional]
-            else -> stateWord(state, t)
         }
 
         private fun stateWord(state: String, t: Texts) = when (state) {

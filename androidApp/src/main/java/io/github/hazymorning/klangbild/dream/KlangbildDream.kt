@@ -58,7 +58,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
                 setViewTreeSavedStateRegistryOwner(this@KlangbildDream)
                 setContent {
                     val hooks = remember {
-                        RootHooks(positionOf = controller::positionOf, fieldTime = controller::fieldTime, landscapeClock = controller.landscapeClock, glyphs = AndroidGlyphs)
+                        RootHooks(positionOf = controller::positionOf, fieldTime = controller::fieldTime, glyphs = AndroidGlyphs)
                     }
                     // Any key ends the dream: it never tells which key opens the quick settings.
                     KlangbildScreen(controller.ui, spec, hooks, keys = false)

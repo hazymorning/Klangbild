@@ -91,7 +91,6 @@ dependencies {
     implementation(projects.config)
     implementation(projects.data)
     implementation(projects.domain)
-    implementation(projects.landscape)
     implementation(projects.render)
     implementation(projects.setup)
     implementation(projects.sound)

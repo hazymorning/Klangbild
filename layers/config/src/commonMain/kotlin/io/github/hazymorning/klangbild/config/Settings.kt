@@ -95,9 +95,6 @@ enum class QueueDisplay {
     FLOW,
 }
 
-/** Where the music's label sits in the landscape. */
-enum class MiniPlayer { LEFT, RIGHT, OFF }
-
 /** The color lights behind the TV (Home Assistant light entities), from the left; any may be missing. */
 data class RoomLights(val left: String? = null, val center: String? = null, val right: String? = null) {
     /** Each light once, from the left. */
@@ -151,7 +148,7 @@ data class Settings(
     /** The values of one's own show in the status line. */
     val showValues: Boolean = true,
     val intensity: Intensity = Intensity.NORMAL,
-    /** Up and down on the remote change the speaker's volume (instead of the landscape and the quick settings). */
+    /** Up and down on the remote change the speaker's volume (instead of opening the settings and the quick settings). */
     val volumeKeys: Boolean = false,
     val appearance: AppearanceMode = AppearanceMode.AUTO,
     /** How the queue shows: not at all, as a list, or as Cover Flow. */
@@ -172,14 +169,6 @@ data class Settings(
     val lightsOnlyOn: Boolean = false,
     /** With an audiobook or a podcast, left and right jump back 15 and ahead 30 seconds. */
     val spokenSkip: Boolean = true,
-    /** The landscape takes the screen after the music has been paused this long (s); 0 never. */
-    val landscapePauseSeconds: Int = 180,
-    /** The landscape also comes while music plays, after this long without a key pressed (s); 0 never. */
-    val landscapePlayingSeconds: Int = 0,
-    /** Where the music's label sits in the landscape. */
-    val miniPlayer: MiniPlayer = MiniPlayer.LEFT,
-    /** The weather entity whose clouds set the landscape's sky; null finds Home Assistant's own, [NO_WEATHER] none. */
-    val weatherEntity: String? = null,
     /** Buttons of one's own in the quick settings, set up on the phone. */
     val quickActions: List<QuickAction> = emptyList(),
     /** Values of one's own from Home Assistant in the status line, set up on the phone. */
@@ -187,23 +176,9 @@ data class Settings(
     /** The quick settings have been opened once: the stage no longer tells how to open them. */
     val quickSeen: Boolean = false,
 ) {
-    /** The weather entities to follow: the one chosen, else Home Assistant's usual forecast entities. */
-    val weatherEntities: List<String>
-        get() = when (weatherEntity) {
-            null -> DEFAULT_WEATHER
-            NO_WEATHER -> emptyList()
-            else -> listOf(weatherEntity)
-        }
-
     companion object {
-        /** No weather entity: the landscape's sky stays fair. */
-        const val NO_WEATHER = "none"
-
         /** "Turn off after" goes up to this many minutes (twelve hours). */
         const val MAX_SLEEP_MINUTES = 720
-
-        /** The entities Home Assistant's own weather integration (Met.no) creates. */
-        val DEFAULT_WEATHER = listOf("weather.forecast_home", "weather.home")
     }
 
     /** How Klangbild signs in to Home Assistant: a sign-in wins over a long-lived token. */
@@ -264,9 +239,4 @@ data class Settings(
 data class SessionOptions(
     val showSetup: Boolean = false,
     val debugOverlay: Boolean = false,
-    /** The landscape shown at once (`landscape=on`), or with the day passing in two minutes (`timelapse`). */
-    val landscape: LandscapeRequest? = null,
 )
-
-/** A landscape asked for from outside (a link, `am start`, Home Assistant). */
-enum class LandscapeRequest { SHOW, TIMELAPSE, HIDE }

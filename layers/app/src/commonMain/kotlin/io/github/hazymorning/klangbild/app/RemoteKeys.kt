@@ -31,15 +31,10 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /** [key] going down, [repeat] times repeated while held. True asks the platform to follow it for a long press and its release. */
     fun down(key: RemoteKey, repeat: Int): Boolean {
-        // The quick settings take their keys first; they leave the landscape as it is.
+        // The quick settings take their keys first.
         if (controller.quickOpen && quickKey(key)) return false
         val setup = controller.ui.value.screen is Screen.Setup
         val quickKeys = !setup && !controller.volumeKeys && !controller.menuOpen
-        // Down opens the quick settings over whatever shows (the landscape too); up brings the
-        // landscape or leaves it. Every other key starts the landscape's delays again: one
-        // that came by itself goes, a chosen one stays, and the key does its work either way.
-        val upDown = key == RemoteKey.DOWN || key == RemoteKey.UP
-        if (repeat == 0 && !(quickKeys && upDown)) controller.interaction()
         if (controller.menuOpen && menuKey(key, repeat)) return false
         when (key) {
             RemoteKey.OK -> {
@@ -88,9 +83,8 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
                 if (!setup && controller.volumeKeys) {
                     controller.send(if (key == RemoteKey.UP) RemoteCommand.VOLUME_UP else RemoteCommand.VOLUME_DOWN)
                 } else if (repeat == 0 && quickKeys) {
-                    // Down: the quick settings rise from the bottom edge. Up: the landscape comes,
-                    // and up again (or back) leaves it.
-                    if (key == RemoteKey.DOWN) controller.openQuick() else controller.toggleLandscape()
+                    // Down: the quick settings rise from the bottom edge. Up: the settings open.
+                    if (key == RemoteKey.DOWN) controller.openQuick() else controller.openMenu()
                     peek()
                 }
             }
@@ -203,16 +197,13 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /**
      * Back closes just what lies on top of the music: the settings (a group goes back to the
-     * groups first), the quick menu, the landscape, the setup code. False when nothing does, and
-     * the app closes.
+     * groups first), the quick menu, the setup code. False when nothing does, and the app closes.
      */
     fun back(): Boolean {
         val s = controller.ui.value.screen
         when {
             controller.menuOpen -> controller.menuBack()
             controller.quickOpen -> controller.closeQuick()
-            // The landscape goes; the app stays.
-            controller.hideLandscape() -> Unit
             s is Screen.Setup && s.reason == SetupReason.REQUESTED -> controller.requestSetup(false)
             else -> return false
         }

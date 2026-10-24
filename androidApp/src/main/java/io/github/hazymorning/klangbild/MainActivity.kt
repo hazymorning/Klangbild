@@ -84,7 +84,6 @@ class MainActivity : ComponentActivity() {
                     positionOf = controller::positionOf,
                     peekUntil = keys.peekUntil,
                     fieldTime = controller::fieldTime,
-                    landscapeClock = controller.landscapeClock,
                     glyphs = AndroidGlyphs,
                 )
             }

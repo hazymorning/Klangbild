@@ -40,9 +40,6 @@ data class SpeakerOption(val entityId: String, val name: String, val state: Stri
 /** One light offered to join in. */
 data class LightOption(val entityId: String, val name: String, val state: String)
 
-/** One weather entity offered for the landscape's sky. */
-data class WeatherOption(val entityId: String, val name: String, val state: String)
-
 /**
  * One entity a button of one's own can work (a script, a scene, an automation, a button, a
  * switch); a script with the [fields] it declares.
@@ -90,7 +87,6 @@ sealed interface DiscoverResult {
     data class Ok(
         val speakers: List<SpeakerOption>,
         val lights: List<LightOption> = emptyList(),
-        val weather: List<WeatherOption> = emptyList(),
         val actions: List<ActionOption> = emptyList(),
         val entities: List<EntityOption> = emptyList(),
     ) : DiscoverResult
@@ -243,7 +239,6 @@ class SetupHandler(
                 put("lightsLeft", s.roomLights.left ?: "")
                 put("lightsCenter", s.roomLights.center ?: "")
                 put("lightsRight", s.roomLights.right ?: "")
-                put("weather", s.weatherEntity ?: "")
                 put("actions", buildJsonArray { s.quickActions.forEach { add(QuickActions.toJson(it)) } })
                 put("values", buildJsonArray { s.ownValues.forEach { add(OwnValues.toJson(it)) } })
             }.toString(),
@@ -332,15 +327,6 @@ class SetupHandler(
                         })
                     }
                 })
-                put("weather", buildJsonArray {
-                    r.weather.forEach { w ->
-                        add(buildJsonObject {
-                            put("id", w.entityId)
-                            put("name", w.name)
-                            put("state", w.state)
-                        })
-                    }
-                })
                 put("actions", buildJsonArray {
                     r.actions.forEach { a ->
                         add(buildJsonObject {
@@ -424,14 +410,6 @@ class SetupHandler(
             if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return MiniHttp.Response.json(400, error(t[Strings.setupErrorLights]))
             RoomLights(ids[0].ifEmpty { null }, ids[1].ifEmpty { null }, ids[2].ifEmpty { null })
         }
-        // The landscape's weather: "" finds Home Assistant's own, "none" keeps the sky fair; absent stays as it was.
-        val weather = when (val w = body.string("weather")?.trim()) {
-            null -> current.weatherEntity
-            "" -> null
-            Settings.NO_WEATHER -> Settings.NO_WEATHER
-            else -> w.takeIf { EntityId.isWeather(it) }
-                ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorWeather]))
-        }
         // The quick settings' own buttons only when the page showed them; an empty list removes them.
         val actions = when (val list = body["actions"]) {
             null -> current.quickActions
@@ -449,7 +427,6 @@ class SetupHandler(
             else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
         }
         val updated = withMa.following(entity).copy(
-            weatherEntity = weather,
             tvSpeaker = tvSpeaker,
             sleepAfterMinutes = minutes,
             sleepAction = action,

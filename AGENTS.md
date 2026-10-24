@@ -19,10 +19,7 @@ anywhere because it's needed, not because it can't hurt.
 
 It's an Android TV app for Home Assistant and Music Assistant, built for a 4K Android TV box with a
 weak GPU connected to an OLED TV, and it's sideloaded. The first phase, the Now Playing screen, is
-nearly finished. The second is a calm music visualizer meant to replace the paper landscape
-(`layers/landscape`), unless people vote in the poll (discussion #51) to keep it. Until then, keep
-the landscape working but don't put new work into it, and never call it useless or unfinished in
-public.
+nearly finished. The second is a calm music visualizer.
 
 ## Writing
 
@@ -89,7 +86,7 @@ python3 ci/compare-pictures.py before/ layers/ui/build/screenshots/ changes/   #
 ./gradlew :androidApp:lintRelease                              # lint over the app and every layer
 ./gradlew :androidApp:assembleRelease                          # minified APK, signed with the debug key
 python3 tools/make_launcher_assets.py                          # banner and icons from tools/logo.svg
-python3 tools/make_readme_pictures.py                          # the README's mockups, download button and poll banner
+python3 tools/make_readme_pictures.py                          # the README's mockups and download button
 ./gradlew :speaker:testAndroidHostTest --tests '*EndToEndTest*' -Pklangbild.sendspin=$PWD/venv/bin/python   # first: python3 -m venv venv && venv/bin/pip install 'aiosendspin[server]==10.2.0'
 ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv420p10le -svtav1-params tune=0 -f avif docs/screenshots/film.avif   # the README's video, from the promo video kept outside the repository
 ```
@@ -170,7 +167,6 @@ From the bottom up:
 | domain | the model and its rules: tracks, player state, the queue, progress, chapters, the sleep timer |
 | sendspin | Music Assistant's protocol for synchronized audio |
 | render | the stage grid and the work done once per track (`SceneBuilder`) |
-| landscape | the paper landscape |
 | data | Home Assistant, Music Assistant and loading artwork |
 | config | the settings, their encrypted store, the settings menu and the quick settings |
 | lights | the lights behind the TV |
@@ -226,9 +222,8 @@ are in the code, and the tests named here check them.
 - Motion is calm. Things fade and crossfade, nothing slides or bounces, the screen never goes dark
   during a track change, and only one transition runs at a time. Whatever arrives meanwhile waits,
   and only the newest runs next. Per frame, only alpha, transforms and color filters change. Heavy
-  work like blurring and palettes happens once per track in `SceneBuilder`. CI measures frames
-  only for the landscape, on a manual run with the `measure` input, so for the stage these rules
-  are the only guard.
+  work like blurring and palettes happens once per track in `SceneBuilder`. CI doesn't measure
+  frames, so these rules are the only guard.
 - States are shown as words in the status line, never as icons, like "Living room · Paused" or
   "Volume 35%".
 - Every setting is always in the menu. One that needs something set up first is dimmed, its

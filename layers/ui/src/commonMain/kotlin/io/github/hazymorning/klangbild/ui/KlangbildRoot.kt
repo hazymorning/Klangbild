@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import io.github.hazymorning.klangbild.app.FlowData
-import io.github.hazymorning.klangbild.app.LandscapeUi
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.color.Appearance
@@ -39,17 +38,11 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
-import io.github.hazymorning.klangbild.landscape.LandscapeClock
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeAhead
-import io.github.hazymorning.klangbild.ui.landscape.LandscapeScreen
-import io.github.hazymorning.klangbild.ui.landscape.labelSide
-import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
-import io.github.hazymorning.klangbild.ui.landscape.rememberLandscapeFeed
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
@@ -84,8 +77,6 @@ class RootHooks(
     val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** The color field's time (seconds): it runs while music plays, at the motion setting's speed. */
     val fieldTime: () -> Double = { 0.0 },
-    /** The moment the landscape's sky shows. */
-    val landscapeClock: LandscapeClock = LandscapeClock(now),
     /** The platform's own text engine, for the outlines of the rest clock's figures. */
     val glyphs: Glyphs,
 )
@@ -128,15 +119,6 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                 translationY = dy.toFloat()
             },
     ) {
-        // The landscape's picture is baked while it is only on its way, so it comes at once.
-        ui.landscapeAhead?.let { LandscapeAhead(rememberLandscapeFeed(ui, ui.landscape, hooks.landscapeClock, hooks.now), labelSide(it)) }
-        // No longer coming: its picture is let go after a while, and baked anew the next time.
-        if (ui.landscapeAhead == null && ui.landscape == null && !LocalStill.current) {
-            LaunchedEffect(Unit) {
-                delay(LANDSCAPE_RELEASE_MS)
-                releaseBakedLandscape()
-            }
-        }
         // Animate between kinds of screens only (stage/rest/setup). The latest content
         // per kind is kept, so a track change stays inside the stage (its own transition)
         // and an outgoing screen keeps showing what it showed.
@@ -171,7 +153,6 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
-                is Content.LandscapeContent -> LandscapeScreen(ui, c.landscape, hooks.landscapeClock, hooks.positionOf, hooks.now)
                 is Content.SetupContent -> {
                     val scene = rememberOffMain(c.info, screen, c.appearance) { SetupArt.scene(c.info, screen, c.appearance) }
                     if (scene != null) SetupScreen(c.reason, c.info, scene) else Box(Modifier.fillMaxSize())
@@ -179,11 +160,11 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                 Content.Dark -> Box(Modifier.fillMaxSize())
             }
         }
-        // The quick settings rise from the bottom edge over whatever shows (over the landscape on
-        // its dark ground); the settings menu lies over everything. Both come and go on their own.
-        // While the queue's way just chosen is being made, their Queue value shimmers.
+        // The quick settings rise from the bottom edge over whatever shows; the settings menu lies
+        // over everything. Both come and go on their own. While the queue's way just chosen is
+        // being made, their Queue value shimmers.
         val preparing = ui.queueComing != null
-        QuickBarOverlay(ui.quick, if (content is Content.LandscapeContent) Appearance.DARK else ui.appearance, preparing = preparing)
+        QuickBarOverlay(ui.quick, ui.appearance, preparing = preparing)
         MenuOverlay(ui.menu, ui.appearance, preparing = preparing)
     }
 }
@@ -211,11 +192,6 @@ private sealed interface Content {
         override val key = "setup:$reason:$appearance"
     }
 
-    data class LandscapeContent(val landscape: LandscapeUi) : Content {
-        // The landscape changes its label and its light inside; it comes and goes through the dark.
-        override val key = "landscape"
-    }
-
     data object Dark : Content {
         override val key = "dark"
     }
@@ -227,9 +203,6 @@ private const val QUIET_START_MS = 4_000L
 private const val HINT_AFTER_MS = 3_000L
 private const val HINT_MS = 12_000L
 
-/** The landscape's picture is kept this long after it stopped coming (a pause cut short, say). */
-private const val LANDSCAPE_RELEASE_MS = 10_000L
-
 /**
  * How far the whole screen drifts against burn-in (dp): enough to soften every edge on an
  * OLED, too little to see anything stand off the middle.
@@ -239,7 +212,7 @@ private const val DRIFT_DP = 6f
 /** A switch of screens is over after this long (900 ms out, then 1.3 s in after 900 ms), with room to spare. */
 private const val SCREEN_SWITCH_MS = 3_000L
 
-private fun contentKey(ui: UiState, quietStart: Boolean): Content = ui.landscape?.let { Content.LandscapeContent(it) } ?: when (val s = ui.screen) {
+private fun contentKey(ui: UiState, quietStart: Boolean): Content = when (val s = ui.screen) {
     is Screen.Stage -> {
         // Cover Flow or the single cover, as the queue shows, once its first scene is made;
         // until then what showed before stays.

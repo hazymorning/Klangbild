@@ -51,7 +51,7 @@ class EdgesTest {
     private fun menu(s: Settings) = Fixtures.menu(MenuEntry.APPEARANCE, s)
 
     private fun quick(): QuickState {
-        val rows = QuickMenu.rows(Settings(), QuickContext(landscape = false, pending = null, music = true, favorite = null, shuffle = false), Fixtures.texts)
+        val rows = QuickMenu.rows(Settings(), QuickContext(pending = null, music = true, favorite = null, shuffle = false), Fixtures.texts)
         return QuickState(rows, 0)
     }
 

@@ -185,7 +185,7 @@ object Fixtures : AppFixtures() {
         CompositionLocalProvider(LocalStill provides true, LocalTexts provides t, LocalFaces provides faces(), LocalGlyphs provides AndroidGlyphs, content = content)
     }
 
-    /** [content] with the platform's glyphs, which the root takes from its hooks: the rest clock and the landscape's waiting line need them. */
+    /** [content] with the platform's glyphs, which the root takes from its hooks: the rest clock needs them. */
     @Composable
     fun Glyphs(content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalGlyphs provides AndroidGlyphs, content = content)

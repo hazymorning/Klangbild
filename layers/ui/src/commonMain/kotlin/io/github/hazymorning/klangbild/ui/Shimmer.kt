@@ -142,9 +142,8 @@ internal fun SweptWord(text: String, style: TextStyle, sweep: Sweep, word: () ->
     val measurer = rememberTextMeasurer(cacheSize = 2)
     val layout = remember(text, style, measurer) { measurer.measure(text, style, maxLines = 1) }
     // The frames a pass is drawn on, only while a band crosses. The stage's own tick does not
-    // reach the quick settings or the menu, which lie over every screen (the landscape keeps time
-    // of its own, and the stage's tick may run slowly or stop, as it does under the menu), so a
-    // pass runs a loop of its own for its 1.2 s, at the stage's pace; nothing runs between passes.
+    // reach the quick settings or the menu, which lie over every screen (the stage's tick may run
+    // slowly or stop, as it does under the menu), so a pass runs a loop of its own for its 1.2 s, at the stage's pace; nothing runs between passes.
     val frames = rememberFrames(fast = true, running = sweep.passing)
     Layout(
         Modifier.drawBehind {

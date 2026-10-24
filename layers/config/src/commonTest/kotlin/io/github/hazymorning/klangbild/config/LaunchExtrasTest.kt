@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.config
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.doesNotContainKey
-import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
@@ -111,27 +110,12 @@ class LaunchExtrasTest {
     }
 
     @Test
-    fun `the landscape from extras and links`() {
-        val s = LaunchExtras.applyTo(
-            Settings(),
-            mapOf("fensterblick_pause" to "30", "fensterblick_musik" to 600, "mini_player" to "rechts", "weather" to "weather.home"),
-        )
-        assertThat(s.landscapePauseSeconds).isEqualTo(30)
-        assertThat(s.landscapePlayingSeconds).isEqualTo(600)
-        assertThat(s.miniPlayer).isEqualTo(MiniPlayer.RIGHT)
-        assertThat(s.weatherEntities).containsExactlyInAnyOrder("weather.home")
-        val off = LaunchExtras.applyTo(s, mapOf("fensterblick_pause" to "aus", "mini_player" to "aus", "weather" to "keine"))
-        assertThat(off.landscapePauseSeconds).isEqualTo(0)
-        assertThat(off.miniPlayer).isEqualTo(MiniPlayer.OFF)
-        assertThat(off.weatherEntities).isEmpty()
-        // Out of range or the wrong kind of entity: ignored.
-        assertThat(LaunchExtras.applyTo(s, mapOf("fensterblick_pause" to "99999", "weather" to "sensor.x"))).isEqualTo(s)
-        assertThat(LaunchExtras.session(mapOf("fensterblick" to "an")).landscape).isEqualTo(LandscapeRequest.SHOW)
-        assertThat(LaunchExtras.session(mapOf("fensterblick" to "zeitraffer")).landscape).isEqualTo(LandscapeRequest.TIMELAPSE)
-        assertThat(LaunchExtras.session(mapOf("fensterblick" to "aus")).landscape).isEqualTo(LandscapeRequest.HIDE)
-        // A link may show it and set its options. The weather entity stays with the setup page.
-        val link = LaunchExtras.fromLink(mapOf("fensterblick" to "an", "mini_player" to "links", "weather" to "weather.x"))
-        assertThat(link.keys).containsExactlyInAnyOrder("fensterblick", "mini_player")
+    fun `extras of settings that no longer exist change nothing`() {
+        val old = mapOf("landscape_pause" to "30", "fensterblick_musik" to "600", "mini_player" to "left", "weather" to "weather.home")
+        assertThat(LaunchExtras.applyTo(Settings(), old)).isEqualTo(Settings())
+        assertThat(LaunchExtras.hasStoredExtras(old)).isFalse()
+        assertThat(LaunchExtras.session(mapOf("landscape" to "on"))).isEqualTo(SessionOptions())
+        assertThat(LaunchExtras.fromLink(mapOf("landscape" to "on", "light" to "subtle")).keys).containsExactlyInAnyOrder("light")
     }
 
     @Test
@@ -139,14 +123,10 @@ class LaunchExtrasTest {
         val s = LaunchExtras.applyTo(
             Settings(),
             mapOf(
-                "landscape_pause" to "15", "landscape_playing" to "off", "mini_player" to "bottom_right",
                 "lights_left" to "light.tv_left", "lights_right" to "light.tv_right", "lights_level" to "70",
                 "motion" to "slow", "background" to "plain", "light" to "subtle",
             ),
         )
-        assertThat(s.landscapePauseSeconds).isEqualTo(15)
-        assertThat(s.landscapePlayingSeconds).isEqualTo(0)
-        assertThat(s.miniPlayer).isEqualTo(MiniPlayer.RIGHT)
         assertThat(s.roomLights).isEqualTo(RoomLights("light.tv_left", null, "light.tv_right"))
         assertThat(s.roomLightBrightness).isEqualTo(RoomLightBrightness.P70)
         assertThat(s.motion).isEqualTo(MotionLevel.GENTLE)
@@ -156,25 +136,17 @@ class LaunchExtrasTest {
         val german = LaunchExtras.applyTo(
             Settings(),
             mapOf(
-                "fensterblick_pause" to "15", "fensterblick_musik" to "aus", "mini_player" to "unten_rechts",
                 "bars_left" to "light.tv_left", "bars_right" to "light.tv_right", "bar_level" to "70",
                 "motion" to "langsam", "background" to "einfarbig", "light" to "dezent",
             ),
         )
         assertThat(german).isEqualTo(s)
-        // The landscape was the window view until 6.3: its names then still count.
-        assertThat(LaunchExtras.applyTo(Settings(), mapOf("window_view_pause" to "15", "window_view_playing" to "off")).landscapePauseSeconds).isEqualTo(15)
-        assertThat(LaunchExtras.session(mapOf("window_view" to "on")).landscape).isEqualTo(LandscapeRequest.SHOW)
         // Both given: the current name counts.
-        assertThat(LaunchExtras.applyTo(Settings(), mapOf("landscape_pause" to "30", "window_view_pause" to "60", "fensterblick_pause" to "90")).landscapePauseSeconds).isEqualTo(30)
-        assertThat(LaunchExtras.session(mapOf("landscape" to "on")).landscape).isEqualTo(LandscapeRequest.SHOW)
-        assertThat(LaunchExtras.session(mapOf("landscape" to "timelapse")).landscape).isEqualTo(LandscapeRequest.TIMELAPSE)
-        assertThat(LaunchExtras.session(mapOf("landscape" to "off")).landscape).isEqualTo(LandscapeRequest.HIDE)
+        assertThat(LaunchExtras.applyTo(Settings(), mapOf("lights_level" to "30", "bar_level" to "60")).roomLightBrightness).isEqualTo(RoomLightBrightness.P30)
         assertThat(LaunchExtras.hasStoredExtras(mapOf("lights_level" to "50"))).isTrue()
         assertThat(LaunchExtras.hasStoredExtras(mapOf("bar_level" to "50"))).isTrue()
         // A link may set the lights' level, never which lights.
-        assertThat(LaunchExtras.fromLink(mapOf("lights_level" to "50", "lights_left" to "light.x", "landscape" to "on")).keys)
-            .containsExactlyInAnyOrder("lights_level", "landscape")
+        assertThat(LaunchExtras.fromLink(mapOf("lights_level" to "50", "lights_left" to "light.x")).keys).containsExactlyInAnyOrder("lights_level")
     }
 
     @Test

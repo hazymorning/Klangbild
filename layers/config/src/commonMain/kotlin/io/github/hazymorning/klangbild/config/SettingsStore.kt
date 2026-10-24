@@ -47,14 +47,13 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val roomLightBrightness = stringKey("bar_level")
         val lightsOnlyOn = booleanKey("lights_only_on")
         val spokenSkip = booleanKey("spoken_skip")
-        val landscapePause = intKey("vista_pause_s")
-        val landscapePlaying = intKey("vista_playing_s")
-        val miniPlayer = stringKey("mini_player")
-        val weather = stringKey("weather_entity")
         val quickActions = stringKey("quick_actions")
         val quickSeen = booleanKey("quick_seen")
         val ownValues = stringKey("own_values")
         val showValues = booleanKey("show_values")
+
+        /** Settings of earlier versions that no longer exist: [migrate] removes them. */
+        val gone = listOf(intKey("vista_pause_s"), intKey("vista_playing_s"), stringKey("mini_player"), stringKey("weather_entity"))
     }
 
     val settings: Flow<Settings> = store.data.map(::read)
@@ -66,7 +65,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
 
     /**
      * Brings what an earlier version stored up to date, in the same step that reads it: tokens
-     * stored before secrets were sealed are sealed, and the view becomes how the queue shows.
+     * stored before secrets were sealed are sealed, the view becomes how the queue shows, and
+     * settings that no longer exist go.
      */
     suspend fun migrate() {
         store.edit { migrate(it) }
@@ -74,12 +74,13 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
 
     /**
      * [p] brought up to date in place, as [migrate] does on disk. The view only moves its own
-     * key: rewriting every setting would open the sealed tokens, and one that cannot be opened at
-     * that moment would be lost.
+     * key, and the settings gone take only theirs: rewriting every setting would open the sealed
+     * tokens, and one that cannot be opened at that moment would be lost.
      */
     internal fun migrate(p: MutableMap<String, Any>) {
         val plain = listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }
         if (plain) write(p, read(p))
+        Keys.gone.forEach { p.remove(it) }
         val view = p[Keys.formerView] ?: return
         if (Keys.queue !in p) p[Keys.queue] = queueOfView(view).name
         p.remove(Keys.formerView)
@@ -118,10 +119,6 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             roomLightBrightness = p[Keys.roomLightBrightness]?.let { RoomLightBrightness.named(it) } ?: defaults.roomLightBrightness,
             lightsOnlyOn = p[Keys.lightsOnlyOn] ?: defaults.lightsOnlyOn,
             spokenSkip = p[Keys.spokenSkip] ?: defaults.spokenSkip,
-            landscapePauseSeconds = p[Keys.landscapePause] ?: defaults.landscapePauseSeconds,
-            landscapePlayingSeconds = p[Keys.landscapePlaying] ?: defaults.landscapePlayingSeconds,
-            miniPlayer = enumOr(p[Keys.miniPlayer], defaults.miniPlayer),
-            weatherEntity = p[Keys.weather],
             quickActions = QuickActions.decode(p[Keys.quickActions]),
             ownValues = OwnValues.decode(p[Keys.ownValues]),
             quickSeen = p[Keys.quickSeen] ?: defaults.quickSeen,
@@ -166,10 +163,6 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.roomLightBrightness] = s.roomLightBrightness.name
         p[Keys.lightsOnlyOn] = s.lightsOnlyOn
         p[Keys.spokenSkip] = s.spokenSkip
-        p[Keys.landscapePause] = s.landscapePauseSeconds
-        p[Keys.landscapePlaying] = s.landscapePlayingSeconds
-        p[Keys.miniPlayer] = s.miniPlayer.name
-        putOrRemove(Keys.weather, s.weatherEntity)
         putOrRemove(Keys.quickActions, s.quickActions.takeIf { it.isNotEmpty() }?.let(QuickActions::encode))
         putOrRemove(Keys.ownValues, s.ownValues.takeIf { it.isNotEmpty() }?.let(OwnValues::encode))
         p[Keys.quickSeen] = s.quickSeen

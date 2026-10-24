@@ -11,7 +11,6 @@ kotlin {
             implementation(projects.config)
             implementation(projects.data)
             implementation(projects.domain)
-            implementation(projects.landscape)
             implementation(projects.lights)
             implementation(projects.math)
             implementation(projects.render)

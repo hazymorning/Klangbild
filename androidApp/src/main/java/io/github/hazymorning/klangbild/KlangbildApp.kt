@@ -23,7 +23,6 @@ import io.github.hazymorning.klangbild.setup.SocketSetupServer
 import io.github.hazymorning.klangbild.speaker.speakerClient
 import io.github.hazymorning.klangbild.speaker.speakerValues
 import io.github.hazymorning.klangbild.text.PlatformLanguageStore
-import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
@@ -112,9 +111,8 @@ class KlangbildApp : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // Nothing shows in the background: the covers, the scenes and the landscape's picture
-        // go, and are made again on return.
-        if (level >= TRIM_MEMORY_UI_HIDDEN && graph.controller.releaseMemory()) releaseBakedLandscape()
+        // Nothing shows in the background: the covers and the scenes go, and are made again on return.
+        if (level >= TRIM_MEMORY_UI_HIDDEN) graph.controller.releaseMemory()
     }
 
     override fun onCreate() {

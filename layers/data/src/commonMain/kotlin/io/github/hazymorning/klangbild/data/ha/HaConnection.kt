@@ -435,7 +435,7 @@ class HaConnection(
                 fetch(added)
             }
 
-            // Where Home Assistant stands (for the landscape's sun and moon), and the entity
+            // Home Assistant's configuration (the unit of its temperatures), and the entity
             // registry (the favorite button of a Music Assistant speaker): asked once, on the side.
             launch {
                 (optional(s) { id -> buildJsonObject { put("id", id); put("type", "get_config") } } as? JsonObject)?.let { _config.value = it }

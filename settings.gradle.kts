@@ -59,7 +59,7 @@ include(":androidApp")
 // package; the -testing modules hold helpers that the tests of several layers share.
 for (module in listOf(
     "math", "json", "color", "text", "art", "sound", "sendspin", "domain", "data", "config",
-    "landscape", "render", "lights", "speaker", "setup", "app", "ui",
+    "render", "lights", "speaker", "setup", "app", "ui",
     "art-testing", "text-testing", "domain-testing", "app-testing",
 )) {
     include(":$module")

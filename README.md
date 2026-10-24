@@ -18,7 +18,7 @@ It works with any media player in Home Assistant. Music Assistant adds the queue
 
 > [!NOTE]
 > **Klangbild is being built in two&nbsp;phases.**<br>
-> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind). Eventually, it will replace the landscape.
+> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind).
 
 ## More
 
@@ -91,7 +91,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | --- | --- |
 | OK | Play or pause (hold to open the settings) |
 | Left / Right | Previous or next song |
-| Up | Switch to the landscape |
+| Up | Open the settings |
 | Down | Open the quick settings |
 
 > In the settings you can change what some of the buttons do, for example to have up and down change the volume.
@@ -131,18 +131,6 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 
 > **Important**<br>
 > "Play here" makes the TV a speaker, but Klangbild keeps following the speaker chosen on the setup page. To have it follow the TV, open Home Assistant under System in the settings, scan the code, choose "This TV" as the speaker and save.
-
-</details>
-
-<details>
-<summary><b>Landscape</b></summary>
-<br>
-
-![The landscape on a winter night, stars and a campfire, on a TV in a room lit by a lamp and candles](docs/screenshots/mockup-landscape.jpg)
-
-There's also a landscape you can switch to, and it changes with the time of day, the seasons and the weather outside.
-
-You'll see morning light, a sunset or stars depending on when you look, and if Home Assistant has a weather entity, it rains on screen when it rains outside. The up button on the remote takes you there at any time, and by default the landscape also comes up by itself after three minutes without music, which you can change or turn off in the settings.
 
 </details>
 

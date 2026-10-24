@@ -6,9 +6,9 @@ import io.github.hazymorning.klangbild.domain.EntityId
 
 /**
  * `am start` extras. Configuration extras (`ha_url`, `token`, `ma_url`, `ma_token`, `entity`,
- * `sleep_minutes`, `sleep_action`, `clock`, `tv_speaker` and the display options) are stored; `setup`,
- * `debug` and `landscape` only apply to this launch. A new address without its token drops
- * the stored one: no other app on the TV can redirect a token to an address of its choosing.
+ * `sleep_minutes`, `sleep_action`, `clock`, `tv_speaker` and the display options) are stored; `setup`
+ * and `debug` only apply to this launch. A new address without its token drops the stored one:
+ * no other app on the TV can redirect a token to an address of its choosing.
  * Names and values are English; the German ones of earlier versions keep working.
  *
  * ```
@@ -44,13 +44,8 @@ object LaunchExtras {
     const val LIGHTS_RIGHT = "lights_right"
     const val LIGHTS_BRIGHTNESS = "lights_level"
     const val SPOKEN_SKIP = "spoken_skip"
-    const val LANDSCAPE_PAUSE = "landscape_pause"
-    const val LANDSCAPE_PLAYING = "landscape_playing"
-    const val MINI_PLAYER = "mini_player"
-    const val WEATHER = "weather"
     const val SETUP = "setup"
     const val DEBUG = "debug"
-    const val LANDSCAPE = "landscape"
 
     /** The names earlier versions used: they keep working, and the English name wins when both are given. */
     private val formerNames = mapOf(
@@ -58,19 +53,13 @@ object LaunchExtras {
         "bars_center" to LIGHTS_CENTER,
         "bars_right" to LIGHTS_RIGHT,
         "bar_level" to LIGHTS_BRIGHTNESS,
-        "window_view_pause" to LANDSCAPE_PAUSE,
-        "window_view_playing" to LANDSCAPE_PLAYING,
-        "window_view" to LANDSCAPE,
         "view" to QUEUE,
-        "fensterblick_pause" to LANDSCAPE_PAUSE,
-        "fensterblick_musik" to LANDSCAPE_PLAYING,
-        "fensterblick" to LANDSCAPE,
     )
 
     private val stored = listOf(
         HA_URL, TOKEN, MA_URL, MA_TOKEN, TV_SPEAKER, ENTITY, SLEEP_MINUTES, SLEEP_ACTION, CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY,
         VOLUME_KEYS, REMOTE, APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_LEFT, LIGHTS_CENTER, LIGHTS_RIGHT, LIGHTS_BRIGHTNESS,
-        SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER, WEATHER,
+        SPOKEN_SKIP,
     )
 
     /** [extras] under their current names. */
@@ -185,44 +174,14 @@ object LaunchExtras {
             out = out.copy(roomLights = RoomLights(bar(LIGHTS_LEFT, out.roomLights.left), bar(LIGHTS_CENTER, out.roomLights.center), bar(LIGHTS_RIGHT, out.roomLights.right)))
         }
         boolOf(extras[SPOKEN_SKIP])?.let { out = out.copy(spokenSkip = it) }
-        // The landscape's delays in seconds ("off" or 0 for never), within what the menu offers.
-        secondsOf(extras[LANDSCAPE_PAUSE])?.takeIf { it in 0..3_600 }?.let { out = out.copy(landscapePauseSeconds = it) }
-        secondsOf(extras[LANDSCAPE_PLAYING])?.takeIf { it in 0..7_200 }?.let { out = out.copy(landscapePlayingSeconds = it) }
-        (extras[MINI_PLAYER] as? String)?.let { v ->
-            when (v.trim().lowercase()) {
-                "left", "bottom_left", "links", "unten_links" -> MiniPlayer.LEFT
-                "right", "bottom_right", "rechts", "unten_rechts" -> MiniPlayer.RIGHT
-                "off", "aus" -> MiniPlayer.OFF
-                else -> null
-            }?.let { out = out.copy(miniPlayer = it) }
-        }
-        (extras[WEATHER] as? String)?.trim()?.let { v ->
-            when {
-                v.isEmpty() || v == "auto" -> out = out.copy(weatherEntity = null)
-                v == Settings.NO_WEATHER || v == "keine" -> out = out.copy(weatherEntity = Settings.NO_WEATHER)
-                EntityId.isWeather(v) -> out = out.copy(weatherEntity = v)
-            }
-        }
         return out
-    }
-
-    private fun secondsOf(v: Any?): Int? = when (v) {
-        is String -> if (v.trim().lowercase() in setOf("aus", "off", "nie", "never")) 0 else intOf(v)
-        else -> intOf(v)
     }
 
     fun session(given: Map<String, Any?>): SessionOptions {
         val extras = canonical(given)
-        val landscape = extras[LANDSCAPE]
         return SessionOptions(
             showSetup = boolOf(extras[SETUP]) ?: false,
             debugOverlay = boolOf(extras[DEBUG]) ?: false,
-            landscape = when ((landscape as? String)?.trim()?.lowercase() ?: (landscape as? Boolean)?.toString()) {
-                "on", "true", "1", "yes", "show", "an", "ja", "zeigen" -> LandscapeRequest.SHOW
-                "timelapse", "zeitraffer" -> LandscapeRequest.TIMELAPSE
-                "off", "false", "0", "no", "aus", "nein" -> LandscapeRequest.HIDE
-                else -> null
-            },
         )
     }
 
@@ -237,8 +196,7 @@ object LaunchExtras {
      */
     private val linkKeys = setOf(
         CLOCK, PROGRESS_BAR, NEXT, ALBUM, GROUP, VOLUME, VALUES, INTENSITY, VOLUME_KEYS, REMOTE, SLEEP_MINUTES, SLEEP_ACTION,
-        APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_BRIGHTNESS, SPOKEN_SKIP, LANDSCAPE_PAUSE, LANDSCAPE_PLAYING, MINI_PLAYER,
-        LANDSCAPE,
+        APPEARANCE, QUEUE, BACKGROUND, MOTION, LIGHTS_BRIGHTNESS, SPOKEN_SKIP,
     )
 
     /** The query parameters of a `klangbild://` link as extras, unsafe keys dropped. */

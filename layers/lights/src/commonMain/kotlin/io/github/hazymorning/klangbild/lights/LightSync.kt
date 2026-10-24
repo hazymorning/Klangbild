@@ -34,9 +34,8 @@ import kotlin.time.Clock
 /**
  * Any lights Home Assistant controls, in the colors of what the screen shows: each light a color
  * of its own ([LightColors]). These are the cover's most telling colors, kept apart and placed
- * as they sit in the cover (with motion on they move on from light to light), or in the
- * landscape its sky, the sun's glow on its side and the campfire's light on the fire's. A light
- * shows what it can: a color, a warmer or cooler white, a brightness, or just on.
+ * as they sit in the cover (with motion on they move on from light to light). A light shows
+ * what it can: a color, a warmer or cooler white, a brightness, or just on.
  *
  * It is gentle on the lights' network and on whoever else uses the lights:
  *
@@ -72,7 +71,7 @@ class LightSync(
         val level: RoomLightBrightness,
         /** The colors for each light; a new one is faded to. */
         val colors: LightColors,
-        /** The song (or the landscape): a new one changes the lights once it has played a moment. */
+        /** The song: a new one changes the lights once it has played a moment. */
         val song: String,
         val playing: Boolean,
         /** 0 by day to 1 at night (by the sun): the lights dim with the evening. */
@@ -83,11 +82,6 @@ class LightSync(
         val motion: Float,
         /** The field's time (seconds), shared with the screen. */
         val fieldTime: () -> Double,
-        /**
-         * The landscape shows: its light changes slowly, so the lights follow it in long fades
-         * and seldom calls; a pause does not dim them (the picture is the show).
-         */
-        val landscape: Boolean = false,
         /** Lights that are off are left alone; one switched on joins in, one switched off is let go. */
         val onlyOn: Boolean = false,
     )
@@ -290,7 +284,7 @@ class LightSync(
         adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
         if (tg.onlyOn) letGoSwitchedOff(states)
-        val paused = !tg.playing && !tg.landscape
+        val paused = !tg.playing
         pausedSince = if (paused) (pausedSince ?: t) else null
         when {
             tg.song != shownSong -> {
@@ -307,14 +301,13 @@ class LightSync(
             }
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
-            // The landscape's light moves on in long fades, a call per light every while at most.
-            tg.colors !== shownColors && (!tg.landscape || t - lastStepAt >= LANDSCAPE_GAP_MS) -> {
+            tg.colors !== shownColors -> {
                 shownColors = tg.colors
-                send(b, tg, t, if (tg.landscape) LANDSCAPE_TRANSITION_MS else SOFT_TRANSITION_MS, force = false, paused = shownPaused)
+                send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             }
             // A new level or a later hour (a pause is dimmed above, after its delay).
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
-            !paused && !tg.landscape && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
+            !paused && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
         // Calls that had to wait (a light still busy, a failure to try again): those lights only.
         val due = lights.values.filter { !it.takenOver && !it.inFlight && it.retryAt in 1..t }.mapTo(HashSet()) { it.id }
@@ -718,10 +711,6 @@ class LightSync(
         const val TRACK_TRANSITION_MS = 2_500L
         const val DRIFT_MS = 10_000L
         const val DRIFT_TRANSITION_MS = 8_000L
-
-        /** The landscape: its light at most this often (per light a call), in fades this long. */
-        const val LANDSCAPE_GAP_MS = 20_000L
-        const val LANDSCAPE_TRANSITION_MS = 15_000L
         const val SOFT_TRANSITION_MS = 1_500L
         const val PAUSE_DELAY_MS = 2_000L
         const val PAUSE_TRANSITION_MS = 2_000L

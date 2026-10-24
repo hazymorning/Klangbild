@@ -49,12 +49,6 @@ data class SourceState(
     val remaining: Int? = null,
     /** The optional link to Music Assistant; null when it is not set up. */
     val ma: MaLink? = null,
-    /** Where Home Assistant stands (degrees), from its configuration; null until known. */
-    val place: Pair<Double, Double>? = null,
-    /** The weather entity's state (`sunny`, `cloudy` and so on), its cloud cover in % and its wind in km/h, as far as known. */
-    val weather: String? = null,
-    val cloudCoverage: Double? = null,
-    val windKmh: Double? = null,
     /** What plays can be added to Music Assistant's favorites. */
     val favorites: Boolean = false,
     /**
