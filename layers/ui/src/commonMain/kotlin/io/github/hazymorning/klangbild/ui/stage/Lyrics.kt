@@ -72,7 +72,7 @@ import kotlin.math.roundToInt
 /*
  * A song's words in the text column. The line sung now stands in the middle, centered on the
  * artwork as the text block is (from its first cap height to its last baseline), in the title's
- * ink. The lines before and after it are quiet and fade with distance, as the settings list does.
+ * ink. The lines before and after it are quiet and fade evenly with their distance from it.
  * As the song moves on, the list glides one step, and the light goes with it: the line that comes
  * is lit as it arrives, the one before dims as it leaves. A break in the singing only dims the
  * line; a jump cross-fades the list to its new place. The status line keeps its place; title and
@@ -107,6 +107,8 @@ internal class LyricsPlan(
     val bottoms: FloatArray,
     /** The rows' cap height (px). */
     val cap: Float,
+    /** The space from a line's last baseline to the next line's cap height (px). */
+    val gap: Float,
     /** How far the rows are pulled left (px): large type has more room before its first stem. */
     val indent: Int,
 ) {
@@ -132,12 +134,13 @@ internal class LyricsPlan(
 internal class LyricRow(val layout: TextLayoutResult, val line: Int, val baseline: Float)
 
 /**
- * Sets [lyrics] for a column [columnWidth] dp wide: the largest size of the ladder at which every
- * line takes no more rows than the size allows (two voices each count on their own), with
- * balanced breaks, never inside a word, a short word kept with the next as in titles. A line
+ * Sets [lyrics] for a column [columnWidth] dp wide with [room] dp above and below the middle: the
+ * largest size of the ladder at which every line takes no more rows than the size allows (two
+ * voices each count on their own), with balanced breaks, never inside a word, a short word kept
+ * with the next as in titles, and the lines as far apart as the room allows ([lineGap]). A line
  * longer than [MAX_ROWS] rows even at the smallest size ends after a whole word.
  */
-internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasurer, density: Float, faces: Faces): LyricsPlan {
+internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measurer: TextMeasurer, density: Float, faces: Faces): LyricsPlan {
     val colW = (columnWidth * density).roundToInt()
     val cjk = isMostlyCjk(lyrics.lines.take(CJK_SAMPLE).joinToString(" ") { it.text })
     val parts = lyrics.lines.map { line -> line.text.split('\n').map { glueShortWords(glueParentheses(AnnotatedString(it))) } }
@@ -154,7 +157,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
     val style = lyricsStyle(faces, step, cjk)
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT * density
     val leading = style.lineHeight.value * density
-    val gap = style.fontSize.value * LINE_GAP_EM * density
+    val gap = lineGap(style, step.rows, room) * density
     val rows = ArrayList<LyricRow>(lyrics.lines.size * 2)
     val tops = FloatArray(lyrics.lines.size)
     val bottoms = FloatArray(lyrics.lines.size)
@@ -179,7 +182,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, measurer: TextMeasur
         bottoms[i] = baseline
         baseline += gap + cap
     }
-    return LyricsPlan(rows, tops, bottoms, cap, (opticalIndent(style.fontSize.value) * density).roundToInt())
+    return LyricsPlan(rows, tops, bottoms, cap, gap, (opticalIndent(style.fontSize.value) * density).roundToInt())
 }
 
 /**
@@ -306,7 +309,7 @@ internal fun LyricsText(
     val view = views?.of(lyrics) ?: remember(lyrics) { LyricsView(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
     // The list first stands where the song is.
-    val plan = rememberLyricsPlan(view, layout) { view.cursor.at(position()) }
+    val plan = rememberLyricsPlan(view, layout, room.around()) { view.cursor.at(position()) }
     val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
 
     // The place follows the position on the stage's tick (in a still, once).
@@ -340,14 +343,14 @@ internal fun LyricsText(
                 if (a <= 0.002f) return@Canvas
                 val x = (((layout.columnLeft + shift()) * density).roundToInt() + p.indent).toFloat()
                 val focus = layout.textCenter * density + (rise(TextLine.TITLE) * density).roundToInt()
-                val below = room.below(slotShown.value)
+                val around = room.around(slotShown.value)
                 val glow = view.lit.value
                 // A jump: the words that stood go first, then the new ones come (never both at once).
                 val j = view.jump.value
                 val gone = Motion.phase(j, 0f, JUMP_OUT, Motion.Dimmer)
                 val come = Motion.phase(j, JUMP_IN, 1f, Motion.Dimmer)
-                if (j < 1f) drawLyrics(p, view.from, x, focus, room.above, below, inks, glow, a * view.fromAlpha * (1f - gone))
-                drawLyrics(p, view.scroll.value, x, focus, room.above, below, inks, glow, a * come)
+                if (j < 1f) drawLyrics(p, view.from, x, focus, around, inks, glow, a * view.fromAlpha * (1f - gone))
+                drawLyrics(p, view.scroll.value, x, focus, around, inks, glow, a * come)
             }
             // 1: the progress bar or a notice, above the song; changes cross-fade
             BottomLine(slot, model, styles, playing, line(TextLine.BOTTOM), label = "lyrics-slot-line")
@@ -379,16 +382,17 @@ internal fun LyricsText(
 }
 
 /**
- * The words as set for [view]'s column, the list standing at [place] once they are: at once in a
- * still, else off the main thread (nothing until then).
+ * The words as set for [view]'s column with [room] around the middle ([planLyrics]), the list
+ * standing at [place] once they are: at once in a still, else off the main thread (nothing until
+ * then).
  */
 @Composable
-private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () -> LyricPlace): LyricsPlan? {
+private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, room: Float, place: () -> LyricPlace): LyricsPlan? {
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val faces = faces()
-    val key = Triple(layout.columnWidth, density, faces)
-    fun plan() = planLyrics(view.lyrics, layout.columnWidth, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
+    val key = listOf(layout.columnWidth, room, density, faces)
+    fun plan() = planLyrics(view.lyrics, layout.columnWidth, room, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
     if (LocalStill.current) return remember(view, key) { view.keep(key, plan(), place()) }
     val ready = view.planFor(key)
     if (ready == null) {
@@ -400,32 +404,32 @@ private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, place: () ->
     return ready
 }
 
-/**
- * The room of the words above and below the middle (dp): to the status line's baseline, and to
- * the song's cap height, or to the bar's top while it shows.
- */
-private class LyricsRoom(layout: StageGrid, styles: StageStyles) {
-    val above: Float = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
+/** The room of the words around the middle (dp). */
+internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
+    private val status = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
     private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
     private val bar = song - Gaps.BOTTOM - BAR_BLOCK
 
-    /** Below the middle, as far as the bar lets them while it shows ([slot] 0 to 1). */
-    fun below(slot: Float): Float = song + (bar - song) * slot
+    /**
+     * As much above the middle as below, so the words fade alike up and down: to the status
+     * line's baseline or to the song's cap height, whichever is nearer, and to the bar's top
+     * while it shows ([slot] 0 to 1).
+     */
+    fun around(slot: Float = 0f): Float = minOf(status, song + (bar - song) * slot)
 }
 
 /**
  * The rows of [plan] with the list standing at [scroll] (px) under the middle ([focus], px), from
  * [x]: each line fading as a whole with its distance from the middle ([lineAlpha]) within
- * [above] and [below] (dp), the line in the middle lit by [glow] (its ink taken from [inks], the
- * quiet ink to the title's), [alpha] for all of them.
+ * [around] (dp) above and below it, the line in the middle lit by [glow] (its ink taken from
+ * [inks], the quiet ink to the title's), [alpha] for all of them.
  */
 private fun DrawScope.drawLyrics(
     plan: LyricsPlan,
     scroll: Float,
     x: Float,
     focus: Float,
-    above: Float,
-    below: Float,
+    around: Float,
     inks: Array<Color>,
     glow: Float,
     alpha: Float,
@@ -433,8 +437,8 @@ private fun DrawScope.drawLyrics(
     if (alpha <= 0.002f) return
     val d = density
     val rows = plan.rows
-    var i = plan.firstAt(scroll - above * d)
-    val end = scroll + below * d + plan.cap
+    var i = plan.firstAt(scroll - around * d)
+    val end = scroll + around * d + plan.cap
     var line = -1
     var f = 0f
     var color = inks[0]
@@ -443,7 +447,7 @@ private fun DrawScope.drawLyrics(
         if (row.baseline > end) break
         if (row.line != line) {
             line = row.line
-            f = lineAlpha((plan.tops[line] - scroll) / d, (plan.bottoms[line] - scroll) / d, above, below)
+            f = lineAlpha((plan.tops[line] - scroll) / d, (plan.bottoms[line] - scroll) / d, around, plan.gap / d)
             color = inks[(glowOf(plan, line, scroll) * glow * INK_STEPS).roundToInt().coerceIn(0, INK_STEPS)]
         }
         if (f <= 0.003f) continue
@@ -454,17 +458,19 @@ private fun DrawScope.drawLyrics(
 
 /**
  * How present a line is that reaches from [top] to [bottom] (dp from the middle, its first cap
- * height and last baseline), with [above] and [below] of room: whole in the middle and near it,
- * fading with the distance of its nearer edge as the settings list fades, and gone before its
- * farther edge comes within [EDGE_GONE] of the status line, the song or the bar.
+ * height and last baseline), with [around] of room above and below: whole in the middle, fading
+ * evenly with the distance of its nearer edge, so that the lines next to the one sung are already
+ * quieter, and gone before its farther edge comes nearer the status line, the song or the bar
+ * than [gap], the space between lines. A line fading away may fall below the inks' contrast; the
+ * one sung never does.
  */
-private fun lineAlpha(top: Float, bottom: Float, above: Float, below: Float): Float {
+private fun lineAlpha(top: Float, bottom: Float, around: Float, gap: Float): Float {
     if (top < 0f && bottom > 0f) return 1f
     val near = if (bottom <= 0f) -bottom else top
     val far = if (bottom <= 0f) -top else bottom
-    val limit = (if (bottom <= 0f) above else below) - EDGE_GONE
-    val byDistance = 1f - smoothstep(FADE_FROM, limit.coerceAtLeast(FADE_FROM + 1f), near)
-    val byEdge = 1f - smoothstep(limit - EDGE_FADE, limit, far)
+    val limit = around - gap
+    val byDistance = (1f - near / limit.coerceAtLeast(1f)).coerceIn(0f, 1f)
+    val byEdge = 1f - smoothstep(limit - gap * EDGE_FADE, limit, far)
     return byDistance * byEdge
 }
 
@@ -492,17 +498,29 @@ private fun fitSong(full: String, title: String?, styles: StageStyles, width: In
 /** The song's line, isolated if right-to-left (as "Up next" sets what comes). */
 private fun songText(text: String): AnnotatedString = AnnotatedString(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
 
-/** The space from a line's last baseline to the next line's cap height (em of the words). */
-private const val LINE_GAP_EM = 0.8f
+/**
+ * The space from a line's last baseline to the next line's cap height (dp) for words in [style]
+ * on at most [rows] rows a line, with [room] above and below the middle: as much as lets lines of
+ * the most rows, the one sung and one on either side, keep [FRAME_SHARE] times that space to the
+ * status line and the song, from [LINE_GAP_MIN] to [LINE_GAP_MAX] em.
+ */
+internal fun lineGap(style: TextStyle, rows: Int, room: Float): Float {
+    val size = style.fontSize.value
+    val most = size * Fonts.CAP_HEIGHT + (rows - 1) * style.lineHeight.value
+    return ((room - most / 2f - most) / (1f + FRAME_SHARE)).coerceIn(size * LINE_GAP_MIN, size * LINE_GAP_MAX)
+}
 
-/** A line whose nearer edge is within this distance of the middle is whole (dp): the lines next to the one sung. */
-private const val FADE_FROM = 40f
+/** Lines stand at least this far apart (em of the words): clearly more than a line's rows... */
+private const val LINE_GAP_MIN = 0.8f
 
-/** A line is gone before its farther edge comes this close to the status line, the song or the bar (dp)... */
-private const val EDGE_GONE = 8f
+/** ...and at most this far, where the room allows. */
+private const val LINE_GAP_MAX = 1.2f
 
-/** ...and it fades over this stretch before (dp). */
-private const val EDGE_FADE = 22f
+/** The space to the status line and the song, as a share of the space between lines. */
+private const val FRAME_SHARE = 1.6f
+
+/** A line leaving at an edge fades over this share of the space between lines. */
+private const val EDGE_FADE = 0.5f
 
 /** The progress bar's block from its top to its labels' baseline (dp): the bar, the gap, the labels' cap height. */
 private const val BAR_BLOCK = BAR_THICKNESS + BAR_LABEL_GAP + 15f * Fonts.CAP_HEIGHT
