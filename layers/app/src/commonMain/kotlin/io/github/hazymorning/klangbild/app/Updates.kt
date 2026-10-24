@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.app
 import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.config.get
 import io.github.hazymorning.klangbild.config.intKey
-import io.github.hazymorning.klangbild.config.remove
 import io.github.hazymorning.klangbild.config.set
 import io.github.hazymorning.klangbild.config.stringKey
 import io.github.hazymorning.klangbild.data.Log
@@ -20,10 +19,10 @@ import kotlinx.coroutines.launch
 
 /**
  * Klangbild's own new versions. As a screen starts showing it, it asks GitHub for the newest
- * release if GitHub last answered more than a day ago ([checkIfDue]). The menu's Update line tells
- * what it knows; OK there downloads the new version and hands it to the platform, which installs
- * it once the person agrees on the TV. What GitHub said and which notice was hidden are kept in
- * [store] beside the settings, whose own writes leave them alone. A build of one's own looks for
+ * release if GitHub last answered more than a day ago ([checkIfDue]), unless that is turned off.
+ * The menu's Update line tells what it knows; OK there downloads the new version and hands it to
+ * the platform, which installs it once the person agrees on the TV. What GitHub said is kept in
+ * [store] beside the settings, whose own writes leave it alone. A build of one's own looks for
  * nothing.
  */
 class Updates(
@@ -46,7 +45,7 @@ class Updates(
         if (_info.value.installed == null) return
         scope.launch {
             val stored = store.data.first()
-            _info.update { it.copy(latest = stored[LATEST] ?: it.latest, hidden = stored[HIDDEN]) }
+            _info.update { it.copy(latest = stored[LATEST] ?: it.latest) }
             val at = stored[CHECKED_AT]
             if (at == null || minutes() - at !in 0 until DAY_MINUTES) check()
         }
@@ -58,15 +57,6 @@ class Updates(
         if (info.installed == null) return
         val tag = info.available
         scope.launch { if (tag != null) download(tag) else check() }
-    }
-
-    /** Left or right on the menu's line: hides the menu's notice of the new version, or shows it again. */
-    fun toggleNotice() {
-        val info = _info.value
-        val tag = info.available ?: return
-        val hidden = if (info.hidden == tag) null else tag
-        _info.update { it.copy(hidden = hidden) }
-        scope.launch { store.edit { if (hidden == null) it.remove(HIDDEN) else it[HIDDEN] = hidden } }
     }
 
     private suspend fun check() {
@@ -117,10 +107,9 @@ class Updates(
     private fun minutes(): Int = (now() / 60_000L).toInt()
 
     private companion object {
-        /** When GitHub last answered (minutes since 1970), the newest release it named, and the one whose notice is hidden. */
+        /** When GitHub last answered (minutes since 1970), and the newest release it named. */
         val CHECKED_AT = intKey("update_checked_at")
         val LATEST = stringKey("update_latest")
-        val HIDDEN = stringKey("update_hidden")
 
         /** GitHub is asked again a day after it answered. */
         const val DAY_MINUTES = 24 * 60

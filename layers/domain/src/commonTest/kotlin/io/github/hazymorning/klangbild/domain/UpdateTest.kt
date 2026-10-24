@@ -2,11 +2,9 @@ package io.github.hazymorning.klangbild.domain
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
 import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import kotlin.test.Test
 
 class UpdateTest {
@@ -33,16 +31,13 @@ class UpdateTest {
     }
 
     @Test
-    fun `only a newer release is offered, and its notice stays hidden until the next one`() {
+    fun `only a newer release is offered`() {
         val info = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0")
         assertThat(info.available).isEqualTo("v2026.11.0")
-        assertThat(info.notice).isTrue()
-        assertThat(info.copy(hidden = "v2026.11.0").notice).isFalse()
-        assertThat(info.copy(hidden = "v2026.10.9").notice).isTrue()
         assertThat(info.copy(latest = "v2026.10.5").available).isNull()
+        assertThat(info.copy(latest = null).available).isNull()
         assertThat(info.copy(name = "2026.11.0-beta.1").available).isEqualTo("v2026.11.0")
         // A build of one's own looks for none, and so is offered none.
         assertThat(info.copy(name = "2026.10.24 (abc1234)").available).isNull()
-        assertThat(info.copy(latest = null).notice).isFalse()
     }
 }

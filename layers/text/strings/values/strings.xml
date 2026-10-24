@@ -201,10 +201,10 @@
     <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
     <string name="about_ma">The list shows the next tracks, Cover Flow the whole queue. OK shows the QR code. On your phone you change address and token.</string>
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
-    <string name="about_update_current">Klangbild %1$s is the newest version. When Klangbild starts, it asks GitHub for a new one at most once a day. OK asks now.</string>
-    <string name="about_update_unknown">When Klangbild starts, it asks GitHub for a new version at most once a day. No answer has come yet. OK asks now.</string>
-    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right hides the notice in the menu.</string>
-    <string name="about_update_hidden">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right shows the notice in the menu again.</string>
+    <string name="about_update_current">Klangbild %1$s is the newest version. When Klangbild starts, it asks GitHub for a new one at most once a day. OK asks now, left or right turns this off.</string>
+    <string name="about_update_unknown">When Klangbild starts, it asks GitHub for a new version at most once a day. No answer has come yet. OK asks now, left or right turns this off.</string>
+    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it. Left or right turns looking for new versions off.</string>
+    <string name="about_update_off">Klangbild doesn’t look for new versions. Left or right turns this on, and then it asks GitHub at most once a day when it starts.</string>
     <string name="about_update_downloading">The new version is downloading. Then the TV asks whether to install it.</string>
     <string name="about_update_failed">The new version couldn’t be downloaded. OK tries again.</string>
     <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>

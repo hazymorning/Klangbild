@@ -26,8 +26,6 @@ data class UpdateInfo(
     val name: String = "",
     /** The newest release GitHub named (its tag, "v2026.11.0"), once it has. */
     val latest: String? = null,
-    /** The release whose notice in the menu is hidden. */
-    val hidden: String? = null,
     val state: UpdateState = UpdateState.IDLE,
 ) {
     /** The version installed when it is a release's; a build of one's own looks for no new ones. */
@@ -39,9 +37,6 @@ data class UpdateInfo(
             val now = installed ?: return null
             return latest?.takeIf { (AppVersion.parse(it) ?: return null) > now }
         }
-
-    /** The menu tells of a new version, unless its notice was hidden. */
-    val notice: Boolean get() = available != null && hidden != latest
 }
 
 /** What Klangbild is doing about a new version. */

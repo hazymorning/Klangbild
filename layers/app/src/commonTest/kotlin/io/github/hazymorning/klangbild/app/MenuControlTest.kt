@@ -36,14 +36,15 @@ class MenuControlTest {
     private var shown = 0
     private var setup = 0
     private var applied = 0
-    private val updates = ArrayList<Boolean>()
+    private var updates = 0
+    private var settings = Settings()
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
         override val log: Log = QuietLog
         override val scope = CoroutineScope(EmptyCoroutineContext)
         override val now: () -> Long = { 0L }
-        override val settings get() = Settings()
+        override val settings get() = this@MenuControlTest.settings
         override val ui = UiState(
             screen = Screen.Stage(TrackInfo("Song", listOf("A")), PlayerStatus.PLAYING, null),
             source = SourceState(LinkState.CONNECTED),
@@ -53,8 +54,8 @@ class MenuControlTest {
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
         override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0")
-        override fun update(ok: Boolean) {
-            updates += ok
+        override fun update() {
+            updates++
         }
         override fun recompute() {
             recomputed++
@@ -65,6 +66,7 @@ class MenuControlTest {
         override fun openMenu() = Unit
         override fun applySettings(updated: Settings) {
             applied++
+            this@MenuControlTest.settings = updated
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) {
@@ -181,7 +183,7 @@ class MenuControlTest {
     }
 
     @Test
-    fun `the system group tells of a new version, OK on its line installs it, left or right hide its notice`() {
+    fun `the system group tells of a new version, OK on its line installs it, left or right turn asking off`() {
         menu.open()
         assertThat(state().rows.last().value).isEqualTo("New version")
         repeat(6) { menu.move(+1) }
@@ -190,12 +192,21 @@ class MenuControlTest {
         repeat(10) { menu.move(+1) }
         assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
+        // OK installs it, a held OK only once.
         menu.change(+1, wrap = true)
+        menu.change(+1, wrap = true, repeat = true)
+        assertThat(updates).isEqualTo(1)
+        // Left turns asking off, and the notice goes; OK then turns it on again.
         menu.change(-1, wrap = false)
-        menu.change(+1, wrap = false)
-        // A held key does it once.
-        menu.change(+1, wrap = false, repeat = true)
-        assertThat(updates).containsExactly(true, false, false)
-        assertThat(applied).isEqualTo(0)
+        assertThat(settings.updateCheck).isFalse()
+        assertThat(state().rows[state().cursor].value).isEqualTo("Off")
+        menu.back()
+        assertThat(state().rows.last().value).isEqualTo("")
+        menu.change(+1, wrap = true)
+        repeat(10) { menu.move(+1) }
+        menu.change(+1, wrap = true)
+        assertThat(settings.updateCheck).isTrue()
+        assertThat(updates).isEqualTo(1)
+        assertThat(applied).isEqualTo(2)
     }
 }

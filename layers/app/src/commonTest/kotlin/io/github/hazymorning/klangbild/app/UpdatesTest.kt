@@ -4,8 +4,6 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
-import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.domain.UpdateState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,7 +46,6 @@ class UpdatesTest {
         test.runCurrent()
         assertThat(asked).isEqualTo(1)
         assertThat(u.info.value.available).isEqualTo("v2026.11.0")
-        assertThat(u.info.value.notice).isTrue()
         // A start later the same day asks nothing, and knows what GitHub said.
         clock += 23 * 3_600_000L
         val again = updates()
@@ -74,26 +71,6 @@ class UpdatesTest {
         updates(version = "2026.10.24 (abc1234)").checkIfDue()
         test.runCurrent()
         assertThat(asked).isEqualTo(2)
-    }
-
-    @Test
-    fun `the notice hides for this version until a newer one comes, also after a restart`() {
-        val u = updates()
-        u.checkIfDue()
-        test.runCurrent()
-        u.toggleNotice()
-        test.runCurrent()
-        assertThat(u.info.value.notice).isFalse()
-        val later = updates()
-        later.checkIfDue()
-        test.runCurrent()
-        assertThat(later.info.value.notice).isFalse()
-        // A newer release has its own notice.
-        newest = "v2026.11.1"
-        clock += 25 * 3_600_000L
-        later.checkIfDue()
-        test.runCurrent()
-        assertThat(later.info.value.notice).isTrue()
     }
 
     @Test

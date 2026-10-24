@@ -149,11 +149,10 @@ class LanguageTest {
             for (state in UpdateState.entries) for (latest in listOf(null, "v2026.10.5", "v2026.11.0")) {
                 add(MenuContext(LinkState.CONNECTED, update = UpdateInfo("2026.10.5", latest, state = state)))
             }
-            add(MenuContext(LinkState.CONNECTED, update = UpdateInfo("2026.10.5", "v2026.11.0", hidden = "v2026.11.0")))
             add(MenuContext(LinkState.CONNECTED, update = UpdateInfo("2026.10.24 (abc1234)")))
         }
-        val out = LinkedHashSet<MenuRow>(SettingsMenu.groups(MenuContext(), t))
-        out += SettingsMenu.groups(MenuContext(update = UpdateInfo("2026.10.5", "v2026.11.0")), t)
+        val out = LinkedHashSet<MenuRow>(SettingsMenu.groups(Settings(), MenuContext(), t))
+        out += SettingsMenu.groups(Settings(), MenuContext(update = UpdateInfo("2026.10.5", "v2026.11.0")), t)
         fun rows(settings: Settings, ctx: MenuContext) = SettingsMenu.sections.flatMap { SettingsMenu.rows(settings, ctx, t, it) }
         for (base in bases) {
             for (ctx in contexts) out += rows(base, ctx)

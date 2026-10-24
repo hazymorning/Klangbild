@@ -46,8 +46,8 @@ internal interface ControllerHost {
     /** What Klangbild knows of its own new versions. */
     val update: UpdateInfo
 
-    /** OK ([ok]), or left or right, on the menu's Update line. */
-    fun update(ok: Boolean)
+    /** OK on the menu's Update line: installs a new version, or asks for one now. */
+    fun update()
 
     /** Works out the screen again (takes [lock]). */
     fun recompute()

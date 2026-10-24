@@ -298,8 +298,8 @@ class NowPlayingController(
         override val log: Log get() = this@NowPlayingController.log
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
         override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
-        override fun update(ok: Boolean) {
-            if (ok) updates?.ok() else updates?.toggleNotice()
+        override fun update() {
+            updates?.ok()
         }
         override var language: AppLanguage
             get() = localizer.language
@@ -410,13 +410,16 @@ class NowPlayingController(
         }
         updates?.let { u ->
             updatesJob = scope.launch { u.info.collect { recompute() } }
-            u.checkIfDue()
+            updatesDue = true
         }
     }
 
     private var textsJob: Job? = null
     private var speakerJob: Job? = null
     private var updatesJob: Job? = null
+
+    /** A screen started showing: Klangbild asks for a new version once the stored settings are in. */
+    @Volatile private var updatesDue = false
 
     private fun stop() {
         settingsJob?.cancel()
@@ -680,6 +683,9 @@ class NowPlayingController(
             queueSwitch.chosen(s.queue)
             _ui.value = _ui.value.copy(queue = s.queue)
         }
+        // Asked for after a start, and when asking is turned on again, unless it is off.
+        if (s.updateCheck && (updatesDue || !settings.value.updateCheck)) updates?.checkIfDue()
+        updatesDue = false
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {

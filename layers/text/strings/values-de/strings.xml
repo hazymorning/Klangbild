@@ -189,10 +189,10 @@
     <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt die Liste die nächsten Titel, Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
     <string name="about_ma">Die Liste zeigt die nächsten Titel, Cover Flow die ganze Warteschlange. OK zeigt den QR-Code. Am Handy änderst du Adresse und Token.</string>
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
-    <string name="about_update_current">Klangbild %1$s ist die neueste Version. Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen. OK fragt jetzt.</string>
-    <string name="about_update_unknown">Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen Version. Bisher kam keine Antwort. OK fragt jetzt.</string>
-    <string name="about_update_available">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert. Links oder rechts blendet den Hinweis im Menü aus.</string>
-    <string name="about_update_hidden">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert. Links oder rechts zeigt den Hinweis im Menü wieder.</string>
+    <string name="about_update_current">Klangbild %1$s ist die neueste Version. Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen. OK fragt jetzt, links oder rechts schaltet das aus.</string>
+    <string name="about_update_unknown">Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen Version. Bisher kam keine Antwort. OK fragt jetzt, links oder rechts schaltet das aus.</string>
+    <string name="about_update_available">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert. Links oder rechts schaltet die Suche nach neuen Versionen aus.</string>
+    <string name="about_update_off">Klangbild sucht nicht nach neuen Versionen. Links oder rechts schaltet das ein, dann fragt es beim Start höchstens einmal am Tag bei GitHub nach.</string>
     <string name="about_update_downloading">Die neue Version wird geladen. Danach fragt der Fernseher, ob er sie installieren soll.</string>
     <string name="about_update_failed">Die neue Version konnte nicht geladen werden. OK versucht es noch einmal.</string>
     <string name="about_update_own">Dieses Klangbild wurde aus seinem Code gebaut und sucht nicht nach neuen Versionen.</string>

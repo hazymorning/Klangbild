@@ -129,5 +129,5 @@ abstract class AppFixtures {
 
     /** The settings menu on its groups, the cursor on [cursor]. */
     fun menuGroups(cursor: Int = 0, t: Texts = texts) =
-        MenuState(io.github.hazymorning.klangbild.config.SettingsMenu.groups(io.github.hazymorning.klangbild.config.MenuContext(), t), cursor)
+        MenuState(io.github.hazymorning.klangbild.config.SettingsMenu.groups(io.github.hazymorning.klangbild.config.Settings(), io.github.hazymorning.klangbild.config.MenuContext(), t), cursor)
 }
