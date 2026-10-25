@@ -136,6 +136,8 @@ class QuickControlTest {
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
+        override val update = io.github.hazymorning.klangbild.domain.UpdateInfo()
+        override fun update() = Unit
         override fun recompute() = Unit
         override fun showMenu() = Unit
         override fun openMenu() {

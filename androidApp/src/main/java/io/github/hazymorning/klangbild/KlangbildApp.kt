@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild
 
 import android.app.Application
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
+import androidx.core.content.FileProvider
 import io.github.hazymorning.klangbild.app.AppGraph
 import io.github.hazymorning.klangbild.app.Platform
 import io.github.hazymorning.klangbild.config.KeystoreSecretBox
@@ -26,7 +28,11 @@ import io.github.hazymorning.klangbild.text.PlatformLanguageStore
 import io.github.hazymorning.klangbild.ui.landscape.releaseBakedLandscape
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.jvm.javaio.copyTo
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import java.io.File
@@ -90,6 +96,38 @@ class AndroidPlatform(context: Context) : Platform {
     override val pictures = AndroidPictureDecoder
 
     override fun setupServer(scope: CoroutineScope, handler: SetupHandler) = SocketSetupServer(scope, handler)
+
+    override val version: String = BuildConfig.VERSION_NAME
+
+    /** The new version, kept until Android's installer has read it. */
+    private val update = File(File(app.cacheDir, "updates"), "klangbild.apk")
+
+    init {
+        // A download left from an earlier day goes.
+        if (System.currentTimeMillis() - update.lastModified() > UPDATE_KEPT_MS) update.delete()
+    }
+
+    /**
+     * Writes the new version where the file provider hands it to Android's installer, which asks
+     * the person (and, the first time, for leave to install apps from Klangbild).
+     */
+    override suspend fun install(apk: ByteReadChannel): Boolean {
+        withContext(Dispatchers.IO) {
+            update.parentFile?.mkdirs()
+            update.outputStream().use { apk.copyTo(it) }
+        }
+        val view = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(FileProvider.getUriForFile(app, "${app.packageName}.updates", update), "application/vnd.android.package-archive")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        return withContext(Dispatchers.Main) {
+            try {
+                app.startActivity(view)
+                true
+            } catch (_: ActivityNotFoundException) {
+                false
+            }
+        }
+    }
 
     override val log = AndroidLog
 }
@@ -155,3 +193,6 @@ val Context.graph: AppGraph get() = app.graph
 
 /** Room for covers on disk. */
 private const val HTTP_CACHE_BYTES = 32L * 1024 * 1024
+
+/** A new version downloaded this long ago (ms) has been installed or turned down. */
+private const val UPDATE_KEPT_MS = 24 * 3_600_000L

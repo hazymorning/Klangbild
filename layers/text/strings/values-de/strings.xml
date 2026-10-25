@@ -22,7 +22,7 @@
     <string name="about_section_landscape">Wann die Landschaft aus Papier kommt und wo ihr Mini-Player sitzt.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
     <string name="about_section_timer">Der Sleep-Timer und wann sich Klangbild ausschaltet.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant, die Wiedergabe hier und die Sprache.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, die Wiedergabe hier, die Sprache und Updates.</string>
 
     <string name="entry_queue">Warteschlange</string>
     <string name="entry_appearance">Erscheinungsbild</string>
@@ -50,6 +50,15 @@
     <string name="entry_sleep_action">Beim Ausschalten</string>
     <string name="entry_language">Sprache</string>
     <string name="entry_speaker">Lautsprecher</string>
+    <string name="entry_update">Update</string>
+    <string name="entry_update_check">Nach Updates suchen</string>
+    <string name="update_notice">Neue Version</string>
+    <string name="update_current">Auf dem neuesten Stand</string>
+    <string name="update_checking">Wird geprüft</string>
+    <string name="update_unknown">Nicht geprüft</string>
+    <string name="update_version">Version %1$s</string>
+    <string name="update_downloading">Wird geladen</string>
+    <string name="update_failed">Hat nicht geklappt</string>
     <string name="entry_play_here">Hier abspielen</string>
 
     <string name="queue_list">Liste</string>
@@ -181,6 +190,14 @@
     <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt die Liste die nächsten Titel, Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
     <string name="about_ma">Die Liste zeigt die nächsten Titel, Cover Flow die ganze Warteschlange. OK zeigt den QR-Code. Am Handy änderst du Adresse und Token.</string>
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
+    <string name="about_update_current">Klangbild %1$s ist die neueste Version. OK fragt noch einmal bei GitHub nach.</string>
+    <string name="about_update_unknown">Noch ist nicht bekannt, ob es eine neue Version gibt. OK fragt jetzt bei GitHub nach.</string>
+    <string name="about_update_available">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert.</string>
+    <string name="about_update_check_on">Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen Version.</string>
+    <string name="about_update_check_off">Klangbild sucht nicht von selbst nach neuen Versionen. OK bei Update fragt trotzdem bei GitHub nach.</string>
+    <string name="about_update_downloading">Die neue Version wird geladen. Danach fragt der Fernseher, ob er sie installieren soll.</string>
+    <string name="about_update_failed">Die neue Version konnte nicht geladen werden. OK versucht es noch einmal.</string>
+    <string name="about_update_own">Dieses Klangbild wurde aus seinem Code gebaut und sucht nicht nach neuen Versionen.</string>
     <string name="about_speaker">Der Lautsprecher, den Klangbild zeigt und die Fernbedienung steuert: der am Handy gewählte oder dieser Fernseher, der dann hier spielt.</string>
     <string name="about_speaker_this_tv">Klangbild folgt diesem Fernseher. Um einem anderen Lautsprecher zu folgen, wähle ihn am Handy. OK zeigt den QR-Code.</string>
     <string name="about_play_here_set_up">Mit Music Assistant kann dieser Fernseher Musik synchron mit deinen anderen Lautsprechern spielen. OK zeigt den QR-Code, um es am Handy einzurichten.</string>

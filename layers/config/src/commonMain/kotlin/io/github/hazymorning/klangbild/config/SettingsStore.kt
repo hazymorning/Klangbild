@@ -55,6 +55,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val quickSeen = booleanKey("quick_seen")
         val ownValues = stringKey("own_values")
         val showValues = booleanKey("show_values")
+        val updateCheck = booleanKey("update_check")
     }
 
     val settings: Flow<Settings> = store.data.map(::read)
@@ -126,6 +127,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             ownValues = OwnValues.decode(p[Keys.ownValues]),
             quickSeen = p[Keys.quickSeen] ?: defaults.quickSeen,
             showValues = p[Keys.showValues] ?: defaults.showValues,
+            updateCheck = p[Keys.updateCheck] ?: defaults.updateCheck,
         )
 
     private fun write(p: MutableMap<String, Any>, s: Settings) {
@@ -174,6 +176,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         putOrRemove(Keys.ownValues, s.ownValues.takeIf { it.isNotEmpty() }?.let(OwnValues::encode))
         p[Keys.quickSeen] = s.quickSeen
         p[Keys.showValues] = s.showValues
+        p[Keys.updateCheck] = s.updateCheck
     }
 
     /**

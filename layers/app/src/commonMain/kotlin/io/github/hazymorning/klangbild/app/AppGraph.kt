@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.PictureDecoder
+import io.github.hazymorning.klangbild.data.Releases
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.speaker.SpeakerHub
@@ -12,10 +13,12 @@ import io.github.hazymorning.klangbild.speaker.SpeakerStore
 import io.github.hazymorning.klangbild.text.LanguageStore
 import io.github.hazymorning.klangbild.text.Localizer
 import io.ktor.client.HttpClient
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 /** What the app needs from the platform it runs on. [AppGraph] makes the rest of it from these. */
 interface Platform {
@@ -46,6 +49,12 @@ interface Platform {
     /** The setup page's server for [handler], running in [scope]. */
     fun setupServer(scope: CoroutineScope, handler: SetupHandler): SetupServer
 
+    /** The version installed, as the platform names it ("2026.11.0" for a release's). */
+    val version: String
+
+    /** Installs the app [apk] holds, read as it downloads, once the person agrees; false when it can't be handed over. */
+    suspend fun install(apk: ByteReadChannel): Boolean
+
     val log: Log
 }
 
@@ -61,11 +70,22 @@ class AppGraph(private val platform: Platform) {
     /** This TV's speaker while it plays as one. */
     val speakerHub = SpeakerHub()
 
+    /** Klangbild's own new versions, from its releases on GitHub. */
+    private val releases = Releases(platform.http)
+    private val updates = Updates(
+        scope, platform.settings, platform.version,
+        latest = releases::latest,
+        install = { tag -> releases.download(tag, platform::install) },
+        now = { Clock.System.now().toEpochMilliseconds() },
+        log = platform.log,
+    )
+
     val controller = NowPlayingController(
         scope, platform.http, platform.tokenHttp, settings, localizer, platform.pictures, platform::setupServer, platform.log,
         speaker = speakerHub.status,
         pairingToken = { speakerHub.speaker?.pairingToken },
         ownSound = { speakerHub.speaker?.sound },
+        updates = updates,
     )
 
     /** What the speaker keeps (its key, its pairings), opened when it is first needed. */
