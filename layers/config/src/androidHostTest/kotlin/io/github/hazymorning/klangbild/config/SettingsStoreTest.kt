@@ -103,7 +103,7 @@ class SettingsStoreTest {
             quickActions = listOf(QuickAction("Ungroup", "script.ungroup", condition = Condition("media_player.kitchen", "group_members", Condition.Test.ABOVE, "1"))),
             ownValues = listOf(OwnValue("Outside", "sensor.outside_temperature")),
             quickSeen = true,
-            updateCheck = false,
+            updateCheck = true,
         )
         // A setting the store forgets would come back as its default, so every one differs from it here.
         val defaults = Settings()
