@@ -30,8 +30,16 @@ data class TrackInfo(
     /** Stable identity used for transitions and caching. */
     val key: String = listOf(title, artists.joinToString(), album.orEmpty()).joinToString("|"),
 ) {
-    /** Seed for generated artwork: stable per album/station rather than per song. */
-    val artSeed: String get() = source ?: album ?: artists.firstOrNull() ?: title
+    /**
+     * What generated artwork follows for a track without a cover: its foil the first artist (for
+     * a station its name), its view the album or the title. Neither for what has only a title,
+     * like a TV's sound, which gets a plain one.
+     */
+    val artFoil: String? get() = if (kind == MediaKind.RADIO) source ?: title else artists.firstOrNull() ?: album ?: source
+    val artView: String? get() = if (kind == MediaKind.RADIO || artFoil == null) null else album ?: title
+
+    /** Which generated artwork this is: the same for every track that would get the same one. */
+    val artKey: String get() = "${artFoil.orEmpty()}|${artView.orEmpty()}"
 
     /**
      * Which picture this is: its address without the access token in Home Assistant's own
@@ -42,12 +50,12 @@ data class TrackInfo(
     /**
      * Identity of the picture this track shows: the album (one card for all its songs, even
      * where each song carries its own copy of the artwork), else the artwork, else the
-     * generated figure's seed.
+     * generated artwork's.
      */
     val pictureKey: String
         get() = album?.takeIf { it.isNotBlank() }?.let { "album|" + it.trim().lowercase() }
             ?: artworkId?.let { "art|$it" }
-            ?: "seed|$artSeed"
+            ?: "seed|$artKey"
 
     /**
      * What a scene is made for: the song, and for a station also its picture. A station's song

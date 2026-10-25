@@ -4,11 +4,11 @@ plugins {
 
 kotlin {
     sourceSets.commonMain.dependencies {
-        implementation(libs.kotlinx.atomicfu)
+        implementation(projects.color)
     }
 }
 
-// ChladniSheetTest draws every sand figure there; as the tests' output, the sheet comes back
+// SleeveSheetTest draws the generated covers there; as the tests' output, the sheet comes back
 // with them from the build cache.
 tasks.named<Test>("jvmTest") {
     outputs.dir(layout.buildDirectory.dir("screenshots/art"))

@@ -7,12 +7,10 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isGreaterThanOrEqualTo
-import assertk.assertions.isIn
 import assertk.assertions.isLessThan
 import assertk.assertions.isLessThanOrEqualTo
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isTrue
-import io.github.hazymorning.klangbild.art.ChladniArt
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
 import io.github.hazymorning.klangbild.color.Oklab
@@ -20,8 +18,6 @@ import io.github.hazymorning.klangbild.color.contrastRatio
 import io.github.hazymorning.klangbild.color.relativeLuminance
 import io.github.hazymorning.klangbild.ui.stage.BLOCK_SHARE
 import kotlin.math.abs
-import kotlin.math.roundToInt
-import kotlin.random.Random
 import kotlin.test.Test
 
 /** Design principles as tests, so polishing never quietly breaks them. */
@@ -179,38 +175,5 @@ class DesignRulesTest {
         // … the middle of an edge is not
         assertThat(shape.contains(rect.centerX, rect.top + 0.5f)).isTrue()
         assertThat(shape.distance(rect.left - 10f, rect.centerY)).isCloseTo(10f, 0.01f)
-    }
-
-    // --- Generated art -------------------------------------------------------------------
-
-    @Test
-    fun `sand figures are mirror-symmetric, so none can look like a hooked cross`() {
-        val rnd = Random(7)
-        for (seed in listOf("Radio Morgenlicht", "Jazzradio", "BR-Klassik", "FIP", "SWR2", "WDR 3", "x", "Klangbild")) {
-            val spec = ChladniArt.specFor(seed)
-            repeat(50) {
-                val r = rnd.nextFloat()
-                val t = rnd.nextFloat() * 6.283f
-                assertThat(ChladniArt.field(spec, r, t)).isCloseTo(ChladniArt.field(spec, r, -t), 1e-4f)
-            }
-        }
-    }
-
-    @Test
-    fun `sand figures are wavy rings, never a cross, a wheel or a rosette`() {
-        val seen = HashSet<Pair<Int, Int>>()
-        for (i in 0 until 300) {
-            val spec = ChladniArt.specFor("Sender $i")
-            // the first mode is a ring mode, with no nodal diameters: through the center they make
-            // crosses, wheels and petals
-            assertThat(spec.n2).isIn(2, 3, 4, 5, 6, 8)
-            // the second mode only bends the circles
-            assertThat(kotlin.math.abs(spec.mix)).isLessThanOrEqualTo(ChladniArt.MAX_MIX)
-            // the middle stays free: the field there is the ring mode's
-            assertThat(ChladniArt.field(spec, 0.05f, 1f)).isGreaterThan(0.8f)
-            seen += (spec.k1 * 0.7f / 3f).roundToInt() to spec.n2
-        }
-        // variety: two or three circles, many lobe counts
-        assertThat(seen.size).isGreaterThanOrEqualTo(8)
     }
 }

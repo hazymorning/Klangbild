@@ -210,8 +210,8 @@ object ImageOps {
     }
 
     /**
-     * Fast area-average downscale for analysis thumbnails. Transparency carries over (a round
-     * plate stays clear in its corners), and the color is what is seen: a transparent pixel
+     * Fast area-average downscale for analysis thumbnails. Transparency carries over (a station's
+     * logo stays clear around its mark), and the color is what is seen: a transparent pixel
      * gives none of it.
      */
     fun thumbnail(src: IntArray, sw: Int, sh: Int, size: Int): IntArray {

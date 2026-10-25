@@ -1,8 +1,7 @@
 package io.github.hazymorning.klangbild.render
 
 import androidx.compose.ui.graphics.ImageBitmap
-import io.github.hazymorning.klangbild.art.ChladniArt
-import io.github.hazymorning.klangbild.art.stableHash
+import io.github.hazymorning.klangbild.art.SleeveArt
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverAnalysis
 import io.github.hazymorning.klangbild.color.CoverPalette
@@ -19,8 +18,7 @@ class ArtworkScene(
     val layout: StageGrid,
     /**
      * The print at its exact on-screen pixel size (drawn 1:1, no GPU scaling): every cover fills
-     * the square, a small one enlarged once with Lanczos; a generated plate is round and
-     * transparent around the disc.
+     * the square, a small one enlarged once with Lanczos, and so does the generated one.
      */
     val cover: ImageBitmap,
     /** The print's outline on the wall. */
@@ -52,20 +50,22 @@ class ArtworkScene(
 
     val appearance: Appearance get() = palette.appearance
 
-    /** Corner radius the artwork is drawn with (dp); none for a round plate. */
-    val corner: Float get() = if (shape.round) 0f else shape.corner
+    /** Corner radius the artwork is drawn with (dp). */
+    val corner: Float get() = shape.corner
 }
 
 object SceneBuilder {
     const val THUMB = 48
 
     /**
-     * @param source decoded cover or null (radio, missing art) → generated Chladni figure.
+     * @param source decoded cover, or null (a station, missing art): then the generated cover
+     *   ([SleeveArt]) with its foil from [artFoil] and its view from [artView].
      */
     fun build(
         key: String,
         source: ImageBitmap?,
-        artSeed: String,
+        artFoil: String?,
+        artView: String?,
         screen: ScreenSpec,
         appearance: Appearance = Appearance.DARK,
         wallTint: Float = 1f,
@@ -78,7 +78,6 @@ object SceneBuilder {
         val coverPixels: IntArray
         val coverSize: Int
         val thumb: IntArray
-        val shape: PrintShape
         if (source != null) {
             val side = min(source.width, source.height)
             val square = IntArray(side * side)
@@ -88,14 +87,12 @@ object SceneBuilder {
             coverPixels = ImageOps.resize(square, side, side, slotPx, slotPx)
             coverSize = slotPx
             thumb = ImageOps.thumbnail(square, side, side, THUMB)
-            shape = PrintShape(slotRect, corner = layout.radius)
         } else {
-            coverPixels = ChladniArt.render(ChladniArt.specFor(artSeed), slotPx, seed = stableHash(artSeed))
+            coverPixels = SleeveArt.render(SleeveArt.Seed(artFoil, artView), slotPx)
             coverSize = slotPx
             thumb = ImageOps.thumbnail(coverPixels, slotPx, slotPx, THUMB)
-            val r = ChladniArt.PLATE * slotRect.width / 2f
-            shape = PrintShape(RectDp(slotRect.centerX - r, slotRect.centerY - r, 2 * r, 2 * r), round = true)
         }
+        val shape = PrintShape(slotRect, corner = layout.radius)
         val cover = imageBitmapOf(coverPixels, coverSize, coverSize)
         val analysis = CoverPalette.analyze(thumb)
         return assemble(key, layout, cover, shape, source == null, analysis, thumb, appearance, wallTint, coverField)
@@ -103,11 +100,11 @@ object SceneBuilder {
 
     /**
      * A row's small cover in the queue's list: [cover] cut square and made [side] px wide with
-     * Lanczos, as the stage's cover is; without one, the generated figure for [seed].
+     * Lanczos, as the stage's cover is; without one, the generated one for [artFoil] and [artView].
      */
-    fun rowCover(cover: ImageBitmap?, seed: String, side: Int): ImageBitmap {
+    fun rowCover(cover: ImageBitmap?, artFoil: String?, artView: String?, side: Int): ImageBitmap {
         val pixels = if (cover == null) {
-            ChladniArt.render(ChladniArt.specFor(seed), side, seed = stableHash(seed))
+            SleeveArt.render(SleeveArt.Seed(artFoil, artView), side)
         } else {
             val s = min(cover.width, cover.height)
             val square = IntArray(s * s)
@@ -164,7 +161,6 @@ object SceneBuilder {
         }
         val flowCard = if (!flow) null else card ?: FlowCards.build(
             cover = cover,
-            round = shape.round,
             cornerPx = layout.radius * layout.screen.density,
             geometry = FlowGeometry(layout),
             density = layout.screen.density,

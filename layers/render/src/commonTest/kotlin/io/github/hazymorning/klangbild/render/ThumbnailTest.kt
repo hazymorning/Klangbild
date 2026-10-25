@@ -2,10 +2,6 @@ package io.github.hazymorning.klangbild.render
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isGreaterThan
-import io.github.hazymorning.klangbild.art.ChladniArt
-import io.github.hazymorning.klangbild.art.stableHash
-import io.github.hazymorning.klangbild.color.CoverPalette
 import kotlin.test.Test
 
 /** The thumbnail the colors are found in: what is clear in a picture stays clear and gives no color. */
@@ -21,12 +17,4 @@ class ThumbnailTest {
         assertThat(ImageOps.thumbnail(intArrayOf(red, -1, red, -1), 2, 2, 1)[0]).isEqualTo(0xFFFF7F7F.toInt())
     }
 
-    @Test
-    fun `a generated plate's colors leave out its clear corners`() {
-        val px = 368
-        val art = ChladniArt.render(ChladniArt.specFor("Radio"), px, seed = stableHash("Radio"))
-        val analysis = CoverPalette.analyze(ImageOps.thumbnail(art, px, px, SceneBuilder.THUMB))
-        // Before, the corners counted as a black making up two fifths of the plate.
-        assertThat(analysis.clusters.minOf { it.lab.l }).isGreaterThan(0.1f)
-    }
 }

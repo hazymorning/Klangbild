@@ -65,7 +65,7 @@ abstract class AppFixtures {
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
         val bmp = cover?.let { SyntheticCovers.render(it) }
-        return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, flow = flow, coverField = coverField)
+        return SceneBuilder.build(track.key, bmp, track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */
@@ -86,7 +86,7 @@ abstract class AppFixtures {
         val px = kotlin.math.round(StageGrid(screen).rowCover * screen.density).toInt()
         val made = if (!covers) emptyMap() else upNext.rows.associate { row ->
             val cover = row.track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { name -> SyntheticCover.entries.firstOrNull { it.name == name } }
-            row.id to SceneBuilder.rowCover(cover?.let { SyntheticCovers.render(it) }, row.track.artSeed, px)
+            row.id to SceneBuilder.rowCover(cover?.let { SyntheticCovers.render(it) }, row.track.artFoil, row.track.artView, px)
         }
         return QueueList(upNext, made)
     }

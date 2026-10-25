@@ -112,7 +112,7 @@ class FlowMirrorTest {
         val side = cover.sidePx
         val logo = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888)
         android.graphics.Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
-        val was = FlowCards.build(logo.asImageBitmap(), round = false, cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
+        val was = FlowCards.build(logo.asImageBitmap(), cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
         val paper = scene.palette.wall.asColor()
         val cards = listOf(CardMotion(0, cover, 0f, 0f, was = was))
         var look by mutableFloatStateOf(0f)
