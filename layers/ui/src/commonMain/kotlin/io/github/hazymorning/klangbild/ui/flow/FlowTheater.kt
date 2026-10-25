@@ -36,6 +36,7 @@ import io.github.hazymorning.klangbild.ui.stage.TextLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLine
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
+import io.github.hazymorning.klangbild.ui.stage.drawnAlike
 import io.github.hazymorning.klangbild.ui.stage.partyCard
 import io.github.hazymorning.klangbild.ui.stage.rememberPartyCode
 import io.github.hazymorning.klangbild.ui.stage.rememberStageDim
@@ -319,7 +320,7 @@ private fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.scene !== b.scene -> FlowChange.SOFT
         old.lyrics !== new.lyrics -> FlowChange.LYRICS
         // The same song described anew (a year that came late): its text cross-fades, as on the single stage.
-        a.track != b.track -> FlowChange.SOFT
+        !drawnAlike(a.track, b.track) -> FlowChange.SOFT
         else -> FlowChange.SIDES
     }
 }

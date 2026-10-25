@@ -17,6 +17,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.RisingText
@@ -93,12 +94,16 @@ fun StageTheater(
             val newer: suspend () -> Unit = { snapshotFlow { latest.track.key }.first { it != song } }
             // Lines held by a skip that came to nothing rise the rest of the way first.
             if (song == old.track.key) text.release(newer)
-            if (target.scene === old.scene && target.track == old.track && target.lyrics === old.lyrics && target.queue == old.queue) return@collect
+            if (target.scene === old.scene && target.lyrics === old.lyrics && target.queue == old.queue && drawnAlike(target.track, old.track)) {
+                // Only what the stage doesn't draw has changed (a new link to the same picture): nothing to watch.
+                current = target
+                return@collect
+            }
             val kind = when {
                 song == old.track.key && target.scene.appearance != old.scene.appearance -> Change.WALL
                 song == old.track.key && target.scene !== old.scene -> Change.SOFT
                 song == old.track.key && (target.lyrics !== old.lyrics || (target.queue == null) != (old.queue == null)) -> Change.COLUMN
-                song == old.track.key && target.queue != old.queue && target.track == old.track -> Change.ROWS
+                song == old.track.key && target.queue != old.queue && drawnAlike(target.track, old.track) -> Change.ROWS
                 song == old.track.key -> Change.SOFT
                 samePicture(old.scene, target.scene) -> Change.TEXT
                 else -> Change.FULL
@@ -304,6 +309,13 @@ private const val ROWS_GLIDE_MS = 600
 private const val ROWS_CLEAR_MS = 300
 private const val ROWS_SETTLED_MS = 750
 private const val ROWS_COME_MS = 650
+
+/**
+ * Whether the stage draws [a] and [b] alike: the picture comes with the scene, so a new link to
+ * it, or what only the quick settings and the queue read, changes nothing on screen.
+ */
+internal fun drawnAlike(a: TrackInfo, b: TrackInfo): Boolean =
+    a == b.copy(artworkUrl = a.artworkUrl, artworkFallbackUrl = a.artworkFallbackUrl, favorite = a.favorite, songPicture = a.songPicture, queueItemId = a.queueItemId)
 
 /** Same picture: consecutive songs of one album. */
 internal fun samePicture(a: ArtworkScene, b: ArtworkScene): Boolean =
