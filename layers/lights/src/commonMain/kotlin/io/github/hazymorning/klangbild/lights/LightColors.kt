@@ -3,13 +3,9 @@ package io.github.hazymorning.klangbild.lights
 import io.github.hazymorning.klangbild.color.Lab
 import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.color.Oklab
-import io.github.hazymorning.klangbild.landscape.PaperLook
-import io.github.hazymorning.klangbild.landscape.SheetId
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
 import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
 
 /** Where a light stands: left of the screen, behind its middle (above it), right of it. */
 enum class LightSlot { LEFT, CENTER, RIGHT }
@@ -110,66 +106,6 @@ class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightCo
             return kotlin.math.sqrt(dl * dl + da * da + db * db)
         }
     }
-}
-
-/**
- * The landscape's light, three colors from its own palette: in the middle its sky; on the
- * side away from the campfire the clearing's green (by night the moonlit wood); on the fire's
- * side the mountains' paper, and at night the fire's warm light. Where the sun stands low, its
- * side takes the glow of dawn or dusk. The lights stand round the screen as the picture's
- * colors stand in it.
- */
-class LandscapeLightColors(look: PaperLook, fireOnRight: Boolean) : LightColors {
-    private val left: FloatArray
-    private val center: FloatArray
-    private val right: FloatArray
-
-    init {
-        val sky = look.inks(SheetId.SKY)
-        val zenith = linear(sky.base)
-        val middle = linear(sky.first)
-        val horizon = linear(sky.second)
-        center = FloatArray(3) { zenith[it] * 0.55f + middle[it] * 0.45f }
-        // Day 1, night 0: the stars come out as the day goes.
-        val day = 1f - look.stars.coerceIn(0f, 1f)
-        val meadow = linear(look.inks(SheetId.MEADOW).base)
-        val mountains = linear(look.inks(SheetId.RANGE_FAR).base)
-        // At night the clearing's side takes the moonlit wood: a dark teal beside the sky's blue.
-        val nightWood = linear(look.inks(SheetId.WOOD_NEAR).base)
-        // Where the light comes from: shadows fall away from it.
-        val fromRight = (-look.shadowSide).coerceIn(-1f, 1f)
-        val glow = linear(look.horizonGlow)
-        val fire = linear(look.fireGlow)
-        fun side(sign: Float, fireHere: Boolean): FloatArray {
-            val out = if (fireHere) mountains.copyOf() else meadow.copyOf()
-            if (!fireHere) mix(out, nightWood, 1f - day)
-            val towards = max(0f, sign * fromRight)
-            mix(out, glow, min(0.9f, look.horizonGlowAlpha * 1.6f) * towards)
-            if (fireHere) mix(out, fire, min(1f, 1.4f * look.fire) * (1f - day * 0.85f))
-            return out
-        }
-        left = side(-1f, !fireOnRight)
-        right = side(1f, fireOnRight)
-    }
-
-    override fun color(slot: LightSlot, t: Double, out: FloatArray) {
-        when (slot) {
-            LightSlot.LEFT -> left
-            LightSlot.CENTER -> center
-            LightSlot.RIGHT -> right
-        }.copyInto(out)
-    }
-
-    private fun mix(out: FloatArray, c: FloatArray, a: Float) {
-        if (a <= 0f) return
-        for (k in 0..2) out[k] += (c[k] - out[k]) * a
-    }
-
-    private fun linear(argb: Int) = floatArrayOf(
-        Oklab.srgbToLinear((argb shr 16) and 0xFF),
-        Oklab.srgbToLinear((argb shr 8) and 0xFF),
-        Oklab.srgbToLinear(argb and 0xFF),
-    )
 }
 
 /** [a] and [b] (linear sRGB) mixed by [f] in Oklab: a passing color never goes gray on the way. */

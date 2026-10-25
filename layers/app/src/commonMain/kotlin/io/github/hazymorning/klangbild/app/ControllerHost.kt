@@ -64,9 +64,4 @@ internal interface ControllerHost {
     fun send(command: RemoteCommand)
 
     fun requestSetup(show: Boolean)
-
-    fun showLandscape()
-
-    /** Leaves the landscape; whether it was showing. */
-    fun hideLandscape(): Boolean
 }

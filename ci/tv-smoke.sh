@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Starts a stand-in Home Assistant on the host (ci/fake_ha.py), installs the release APK on
 # the running Android TV emulator, points it at that server with launch extras and walks
-# through the main states: playing, a key press that shows hidden parts, the settings menu,
-# a track change, new extras while running, the quick settings and the landscape. With
-# SENDSPIN_PYTHON set (a Python with aiosendspin), the TV then plays as a speaker from a
-# Sendspin server on the host. Checks that the app is still alive and never crashed. Leaves
-# screenshots, logcat and gfxinfo in smoke/.
+# through the main states: playing, the settings on up and on a long press, a track change,
+# new extras while running and the quick settings. With SENDSPIN_PYTHON set (a Python with
+# aiosendspin), the TV then plays as a speaker from a Sendspin server on the host. Checks that
+# the app is still alive and never crashed. Leaves screenshots, logcat and gfxinfo in smoke/.
 set -u
 APK="$1"
 PKG=io.github.hazymorning.klangbild
@@ -33,10 +32,12 @@ else
   echo "Note: on the first start Klangbild did not connect (setup page):"
   adb logcat -d -s Klangbild:I | tail -20
 fi
-# A key press brings hidden parts (time, place, progress) back for a moment.
+# Up opens the settings; Back closes them.
 adb shell input keyevent KEYCODE_DPAD_UP
 sleep 2
-adb exec-out screencap -p > smoke/2-peek.png
+adb exec-out screencap -p > smoke/2-settings.png
+adb shell input keyevent KEYCODE_BACK
+sleep 2
 # The settings menu: open with a long press, move down, close with Back.
 adb shell input keyevent --longpress KEYCODE_DPAD_CENTER
 sleep 2
@@ -61,15 +62,6 @@ adb exec-out screencap -p > smoke/6-quick-settings.png
 adb shell input keyevent KEYCODE_DPAD_UP
 sleep 1
 
-# The landscape on request (its picture is baked first). Asked for, it stays until it is
-# left: Back brings the stage back.
-adb shell am start -n "$PKG/.MainActivity" --es landscape on
-sleep 20
-adb exec-out screencap -p > smoke/7-landscape.png
-adb shell input keyevent KEYCODE_BACK
-sleep 5
-adb exec-out screencap -p > smoke/8-back-to-stage.png
-
 # This TV as a speaker: the server Music Assistant 2.10.7 runs (aiosendspin, ci/sendspin_server.py)
 # waits on the host. With the setting on, the speaker's service connects to it from the
 # emulator and takes a stream (the emulator has no sound) while the app goes on.
@@ -80,7 +72,7 @@ if [ -n "${SENDSPIN_PYTHON:-}" ]; then
   adb shell am start -n "$PKG/.MainActivity" --es ma_url http://10.0.2.2:8095 --es ma_token smoke --es tv_speaker on
   wait "$SPEAKER"
   SPEAKER_OK=$?
-  adb exec-out screencap -p > smoke/9-speaker.png
+  adb exec-out screencap -p > smoke/7-speaker.png
 fi
 
 PID="$(adb shell pidof "$PKG" | tr -d '\r')"

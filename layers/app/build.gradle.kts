@@ -11,7 +11,6 @@ kotlin {
             implementation(projects.config)
             implementation(projects.data)
             implementation(projects.domain)
-            implementation(projects.landscape)
             implementation(projects.lights)
             implementation(projects.math)
             implementation(projects.render)
@@ -25,7 +24,6 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.compose.ui)
             implementation(libs.kotlinx.atomicfu)
-            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(projects.textTesting)

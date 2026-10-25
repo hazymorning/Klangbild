@@ -36,7 +36,6 @@ class FirstLaunchTest {
             .putExtra("ha_url", ha ?: "http://127.0.0.1:9")
             .putExtra("token", "smoke")
             .putExtra("entity", "media_player.living_room")
-            .putExtra("landscape", "on")
         val activity = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
         try {
             watch(app, ha)

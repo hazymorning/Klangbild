@@ -3,10 +3,8 @@ package io.github.hazymorning.klangbild.app
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.art.SyntheticCover
-import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -123,19 +121,6 @@ class QueueSwitchTest {
             // The song that comes later waits behind the clock like any other: no switch.
             assertThat(switch.onItsWay(UiState(screen = playing(a.track), queue = QueueDisplay.FLOW), true, QueueDisplay.FLOW, null)).isNull()
         }
-    }
-
-    @Test
-    fun `a landscape held while the stage is made counts as on stage`() {
-        // Chosen over the landscape, which leaves: the stage it kept behind it is let go, and the
-        // landscape stays in front until the strip is there.
-        val over = single().copy(landscape = Fixtures.landscape(a.track, PlayerStatus.PLAYING, MiniPlayer.LEFT))
-        assertThat(onItsWay(over, QueueDisplay.OFF, pending = QueueDisplay.FLOW)).isEqualTo(QueueDisplay.FLOW)
-        switch.chosen(QueueDisplay.FLOW)
-        val waiting = UiState(screen = playing(a.track), queue = QueueDisplay.FLOW)
-        assertThat(HeldStage.shown(over, waiting).landscape).isNotNull()
-        assertThat(onItsWay(waiting, QueueDisplay.FLOW)).isEqualTo(QueueDisplay.FLOW)
-        assertThat(onItsWay(strip(), QueueDisplay.FLOW)).isNull()
     }
 
     @Test

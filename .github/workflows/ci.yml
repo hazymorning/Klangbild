@@ -32,12 +32,6 @@ on:
         description: "Run on main: make this commit a draft release under this version tag (like v2026.11.0), published by hand on GitHub; a beta (v2026.11.0-beta.1) may run on any branch; empty only builds"
         required: false
         default: ""
-      measure:
-        description: "Measure the landscape on the emulator (1080p and 4K): frames, CPU, memory"
-        required: false
-        type: choice
-        options: ["off", "short", "15min"]
-        default: "off"
 
 # A new push to a pull request replaces its running checks; tags and main always finish.
 concurrency:
@@ -406,59 +400,6 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
           script: bash ci/rotation-check.sh klangbild.apk
-
-  measure:
-    name: Landscape measurement (${{ matrix.profile }})
-    needs: apk
-    if: github.event_name == 'workflow_dispatch' && inputs.measure != 'off'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        profile: [tv_1080p, tv_4k]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: klangbild-apk
-
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
-            /opt/hostedtoolcache/CodeQL /usr/local/lib/android/sdk/ndk || true
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Download the Android TV 14 image
-        run: bash ci/install-system-image.sh 34 android-tv x86
-
-      - name: Measure
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        env:
-          MEASURE: ${{ inputs.measure }}
-        with:
-          api-level: 34
-          target: android-tv
-          arch: x86
-          profile: ${{ matrix.profile }}
-          disable-animations: false
-          disk-size: 3G
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
-          script: bash ci/landscape-measure-all.sh klangbild.apk "$MEASURE"
-
-      - name: Upload the measurements
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: measure-${{ matrix.profile }}
-          path: measure/
-          if-no-files-found: warn
 
   release:
     name: GitHub release

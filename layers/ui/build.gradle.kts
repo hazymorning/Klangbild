@@ -31,7 +31,6 @@ kotlin {
                 implementation(projects.color)
                 implementation(projects.config)
                 implementation(projects.domain)
-                implementation(projects.landscape)
                 implementation(projects.math)
                 implementation(projects.render)
                 implementation(projects.setup)
@@ -43,7 +42,6 @@ kotlin {
                 api(libs.compose.ui)
                 api(libs.kotlinx.coroutines.core)
                 implementation(libs.compose.resources)
-                implementation(libs.kotlinx.atomicfu)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.lifecycle.runtime.compose)
             }
@@ -64,10 +62,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.roborazzi)
             implementation(libs.roborazzi.compose)
-            // The party code read back from the pixels (PartyCodeTest), the sun's times for the
-            // landscape's gallery (LandscapeGalleryTest).
+            // The party code read back from the pixels (PartyCodeTest).
             implementation(libs.zxing.core)
-            implementation(libs.suncalc)
         }
     }
 }

@@ -19,14 +19,12 @@
     <string name="section_picture">Picture</string>
     <string name="section_info">Information</string>
     <string name="section_lights">Lights</string>
-    <string name="section_landscape">Landscape</string>
     <string name="section_remote">Remote</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
     <string name="about_section_picture">How the picture looks: the queue, light or dark, colors and motion.</string>
     <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next and the lyrics.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
-    <string name="about_section_landscape">When the paper landscape comes, and where its mini player sits.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when Klangbild turns off.</string>
     <string name="about_section_system">Home Assistant, Music Assistant, playing here, the language and updates.</string>
@@ -47,9 +45,6 @@
     <string name="entry_motion">Motion</string>
     <string name="entry_brightness">Brightness</string>
     <string name="entry_off_lights">Lights that are off</string>
-    <string name="entry_landscape_pause">When paused</string>
-    <string name="entry_landscape_playing">While playing</string>
-    <string name="entry_mini_player">Mini player</string>
     <string name="entry_remote">Control music</string>
     <string name="entry_up_down">Up and down</string>
     <string name="entry_spoken">Audiobooks, podcasts</string>
@@ -85,11 +80,9 @@
     <string name="motion_slow">Slow</string>
     <string name="motion_medium">Medium</string>
     <string name="motion_fast">Fast</string>
-    <string name="mini_player_left">Bottom left</string>
-    <string name="mini_player_right">Bottom right</string>
     <string name="off_lights_turn_on">Turn on</string>
     <string name="off_lights_leave">Leave off</string>
-    <string name="up_down_landscape">Landscape, menu</string>
+    <string name="up_down_settings">Settings</string>
     <string name="up_down_volume">Volume</string>
     <string name="spoken_jump">Jump</string>
     <string name="spoken_change">Change track</string>
@@ -107,10 +100,6 @@
     <string name="language_system">System language</string>
     <string name="language_english" translatable="false">English</string>
     <string name="language_german" translatable="false">Deutsch</string>
-    <plurals name="seconds">
-        <item quantity="one">One second</item>
-        <item quantity="other">%s seconds</item>
-    </plurals>
     <plurals name="minutes">
         <item quantity="one">One minute</item>
         <item quantity="other">%s minutes</item>
@@ -173,18 +162,10 @@
     <string name="about_lights_only_on">Lights that are off stay off. One you switch on joins in.</string>
     <string name="about_lights_switch_on">Lights that are off go on with the music and off again after it.</string>
     <string name="about_lights_on">Each light glows in one of the picture’s colors, this bright by day. In the evening and at night they dim by themselves. After the music they are as before.</string>
-    <string name="about_landscape_pause_off">When the music is paused, the cover stays; after three minutes the clock appears.</string>
-    <string name="about_landscape_pause">When the music is paused this long, a paper landscape appears whose light follows the real time of day. Any key brings the cover back.</string>
-    <string name="about_landscape_playing_off_volume">While music plays, the cover stays.</string>
-    <string name="about_landscape_playing_off">While music plays, the cover stays. The landscape is always there: arrow up.</string>
-    <string name="about_landscape_playing">If music plays this long with no key pressed, the landscape comes with the mini player in a corner.</string>
-    <string name="about_mini_player_left">Cover, title and progress, lower left in the landscape.</string>
-    <string name="about_mini_player_right">Cover, title and progress, lower right in the landscape.</string>
-    <string name="about_mini_player_off">Just the landscape, no player.</string>
     <string name="about_remote_on">OK pauses and plays on; left and right change the track. Held, they seek within it.</string>
     <string name="about_remote_off">The remote does not control the music; holding OK still opens this menu.</string>
     <string name="about_up_down_volume">Arrow up and down change the speaker’s volume; the quick settings are not available then.</string>
-    <string name="about_up_down_landscape">Arrow up shows the landscape; up again or Back brings the cover back. Arrow down opens the quick settings at the bottom; down again closes them.</string>
+    <string name="about_up_down_settings">Arrow up opens the settings. Arrow down opens the quick settings at the bottom; down again closes them.</string>
     <string name="about_spoken_jump">With audiobooks and podcasts, left jumps back 15 seconds, right ahead 30 seconds. Held, they go to the previous or next chapter.</string>
     <string name="about_spoken_change">Left and right change the track with audiobooks and podcasts too.</string>
     <string name="about_sleep_timer_off">Pauses the music after a while, or at the end of a chapter. Klangbild must be running.</string>
@@ -225,7 +206,6 @@
 
     <!-- Quick settings -->
     <string name="quick_queue">Queue</string>
-    <string name="quick_landscape">Landscape</string>
     <string name="quick_lyrics">Lyrics</string>
     <string name="quick_favorite">Favorite</string>
     <string name="quick_lights">Lights</string>
@@ -285,7 +265,6 @@
     <string name="rest_unavailable">Not available right now.</string>
     <string name="rest_entity_missing">Home Assistant doesn’t know “%s”.\nHold OK to set up.</string>
     <string name="rest_this_speaker">this speaker</string>
-    <string name="landscape_waiting">Preparing the landscape…</string>
 
     <!-- Setup on the TV -->
     <string name="setup_first_run">Set up with your phone</string>
@@ -352,12 +331,7 @@
     <string name="page_light_center">Middle</string>
     <string name="page_light_right">Right</string>
     <string name="page_none">None</string>
-    <string name="page_landscape_heading">6 · Landscape</string>
-    <string name="page_landscape_hint">The paper landscape that appears when the music is paused: sun, moon and stars stand where they stand for you now. Clouds, rain and snow follow the weather.</string>
-    <string name="page_weather">Weather</string>
-    <string name="page_weather_auto">Automatic</string>
-    <string name="page_weather_none">None: always a clear sky</string>
-    <string name="page_actions_heading">7 · Buttons (optional)</string>
+    <string name="page_actions_heading">6 · Buttons (optional)</string>
     <string name="page_actions_hint">Your own buttons in the quick settings (arrow down on the remote). Each one runs a script or an automation, activates a scene, presses a button or switches something on and off.</string>
     <string name="page_actions_empty">Connect Home Assistant first, then your scripts and scenes show here.</string>
     <string name="page_no_actions">No scripts, scenes, buttons or switches found.</string>
@@ -384,7 +358,7 @@
     <string name="page_condition_hint">A list counts its entries: group_members above 1 means the speaker plays in a group.</string>
     <string name="page_condition_number">Above and below need a number.</string>
     <string name="page_now">Now: %s</string>
-    <string name="page_values_heading">8 · Values (optional)</string>
+    <string name="page_values_heading">7 · Values (optional)</string>
     <string name="page_values_hint">Values from Home Assistant next to the time, like the outside temperature. Each one shows an entity’s state or one of its attributes.</string>
     <string name="page_values_empty">Connect Home Assistant first, then your entities show here.</string>
     <string name="page_no_entities">No entities found.</string>
@@ -419,7 +393,6 @@
     <string name="setup_error_speaker">Please choose a speaker.</string>
     <string name="setup_error_sleep">The time must be between 1 and 720 minutes.</string>
     <string name="setup_error_lights">Please pick only lights.</string>
-    <string name="setup_error_weather">Please choose a weather entity.</string>
     <string name="setup_error_actions">Each button needs a script, a scene, an automation, a button or a switch, and a condition needs a value.</string>
     <string name="setup_error_values">Each value needs an entity.</string>
     <string name="setup_saved">Saved. The TV connects to Home Assistant now.</string>
@@ -440,15 +413,4 @@
     <string name="entity_state_buffering">loading</string>
     <string name="entity_state_standby">standby</string>
     <string name="entity_state_unknown">unknown</string>
-    <string name="weather_sunny">sunny</string>
-    <string name="weather_clear_night">clear</string>
-    <string name="weather_partlycloudy">partly cloudy</string>
-    <string name="weather_cloudy">cloudy</string>
-    <string name="weather_fog">fog</string>
-    <string name="weather_rain">rain</string>
-    <string name="weather_snow">snow</string>
-    <string name="weather_hail">hail</string>
-    <string name="weather_thunderstorm">thunderstorm</string>
-    <string name="weather_windy">windy</string>
-    <string name="weather_exceptional">exceptional</string>
 </resources>

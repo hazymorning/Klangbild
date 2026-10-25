@@ -33,9 +33,6 @@ Apache License 2.0 (full text in Apache-2.0.txt)
   ZXing's QR code encoder, ported to Kotlin Multiplatform
   Copyright ZXing authors
 
-  commons-suncalc, ported to Kotlin Multiplatform
-  Copyright Richard "Shred" Körber
-
   Android's balanced line breaker (minikin), ported to Kotlin Multiplatform
   Copyright The Android Open Source Project
 

@@ -86,11 +86,6 @@ object SetupPage {
         "lightsHeading" to Strings.pageLightsHeading,
         "lightsHint" to Strings.pageLightsHint,
         "lightsEmpty" to Strings.pageLightsEmpty,
-        "landscapeHeading" to Strings.pageLandscapeHeading,
-        "landscapeHint" to Strings.pageLandscapeHint,
-        "weather" to Strings.pageWeather,
-        "weatherAuto" to Strings.pageWeatherAuto,
-        "weatherNone" to Strings.pageWeatherNone,
         "actionsHeading" to Strings.pageActionsHeading,
         "actionsHint" to Strings.pageActionsHint,
         "actionsEmpty" to Strings.pageActionsEmpty,
@@ -112,8 +107,6 @@ object SetupPage {
         "center" to Strings.pageLightCenter,
         "right" to Strings.pageLightRight,
         "none" to Strings.pageNone,
-        "weatherAuto" to Strings.pageWeatherAuto,
-        "weatherNone" to Strings.pageWeatherNone,
         "connecting" to Strings.pageConnecting,
         "failed" to Strings.pageFailed,
         "connected" to Strings.pageConnected,
@@ -292,13 +285,6 @@ object SetupPage {
   </section>
 
   <section>
-    <h2>{{landscapeHeading}}</h2>
-    <p class="hint">{{landscapeHint}}</p>
-    <label for="weather">{{weather}}</label>
-    <select id="weather"><option value="">{{weatherAuto}}</option><option value="none">{{weatherNone}}</option></select>
-  </section>
-
-  <section>
     <h2>{{actionsHeading}}</h2>
     <p class="hint">{{actionsHint}}</p>
     <div id="actions"><p class="hint">{{actionsEmpty}}</p></div>
@@ -327,8 +313,6 @@ object SetupPage {
   const THIS_TV = '__THIS_TV__';
   let lights = { lightsLeft: '', lightsCenter: '', lightsRight: '' };
   let lightsShown = false;
-  let weather = '';
-  let weatherShown = false;
   // The quick settings' own buttons and the values in the status line: as stored, what Home
   // Assistant offers for them, and whether the page has shown them.
   let actions = [];
@@ -389,17 +373,6 @@ object SetupPage {
       box.append(l, sel);
     });
     lightsShown = true;
-  }
-  function renderWeather(list) {
-    const sel = ${'$'}('weather'); sel.textContent = '';
-    const auto = document.createElement('option'); auto.value = ''; auto.textContent = T.weatherAuto; sel.append(auto);
-    list.forEach((w) => {
-      const o = document.createElement('option'); o.value = w.id; o.textContent = w.name + ' · ' + w.state; sel.append(o);
-    });
-    const none = document.createElement('option'); none.value = 'none'; none.textContent = T.weatherNone; sel.append(none);
-    sel.value = weather;
-    if (sel.value !== weather) sel.value = '';
-    weatherShown = true;
   }
   function optionName(id) { const o = actionOptions.find((a) => a.id === id); return o ? o.name : ''; }
   function entityOf(id) { return entityOptions.find((e) => e.id === id); }
@@ -615,7 +588,6 @@ object SetupPage {
     ${'$'}('clock').checked = !!s.clock; ${'$'}('remote').checked = !!s.remote;
     ${'$'}('maUrl').value = s.maUrl || '';
     lights = { lightsLeft: s.lightsLeft || '', lightsCenter: s.lightsCenter || '', lightsRight: s.lightsRight || '' };
-    weather = s.weather || ''; ${'$'}('weather').value = weather;
     actions = (s.actions || []).map((a) => ({ name: a.name || '', entity: a.entity || '', variables: a.variables || {}, when: a.when || null }));
     values = (s.values || []).map((v) => ({ name: v.name || '', entity: v.entity || '', attribute: v.attribute || '' }));
     if (s.hasMaToken) ${'$'}('maToken').placeholder = T.tokenKept;
@@ -646,7 +618,6 @@ object SetupPage {
       speakers = r.speakers;
       renderSpeakers(${'$'}('entity').value);
       renderLights(r.lights || []);
-      renderWeather(r.weather || []);
       actionOptions = r.actions || [];
       entityOptions = r.entities || [];
       renderActions();
@@ -664,9 +635,6 @@ object SetupPage {
         sleepMinutes: parseInt(${'$'}('sleep').value, 10), sleepAction: action,
         clock: ${'$'}('clock').checked, remote: ${'$'}('remote').checked,
         maUrl: ${'$'}('maUrl').value, maToken: ${'$'}('maToken').value, tvSpeaker: ${'$'}('tvSpeaker').checked };
-      // The weather once the page has listed it, or when it was chosen: a stored entity the page could not list stays.
-      const w = ${'$'}('weather').value;
-      if (weatherShown || w !== '' || weather === '') body.weather = w;
       // The lights only once the page has shown them; otherwise they stay as they are.
       if (lightsShown) ['lightsLeft', 'lightsCenter', 'lightsRight'].forEach((k) => body[k] = ${'$'}(k).value);
       // The buttons too, in their order; one without an entity is left out, one without a name takes the entity's.

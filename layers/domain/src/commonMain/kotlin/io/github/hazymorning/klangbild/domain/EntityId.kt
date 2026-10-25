@@ -9,9 +9,6 @@ object EntityId {
     /** A light (`light.living_room_left`). */
     fun isLight(s: String): Boolean = s.startsWith("light.") && isValid(s)
 
-    /** A weather entity (`weather.forecast_home`). */
-    fun isWeather(s: String): Boolean = s.startsWith("weather.") && isValid(s)
-
     /**
      * The speaker chosen as "This TV" on the setup page: this TV's own speaker in Music
      * Assistant, whatever its entity turns out to be. Without a dot, it is no entity id.

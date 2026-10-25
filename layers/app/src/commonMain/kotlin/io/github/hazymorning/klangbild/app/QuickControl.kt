@@ -24,16 +24,12 @@ import kotlin.concurrent.Volatile
 
 /**
  * The quick settings while they are open (down on the remote): which entry the cursor is on,
- * and what OK does to it. While they are open, the landscape stays as it was unless they
- * change it. Untouched, they close after [IDLE_MS].
+ * and what OK does to it. Untouched, they close after [IDLE_MS].
  */
 internal class QuickControl(private val host: ControllerHost) {
     /** The entry the cursor is on, by what it is, so entries coming and going never move it. */
     @Volatile private var cursor: QuickKey? = null
     @Volatile private var touchedAt = 0L
-
-    /** Whether the landscape showed when the quick settings opened: it stays as it was while they are open. */
-    @Volatile private var hold: Boolean? = null
 
     /** How the queue should show, chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
     @Volatile private var pendingQueue: QueueDisplay? = null
@@ -72,7 +68,6 @@ internal class QuickControl(private val host: ControllerHost) {
             if (menuOpen || cursor != null) return
             cursor = QuickKey(QuickItem.QUEUE)
             touchedAt = host.now()
-            hold = host.ui.landscape != null
             host.recompute()
         }
         host.settings.let { s -> if (!s.quickSeen) host.applySettings(s.copy(quickSeen = true)) }
@@ -81,10 +76,7 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Closes the quick settings (up, back, after a while alone); a choice still waiting is taken now. */
     fun close() {
         applyQueue()
-        synchronized(host.lock) {
-            cursor = null
-            hold = null
-        }
+        synchronized(host.lock) { cursor = null }
         host.recompute()
     }
 
@@ -123,7 +115,6 @@ internal class QuickControl(private val host: ControllerHost) {
                 }
                 host.recompute()
             }
-            QuickItem.LANDSCAPE -> toggleLandscape()
             // On and off, at once: the stage changes its text as it does for a new song. A quiet On
             // (a song without words) goes off too.
             QuickItem.LYRICS -> host.settings.let { s -> host.applySettings(s.copy(lyrics = !s.lyrics)) }
@@ -153,63 +144,34 @@ internal class QuickControl(private val host: ControllerHost) {
     fun expire(t: Long, menuOpen: Boolean) {
         if (cursor != null && (t - touchedAt > IDLE_MS || menuOpen)) {
             cursor = null
-            hold = null
             if (pendingQueue != null) host.scope.launch { applyQueue() }
         }
     }
 
-    /** Whether the landscape shows while the quick settings are open; null when they leave it to its delays. */
-    val landscapeHeld: Boolean? get() = hold?.takeIf { cursor != null }
-
     /** How the queue should show, chosen with OK and not applied yet (the presses have not stopped). */
     val pending: QueueDisplay? get() = pendingQueue
 
-    /**
-     * Whether the landscape is chosen to show, as the last [state] had it: its entry names and
-     * turns that (a landscape kept a moment longer while a song's first scene is made does not
-     * count).
-     */
-    private var landscapeChosen = false
-
     /** The quick settings as they show for [screen], null while they are closed (called under the lock). */
-    fun state(screen: Screen, landscape: Boolean): QuickState? {
-        landscapeChosen = landscape
+    fun state(screen: Screen): QuickState? {
         val c = cursor ?: return null
-        val rows = rows(context(screen, landscape))
+        val rows = rows(context(screen))
         return QuickState(rows, indexOf(rows.map { it.key }, c))
     }
 
     /**
-     * Applies the queue view chosen in the quick settings. Another choice over the
-     * landscape leaves it ([leave]): the stage comes to show it. Stepped round to the one it had,
+     * Applies the queue view chosen in the quick settings; stepped round to the one it had,
      * nothing changes. The choice counts as waiting until the setting has it, so the screen never
      * works out a moment with neither (the Queue value would stop shimmering for it).
      */
-    private fun applyQueue(leave: Boolean = true) {
+    private fun applyQueue() {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
             pictureJob = null
             pendingQueue
         } ?: return
         val s = host.settings
-        // The setting first: the landscape stays until the stage's first scene is made, and
-        // the composition before never shows in between.
         if (next != s.queue) host.applySettings(s.copy(queue = next))
         synchronized(host.lock) { if (pendingQueue == next) pendingQueue = null }
-        if (next == s.queue || !leave) return
-        if (hold != null) hold = false
-        host.hideLandscape()
-    }
-
-    /**
-     * Shows or leaves the landscape at once. A queue choice still waiting is applied first,
-     * without leaving the landscape.
-     */
-    private fun toggleLandscape() {
-        applyQueue(leave = false)
-        val on = synchronized(host.lock) { !landscapeChosen }
-        if (hold != null) hold = on
-        if (on) host.showLandscape() else host.hideLandscape()
     }
 
     /** The queue can show as a list: Music Assistant, which tells the whole queue, is connected. */
@@ -273,11 +235,11 @@ internal class QuickControl(private val host: ControllerHost) {
     /**
      * Turns the party's code on or off. While it's on, its link is fetched at once and again every
      * [PARTY_URL_MS] (sooner when no answer came), and the last link stays until a new one comes.
-     * The code shows at once, and the landscape makes way.
+     * The code shows at once.
      */
     private fun toggleParty() {
         val src = host.source ?: return
-        val on = synchronized(host.lock) {
+        synchronized(host.lock) {
             partyOn = !partyOn
             partyJob?.cancel()
             partyJob = null
@@ -292,14 +254,8 @@ internal class QuickControl(private val host: ControllerHost) {
                     }
                 }
             }
-            partyOn
         }
-        if (on) {
-            if (hold != null) hold = false
-            host.hideLandscape()
-        } else {
-            host.recompute()
-        }
+        host.recompute()
     }
 
     /**
@@ -416,10 +372,9 @@ internal class QuickControl(private val host: ControllerHost) {
      * What the quick settings need to know: by default what the screen shows now, while working out
      * the screen what it is about to show.
      */
-    private fun context(screen: Screen = host.ui.screen, landscape: Boolean = landscapeChosen): QuickContext {
+    private fun context(screen: Screen = host.ui.screen): QuickContext {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
-            landscape = landscape,
             pending = pendingQueue,
             music = track != null,
             favorite = track?.takeIf { host.ui.source.favorites }?.let { favoriteState(it) },

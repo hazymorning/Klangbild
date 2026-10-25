@@ -33,7 +33,6 @@ enum class FavoriteState {
  */
 enum class QuickItem(val label: StringId?) {
     QUEUE(Strings.quickQueue),
-    LANDSCAPE(Strings.quickLandscape),
     LYRICS(Strings.quickLyrics),
     PARTY(Strings.quickParty),
     FAVORITE(Strings.quickFavorite),
@@ -74,8 +73,6 @@ enum class ActionState {
 
 /** What the quick settings need to know besides the settings. */
 data class QuickContext(
-    /** The screen shows the landscape. */
-    val landscape: Boolean = false,
     /** How the queue should show, chosen with OK and applied once the presses stop. */
     val pending: QueueDisplay? = null,
     /** Something plays (or is paused) on the stage. */
@@ -114,7 +111,6 @@ object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String, muted: Boolean = false) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t), muted))
         row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
-        row(QuickItem.LANDSCAPE, t[if (ctx.landscape) Strings.on else Strings.off])
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
@@ -169,7 +165,7 @@ object QuickMenu {
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
         QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LANDSCAPE, QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
+        QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
     }

@@ -174,25 +174,6 @@ fun rememberFigures(style: TextStyle, face: Face): Figures {
 }
 
 /**
- * How far [text] in [style] has to move right so that what is seen (its ink, not its
- * advance box) stands centered where the box would be (px). A line leans toward the side
- * whose first or last letter stands farther in; a line in the middle of the screen must not.
- */
-@Composable
-fun rememberInkShift(text: String, style: TextStyle): Float {
-    val glyphs = LocalGlyphs.current
-    val resolver = LocalFontFamilyResolver.current
-    val density = LocalDensity.current
-    return remember(text, style, glyphs, resolver, density) {
-        val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        val pen = glyphs.measuring(style, resolver, with(density) { style.fontSize.toPx() }, tracking) ?: return@remember 0f
-        // The outlines' exact bounds: whole pixels would leave the clock up to a pixel off.
-        val ink = pen.outline(text).getBounds()
-        pen.advance(text) / 2f - (ink.left + ink.right) / 2f
-    }
-}
-
-/**
  * The rest clock's figures as outlines, set by hand: by the font's own advances and kerning, the
  * colon raised to the middle of the figures (set on the baseline it sags below them; how far
  * depends on the weight, so it is measured on the outlines), and the one drawn in by most of its

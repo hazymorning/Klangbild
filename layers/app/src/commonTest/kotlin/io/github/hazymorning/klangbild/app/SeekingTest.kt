@@ -75,8 +75,6 @@ class SeekingTest {
         override fun applySettings(updated: Settings) = Unit
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
-        override fun showLandscape() = Unit
-        override fun hideLandscape(): Boolean = false
     }
 
     private val seeking = Seeking(host)

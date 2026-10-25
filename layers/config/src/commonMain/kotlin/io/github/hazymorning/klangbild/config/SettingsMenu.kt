@@ -20,7 +20,6 @@ enum class MenuSection(val title: StringId, val about: StringId) {
     PICTURE(Strings.sectionPicture, Strings.aboutSectionPicture),
     INFO(Strings.sectionInfo, Strings.aboutSectionInfo),
     LIGHTS(Strings.sectionLights, Strings.aboutSectionLights),
-    LANDSCAPE(Strings.sectionLandscape, Strings.aboutSectionLandscape),
     REMOTE(Strings.sectionRemote, Strings.aboutSectionRemote),
     TIMER(Strings.sectionTimer, Strings.aboutSectionTimer),
     SYSTEM(Strings.sectionSystem, Strings.aboutSectionSystem),
@@ -43,9 +42,6 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     LYRICS(MenuSection.INFO, Strings.entryLyrics),
     BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
     OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
-    LANDSCAPE_PAUSE(MenuSection.LANDSCAPE, Strings.entryLandscapePause),
-    LANDSCAPE_PLAYING(MenuSection.LANDSCAPE, Strings.entryLandscapePlaying),
-    MINI_PLAYER(MenuSection.LANDSCAPE, Strings.entryMiniPlayer),
     REMOTE(MenuSection.REMOTE, Strings.entryRemote),
     UP_DOWN(MenuSection.REMOTE, Strings.entryUpDown),
     SPOKEN(MenuSection.REMOTE, Strings.entrySpoken),
@@ -215,17 +211,8 @@ object SettingsMenu {
                 Intensity.OFF -> Strings.off
             },
         ]
-        MenuEntry.LANDSCAPE_PAUSE -> delay(s.landscapePauseSeconds, t)
-        MenuEntry.LANDSCAPE_PLAYING -> delay(s.landscapePlayingSeconds, t)
-        MenuEntry.MINI_PLAYER -> t[
-            when (s.miniPlayer) {
-                MiniPlayer.LEFT -> Strings.miniPlayerLeft
-                MiniPlayer.RIGHT -> Strings.miniPlayerRight
-                MiniPlayer.OFF -> Strings.off
-            },
-        ]
         MenuEntry.REMOTE -> onOff(s.remoteControl, t)
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.upDownVolume else Strings.upDownLandscape]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.upDownVolume else Strings.upDownSettings]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) Strings.spokenJump else Strings.spokenChange]
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
@@ -329,23 +316,8 @@ object SettingsMenu {
                 else -> Strings.aboutLightsSwitchOn
             },
         ]
-        MenuEntry.LANDSCAPE_PAUSE -> t[if (s.landscapePauseSeconds == 0) Strings.aboutLandscapePauseOff else Strings.aboutLandscapePause]
-        MenuEntry.LANDSCAPE_PLAYING -> t[
-            when {
-                s.landscapePlayingSeconds != 0 -> Strings.aboutLandscapePlaying
-                s.volumeKeys -> Strings.aboutLandscapePlayingOffVolume
-                else -> Strings.aboutLandscapePlayingOff
-            },
-        ]
-        MenuEntry.MINI_PLAYER -> t[
-            when (s.miniPlayer) {
-                MiniPlayer.LEFT -> Strings.aboutMiniPlayerLeft
-                MiniPlayer.RIGHT -> Strings.aboutMiniPlayerRight
-                MiniPlayer.OFF -> Strings.aboutMiniPlayerOff
-            },
-        ]
         MenuEntry.REMOTE -> t[if (s.remoteControl) Strings.aboutRemoteOn else Strings.aboutRemoteOff]
-        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.aboutUpDownVolume else Strings.aboutUpDownLandscape]
+        MenuEntry.UP_DOWN -> t[if (s.volumeKeys) Strings.aboutUpDownVolume else Strings.aboutUpDownSettings]
         MenuEntry.SPOKEN -> t[if (s.spokenSkip) Strings.aboutSpokenJump else Strings.aboutSpokenChange]
         MenuEntry.SLEEP_TIMER -> when {
             ctx.sleep == SleepChoice.OFF -> t[Strings.aboutSleepTimerOff]
@@ -483,9 +455,6 @@ object SettingsMenu {
         MenuEntry.OFF_LIGHTS -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
         MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
         MenuEntry.INTENSITY -> s.copy(intensity = move(INTENSITY_ORDER, s.intensity, direction, wrap))
-        MenuEntry.LANDSCAPE_PAUSE -> s.copy(landscapePauseSeconds = move(PAUSE_DELAYS, nearest(PAUSE_DELAYS, s.landscapePauseSeconds), direction, wrap))
-        MenuEntry.LANDSCAPE_PLAYING -> s.copy(landscapePlayingSeconds = move(PLAYING_DELAYS, nearest(PLAYING_DELAYS, s.landscapePlayingSeconds), direction, wrap))
-        MenuEntry.MINI_PLAYER -> s.copy(miniPlayer = move(MINI_ORDER, s.miniPlayer, direction, wrap))
         MenuEntry.REMOTE -> s.copy(remoteControl = !s.remoteControl)
         MenuEntry.UP_DOWN -> s.copy(volumeKeys = !s.volumeKeys)
         MenuEntry.SPOKEN -> s.copy(spokenSkip = !s.spokenSkip)
@@ -501,17 +470,6 @@ object SettingsMenu {
     /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */
     fun stepLanguage(language: AppLanguage, direction: Int, wrap: Boolean): AppLanguage = move(LANGUAGE_ORDER, language, direction, wrap)
 
-    /** The delays offered for the landscape (s): when paused, and while music plays; 0 is off. */
-    val PAUSE_DELAYS = listOf(0, 5, 15, 30, 60, 180, 300, 600)
-    val PLAYING_DELAYS = listOf(0, 60, 120, 300, 600, 900, 1800)
-
-    /** "Off", "Five seconds", "15 seconds", "Three minutes" and so on. */
-    fun delay(seconds: Int, t: Texts): String = when {
-        seconds <= 0 -> t[Strings.off]
-        seconds < 60 -> t.plural(Plurals.seconds, seconds, t.countWord(seconds))
-        else -> duration(seconds / 60, t)
-    }
-
     /** "Ten minutes", "One hour", "90 minutes", "Two hours": numbers up to twelve in words. */
     fun duration(minutes: Int, t: Texts): String {
         val hours = minutes / 60
@@ -524,9 +482,6 @@ object SettingsMenu {
 
     /** The largest number written in words. */
     private const val MAX_WORD_COUNT = 12
-
-    /** The offered value nearest to [v] (which may have been set from outside). */
-    private fun nearest(choices: List<Int>, v: Int): Int = choices.minByOrNull { kotlin.math.abs(it - v) } ?: choices.first()
 
     /** "Off", "30 minutes", "1 hour", "End of chapter", "End of episode" and so on. */
     fun sleepValue(choice: SleepChoice, kind: MediaKind?, t: Texts): String = when (choice) {
@@ -575,7 +530,6 @@ object SettingsMenu {
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)
     private val MOTION_ORDER = listOf(MotionLevel.OFF, MotionLevel.GENTLE, MotionLevel.MEDIUM, MotionLevel.LIVELY)
     private val BRIGHTNESS_ORDER = RoomLightBrightness.entries
-    private val MINI_ORDER = listOf(MiniPlayer.OFF, MiniPlayer.LEFT, MiniPlayer.RIGHT)
     private val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
 
     private fun <T> move(order: List<T>, current: T, direction: Int, wrap: Boolean): T {

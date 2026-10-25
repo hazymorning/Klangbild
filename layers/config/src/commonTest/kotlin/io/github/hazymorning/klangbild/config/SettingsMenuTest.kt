@@ -33,6 +33,7 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.step(MenuEntry.CLOCK, s, +1)!!.showClock).isFalse()
         assertThat(SettingsMenu.step(MenuEntry.CLOCK, s, -1)!!.showClock).isFalse()
         assertThat(SettingsMenu.step(MenuEntry.ALBUM, s, +1, wrap = true)!!.showAlbum).isFalse()
+        assertThat(SettingsMenu.value(MenuEntry.UP_DOWN, s, MenuContext(), de)).isEqualTo("Einstellungen")
         assertThat(SettingsMenu.step(MenuEntry.UP_DOWN, s, +1)!!.volumeKeys).isTrue()
         assertThat(SettingsMenu.step(MenuEntry.SLEEP_ACTION, s, +1)!!.sleepAction).isEqualTo(SleepAction.CLOSE)
     }
@@ -67,8 +68,6 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.duration(10, en)).isEqualTo("Ten minutes")
         assertThat(SettingsMenu.duration(60, en)).isEqualTo("One hour")
         assertThat(SettingsMenu.duration(120, en)).isEqualTo("Two hours")
-        assertThat(SettingsMenu.delay(1, en)).isEqualTo("One second")
-        assertThat(SettingsMenu.delay(15, en)).isEqualTo("15 seconds")
     }
 
     @Test
@@ -137,25 +136,6 @@ class SettingsMenuTest {
     }
 
     @Test
-    fun `the landscape's delays step through the offered values, also from odd ones`() {
-        val s = Settings()
-        assertThat(SettingsMenu.value(MenuEntry.LANDSCAPE_PAUSE, s, MenuContext(), de)).isEqualTo("Drei Minuten")
-        assertThat(SettingsMenu.value(MenuEntry.LANDSCAPE_PLAYING, s, MenuContext(), de)).isEqualTo("Aus")
-        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s, +1)!!.landscapePauseSeconds).isEqualTo(300)
-        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 0), -1)!!.landscapePauseSeconds).isEqualTo(0)
-        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 600), +1, wrap = true)!!.landscapePauseSeconds).isEqualTo(0)
-        // Set by a link to 100 s: the nearest offered value is the start.
-        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PAUSE, s.copy(landscapePauseSeconds = 100), +1)!!.landscapePauseSeconds).isEqualTo(180)
-        assertThat(SettingsMenu.step(MenuEntry.LANDSCAPE_PLAYING, s, +1)!!.landscapePlayingSeconds).isEqualTo(60)
-        assertThat(SettingsMenu.delay(15, de)).isEqualTo("15 Sekunden")
-        assertThat(SettingsMenu.delay(60, de)).isEqualTo("Eine Minute")
-        assertThat(SettingsMenu.delay(5, de)).isEqualTo("Fünf Sekunden")
-        assertThat(SettingsMenu.step(MenuEntry.MINI_PLAYER, s, +1)!!.miniPlayer).isEqualTo(MiniPlayer.RIGHT)
-        assertThat(SettingsMenu.step(MenuEntry.MINI_PLAYER, s, -1)!!.miniPlayer).isEqualTo(MiniPlayer.OFF)
-        assertThat(SettingsMenu.value(MenuEntry.MINI_PLAYER, s, MenuContext(), de)).isEqualTo("Unten links")
-    }
-
-    @Test
     fun `sections stay together in menu order`() {
         val sections = SettingsMenu.entries.map { it.section }
         assertThat(sections).isEqualTo(sections.sortedBy { it.ordinal })
@@ -164,7 +144,7 @@ class SettingsMenuTest {
     @Test
     fun `the first level shows the groups, each saying what is in it, and every setting is in one`() {
         val groups = SettingsMenu.groups(configured, MenuContext(), de)
-        assertThat(groups.map { it.label }).containsExactly("Bild", "Informationen", "Licht", "Landschaft", "Fernbedienung", "Timer", "System")
+        assertThat(groups.map { it.label }).containsExactly("Bild", "Informationen", "Licht", "Fernbedienung", "Timer", "System")
         for (g in groups) {
             assertThat(g.entry).isNull()
             assertThat(g.description).endsWith(".")

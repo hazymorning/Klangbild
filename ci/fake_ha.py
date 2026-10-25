@@ -2,11 +2,11 @@
 """A small stand-in for Home Assistant for the emulator smoke test (standard library only).
 
 Speaks just enough of Home Assistant's documented APIs for Klangbild:
-  WebSocket: auth, subscribe_trigger with a state trigger (the speaker, sun.sun, the weather
-    and, in a second subscription, the other speakers of its group), unsubscribe_events,
-    call_service (music_assistant.get_queue and the media keys), get_config (where it stands:
-    Berlin, for the landscape's sun and moon), config/entity_registry/list_for_display (the
-    speakers that belong to Music Assistant) and ping.
+  WebSocket: auth, subscribe_trigger with a state trigger (the speaker, sun.sun and, in a
+    second subscription, the other speakers of its group), unsubscribe_events, call_service
+    (music_assistant.get_queue and the media keys), get_config (its time zone and units),
+    config/entity_registry/list_for_display (the speakers that belong to Music Assistant) and
+    ping.
   REST: GET /api/states/<entity_id> with the access token.
 It serves the cover as a PNG. 40 seconds after the app subscribed the next track starts, so
 the smoke test also runs through a track change. The emulator reaches the host at 10.0.2.2.
@@ -91,9 +91,7 @@ def speaker_state():
 def states():
     """Every entity this Home Assistant has."""
     out = {SPEAKER: speaker_state(),
-           "sun.sun": state("sun.sun", "above_horizon", {"elevation": 32.0, "friendly_name": "Sun"}, started),
-           "weather.forecast_home": state("weather.forecast_home", "partlycloudy", {
-               "cloud_coverage": 40.0, "wind_speed": 12.0, "wind_speed_unit": "km/h", "friendly_name": "Forecast Home"}, started)}
+           "sun.sun": state("sun.sun", "above_horizon", {"elevation": 32.0, "friendly_name": "Sun"}, started)}
     for e in OTHERS:
         out[e] = state(e, "playing", {"friendly_name": NAMES[e], "mass_player_type": "player",
                                       "supported_features": FEATURES}, started)
@@ -112,7 +110,7 @@ def queue():
 def registry():
     """The entity registry as listed for display: the speakers belong to Music Assistant."""
     entities = [{"ei": e, "pl": "music_assistant", "di": f"device-{e}"} for e in [SPEAKER] + OTHERS]
-    entities += [{"ei": "sun.sun", "pl": "sun"}, {"ei": "weather.forecast_home", "pl": "met"}]
+    entities += [{"ei": "sun.sun", "pl": "sun"}]
     return {"entity_categories": {}, "entities": entities}
 
 
@@ -192,7 +190,7 @@ async def session(reader, writer):
                     value["response"] = queue()
                 await send(writer, result(mid, value))
             elif kind == "get_config":
-                await send(writer, result(mid, {"latitude": 52.52, "longitude": 13.40, "time_zone": "Europe/Berlin"}))
+                await send(writer, result(mid, {"time_zone": "Europe/Berlin", "unit_system": {"temperature": "°C"}}))
             elif kind == "config/entity_registry/list_for_display":
                 await send(writer, result(mid, registry()))
             elif kind == "ping":

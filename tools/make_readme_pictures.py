@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Sets the README's screens in a room and saves its pictures, and draws the download button and
-the poll's banner.
+"""Sets the README's screens in a room and saves its pictures, and draws the download button.
 
 Usage: python3 tools/make_readme_pictures.py [names]   (needs Pillow and numpy; names such as
-poll_banners make only those pictures)
+download_buttons make only those pictures)
 
 Render the screens first:
-    ./gradlew :ui:testAndroidHostTest --tests '*ReadmeShotsTest*' --tests '*LandscapeGalleryTest*' -Pklangbild.pictures -Proborazzi.test.record=true
+    ./gradlew :ui:testAndroidHostTest --tests '*ReadmeShotsTest*' -Pklangbild.pictures -Proborazzi.test.record=true
 They land in layers/ui/build/screenshots/readme/, each with the colors the lights behind the TV
-would show (a JSON file beside it); the poll's banner also takes the landscape by day from
-layers/ui/build/screenshots/landscape/gallery/. The pictures go to docs/screenshots/.
+would show (a JSON file beside it). The pictures go to docs/screenshots/.
 
 The room is lit in linear light: a painted wall, a little light from the room, and the lights
 behind the TV, each a soft lamp hidden behind the screen's edge, shining on the wall in the color
@@ -814,16 +812,16 @@ class Room:
         return to_srgb(gray + (img - gray) * 0.88), (light * paint).astype(np.float64) * exposure / wb
 
 
-def queue_and_landscape():
-    """The queue's three ways and the landscape, each on the TV in the same room on a winter
-    night: over a walnut sideboard, lit by a table lamp and three candles. The record sleeve wears
-    the cover of the day and night picture's song."""
+def queue_ways():
+    """The queue's three ways, each on the TV in the same room on a winter night: over a walnut
+    sideboard, lit by a table lamp and three candles. The record sleeve wears the cover of the day
+    and night picture's song."""
     room = Room()
     tv = Tv(Room.W / 2, Room.VY, 1260, 9)
     # The day and night song's cover, cut from its render inside its rounded corners (the artwork: 368 dp at 88 dp, 2 px per dp).
     cover = Image.open(os.path.join(RENDERS, "night.png")).convert("RGB").crop((192, 188, 896, 892))
     photo, light = room.photograph(tv, cover)
-    for screen, name in (("queue-off", "mockup-queue-off"), ("queue-list", "mockup-queue-list"), ("cover-flow", "mockup-cover-flow"), ("landscape", "mockup-landscape")):
+    for screen, name in (("queue-off", "mockup-queue-off"), ("queue-list", "mockup-queue-list"), ("cover-flow", "mockup-cover-flow")):
         img = photo.copy()
         tv_frame(img, tv, os.path.join(RENDERS, screen + ".png"), light * 0.6)
         save(img, name + ".jpg")
@@ -924,70 +922,9 @@ def download_buttons():
     download_button(light=True)
 
 
-def poll_banner(light=False, small=False, veil=(0.30, 0.62)):
-    """The banner under the note that asks whether the landscape should stay and leads to its poll:
-    the landscape's mountains behind a veil, at night for dark pages (the README's landscape) and
-    the same place by day for light ones. The wide one, the question on the left and the button on
-    the right, is seen at about 840 px, so it is drawn at 1800. On a phone its words would shrink to
-    a few pixels, so screens up to 640 px wide get the [small] one, the button under the question,
-    seen at about 330 px and drawn at 1080. Each takes the band of the render that keeps the moon
-    whole and clear of the words (in the wide one only a fir's tip comes in at the corner); [veil]
-    is how much of the landscape shows at the left and the right."""
-    pad = 76
-    if small:
-        # Seen at about 19 and 14 px on a phone; the button's words take that optical size.
-        title_size, size, optical, bh, inset, r, hair = 66, 48, 14, 116, 58, 34, 3
-        W, H = 1080, int(round(2 * pad + 0.70 * title_size + 60 + bh))
-        left, right, top = 0.2, 0.772, 0.23
-    else:
-        # Seen at about 26 and 18 px; the button's words take that optical size.
-        title_size, size, optical, bh, inset, r, hair = 56, 38, 18, 100, 54, 22, 2
-        W, H = 1800, 240
-        left, right, top = 0.08, 0.965, 0.225
-    src = os.path.join(ROOT, "layers", "ui", "build", "screenshots", "landscape", "gallery", "2_summer_2_noon.png") if light \
-        else os.path.join(RENDERS, "landscape.png")
-    render = Image.open(src).convert("RGB")
-    rw, rh = render.size
-    x0, x1, y0 = left * rw, right * rw, top * rh
-    band = render.resize((W, H), Image.LANCZOS, box=(x0, y0, x1, y0 + (x1 - x0) * H / W))
-    land = np.asarray(band, dtype=np.float64)
-    # The veil: the landscape shows a little more toward the right than behind the question.
-    base = np.array([250.0, 251.0, 253.0]) if light else np.array([9.0, 13.0, 26.0])
-    x = (np.arange(W) + 0.5) / W
-    k = (veil[0] + (veil[1] - veil[0]) * x)[None, :, None]
-    img = base + (land - base) * k
-    title, title_cap = text_mask("Should the landscape stay?", "jost.ttf", title_size, 440, tracking=-0.005, kern=True)
-    title_top = pad if small else H / 2 - 0.70 * title_size / 2
-    paste(img, title, pad, int(round(title_top)) - title_cap, (12, 24, 52) if light else (242, 246, 252))
-    # The button, built like the download button: rounded a fifth of its height, its words centered on it.
-    label, label_cap = text_mask("Vote in the poll", "dmsans.ttf", size, 520, optical=optical, kern=True)
-    bw = ink_width(label) + 2 * inset
-    bx, by = (pad, int(round(pad + 0.70 * title_size + 60))) if small else (W - pad - bw, (H - bh) // 2)
-    button = rounded_box(H, W, (bx, by, bx + bw, by + bh), bh * 0.22)[..., None]
-    fill, words = (np.array(NAVY, dtype=np.float64), (242, 246, 252)) if light else (np.array([238.0, 243.0, 250.0]), (12, 24, 52))
-    img = img * (1 - button) + fill * button
-    paste(img, label, bx + (bw - ink_width(label)) // 2, int(round(by + bh / 2 - 0.70 * size / 2)) - label_cap, words)
-    # The banner's own corners and a hairline round it, so it stands apart from the page.
-    shape = rounded_box(H, W, (0, 0, W, H), r)
-    edge = (shape - rounded_box(H, W, (hair, hair, W - hair, H - hair), r - hair))[..., None]
-    line = np.array(NAVY, dtype=np.float64) if light else np.array([150.0, 170.0, 205.0])
-    img = img * (1 - edge * 0.16) + line * edge * 0.16
-    rgba = np.dstack([np.clip(img, 0, 255), shape * 255]).astype(np.uint8)
-    os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "poll" + ("-small" if small else "") + ("-light" if light else "") + ".png")
-    Image.fromarray(rgba, "RGBA").save(path, optimize=True)
-    print(path, os.path.getsize(path) // 1024, "KB", f"{W}x{H}")
-
-
-def poll_banners():
-    for small in (False, True):
-        poll_banner(small=small)
-        poll_banner(light=True, small=small)
-
-
 if __name__ == "__main__":
-    # Pictures named on the command line (like poll_banners) are made alone; without names, all of them.
-    steps = [now_playing, now_playing_light, queue_and_landscape, day_and_night, download_buttons, poll_banners]
+    # Pictures named on the command line (like download_buttons) are made alone; without names, all of them.
+    steps = [now_playing, now_playing_light, queue_ways, day_and_night, download_buttons]
     names = sys.argv[1:] or [step.__name__ for step in steps]
     for step in steps:
         if step.__name__ in names:

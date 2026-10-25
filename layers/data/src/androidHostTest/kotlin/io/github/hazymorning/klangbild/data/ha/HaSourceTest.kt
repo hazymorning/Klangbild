@@ -918,14 +918,6 @@ class HaSourceTest {
 
 
     @Test
-    fun `a weather entity's wind is read in its own unit`() {
-        assertThat(kmh(10.0, null)).isEqualTo(10.0)
-        assertThat(kmh(10.0, "m/s")).isNotNull().isCloseTo(36.0, 0.01)
-        assertThat(kmh(10.0, "mph")).isNotNull().isCloseTo(16.09, 0.01)
-        assertThat(kmh(10.0, "furlongs")).isNull()
-    }
-
-    @Test
     fun `music on this TV shows instead of the chosen speaker, on the same connection, and the chosen one comes back`() = runBlocking {
         registry = """[{"ei":"media_player.wz","pl":"music_assistant","di":"d1"},{"ei":"media_player.tv","pl":"music_assistant","di":"d2"}]"""
         val ma = speakerServer()

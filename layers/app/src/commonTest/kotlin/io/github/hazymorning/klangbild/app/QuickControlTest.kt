@@ -7,11 +7,9 @@ import assertk.assertions.doesNotContain
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
-import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.LyricsChoice
-import io.github.hazymorning.klangbild.config.MiniPlayer
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
@@ -30,8 +28,6 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.landscape.Weather
-import io.github.hazymorning.klangbild.landscape.WeatherGlide
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -120,9 +116,7 @@ class QuickControlTest {
     private var queue = QueueDisplay.OFF
     private var pendingWhileSet: QueueDisplay? = null
 
-    /** How often the landscape was left, and called, and the settings menu opened. */
-    private var landscapeLeft = 0
-    private var landscapeCalled = 0
+    /** How often the settings menu opened. */
     private var menuOpened = 0
 
     private val host = object : ControllerHost {
@@ -151,18 +145,11 @@ class QuickControlTest {
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit
-        override fun showLandscape() {
-            landscapeCalled++
-        }
-        override fun hideLandscape(): Boolean {
-            landscapeLeft++
-            return false
-        }
     }
 
     private val quick: QuickControl = QuickControl(host)
 
-    private fun rows() = quick.state(ui.screen, landscape = false)!!.rows
+    private fun rows() = quick.state(ui.screen)!!.rows
 
     private fun value(entity: String) = rows().first { it.item == QuickItem.ACTION && host.settings.quickActions[it.key.action].entity == entity }.value
 
@@ -170,7 +157,7 @@ class QuickControlTest {
     private fun choose(entity: String) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, landscape = false)!!
+            val s = quick.state(ui.screen)!!
             val row = s.rows[s.cursor]
             if (row.item == QuickItem.ACTION && host.settings.quickActions[row.key.action].entity == entity) return
             quick.move(+1)
@@ -204,7 +191,7 @@ class QuickControlTest {
         ui = ui.copy(source = ui.source.copy(favorites = true))
         source.favoriteAnswer = Result.failure(IllegalStateException("No current item to add to favorites"))
         quick.open(menuOpen = false)
-        while (rows()[quick.state(ui.screen, landscape = false)!!.cursor].item != QuickItem.FAVORITE) quick.move(+1)
+        while (rows()[quick.state(ui.screen)!!.cursor].item != QuickItem.FAVORITE) quick.move(+1)
         fun favorite() = rows().first { it.item == QuickItem.FAVORITE }.value
         assertThat(favorite()).isEqualTo("Add")
         quick.change()
@@ -281,9 +268,9 @@ class QuickControlTest {
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsRow() = rows().first { it.item == QuickItem.LYRICS }
         fun lyricsValue() = lyricsRow().value
-        assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.QUEUE, QuickItem.LANDSCAPE, QuickItem.LYRICS)
+        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.QUEUE, QuickItem.LYRICS)
         assertThat(lyricsValue()).isEqualTo("Off")
-        quick.move(+2)
+        quick.move(+1)
         quick.change()
         assertThat(lyrics).isTrue()
         // Not known yet: on. Known to have none: still on, said quietly. With words: on.
@@ -334,7 +321,7 @@ class QuickControlTest {
     private fun chooseEntry(item: QuickItem) {
         if (!quick.isOpen) quick.open(menuOpen = false)
         repeat(rows().size) {
-            val s = quick.state(ui.screen, landscape = false)!!
+            val s = quick.state(ui.screen)!!
             if (s.rows[s.cursor].item == item) return
             quick.move(+1)
         }
@@ -358,8 +345,6 @@ class QuickControlTest {
         assertThat(partyValue()).isEqualTo("On")
         assertThat(quick.partyWanted(true)).isTrue()
         assertThat(quick.partyCode).isEqualTo("http://192.168.1.5:8095/?join=Q4WZ8TNP")
-        // It shows at once: the landscape makes way.
-        assertThat(landscapeLeft).isEqualTo(1)
         // The code expired: Music Assistant's new link comes with the next question.
         source.partyLink = "http://192.168.1.5:8095/?join=M2KD7RXA"
         test.advanceTimeBy(QuickControl.PARTY_URL_MS)
@@ -421,22 +406,18 @@ class QuickControlTest {
 
     @Test
     fun `the queue steps on from how it shows, passes the list without Music Assistant, and is taken once the presses stop`() {
-        // Opened over the landscape, which they hold as it is.
-        ui = ui.copy(landscape = LandscapeUi(null, null, MiniPlayer.LEFT, WeatherGlide.still(Weather.FAIR)))
         quick.open(menuOpen = false)
-        assertThat(quick.landscapeHeld).isNotNull().isTrue()
         fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
         assertThat(queueValue()).isEqualTo("Off")
         assertThat(quick.pending).isNull()
-        // Stepped round to how it was, nothing changes and the landscape stays.
+        // Stepped round to how it was, nothing changes.
         quick.change()
         quick.change()
         assertThat(queueValue()).isEqualTo("Off")
         assertThat(quick.pending).isEqualTo(QueueDisplay.OFF)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(quick.pending).isNull()
-        assertThat(landscapeLeft).isEqualTo(0)
-        assertThat(quick.landscapeHeld).isNotNull().isTrue()
+        assertThat(queue).isEqualTo(QueueDisplay.OFF)
         // Without Music Assistant only the next track is known: the list is passed over.
         quick.change()
         assertThat(queueValue()).isEqualTo("Cover Flow")
@@ -447,10 +428,6 @@ class QuickControlTest {
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)
         assertThat(pendingWhileSet).isEqualTo(QueueDisplay.FLOW)
         assertThat(quick.pending).isNull()
-        // Chosen, it leaves the landscape: the stage comes to show it.
-        assertThat(landscapeLeft).isEqualTo(1)
-        assertThat(quick.landscapeHeld).isNotNull().isFalse()
-        ui = ui.copy(landscape = null)
         // With Music Assistant, the list comes between: steps that follow quickly show only the last.
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         quick.change()
@@ -462,32 +439,6 @@ class QuickControlTest {
         quick.close()
         assertThat(queue).isEqualTo(QueueDisplay.LIST)
         assertThat(quick.pending).isNull()
-    }
-
-    @Test
-    fun `the landscape has an entry of its own, which turns it on and off at once`() {
-        quick.open(menuOpen = false)
-        fun landscapeValue(shows: Boolean) = quick.state(ui.screen, landscape = shows)!!.rows.first { it.item == QuickItem.LANDSCAPE }.value
-        assertThat(landscapeValue(false)).isEqualTo("Off")
-        assertThat(landscapeValue(true)).isEqualTo("On")
-        // The cursor on it: OK brings the landscape while it does not show, and leaves it while it does.
-        quick.state(ui.screen, landscape = false)
-        quick.move(+1)
-        quick.change()
-        assertThat(landscapeCalled).isEqualTo(1)
-        quick.state(ui.screen, landscape = true)
-        quick.change()
-        assertThat(landscapeLeft).isEqualTo(1)
-        assertThat(landscapeCalled).isEqualTo(1)
-        // A queue's choice still waiting is taken first, without leaving the landscape.
-        quick.state(ui.screen, landscape = false)
-        quick.move(-1)
-        quick.change()
-        quick.move(+1)
-        quick.change()
-        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
-        assertThat(landscapeLeft).isEqualTo(1)
-        assertThat(landscapeCalled).isEqualTo(2)
     }
 
     @Test

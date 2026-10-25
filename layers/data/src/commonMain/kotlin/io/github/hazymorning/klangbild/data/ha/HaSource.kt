@@ -35,12 +35,11 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
-import kotlin.math.pow
 import kotlin.time.Clock
 
 /**
- * Home Assistant as the source: the configured media_player plus `sun.sun`, the weather and
- * the entities of one's own, enriched with what its queue says ([QueueReader]: what comes next,
+ * Home Assistant as the source: the configured media_player plus `sun.sun` and the entities
+ * of one's own, enriched with what its queue says ([QueueReader]: what comes next,
  * full-size artwork, with Music Assistant itself the whole queue and the words of the song).
  * Remote commands go out only where the player supports them.
  *
@@ -57,8 +56,6 @@ class HaSource(
     private val sunEntity: String = "sun.sun",
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val ma: MaClient? = null,
-    /** The weather entities to read the sky's cover from, the first that exists counts (none: no weather). */
-    private val weatherEntities: List<String> = emptyList(),
     /** How often the queue is read again while music plays (shorter in tests). */
     queueRefreshMs: Long = QueueReader.QUEUE_REFRESH_MS,
     /** How often Music Assistant is asked whether a party runs (shorter in tests). */
@@ -183,7 +180,7 @@ class HaSource(
     }
 
     override fun start() {
-        connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity) + weatherEntities)
+        connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
         collector = scope.launch {
             combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
                 .collect { (st, ents) -> publish(st, ents) }
@@ -327,7 +324,6 @@ class HaSource(
         val skew = connection.clockSkew.offsetMs
         val enriched = player?.let { queue.enrich(it, skew) }
         val sun = entities[sunEntity]?.number("elevation")
-        val weather = weatherEntities.firstNotNullOfOrNull { entities[it] }
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
         val others = player?.groupMembers.orEmpty()
@@ -357,11 +353,6 @@ class HaSource(
             played = currentWindow?.played.orEmpty(),
             ma = if (ma == null) null else queue.maLink,
             favorites = player?.isMusicAssistant == true && (favoriteButton() != null || (ma != null && player.activeQueue != null)),
-            place = placeOf(connection.config.value) ?: _state.value.place,
-            weather = weather?.state?.takeIf { it != "unavailable" && it != "unknown" } ?: _state.value.weather.takeIf { weather == null },
-            cloudCoverage = weather?.number("cloud_coverage") ?: _state.value.cloudCoverage.takeIf { weather == null },
-            windKmh = weather?.let { w -> w.number("wind_speed")?.let { speed -> kmh(speed, w.string("wind_speed_unit")) } }
-                ?: _state.value.windKmh.takeIf { weather == null },
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
             temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
@@ -425,13 +416,6 @@ class HaSource(
         favorites = shown.favorites,
         lyrics = shown.lyrics,
     )
-
-    /** Home Assistant's latitude and longitude from its configuration. */
-    private fun placeOf(cfg: JsonObject?): Pair<Double, Double>? {
-        val lat = (cfg?.get("latitude") as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return null
-        val lon = (cfg["longitude"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return null
-        return if (lat == 0.0 && lon == 0.0) null else lat to lon
-    }
 
     /** Home Assistant's unit for temperatures ("°C", "°F") from its configuration. */
     private fun temperatureUnitOf(cfg: JsonObject?): String? =
@@ -509,20 +493,4 @@ class HaSource(
             }
         }
     }
-}
-
-/**
- * [value] of a wind speed in [unit] in km/h; null for a unit the weather entity cannot have.
- * The units are Home Assistant's `UnitOfSpeed` values a weather entity may use; without a
- * unit the speed is taken as km/h, the unit of the metric system.
- */
-internal fun kmh(value: Double, unit: String?): Double? = when (unit) {
-    null, "km/h" -> value
-    "m/s" -> value * 3.6
-    "mph" -> value * 1.609344
-    "kn" -> value * 1.852
-    "ft/s" -> value * 1.09728
-    // Beaufort's own formula: v = 0.836 B^1.5 m/s.
-    "Beaufort" -> 0.836 * 3.6 * value.coerceAtLeast(0.0).pow(1.5)
-    else -> null
 }

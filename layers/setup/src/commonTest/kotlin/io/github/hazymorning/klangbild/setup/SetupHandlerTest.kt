@@ -67,7 +67,6 @@ class SetupHandlerTest {
             DiscoverResult.Ok(
                 listOf(SpeakerOption("media_player.wz", "Wohnzimmer", "spielt", true)),
                 listOf(LightOption("light.tv_left", "TV links", "an"), LightOption("light.tv_right", "TV rechts", "aus")),
-                listOf(WeatherOption("weather.forecast_home", "Forecast Home", "teils bewölkt")),
                 listOf(ActionOption("script.ungroup_speakers", "Lautsprecher trennen"), ActionOption("scene.movie", "Kino")),
             )
         },
@@ -284,26 +283,6 @@ class SetupHandlerTest {
         assertThat(post("/api/save", """{$base,"lightsLeft":"switch.socket"}""").status).isEqualTo(400)
         assertThat(post("/api/save", """{$base,"lightsLeft":"","lightsCenter":"","lightsRight":""}""").status).isEqualTo(200)
         assertThat(stored.roomLights.isSet).isFalse()
-    }
-
-    @Test
-    fun `the landscape's weather is offered and stored, automatic by default`() = runTest {
-        val found = json(post("/api/discover", """{"code":"${handler.code}","url":"192.168.1.5:8123","token":""}"""))
-        assertThat(found["weather"].toString()).contains("weather.forecast_home")
-        val base = """"code":"${handler.code}","url":"192.168.1.5:8123","entity":"media_player.wz""""
-        assertThat(post("/api/save", """{$base,"weather":"weather.forecast_home"}""").status).isEqualTo(200)
-        assertThat(stored.weatherEntity).isEqualTo("weather.forecast_home")
-        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["weather"]!!.jsonPrimitive.content).isEqualTo("weather.forecast_home")
-        // Not sent: kept.
-        assertThat(post("/api/save", """{$base}""").status).isEqualTo(200)
-        assertThat(stored.weatherEntity).isEqualTo("weather.forecast_home")
-        assertThat(post("/api/save", """{$base,"weather":"none"}""").status).isEqualTo(200)
-        assertThat(stored.weatherEntities).isEmpty()
-        assertThat(post("/api/save", """{$base,"weather":""}""").status).isEqualTo(200)
-        assertThat(stored.weatherEntities).isEqualTo(Settings.DEFAULT_WEATHER)
-        assertThat(post("/api/save", """{$base,"weather":"sensor.temperatur"}""").status).isEqualTo(400)
-        val r = SetupServer.parseSpeakers("""[{"entity_id":"weather.home","state":"partlycloudy","attributes":{"friendly_name":"Zuhause"}}]""", texts) as DiscoverResult.Ok
-        assertThat(r.weather).containsExactlyInAnyOrder(WeatherOption("weather.home", "Zuhause", "teils bewölkt"))
     }
 
     @Test
