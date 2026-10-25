@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -35,13 +36,15 @@ class MenuControlTest {
     private var shown = 0
     private var setup = 0
     private var applied = 0
+    private var updates = 0
+    private var settings = Settings()
 
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
         override val log: Log = QuietLog
         override val scope = CoroutineScope(EmptyCoroutineContext)
         override val now: () -> Long = { 0L }
-        override val settings get() = Settings()
+        override val settings get() = this@MenuControlTest.settings
         override val ui = UiState(
             screen = Screen.Stage(TrackInfo("Song", listOf("A")), PlayerStatus.PLAYING, null),
             source = SourceState(LinkState.CONNECTED),
@@ -50,6 +53,10 @@ class MenuControlTest {
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
+        override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0")
+        override fun update() {
+            updates++
+        }
         override fun recompute() {
             recomputed++
         }
@@ -59,6 +66,7 @@ class MenuControlTest {
         override fun openMenu() = Unit
         override fun applySettings(updated: Settings) {
             applied++
+            this@MenuControlTest.settings = updated
         }
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) {
@@ -170,5 +178,42 @@ class MenuControlTest {
         menu.change(+1, wrap = true)
         assertThat(setup).isEqualTo(1)
         assertThat(menu.isOpen).isFalse()
+    }
+
+    @Test
+    fun `the system group tells of a new version, OK on its line installs it, and a switch below turns looking off`() {
+        menu.open()
+        assertThat(state().rows.last().value).isEqualTo("New version")
+        repeat(6) { menu.move(+1) }
+        menu.change(+1, wrap = true)
+        assertThat(state().section).isEqualTo(MenuSection.SYSTEM)
+        repeat(5) { menu.move(+1) }
+        assertThat(state().rows[state().cursor].label).isEqualTo("Update")
+        assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
+        // OK installs it, a held OK only once; left and right change nothing there.
+        menu.change(+1, wrap = true)
+        menu.change(+1, wrap = true, repeat = true)
+        menu.change(-1, wrap = false)
+        assertThat(updates).isEqualTo(1)
+        assertThat(settings.updateCheck).isTrue()
+        // Check for updates turns looking off, and the notice goes.
+        menu.move(+1)
+        assertThat(state().rows[state().cursor].label).isEqualTo("Check for updates")
+        assertThat(state().rows[state().cursor].value).isEqualTo("On")
+        menu.change(-1, wrap = false)
+        assertThat(settings.updateCheck).isFalse()
+        assertThat(state().rows[state().cursor].value).isEqualTo("Off")
+        menu.back()
+        assertThat(state().rows.last().value).isEqualTo("")
+        // Off, OK on Update still asks; OK on the switch turns it on again.
+        menu.change(+1, wrap = true)
+        repeat(10) { menu.move(+1) }
+        menu.move(-1)
+        menu.change(+1, wrap = true)
+        assertThat(updates).isEqualTo(2)
+        menu.move(+1)
+        menu.change(+1, wrap = true)
+        assertThat(settings.updateCheck).isTrue()
+        assertThat(applied).isEqualTo(2)
     }
 }

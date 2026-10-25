@@ -81,7 +81,7 @@ object SetupArt {
         val layout = StageGrid(screen)
         val px = (layout.art * screen.density).toInt()
         val card = card(info?.qr, px, appearance)
-        return SceneBuilder.build("setup|${info?.url}|${info?.code}", card, "setup", screen, appearance)
+        return SceneBuilder.build("setup|${info?.url}|${info?.code}", card, null, null, screen, appearance)
     }
 
     /** "http://192.168.1.23:8765" → "192.168.1.23:8765" (what people actually type). */

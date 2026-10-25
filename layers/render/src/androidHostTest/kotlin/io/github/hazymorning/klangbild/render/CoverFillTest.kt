@@ -13,7 +13,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.math.roundToInt
 import kotlin.test.Test
 
-/** Every cover fills its square on either wall, a small one too: never a frame around a smaller print. */
+/** Every cover fills its square on either wall, a small one and the generated one too: never a frame around a smaller print. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -24,12 +24,17 @@ class CoverFillTest {
         for (appearance in Appearance.entries) {
             for (native in listOf(120, 300, 640, 1400)) {
                 val src = Bitmap.createBitmap(native, native, Bitmap.Config.ARGB_8888).apply { eraseColor(red) }
-                val scene = SceneBuilder.build("k$native", src.asImageBitmap(), "seed", ScreenSpec.TV_1080, appearance)
+                val scene = SceneBuilder.build("k$native", src.asImageBitmap(), "Theo Lind", "Kreis", ScreenSpec.TV_1080, appearance)
                 val slot = (scene.layout.art * ScreenSpec.TV_1080.density).roundToInt()
                 assertThat(scene.cover.width).isEqualTo(slot)
                 // The print reaches every edge of the square: no board around it.
                 for ((x, y) in listOf(1 to 1, slot / 2 to slot - 2, slot - 2 to slot / 2)) assertThat(scene.cover.asAndroidBitmap().getPixel(x, y)).isEqualTo(red)
             }
+            // Without a cover the generated one takes the same square, opaque to its edges.
+            val generated = SceneBuilder.build("none", null, "Theo Lind", "Kreis", ScreenSpec.TV_1080, appearance)
+            assertThat(generated.shape).isEqualTo(PrintShape(generated.layout.artRect, corner = generated.layout.radius))
+            val bmp = generated.cover.asAndroidBitmap()
+            for ((x, y) in listOf(0 to 0, bmp.width - 1 to bmp.height - 1, 0 to bmp.height / 2)) assertThat(bmp.getPixel(x, y) ushr 24).isEqualTo(0xFF)
         }
     }
 }

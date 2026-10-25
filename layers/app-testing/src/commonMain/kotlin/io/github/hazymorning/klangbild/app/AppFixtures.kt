@@ -60,7 +60,7 @@ abstract class AppFixtures {
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
         val bmp = cover?.let { SyntheticCovers.render(it) }
-        return SceneBuilder.build(track.key, bmp, track.artSeed, screen, appearance, flow = flow, coverField = coverField)
+        return SceneBuilder.build(track.key, bmp, track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */
@@ -71,21 +71,17 @@ abstract class AppFixtures {
         coverField: Boolean = false,
     ) = tracks.map { scene(it, screen, appearance, flow = true, coverField = coverField) }
 
-    /**
-     * The queue's list: what [coming] holds, [remaining] items in all, the small
-     * covers made at once ([covers]: none yet).
-     */
+    /** The queue's list: what [coming] holds, the small covers made at once ([covers]: none yet). */
     fun queueList(
         coming: List<TrackInfo>,
-        remaining: Int? = coming.size,
         screen: ScreenSpec = ScreenSpec.TV_1080,
         covers: Boolean = true,
     ): QueueList {
-        val upNext = UpNext.of(coming, remaining)!!
+        val upNext = UpNext.of(coming)!!
         val px = kotlin.math.round(StageGrid(screen).rowCover * screen.density).toInt()
         val made = if (!covers) emptyMap() else upNext.rows.associate { row ->
             val cover = row.track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { name -> SyntheticCover.entries.firstOrNull { it.name == name } }
-            row.id to SceneBuilder.rowCover(cover?.let { SyntheticCovers.render(it) }, row.track.artSeed, px)
+            row.id to SceneBuilder.rowCover(cover?.let { SyntheticCovers.render(it) }, row.track.artFoil, row.track.artView, px)
         }
         return QueueList(upNext, made)
     }
@@ -120,5 +116,5 @@ abstract class AppFixtures {
 
     /** The settings menu on its groups, the cursor on [cursor]. */
     fun menuGroups(cursor: Int = 0, t: Texts = texts) =
-        MenuState(io.github.hazymorning.klangbild.config.SettingsMenu.groups(t), cursor)
+        MenuState(io.github.hazymorning.klangbild.config.SettingsMenu.groups(io.github.hazymorning.klangbild.config.Settings(), io.github.hazymorning.klangbild.config.MenuContext(), t), cursor)
 }

@@ -135,13 +135,14 @@ class Scenes(
     }
 
     private suspend fun build(track: TrackInfo, look: Look, frame: Frame, withCover: Boolean = true): ArtworkScene {
-        // Wait at most a few seconds for the cover; then the Chladni figure steps in.
+        // Wait at most a few seconds for the cover; then the generated one steps in.
         val bitmap = if (!withCover) null else withTimeoutOrNull(COVER_TIMEOUT_MS) { runCatching { artwork.load(track) }.getOrNull() }
         return withContext(dispatcher) {
             SceneBuilder.build(
                 key = track.key,
                 source = bitmap,
-                artSeed = track.artSeed,
+                artFoil = track.artFoil,
+                artView = track.artView,
                 screen = frame.screen,
                 appearance = look.appearance,
                 wallTint = look.wallTint,

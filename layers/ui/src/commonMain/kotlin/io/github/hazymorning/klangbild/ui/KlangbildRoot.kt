@@ -304,10 +304,10 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             val nextChapter = ch?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
-            // The queue as a list: "Up next" over it says how much follows.
+            // The queue as a list, which names what comes next itself.
             val list = s.queue?.takeIf { lyrics == null }
             // The hint takes the place of what comes next (beside the song's words the song stays,
-            // over the list what it holds).
+            // and the list names what comes next itself).
             val tip = hint && lyrics == null && list == null
             StageModel(
                 scene = s.scene,
@@ -318,11 +318,12 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
                 year = s.track.year.takeIf { display.album },
                 progress = if (lyrics != null) peek else display.progressBar || peek,
+                barStays = display.progressBar,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
                     tip -> t[Strings.hintDown]
                     lyrics != null -> StageTexts.next(s.track, t)
-                    list != null -> StageTexts.queue(list.upNext.count, list.upNext.durationMs, t).orEmpty()
+                    list != null -> null
                     else -> nextChapter ?: StageTexts.next(after, t)
                 },
                 nextTitle = when {

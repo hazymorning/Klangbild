@@ -90,7 +90,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | Button | Action |
 | --- | --- |
 | OK | Play or pause (hold to open the settings) |
-| Left / Right | Previous or next song |
+| Left / Right | Previous or next song (hold to seek) |
 | Up | Open the settings |
 | Down | Open the quick settings |
 
@@ -147,5 +147,7 @@ Klangbild is a small project made for the joy of it. If you have an idea that fi
 <br>
 
 Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant.
+
+For convenience, it asks GitHub at most once a day whether there's a new version, which you can turn off with Check for updates under System in the settings.
 
 </details>

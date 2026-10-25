@@ -132,8 +132,7 @@ class PlayerParserTest {
         assertThat(q.next!!.artworkUrl).isEqualTo("http://192.168.1.5:8123/api/x.png")
         // The active queue's name: the group player the speaker plays in.
         assertThat(q.name).isEqualTo("Erdgeschoss")
-        // How long the queue is, and where it stands: six more items follow.
-        assertThat(q.items).isEqualTo(12)
+        // Where the queue stands.
         assertThat(q.currentIndex).isEqualTo(5)
     }
 

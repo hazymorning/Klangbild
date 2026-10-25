@@ -64,7 +64,10 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
     /** Corner radius of a square artwork (dp): a hair over 2 % of its side. */
     val radius get() = RADIUS * art / SINGLE.art
 
-    /** The small cover of a row in the queue's list (dp): as tall as the row's two lines, from cap height to baseline. */
+    /**
+     * The small cover of a row in the queue's list (dp). Its two lines stand within its straight
+     * edge, a corner radius in from its top and bottom, as the column does beside the artwork.
+     */
     val rowCover get() = ROW_COVER * art / SINGLE.art
 
     /** Margins, artwork and gap at 960 × 540 dp: the single cover's, or Cover Flow's. */
@@ -84,7 +87,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
         const val RADIUS = 8f
 
         /** A row's small cover in the queue's list (dp at 960 × 540). */
-        const val ROW_COVER = 30f
+        const val ROW_COVER = 38f
 
     }
 }

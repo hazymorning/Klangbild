@@ -82,7 +82,7 @@ class QueueStageTest {
         val desert = Catalog.desert
         val albumSongs = Catalog.cairoNights
         val nextRecord = Catalog.northernHours
-        val album = Fixtures.queueList(albumSongs + nextRecord, remaining = 9)
+        val album = Fixtures.queueList(albumSongs + nextRecord)
     }
 }
 
@@ -95,7 +95,7 @@ class QueueStage4kTest {
     @Test
     fun album4k() {
         val en = TestTexts.english()
-        val list = Fixtures.queueList(Catalog.cairoNights + Catalog.northernHours, remaining = 11, screen = Fixtures.TV_4K)
+        val list = Fixtures.queueList(Catalog.cairoNights + Catalog.northernHours, screen = Fixtures.TV_4K)
         captureRoboImage("build/screenshots/queue/album_4k.png") {
             Fixtures.Still(en) { Stage(Fixtures.queueModel(Catalog.desert, list, screen = Fixtures.TV_4K, group = "Living room", t = en)) }
         }

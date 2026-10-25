@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.domain.SpeakerLink
+import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -41,6 +42,12 @@ internal interface ControllerHost {
 
     /** How this TV stands as a speaker in Music Assistant. */
     val speaker: SpeakerLink
+
+    /** What Klangbild knows of its own new versions. */
+    val update: UpdateInfo
+
+    /** OK on the menu's Update line: installs a new version, or asks for one now. */
+    fun update()
 
     /** Works out the screen again (takes [lock]). */
     fun recompute()

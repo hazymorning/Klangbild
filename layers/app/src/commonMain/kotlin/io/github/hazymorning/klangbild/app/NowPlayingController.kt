@@ -52,6 +52,7 @@ import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.UpNext
 import io.github.hazymorning.klangbild.domain.UpNextRow
+import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ArtworkScene
@@ -94,15 +95,13 @@ data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: 
 /** The queue as a list beside the cover: what comes next, and the small covers made so far, by [UpNextRow.id]. */
 data class QueueList(val upNext: UpNext, val covers: Map<String, ImageBitmap> = emptyMap()) {
     /**
-     * The list once its first row, [track], plays: the rows after it, one fewer to come and its
-     * length less. Null unless that is the song, or when nothing would be left.
+     * The list once its first row, [track], plays: the rows after it. Null unless that is the
+     * song, or when nothing would be left.
      */
     fun movedUp(track: TrackInfo): QueueList? {
         val first = upNext.rows.firstOrNull()?.takeIf { TrackMatch.sameTitle(it.track.title, track.title) } ?: return null
         val rows = upNext.rows.drop(1).ifEmpty { return null }
-        val count = upNext.count?.minus(1)
-        val durationMs = upNext.durationMs?.let { all -> first.track.durationMs?.let { all - it } }
-        return QueueList(UpNext(rows, count, durationMs), covers - first.id)
+        return QueueList(UpNext(rows), covers - first.id)
     }
 }
 
@@ -216,6 +215,8 @@ class NowPlayingController(
     private val pairingToken: () -> String? = { null },
     /** What this TV plays, as a sound feed, while it plays as a speaker. */
     ownSound: () -> SoundFeed? = { null },
+    /** Klangbild's own new versions; none where nothing looks for them. */
+    private val updates: Updates? = null,
 ) {
     // In the language shown from the first frame, the clock as the system has it.
     private val _ui = MutableStateFlow(UiState(texts = localizer.texts.value))
@@ -265,6 +266,10 @@ class NowPlayingController(
         override val texts: Texts get() = localizer.texts.value
         override val log: Log get() = this@NowPlayingController.log
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
+        override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
+        override fun update() {
+            updates?.ok()
+        }
         override var language: AppLanguage
             get() = localizer.language
             set(value) {
@@ -370,15 +375,24 @@ class NowPlayingController(
         speakerJob = scope.launch {
             speaker.collect { status -> synchronized(lock) { soundSelection.update(_ui.value.source, status) } }
         }
+        updates?.let { u ->
+            updatesJob = scope.launch { u.info.collect { recompute() } }
+            updatesDue = true
+        }
     }
 
     private var textsJob: Job? = null
     private var speakerJob: Job? = null
+    private var updatesJob: Job? = null
+
+    /** A screen started showing: Klangbild asks for a new version once the stored settings are in. */
+    @Volatile private var updatesDue = false
 
     private fun stop() {
         settingsJob?.cancel()
         textsJob?.cancel()
         speakerJob?.cancel()
+        updatesJob?.cancel()
         ticker?.cancel()
         setupJob?.cancel()
         setupServer.stop()
@@ -489,6 +503,23 @@ class NowPlayingController(
     /** Held left or right: by chapters, else to the item before or after. */
     fun jump(direction: Int) = seeking.jump(direction)
 
+    /**
+     * Left and right change a song once let go, and held, seek through it: with a length to seek
+     * in, on a player that can.
+     */
+    val holdKeys: Boolean
+        get() {
+            val s = settings.value
+            val p = _ui.value.source.player
+            return s.remoteControl && !spokenKeys && (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && p?.abilities?.seek == true
+        }
+
+    /** Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1), the farther the longer. */
+    fun hold(direction: Int, heldMs: Long) = seeking.hold(direction, heldMs)
+
+    /** The key held is let go: the place it reached is sent. */
+    fun letGo() = seeking.letGo()
+
     // --- settings menu -------------------------------------------------------------------
 
     private val localEdits = atomic(0)
@@ -586,6 +617,9 @@ class NowPlayingController(
             queueSwitch.chosen(s.queue)
             _ui.value = _ui.value.copy(queue = s.queue)
         }
+        // Asked for after a start, and when asking is turned on again, unless it is off.
+        if (s.updateCheck && (updatesDue || !settings.value.updateCheck)) updates?.checkIfDue()
+        updatesDue = false
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {
@@ -844,7 +878,7 @@ class NowPlayingController(
             val before = shown?.queue ?: return null
             return if (shown.track.key == track.key) before else before.movedUp(track)
         }
-        val upNext = UpNext.of(src.coming, src.remaining) ?: return null
+        val upNext = UpNext.of(src.coming) ?: return null
         return QueueList(upNext, upNext.rows.mapNotNull { row -> thumbs.ready(row.track)?.let { row.id to it } }.toMap())
     }
 

@@ -49,14 +49,12 @@ object FlowCards {
 
     /**
      * The card for [cover] (the print at its exact size, [cover] square), with corners of
-     * [cornerPx] and [geometry]'s gap and reflection height. [round] is set for a generated
-     * plate (already transparent outside its disc); [lightness] is the print's mean lightness.
-     * On paper there is no mirror image. There is never a frame, a line or a shadow around the
+     * [cornerPx] and [geometry]'s gap and reflection height; [lightness] is the print's mean
+     * lightness. On paper there is no mirror image. There is never a frame, a line or a shadow around the
      * card: only the print.
      */
     fun build(
         cover: ImageBitmap,
-        round: Boolean,
         cornerPx: Float,
         geometry: FlowGeometry,
         density: Float,
@@ -70,17 +68,11 @@ object FlowCards {
         val out = ImageBitmap(side + 2 * pad, side + gap + reflection + 2 * pad)
         val c = Canvas(out)
         val print = plainPaint().apply { shader = ImageShader(cover, TileMode.Clamp, TileMode.Clamp) }
-        val radius = if (round) 0f else cornerPx
-
         fun card(top: Float, flipped: Boolean) {
             c.save()
             c.translate(pad.toFloat(), if (flipped) top + side else top)
             if (flipped) c.scale(1f, -1f) // mirrored about the card's bottom edge
-            if (round) {
-                c.drawRect(0f, 0f, side.toFloat(), side.toFloat(), print)
-            } else {
-                c.drawRoundRect(0f, 0f, side.toFloat(), side.toFloat(), radius, radius, print)
-            }
+            c.drawRoundRect(0f, 0f, side.toFloat(), side.toFloat(), cornerPx, cornerPx, print)
             c.restore()
         }
         card(pad.toFloat(), flipped = false)

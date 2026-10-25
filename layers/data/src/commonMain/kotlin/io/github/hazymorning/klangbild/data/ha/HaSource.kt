@@ -351,7 +351,6 @@ class HaSource(
             queueKnown = queueKnown,
             coming = currentWindow?.coming.orEmpty(),
             played = currentWindow?.played.orEmpty(),
-            remaining = queue.remainingOf(currentQueue, key),
             ma = if (ma == null) null else queue.maLink,
             favorites = player?.isMusicAssistant == true && (favoriteButton() != null || (ma != null && player.activeQueue != null)),
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
@@ -414,7 +413,6 @@ class HaSource(
         queueKnown = shown.queueKnown,
         coming = shown.coming,
         played = shown.played,
-        remaining = shown.remaining,
         favorites = shown.favorites,
         lyrics = shown.lyrics,
     )

@@ -196,6 +196,10 @@ From the bottom up:
   explicitly tells you to. Getting a release ready means writing `docs/releases/<tag>.md`,
   checking it and the README for em dashes and emoji, and, when asked, making a draft with a
   manual run.
+- When it starts, the app asks GitHub for the newest release (no beta or draft) at most once a
+  day (`Updates`), unless Check for updates is off in the menu, and OK on Update installs it
+  through Android's installer, which asks first. It downloads the release's `klangbild.apk`, so a
+  release must have one.
 - The "Tidy up" workflow, run manually, keeps the newest calendar releases (ten by default),
   deletes the older ones with their tags, and deletes branches merged into main. The old 6.3.0 and
   6.4.0 releases stay.
@@ -210,13 +214,18 @@ are in the code, and the tests named here check them.
   (`NoFrameTest`), and every cover fills its square (`CoverFillTest`).
 - The layout follows `StageGrid` and is centered on what's actually drawn, in both languages
   (`CenteringTest`). The whole screen drifts by up to 6 dp to protect the OLED.
+- Spaces grow with what they separate: the lines of one entry stand closest, then two entries,
+  then what frames them. In the queue's list the song stands in the middle between the status line
+  and the rows, and the last row ends where the cover does (`CenteringTest`). Judge spacing by
+  measuring every gap in the rendered pictures, above and below, not by eye.
 - There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
   (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
   with no letter spacing or italics, and never in the system font. Outside the debug overlay,
   nothing is smaller than 15 sp. Balanced lines go through `LineBalancer` or `BalancedText`, so
   the JVM and the browser get them too.
 - Text comes in three inks, near-neutral with a hint of the cover's color, each with a contrast of
-  at least 4.5:1 against its background (`DesignRulesTest`). Never pure white.
+  at least 4.5:1 against its background (`DesignRulesTest`). Never pure white. Lyric lines fading
+  away from the one sung are exempt.
 - The screen looks the same at any time of day. Only the background (light by day, dark at night)
   and the brightness of the lights follow the sun.
 - Motion is calm. Things fade and crossfade, nothing slides or bounces, the screen never goes dark

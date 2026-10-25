@@ -139,10 +139,7 @@ object Fixtures : AppFixtures() {
         )
     }
 
-    /**
-     * The stage with the queue as a list ([list]), as the root builds it: the song at the top, "Up
-     * next" saying how much follows, the rows under it.
-     */
+    /** The stage with the queue as a list ([list]), as the root builds it: the song at the top, the rows under it. */
     fun queueModel(
         track: TrackInfo,
         list: QueueList,
@@ -155,6 +152,7 @@ object Fixtures : AppFixtures() {
         group: String? = "Wohnzimmer",
         t: Texts = texts,
         progress: Boolean = true,
+        barStays: Boolean = progress,
         positionMs: Long? = track.durationMs?.let { it / 3 },
         album: Boolean = true,
     ): StageModel {
@@ -168,8 +166,8 @@ object Fixtures : AppFixtures() {
             positionMs = { positionMs },
             year = track.year.takeIf { album },
             progress = progress,
+            barStays = barStays,
             line = StageTexts.line(false, track, t),
-            next = StageTexts.queue(list.upNext.count, list.upNext.durationMs, t).orEmpty(),
             statusLine = StatusLine(lead, clock),
             queue = QueueModel.of(list, t),
         )
@@ -204,16 +202,19 @@ object Fixtures : AppFixtures() {
         )
     }
 
-    /** The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words. */
+    /**
+     * The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words; the
+     * bar shown as [progress] says, and staying as [barStays] says (else only for a moment).
+     */
     @Composable
-    fun QueueTheater(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING, t: Texts = TestTexts.english(), next: TrackInfo? = null, progress: Boolean = true) {
+    fun QueueTheater(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING, t: Texts = TestTexts.english(), next: TrackInfo? = null, progress: Boolean = true, barStays: Boolean = progress) {
         CompositionLocalProvider(LocalTexts provides t) {
             StageTheater(
                 stage = stage,
                 status = status,
                 modelFor = { s ->
                     val list = s.queue
-                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = "Living room", t = t, progress = progress)
+                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = "Living room", t = t, progress = progress, barStays = barStays)
                     else model(s.track, next = next, status = status, scene = s.scene, t = t, group = "Living room")
                 },
             )

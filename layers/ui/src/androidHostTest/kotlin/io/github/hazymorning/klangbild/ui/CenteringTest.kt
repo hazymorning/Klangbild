@@ -16,6 +16,7 @@ import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.QrCode
@@ -23,6 +24,7 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
+import io.github.hazymorning.klangbild.ui.stage.ROW_COVER_CORNER
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -127,43 +129,56 @@ class CenteringTest {
     }
 
     @Test
-    fun theQueuesQuietLinesLeadWhatFollowsAtOneDistanceAndTheListKeepsToTheColumn() {
-        // A title that takes the list's largest size on one line, and a first row whose small
-        // cover is light at its top, so that its ink starts where the row's cap height stands.
-        val playing = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
-        val first = Fixtures.track(SyntheticCover.BAUHAUS)
-        val coming = listOf(first) + Fixtures.tracks.filter { it != playing && it != first && it.durationMs != null }
-        for (t in listOf(Fixtures.texts, TestTexts.english())) {
-            val model = Fixtures.queueModel(playing, Fixtures.queueList(coming), t = t)
+    fun theQueuesSongStandsInTheMiddleItsSpacesGrowAndTheListEndsWithTheCover() {
+        // Rows in Latin letters, so that each of a row's two lines has ink of its own right of the small covers.
+        val coming = Catalog.cairoNights + Catalog.northernHours
+        for (t in listOf(Fixtures.texts, TestTexts.english())) for (bar in listOf(true, false)) {
+            val model = Fixtures.queueModel(Catalog.desert, Fixtures.queueList(coming), progress = bar, t = t)
             val ink = render { Fixtures.Still(t) { Stage(model) } }
             val layout = model.scene.layout
+            val case = "${if (bar) "with" else "without"} the bar in ${t.locale}"
             val left = (layout.columnLeft * 2).toInt() - 4
-            val lines = ink.lines(left, 1920)
-            // The status line, the title, artist and album, the bar, its times, "Up next", the rows.
-            val bar = lines.indexOfFirst { it.inkBottom - it.inkTop < 12 }
-            val (status, title, meta) = lines
-            val times = lines[bar + 1]
-            val heading = lines[bar + 2]
-            val row = lines[bar + 3]
-            val case = "in ${t.locale}"
-            // The status line leads the song as "Up next" leads the rows: baseline to cap height.
-            val titleCap = title.baseline - 34f * Fonts.CAP_HEIGHT * 2f
-            assertThat(abs((titleCap - status.baseline) - (row.inkTop - heading.baseline)), name = "$case: status line to title against \"Up next\" to the first row")
-                .isLessThanOrEqualTo(2f)
+            val (status, title) = ink.lines(left, 1920)
             assertThat(abs(status.inkTop - layout.statusTop * 2f), name = "$case: the status line's cap height on the grid").isLessThanOrEqualTo(2f)
-            // The song and the list stand further apart than anything within the song: the bar
-            // (its fill, then its times) belongs to the song.
-            assertThat(heading.top - times.baseline, name = "$case: the room before the list against the room above the bar")
-                .isGreaterThan(lines[bar].inkTop - meta.baseline + 8)
-            // Nothing of the list reaches past the column's foot, or beyond its right edge.
-            val foot = (layout.footerBottom * 2).toInt()
-            assertThat(ink.box(left, foot + 1, 1920, 1080, threshold = 24).right, name = "$case: below the column's foot").isEqualTo(-1)
-            val right = ((layout.columnLeft + layout.columnWidth) * 2).toInt()
-            assertThat(ink.box(right + 2, 0, 1920, 1080, threshold = 24).right, name = "$case: right of the column").isEqualTo(-1)
-            // Every line starts on the column's left edge (the title a pixel or two further left).
-            for (line in listOf(status, title, heading, row)) {
+            for (line in listOf(status, title)) {
                 assertThat(abs(line.left - layout.columnLeft * 2f), name = "$case: a line's left edge at ${line.top}").isLessThanOrEqualTo(4f)
             }
+            // Right of the small covers: the song's lines (the status line, the title, artist and
+            // album, the bar and its times), then each row's title and artists.
+            val lines = ink.lines(((layout.columnLeft + layout.rowCover + 6f) * 2).toInt(), 1920)
+            val song = if (bar) 5 else 3
+            val meta = lines[2]
+            val last = lines[song - 1]
+            val rows = lines.drop(song).chunked(2)
+            assertThat(rows.size, name = "$case: rows").isEqualTo(if (bar) 3 else 4)
+            // The song in the middle between the status line and the list: from the status line's
+            // baseline to the title's top as far as from the song's last line to the first small
+            // cover (with the bar its times, figures whose ink ends on the baseline: the bar of a four
+            // ends above). A small cover stands a corner radius above its title's cap height.
+            fun coverTop(row: List<Line>) = row[0].baseline - 17f * Fonts.CAP_HEIGHT * 2f - ROW_COVER_CORNER * 2f
+            val above = title.inkTop - status.baseline
+            val below = coverTop(rows[0]) - (if (bar) last.inkBottom else last.baseline)
+            assertThat(abs(above - below), name = "$case: above the song against below it").isLessThanOrEqualTo(3f)
+            // The spaces grow: within a row, between two rows, from the song to the list (more
+            // than above the bar, which belongs to the song).
+            val within = rows.maxOf { (words, artists) -> artists.inkTop - words.baseline }
+            val between = rows.zipWithNext { a, b -> b[0].inkTop - a[1].baseline }
+            val part = rows[0][0].inkTop - last.baseline
+            assertThat(between.min().toFloat(), name = "$case: between rows against within one").isGreaterThan(2.5f * within)
+            assertThat(part.toFloat(), name = "$case: from the song to the list against between rows").isGreaterThan(1.6f * between.max())
+            if (bar) assertThat(part.toFloat(), name = "$case: from the song to the list against above the bar").isGreaterThan(1.5f * (lines[3].inkTop - meta.baseline))
+            // One step from row to row.
+            val steps = rows.zipWithNext { a, b -> b[0].baseline - a[0].baseline }
+            assertThat(steps.max() - steps.min(), name = "$case: the rows' steps").isLessThanOrEqualTo(2)
+            // The list ends where the cover's column does: the last small cover, a corner radius
+            // below its artists' descenders, on the column's foot.
+            val foot = layout.footerBottom * 2f
+            val end = rows.last()[1].baseline + 15f * Fonts.DESCENT * 2f + ROW_COVER_CORNER * 2f
+            assertThat(abs(end - foot), name = "$case: the list's end against the column's foot").isLessThanOrEqualTo(3f)
+            // Nothing of the list reaches past the column's foot, or beyond its right edge.
+            assertThat(ink.box(left, foot.toInt() + 1, 1920, 1080, threshold = 24).right, name = "$case: below the column's foot").isEqualTo(-1)
+            val right = ((layout.columnLeft + layout.columnWidth) * 2).toInt()
+            assertThat(ink.box(right + 2, 0, 1920, 1080, threshold = 24).right, name = "$case: right of the column").isEqualTo(-1)
         }
     }
 

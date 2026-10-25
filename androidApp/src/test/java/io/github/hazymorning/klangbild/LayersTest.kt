@@ -14,7 +14,7 @@ import java.io.File
  */
 class LayersTest {
     private val below = mapOf(
-        "art" to setOf(),
+        "art" to setOf("color"),
         "color" to setOf("math"),
         "json" to setOf(),
         "sound" to setOf(),
