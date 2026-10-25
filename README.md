@@ -135,14 +135,6 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 </details>
 
 <details>
-<summary><b>Contributing</b></summary>
-<br>
-
-Klangbild is a small project made for the joy of it. If you have an idea that fits, the [Discussions](https://github.com/hazymorning/Klangbild/discussions/categories/ideas) are the place for it, and a look through the settings first often turns up what you're after. Bugs go in the [issues](https://github.com/hazymorning/Klangbild/issues), and if you'd like to build something yourself, starting with a discussion can save you work.
-
-</details>
-
-<details>
 <summary><b>Data privacy</b></summary>
 <br>
 
