@@ -90,7 +90,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 | Button | Action |
 | --- | --- |
 | OK | Play or pause (hold to open the settings) |
-| Left / Right | Previous or next song |
+| Left / Right | Previous or next song (hold to seek) |
 | Up | Switch to the landscape |
 | Down | Open the quick settings |
 

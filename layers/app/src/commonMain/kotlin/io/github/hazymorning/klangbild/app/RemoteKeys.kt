@@ -25,6 +25,12 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     private var centerLongPressed = false
     private var sideLongPressed = false
 
+    /** Left or right went down on a book or an episode: let go it jumps, held it goes by chapters. */
+    private var sideSpoken = false
+
+    /** Since when left or right has been held on a song (local time), while it seeks. */
+    private var holdingSince: Long? = null
+
     private fun peek() {
         peek.longValue = now() + PEEK_MS
     }
@@ -51,13 +57,20 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
             RemoteKey.LEFT, RemoteKey.RIGHT -> {
                 // A held key repeats: it changes the track once, not twenty times.
                 if (repeat == 0 && onStage()) {
-                    if (controller.spokenKeys) {
-                        // A book or an episode: a press jumps (on release), a held key goes by chapters.
-                        sideLongPressed = false
-                        return true
-                    }
+                    sideLongPressed = false
+                    holdingSince = null
+                    // A book or an episode: a press jumps (on release), a held key goes by chapters.
+                    // A song: a press changes it (on release), a held key seeks through it.
+                    sideSpoken = controller.spokenKeys
+                    if (sideSpoken || controller.holdKeys) return true
                     controller.send(if (key == RemoteKey.LEFT) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
                     peek()
+                } else if (repeat > 0) {
+                    // Each repeat while held moves the place sought on.
+                    holdingSince?.let { since ->
+                        controller.hold(if (key == RemoteKey.LEFT) -1 else +1, now() - since)
+                        peek()
+                    }
                 }
             }
             RemoteKey.PREVIOUS, RemoteKey.NEXT -> {
@@ -147,7 +160,13 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
         }
         if ((key == RemoteKey.LEFT || key == RemoteKey.RIGHT) && !controller.menuOpen) {
             sideLongPressed = true
-            controller.jump(if (key == RemoteKey.LEFT) -1 else +1)
+            val direction = if (key == RemoteKey.LEFT) -1 else +1
+            if (sideSpoken) {
+                controller.jump(direction)
+            } else {
+                holdingSince = now()
+                controller.hold(direction, 0)
+            }
             peek()
             return true
         }
@@ -165,11 +184,18 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
             return true
         }
         if (key == RemoteKey.LEFT || key == RemoteKey.RIGHT) {
-            // Only a press that started a jump (spoken word) acts on release.
+            // Only a press followed from its start acts on release: a jump, or another song.
             if (followed && !sideLongPressed && !canceled && onStage()) {
-                controller.skip(if (key == RemoteKey.LEFT) -1 else +1)
+                if (sideSpoken) {
+                    controller.skip(if (key == RemoteKey.LEFT) -1 else +1)
+                } else {
+                    controller.send(if (key == RemoteKey.LEFT) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
+                }
                 peek()
             }
+            // A hold sends the place it reached.
+            if (holdingSince != null) controller.letGo()
+            holdingSince = null
             sideLongPressed = false
             return true
         }

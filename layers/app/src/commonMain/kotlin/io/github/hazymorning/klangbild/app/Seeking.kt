@@ -14,14 +14,18 @@ import kotlin.concurrent.Volatile
 import kotlin.math.abs
 
 /**
- * Jumps within what plays (a book, an episode) with the remote. A jump shows on the progress
- * bar at once and holds there until Home Assistant reports the new place; presses close
- * together add up to one jump, sent once they stop.
+ * Jumps within what plays with the remote: in a book or an episode by presses, in a song by
+ * holding left or right. A jump shows on the progress bar at once and holds there until Home
+ * Assistant reports the new place; presses close together add up to one jump, sent once they
+ * stop, and a hold is sent once the key is let go.
  */
 internal class Seeking(private val host: ControllerHost) {
     /** A jump that Home Assistant has not confirmed yet: the bar shows where it goes. */
     @Volatile private var pending: Pending? = null
     private var job: Job? = null
+
+    /** Where a hold began: the item's key and its place then. */
+    @Volatile private var holdFrom: Pair<String, Long>? = null
 
     /**
      * Jumps back ([direction] -1, [BACK_MS]) or ahead (+1, [AHEAD_MS]); presses in quick
@@ -45,6 +49,26 @@ internal class Seeking(private val host: ControllerHost) {
         val t = host.now()
         val at = position(t)?.let { Chapters.jump(track.chapters, it, direction) }
         if (at != null) seekTo(track, at, t) else host.send(if (direction < 0) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
+    }
+
+    /**
+     * Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1) from where it
+     * played when the hold began, the farther the longer it is held ([held]). Sent once the key
+     * is let go ([letGo]).
+     */
+    fun hold(direction: Int, heldMs: Long) {
+        if (!host.settings.remoteControl) return
+        val track = (host.ui.screen as? Screen.Stage)?.track ?: return
+        val t = host.now()
+        val from = holdFrom?.takeIf { it.first == track.key }?.second ?: (position(t) ?: return).also { holdFrom = track.key to it }
+        seekTo(track, from + direction * held(heldMs), t, HOLD_WAIT_MS)
+    }
+
+    /** The key held is let go: the place it reached is sent now. */
+    fun letGo() {
+        holdFrom = null
+        val o = pending?.takeIf { it.sentAt == null } ?: return
+        send(o, 0)
     }
 
     /**
@@ -74,15 +98,21 @@ internal class Seeking(private val host: ControllerHost) {
         pending = null
     }
 
-    private fun seekTo(track: TrackInfo, target: Long, t: Long) {
+    private fun seekTo(track: TrackInfo, target: Long, t: Long, wait: Long = SETTLE_MS) {
         val end = track.durationMs?.let { (it - END_MARGIN_MS).coerceAtLeast(0) } ?: return
         val p = host.ui.source.player
         val o = Pending(track.key, target.coerceIn(0, end), t, if (p?.status == PlayerStatus.PLAYING) p.speed else 0f)
         pending = o
-        job?.cancel()
         // Presses close together make one jump: it is sent once they stop.
+        send(o, wait)
+        host.recompute()
+    }
+
+    /** Sends [o] after [wait] unless another jump replaces it meanwhile. */
+    private fun send(o: Pending, wait: Long) {
+        job?.cancel()
         job = host.scope.launch {
-            delay(SETTLE_MS)
+            delay(wait)
             // Another item plays meanwhile: the jump went with the one it was for.
             if (pending !== o || host.ui.source.player?.track?.key != o.key) return@launch
             pending = o.copy(sentAt = host.now())
@@ -91,7 +121,6 @@ internal class Seeking(private val host: ControllerHost) {
             delay(TRUST_MS)
             if (pending?.startedAt == o.startedAt) pending = null
         }
-        host.recompute()
     }
 
     /** A jump not yet confirmed: from [target] at [startedAt] it runs on at [speed] (0 while paused). */
@@ -100,6 +129,29 @@ internal class Seeking(private val host: ControllerHost) {
     }
 
     companion object {
+        /**
+         * How far a hold of [heldMs] goes in a song (ms): ten seconds for each second held at
+         * first, rising to [HOLD_FASTEST] seconds a second over [HOLD_RAMP_MS], so a moment's hold
+         * finds a place nearby and a longer one crosses the song in a few seconds.
+         */
+        fun held(heldMs: Long): Long {
+            val h = heldMs.coerceAtLeast(0) / 1000.0
+            val ramp = HOLD_RAMP_MS / 1000.0
+            val rise = (HOLD_FASTEST - HOLD_SLOWEST) / ramp
+            val s = if (h <= ramp) HOLD_SLOWEST * h + rise * h * h / 2 else HOLD_SLOWEST * ramp + rise * ramp * ramp / 2 + HOLD_FASTEST * (h - ramp)
+            return (s * 1000).toLong()
+        }
+
+        /** A hold moves this many seconds of the song for each second held at first, and at most this many. */
+        const val HOLD_SLOWEST = 10.0
+        const val HOLD_FASTEST = 40.0
+
+        /** ...rising from the one to the other over this long (ms). */
+        const val HOLD_RAMP_MS = 3_000L
+
+        /** A hold whose key is never let go is sent after this long without a step (ms). */
+        const val HOLD_WAIT_MS = 1_500L
+
         /** Left jumps back this far, right ahead this far (like most podcast apps). */
         const val BACK_MS = 15_000L
         const val AHEAD_MS = 30_000L
