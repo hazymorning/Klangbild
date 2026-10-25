@@ -175,8 +175,8 @@ data class Settings(
     val ownValues: List<OwnValue> = emptyList(),
     /** The quick settings have been opened once: the stage no longer tells how to open them. */
     val quickSeen: Boolean = false,
-    /** Klangbild asks GitHub for a new version of itself (the menu's Update line). */
-    val updateCheck: Boolean = true,
+    /** Klangbild asks GitHub for a new version of itself as it starts (the menu's Check for updates). */
+    val updateCheck: Boolean = false,
 ) {
     companion object {
         /** "Turn off after" goes up to this many minutes (twelve hours). */

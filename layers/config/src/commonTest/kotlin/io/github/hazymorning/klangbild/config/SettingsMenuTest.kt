@@ -173,8 +173,10 @@ class SettingsMenuTest {
         assertThat(value(ctx("v2026.11.0", state = UpdateState.FAILED))).isEqualTo("Hat nicht geklappt")
         // A build of one's own names itself and looks for nothing.
         assertThat(value(ctx("v2026.11.0", name = "2026.10.24 (abc1234)"))).isEqualTo("2026.10.24 (abc1234)")
-        val off = configured.copy(updateCheck = false)
-        fun system(c: MenuContext, s: Settings = configured) = SettingsMenu.groups(s, c, de).single { it.section == MenuSection.SYSTEM }.value
+        // Looking is off until it is turned on.
+        val on = configured.copy(updateCheck = true)
+        val off = configured
+        fun system(c: MenuContext, s: Settings = on) = SettingsMenu.groups(s, c, de).single { it.section == MenuSection.SYSTEM }.value
         assertThat(system(ctx("v2026.11.0"))).isEqualTo("Neue Version")
         assertThat(system(ctx("v2026.10.5"))).isEqualTo("")
         // Turned off, Klangbild looks for nothing by itself and the group tells of nothing; the
@@ -183,13 +185,13 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.UPDATE, off, ctx(null), de)).isEqualTo("Nicht geprüft")
         assertThat(SettingsMenu.step(MenuEntry.UPDATE, configured, -1)).isNull()
         // Check for updates is a switch like the others.
-        assertThat(SettingsMenu.value(MenuEntry.UPDATE_CHECK, configured, ctx(null), de)).isEqualTo("An")
+        assertThat(SettingsMenu.value(MenuEntry.UPDATE_CHECK, on, ctx(null), de)).isEqualTo("An")
         assertThat(SettingsMenu.value(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).isEqualTo("Aus")
-        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, configured, -1)).isEqualTo(off)
-        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, off, +1, wrap = true)).isEqualTo(configured)
+        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, on, -1)).isEqualTo(off)
+        assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, off, +1, wrap = true)).isEqualTo(on)
         // The explanations say what each line does now.
         assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("OK\u00A0lädt es")
-        assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, configured, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, on, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).contains("OK\u00A0bei Update fragt trotzdem")
     }
 

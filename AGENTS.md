@@ -52,7 +52,7 @@ By kind:
   renders the screens and `tools/make_readme_pictures.py` places them in a room. Run both again
   when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
   every release's APK must be named `klangbild.apk`.
-- **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better` and
+- **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better`, `### Gone` and
   `### Bug fixes` as needed. Each file has a few short points in everyday words about what changed,
   without addressing the reader. Leave out technical details and precise-sounding claims like "to a
   fraction of a second", include only what's known to work, and keep it as short as the release
@@ -196,10 +196,10 @@ From the bottom up:
   explicitly tells you to. Getting a release ready means writing `docs/releases/<tag>.md`,
   checking it and the README for em dashes and emoji, and, when asked, making a draft with a
   manual run.
-- When it starts, the app asks GitHub for the newest release (no beta or draft) at most once a
-  day (`Updates`), unless Check for updates is off in the menu, and OK on Update installs it
-  through Android's installer, which asks first. It downloads the release's `klangbild.apk`, so a
-  release must have one.
+- If Check for updates is on in the menu (it's off by default), the app asks GitHub for the
+  newest release (no beta or draft) when it starts, at most once a day (`Updates`). OK on Update
+  asks right away or installs the new version through Android's installer, which asks first. It
+  downloads the release's `klangbild.apk`, so a release must have one.
 - The "Tidy up" workflow, run manually, keeps the newest calendar releases (ten by default),
   deletes the older ones with their tags, and deletes branches merged into main. The old 6.3.0 and
   6.4.0 releases stay.

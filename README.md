@@ -148,6 +148,6 @@ Klangbild is a small project made for the joy of it. If you have an idea that fi
 
 Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant.
 
-For convenience, it asks GitHub at most once a day whether there's a new version, which you can turn off with Check for updates under System in the settings.
+It asks GitHub for a new version only when you press OK on Update under System in the settings. If you turn on Check for updates there, it also asks when it starts, at most once a day.
 
 </details>

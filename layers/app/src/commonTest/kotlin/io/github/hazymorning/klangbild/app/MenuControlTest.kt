@@ -182,6 +182,7 @@ class MenuControlTest {
 
     @Test
     fun `the system group tells of a new version, OK on its line installs it, and a switch below turns looking off`() {
+        settings = Settings(updateCheck = true)
         menu.open()
         assertThat(state().rows.last().value).isEqualTo("New version")
         repeat(6) { menu.move(+1) }
