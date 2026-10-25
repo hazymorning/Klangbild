@@ -23,10 +23,10 @@ import kotlin.time.Clock
 /**
  * The small covers of the queue's list, made off the main thread at their exact size (Lanczos,
  * as the cover) and kept for the songs to come: the rows further down are made ahead, so a list
- * that moves up has them at once. A song without a cover gets its generated figure, as the stage
+ * that moves up has them at once. A song without a cover gets its generated one, as the stage
  * does. They are kept by picture, so the songs of an album share one. One is loaded at a time,
  * so the stage's own pictures never wait behind them; a cover that took too long stands in as
- * its figure for a while and is then asked for again.
+ * its generated one for a while and is then asked for again.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class Thumbs(
@@ -37,7 +37,7 @@ internal class Thumbs(
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val lane = Mutex()
 
-    /** Figures standing in for a cover that took too long, and since when. */
+    /** Generated covers standing in for one that took too long, and since when. */
     private val standIns = HashMap<String, Long>()
 
     private val cache = RecentMap<String, ImageBitmap>(KEEP) { key, _ -> standIns.remove(key) }
@@ -55,7 +55,7 @@ internal class Thumbs(
     fun ready(track: TrackInfo): ImageBitmap? = synchronized(lock) { cache[keyOf(track)] }
 
     /**
-     * Starts making [track]'s small cover unless it is made or on its way (a figure that stands
+     * Starts making [track]'s small cover unless it is made or on its way (a generated one that stands
      * in is tried again after [RETRY_MS]); [done] runs once it is.
      */
     fun prepare(track: TrackInfo, done: () -> Unit) {
@@ -94,12 +94,12 @@ internal class Thumbs(
         val me = currentCoroutineContext()[Job]
         var late = false
         val bitmap = try {
-            // A few seconds for the cover once its turn has come; then the generated figure steps in.
+            // A few seconds for the cover once its turn has come; then the generated one steps in.
             val loaded = lane.withLock {
                 withTimeoutOrNull(Scenes.COVER_TIMEOUT_MS) { Loaded(runCatching { artwork.load(track) }.getOrNull()) }
             }
             late = loaded == null
-            withContext(dispatcher) { SceneBuilder.rowCover(loaded?.cover, track.artSeed, side) }
+            withContext(dispatcher) { SceneBuilder.rowCover(loaded?.cover, track.artFoil, track.artView, side) }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Throwable) {
@@ -108,7 +108,7 @@ internal class Thumbs(
         synchronized(lock) {
             if (building[key] === me) building.remove(key)
             if (bitmap == null || side != px) return
-            // A figure never replaces a cover that came before, nor the same figure standing in.
+            // A generated one never replaces a cover that came before, nor the same one standing in.
             if (late && key in cache) {
                 if (key in standIns) standIns[key] = now()
                 return
@@ -126,7 +126,7 @@ internal class Thumbs(
         /** A cover that took too long is asked for again after this long (ms). */
         const val RETRY_MS = 60_000L
 
-        /** Which picture [track] shows: its address, else its generated figure's seed. */
-        fun keyOf(track: TrackInfo): String = track.artworkId ?: "seed|${track.artSeed}"
+        /** Which picture [track] shows: its address, else its generated one. */
+        fun keyOf(track: TrackInfo): String = track.artworkId ?: "seed|${track.artKey}"
     }
 }

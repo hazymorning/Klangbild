@@ -146,8 +146,8 @@ fun StageTheater(
 
     val level: () -> Float = { dim.light * intensity() }
     val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.COLUMN && kind != Change.ROWS
-    // A new picture comes up over the old one; the old goes once it is covered (a picture of
-    // another shape, such as a round plate, lets the old one's corners fade with it).
+    // A new picture comes up over the old one; the old goes once it is covered (a station's logo,
+    // clear around its mark, lets the old one fade with it there).
     val oldPicture: () -> Float = {
         if (kind == Change.FULL) 1f - p(Motion.ART_OUT_START_MS, Motion.ART_OUT_END_MS, Motion.Sine) else 1f
     }

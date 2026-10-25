@@ -50,8 +50,6 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(projects.textTesting)
-            // The design rules hold the sand figures too (DesignRulesTest).
-            implementation(projects.art)
             implementation(libs.kotlinx.coroutines.test)
         }
         androidHostTest.dependencies {

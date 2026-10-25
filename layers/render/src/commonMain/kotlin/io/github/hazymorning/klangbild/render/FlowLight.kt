@@ -33,7 +33,7 @@ object FlowLight {
 
     /**
      * The color (ARGB) along the top edge of the print, from its [thumb] of [size] × [size]
-     * pixels. For a round plate (transparent in its corners) it is the upper half of the disc.
+     * pixels. Where the top edge is clear (a station's logo) it is the upper half of what is seen.
      */
     fun topEdge(thumb: IntArray, size: Int): Int {
         fun mean(rows: Int): Int? {

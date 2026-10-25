@@ -29,7 +29,7 @@ fun interface PictureDecoder {
 /**
  * Fetches and decodes covers. Tries the upgraded (larger) URL first, then the original, then
  * Home Assistant's own proxy. The access token is only attached for Home Assistant's own host.
- * Returns null when there is no cover at all; the scene then paints a Chladni figure.
+ * Returns null when there is no cover at all; the scene then makes one of its own.
  */
 class ArtworkLoader(
     private val http: HttpClient,

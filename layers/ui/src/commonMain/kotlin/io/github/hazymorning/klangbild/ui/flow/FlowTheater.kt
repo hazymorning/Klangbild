@@ -290,7 +290,7 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
     val layout = geometry.layout
     val density = layout.screen.density
     val card = partyCard(url, (layout.art * density).roundToInt(), wall) ?: return null
-    return FlowCards.build(card, round = false, cornerPx = layout.radius * density, geometry = geometry, density = density, appearance = wall)
+    return FlowCards.build(card, cornerPx = layout.radius * density, geometry = geometry, density = density, appearance = wall)
 }
 
 /**
