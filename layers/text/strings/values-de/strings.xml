@@ -240,13 +240,6 @@
     <string name="volume_muted">stumm</string>
     <string name="stage_link_down">Verbindung wird wiederhergestellt …</string>
     <string name="stage_next">Als Nächstes</string>
-    <plurals name="queue_tracks">
-        <item quantity="one">%s Titel</item>
-        <item quantity="other">%s Titel</item>
-    </plurals>
-    <string name="queue_minutes">%1$s Min.</string>
-    <string name="queue_hours">%1$s Std.</string>
-    <string name="queue_hours_minutes">%1$s Std. %2$s Min.</string>
     <string name="hint_down_key">Pfeil runter</string>
     <string name="hint_down">öffnet die Schnelleinstellungen</string>
     <string name="chapter_number">Kapitel %d</string>
