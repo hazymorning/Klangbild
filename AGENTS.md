@@ -220,7 +220,8 @@ are in the code, and the tests named here check them.
   nothing is smaller than 15 sp. Balanced lines go through `LineBalancer` or `BalancedText`, so
   the JVM and the browser get them too.
 - Text comes in three inks, near-neutral with a hint of the cover's color, each with a contrast of
-  at least 4.5:1 against its background (`DesignRulesTest`). Never pure white.
+  at least 4.5:1 against its background (`DesignRulesTest`). Never pure white. Lyric lines fading
+  away from the one sung are exempt.
 - The screen looks the same at any time of day. Only the background (light by day, dark at night)
   and the brightness of the lights follow the sun.
 - Motion is calm. Things fade and crossfade, nothing slides or bounces, the screen never goes dark
