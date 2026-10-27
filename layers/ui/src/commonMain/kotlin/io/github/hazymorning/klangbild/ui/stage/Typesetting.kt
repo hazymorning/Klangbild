@@ -355,13 +355,16 @@ internal fun glueShortWords(text: AnnotatedString): AnnotatedString {
         if (chars[i] != ' ') continue
         val word = s.substring(start, i)
         if (word.length in 1..3 && word.all { it.isLetter() } && i + 1 < chars.size && chars[i + 1].isLetterOrDigit()) {
-            chars[i] = '\u00A0'
+            chars[i] = NBSP
             changed = true
         }
         start = i + 1
     }
     return if (!changed) text else AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
+
+/** The no-break space, which glues words for the line breaker. */
+internal const val NBSP = '\u00A0'
 
 /** Short parentheses never break inside: "(alla marcia)" stays one piece. */
 internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
@@ -373,7 +376,7 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
         when (chars[i]) {
             '(' -> open = i
             ')' -> {
-                if (open >= 0 && i - open <= 28) for (j in open until i) if (chars[j] == ' ') chars[j] = ' '
+                if (open >= 0 && i - open <= 28) for (j in open until i) if (chars[j] == ' ') chars[j] = NBSP
                 open = -1
             }
         }
@@ -384,10 +387,10 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
 /** The title with every space that is not right after a dash made non-breaking; null without dashes. */
 internal fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
     val s = text.text
-    if (!s.contains(" – ")) return null
+    if (!s.contains("\u00A0– ")) return null
     val chars = s.toCharArray()
     for (i in chars.indices) {
-        if (chars[i] == ' ' && !(i > 0 && chars[i - 1] == '–')) chars[i] = ' '
+        if (chars[i] == ' ' && !(i > 0 && chars[i - 1] == '–')) chars[i] = NBSP
     }
     return AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
@@ -430,7 +433,7 @@ fun isMostlyCjk(text: String): Boolean {
 internal fun nextText(text: String, styles: StageStyles, lead: String): AnnotatedString = buildAnnotatedString {
     withStyle(styles.nextLead) { append(lead) }
     // A no-break space widened to about 12 dp.
-    withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(" ") }
+    withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(NBSP) }
     append(isolateRightToLeft(text))
 }
 
@@ -450,10 +453,10 @@ internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, wi
     if (fits(text)) return text
     var end = text.length
     while (true) {
-        end = text.lastIndexOfAny(charArrayOf(' ', ' '), end - 1)
+        end = text.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
         if (end <= 0) return text
         // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
-        val head = text.substring(0, end).trimEnd(' ', ' ', '–', '·', ',', ':', ';')
-        if (head.isNotEmpty() && fits("$head …")) return "$head …"
+        val head = text.substring(0, end).trimEnd(' ', NBSP, '–', '·', ',', ':', ';')
+        if (head.isNotEmpty() && fits("$head$NBSP…")) return "$head$NBSP…"
     }
 }

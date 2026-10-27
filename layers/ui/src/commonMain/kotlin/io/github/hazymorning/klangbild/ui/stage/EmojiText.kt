@@ -14,8 +14,6 @@ import io.github.hazymorning.klangbild.domain.Emoji
  * an emoji never ends up alone on its own line.
  */
 object EmojiText {
-    private const val NBSP = ' '
-
     /** Emoji are set this much smaller than the text around them. */
     private const val SCALE = 0.74f
 
