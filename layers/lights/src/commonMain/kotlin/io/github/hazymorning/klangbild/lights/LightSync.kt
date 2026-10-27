@@ -8,7 +8,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -59,7 +58,6 @@ import kotlin.time.Clock
  *
  * All its state lives on one thread; [update] and [release] only hand over.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class LightSync(
     private val scope: CoroutineScope,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
@@ -100,10 +98,15 @@ class LightSync(
 
     /** What a light was last asked to show. */
     private sealed interface Shown {
-        data class Color(val xy: Xy, val brightness: Int) : Shown
-        data class White(val kelvin: Int, val brightness: Int) : Shown
-        data class Level(val brightness: Int) : Shown
-        data object On : Shown
+        /** Home Assistant's brightness (1 to 255); null for a light that is only switched on. */
+        val brightness: Int?
+
+        data class Color(val xy: Xy, override val brightness: Int) : Shown
+        data class White(val kelvin: Int, override val brightness: Int) : Shown
+        data class Level(override val brightness: Int) : Shown
+        data object On : Shown {
+            override val brightness: Int? = null
+        }
     }
 
     /** A light's state when it was taken over: on or off, and enough to restore it if the snapshot is gone. */
@@ -504,12 +507,7 @@ class LightSync(
             if (!byPerson && sent != null && t - sent < light.transitionMs + SETTLE_REPORT_MS) continue
             light.checkedUpdate = s.lastUpdated
             val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
-            val sentBri = when (shown) {
-                is Shown.Color -> shown.brightness
-                is Shown.White -> shown.brightness
-                is Shown.Level -> shown.brightness
-                else -> null
-            }
+            val sentBri = shown?.brightness
             val changed = (bri != null && sentBri != null && abs(bri - sentBri) > OTHERS_BRI_STEP) ||
                 when (shown) {
                     is Shown.Color -> xyOf(s)?.let { it.distance(shown.xy) > (if (byPerson) OTHERS_XY_PERSON else OTHERS_XY) } == true
@@ -535,7 +533,7 @@ class LightSync(
         if (b != null) {
             putBack(b, toRestore, notes, scenes)
             restoredAt = now()
-            for (id in scenes) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+            for (id in scenes) b.call("scene", "delete", sceneEntity(id), null)
             snapshots = emptySet()
         } else {
             lights.clear()
@@ -555,7 +553,7 @@ class LightSync(
         val ids = wereOff.map { it.id }.toSet()
         val scenes = snapshots
         putBack(b, wereOff, saved, scenes)
-        for (id in ids.filter { it in scenes }) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+        for (id in ids.filter { it in scenes }) b.call("scene", "delete", sceneEntity(id), null)
         snapshots = snapshots - ids
         saved = saved - ids
         val off = now()
@@ -586,7 +584,7 @@ class LightSync(
             when {
                 was == null -> lights.remove(light.id)
                 was.on -> {
-                    if (light.id !in scenes || !activateScene(b, light.id, caps?.transition == true, RESTORE_TRANSITION_MS)) {
+                    if (light.id !in scenes || !activateScene(b, light.id, RESTORE_TRANSITION_MS.takeIf { caps?.transition == true })) {
                         b.call("light", "turn_on", light.id, restoreOn(was, caps))
                     }
                     lights.remove(light.id)
@@ -605,16 +603,16 @@ class LightSync(
         if (offs.isNotEmpty()) {
             delay(OFF_FADE_MS + OFF_SETTLE_MS)
             for (light in offs) {
-                if (light.id !in scenes || !activateScene(b, light.id, false, 0L)) b.call("light", "turn_off", light.id, null)
+                if (light.id !in scenes || !activateScene(b, light.id, null)) b.call("light", "turn_off", light.id, null)
                 lights.remove(light.id)
             }
         }
     }
 
-    /** Restores [id] from its snapshot scene; whether Home Assistant took the call. */
-    private suspend fun activateScene(b: LightBridge, id: String, fade: Boolean, transitionMs: Long): Boolean {
-        val data = if (fade) buildJsonObject { put("transition", transitionMs / 1000.0) } else null
-        return b.call("scene", "turn_on", "scene.${sceneId(id)}", data) != null
+    /** Restores [id] from its snapshot scene, in a fade of [transitionMs] if given; whether Home Assistant took the call. */
+    private suspend fun activateScene(b: LightBridge, id: String, transitionMs: Long?): Boolean {
+        val data = transitionMs?.let { ms -> buildJsonObject { put("transition", ms / 1000.0) } }
+        return b.call("scene", "turn_on", sceneEntity(id), data) != null
     }
 
     private fun capsOf(s: EntityState): Caps {
@@ -665,7 +663,7 @@ class LightSync(
     private fun fourDecimals(v: Float): Double = (if (v.isNaN()) 0 else (v * 10_000).roundToInt()) / 10_000.0
 
     /** `light.turn_on` data for [shown] on a light with [caps]; [brightness] overrides the shown one. */
-    private fun turnOn(shown: Shown, caps: Caps, brightness: Int?, transitionMs: Long?) = buildJsonObject {
+    private fun turnOn(shown: Shown, caps: Caps, brightness: Int?, transitionMs: Long) = buildJsonObject {
         when (shown) {
             is Shown.Color -> putJsonArray("xy_color") {
                 add(fourDecimals(shown.xy.x))
@@ -674,14 +672,9 @@ class LightSync(
             is Shown.White -> put("color_temp_kelvin", shown.kelvin)
             else -> Unit
         }
-        val level = brightness ?: when (shown) {
-            is Shown.Color -> shown.brightness
-            is Shown.White -> shown.brightness
-            is Shown.Level -> shown.brightness
-            Shown.On -> null
-        }
+        val level = brightness ?: shown.brightness
         if (caps.dimmable && level != null) put("brightness", level)
-        if (caps.transition && transitionMs != null) put("transition", transitionMs / 1000.0)
+        if (caps.transition) put("transition", transitionMs / 1000.0)
     }
 
     /**
@@ -700,7 +693,10 @@ class LightSync(
         }
 
         /** The snapshot scene's id for light [lightId] (a slug, as `scene.create` wants it). */
-        fun sceneId(lightId: String): String = "klangbild_" + lightId.substringAfter('.')
+        private fun sceneId(lightId: String): String = "klangbild_" + lightId.substringAfter('.')
+
+        /** The snapshot scene of light [lightId] as an entity. */
+        private fun sceneEntity(lightId: String): String = "scene." + sceneId(lightId)
 
         /** The color modes that take a color (https://developers.home-assistant.io/docs/core/entity/light). */
         val COLOR_MODES = setOf("hs", "xy", "rgb", "rgbw", "rgbww")
