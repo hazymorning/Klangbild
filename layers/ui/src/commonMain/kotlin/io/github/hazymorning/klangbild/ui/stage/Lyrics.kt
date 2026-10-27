@@ -338,7 +338,7 @@ internal fun LyricsText(
             // 1: the progress bar or a notice, above the song; changes cross-fade
             SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
             // 2: the song itself, where "Up next" stands
-            val song = model.footer?.let { fitSong(it, model.footerTitle, styles, colW) }
+            val song = model.footer?.let { rememberFooter(it, model.footerTitle, styles, colW) }
             if (song != null) BasicText(AnnotatedString(isolateRightToLeft(song)), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
@@ -470,13 +470,11 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
     return (1f - abs(off) / step).coerceIn(0f, 1f)
 }
 
-/** The song as "Up next" names a song: title and artist, or the title alone rather than a cut-off artist. */
+/** The track in the footer, which has no lead here ([fitFooter]). */
 @Composable
-private fun fitSong(full: String, title: String?, styles: StageStyles, width: Int): String {
+private fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
-    return remember(full, title, styles, width) {
-        if (title == null || measurer.measure(AnnotatedString(isolateRightToLeft(full)), styles.footer, maxLines = 1, softWrap = false).size.width <= width) full else title
-    }
+    return remember(full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { AnnotatedString(isolateRightToLeft(it)) } }
 }
 
 /**

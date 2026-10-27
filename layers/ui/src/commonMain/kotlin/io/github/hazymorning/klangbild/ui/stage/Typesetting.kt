@@ -292,14 +292,7 @@ private fun planText(
     // The album with its year; the year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
-    // What comes next: title and artist, or the title alone rather than a cut-off artist.
-    val footer = model.footer?.let { full ->
-        if (model.footerTitle == null || measurer.measure(footerText(footerLead, full, styles), styles.footer, maxLines = 1, softWrap = false).size.width <= colW) {
-            full
-        } else {
-            model.footerTitle
-        }
-    }
+    val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(footerLead, s, styles) } }
     return TextPlan(
         title = choice.layout.layoutInput.text,
         titleStyle = choice.layout.layoutInput.style,
@@ -460,6 +453,13 @@ fun isMostlyCjk(text: String): Boolean {
     }
     return letters > 0 && cjk * 2 >= letters
 }
+
+/**
+ * The footer's track: [full] (title and artist) if it fits [width] on one line in [style] as [set]
+ * sets it, else its [title] alone rather than a cut-off artist.
+ */
+internal fun fitFooter(measurer: TextMeasurer, full: String, title: String?, style: TextStyle, width: Int, set: (String) -> AnnotatedString): String =
+    if (title == null || measurer.measure(set(full), style, maxLines = 1, softWrap = false).size.width <= width) full else title
 
 /** "Up next" ([lead]) in a heavier weight, 12 dp, then what comes next (isolated if right-to-left). */
 internal fun footerText(lead: String, text: String, styles: StageStyles): AnnotatedString = buildAnnotatedString {
