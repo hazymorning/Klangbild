@@ -2,11 +2,13 @@ package io.github.hazymorning.klangbild.app
 
 import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.data.ArtworkLoader
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +34,7 @@ import kotlin.time.Clock
 internal class Thumbs(
     private val scope: CoroutineScope,
     private val artwork: ArtworkLoader,
+    private val log: Log,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
@@ -100,9 +103,10 @@ internal class Thumbs(
             }
             late = loaded == null
             withContext(dispatcher) { SceneBuilder.rowCover(loaded?.cover, track.artFoil, track.artView, side) }
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            log.warn("Row cover: not made (${e::class.simpleName})")
             null
         }
         synchronized(lock) {

@@ -306,8 +306,8 @@ class NowPlayingController(
     @Volatile private var auth: HaAuth? = null
 
     private val artwork = ArtworkLoader(http, tokenHttp, { auth }, pictures)
-    private val scenes = Scenes(scope, artwork)
-    private val thumbs = Thumbs(scope, artwork, now)
+    private val scenes = Scenes(scope, artwork, log)
+    private val thumbs = Thumbs(scope, artwork, log, now)
     private val strip = CoverStrip()
 
     private var viewers = 0
