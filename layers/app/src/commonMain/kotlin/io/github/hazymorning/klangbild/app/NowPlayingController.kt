@@ -80,7 +80,7 @@ import kotlin.time.Clock
  */
 class NowPlayingController(
     private val scope: CoroutineScope,
-    /** For pictures from anywhere: requests carry no credentials but to Home Assistant's own host. */
+    /** For requests without a token: covers from other hosts. */
     private val http: HttpClient,
     /** For requests that carry a token: they never follow a redirect, so a token never reaches another host. */
     private val tokenHttp: HttpClient,

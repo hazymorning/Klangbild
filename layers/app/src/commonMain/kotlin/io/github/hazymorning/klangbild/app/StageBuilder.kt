@@ -82,10 +82,7 @@ internal class StageBuilder(
         }
     }
 
-    /**
-     * The words that take the text column for [track]: with Lyrics on, the synced words Music
-     * Assistant has for a song whose position is known (the words follow it).
-     */
+    /** The lyrics for [track] in the text column. With Lyrics on, Music Assistant's synced lyrics for a song with a known duration. */
     private fun lyricsFor(s: Settings, src: SourceState, track: TrackInfo): Lyrics? {
         src.lyrics?.let { lastLyrics = it }
         if (!s.lyrics || track.kind != MediaKind.MUSIC || track.durationMs == null) return null

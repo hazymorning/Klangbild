@@ -23,7 +23,7 @@ import kotlin.time.Clock
 
 /** What the app needs from the platform it runs on. [AppGraph] makes the rest of it from these. */
 interface Platform {
-    /** For pictures from anywhere: requests carry no credentials but to Home Assistant's own host. */
+    /** For requests without a token: covers from other hosts and GitHub's releases. */
     val http: HttpClient
 
     /**

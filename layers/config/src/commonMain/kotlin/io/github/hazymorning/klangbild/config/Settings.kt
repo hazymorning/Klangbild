@@ -157,7 +157,7 @@ data class Settings(
     val queue: QueueDisplay = QueueDisplay.OFF,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
-    /** Music Assistant itself (optional): for the whole queue in Cover Flow. */
+    /** Music Assistant's URL and token, optional. Lyrics, the queue list, favorites, the party code and Play here need them. */
     val maUrl: String? = null,
     val maToken: String? = null,
     /** This TV plays music from Music Assistant, as one of its speakers (needs Music Assistant). */
