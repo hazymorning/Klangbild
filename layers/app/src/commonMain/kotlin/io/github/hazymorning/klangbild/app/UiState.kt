@@ -92,7 +92,7 @@ data class UiState(
      * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
      * value breathe meanwhile.
      */
-    val queueComing: QueueDisplay? = null,
+    val queuePending: QueueDisplay? = null,
     /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
     val flow: FlowData? = null,
     /** Light wall by day, dark at night (or as set). */

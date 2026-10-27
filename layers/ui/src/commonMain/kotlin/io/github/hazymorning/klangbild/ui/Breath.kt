@@ -10,19 +10,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 
 /**
- * A value whose choice is on its way (the queue's way while its stage is made) breathes, as the
- * light does while the speaker buffers: the whole word sinks into the quietest ink that still
- * reads well in [Motion.BREATH_MS] and comes back as slowly, for as long as the wait goes on, so
- * the wait shows from across the room. When it is over, the word glides back to its own ink in
- * [Motion.PAUSE_MS]. The state is how far the word has sunk (0 in its own ink, 1 in the quiet
- * one); read it in a draw lambda ([breathed]), so a frame only draws the word anew.
+ * While [pending] (a queue display chosen but not on screen yet), a value's ink moves toward a
+ * quieter ink and back, each way in [Motion.BREATH_MS], like the stage's light while the speaker
+ * buffers. When the wait ends, it returns to its own ink in [Motion.PAUSE_MS]. The state is the
+ * depth: 0 in its own ink, 1 in the quiet one. Read it in a draw lambda ([breathed]), so only
+ * drawing reruns.
  */
 @Composable
-fun rememberBreath(waiting: Boolean): State<Float> {
+fun rememberBreath(pending: Boolean): State<Float> {
     val depth = remember { Animatable(0f) }
     if (!LocalStill.current) {
-        LaunchedEffect(waiting) {
-            if (waiting) {
+        LaunchedEffect(pending) {
+            if (pending) {
                 while (true) {
                     depth.animateTo(1f, tween(Motion.BREATH_MS, easing = Motion.Dimmer))
                     depth.animateTo(0f, tween(Motion.BREATH_MS, easing = Motion.Exhale))
@@ -35,5 +34,5 @@ fun rememberBreath(waiting: Boolean): State<Float> {
     return depth.asState()
 }
 
-/** [ink] sunk [depth] of the way into [quiet]; exactly [ink] at rest, so a word that does not wait keeps its very ink. */
+/** [ink] moved [depth] of the way toward [quiet]; exactly [ink] at depth 0. */
 fun breathed(ink: Color, quiet: Color, depth: Float): Color = if (depth <= 0f) ink else lerp(ink, quiet, depth)

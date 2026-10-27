@@ -94,16 +94,14 @@ object QuickGrid {
 }
 
 /**
- * The quick settings along the bottom edge: they rise a little and fade in when down is
- * pressed, and sink back when they close. Each entry is its name in the quiet ink with its value
- * under it; the chosen one is lit from below by the same soft band of light as the menu's
- * chosen line, its words at full strength (no frame, no chip, no icon). A value that holds but
- * has nothing to show now stands in a quieter ink. The entries keep their places whatever their
- * values say, so nothing jumps while a value changes. While the queue's way just chosen is
- * [preparing], its value breathes ([rememberBreath]).
+ * The quick settings along the bottom edge: they rise and fade in when down is pressed, and sink
+ * back when they close. Each entry is its label over its value, and the chosen one stands in a
+ * band of light like the menu's chosen row. A muted value (lyrics on, but none for this track)
+ * has a quieter ink. Entries keep their places when values change. While the queue display just
+ * chosen is [pending], its value breathes ([rememberBreath]).
  */
 @Composable
-fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
+fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
     // The last state stays while the row sinks away.
     val last = remember { arrayOfNulls<QuickState>(1) }
     if (quick != null) last[0] = quick
@@ -125,7 +123,7 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
             translationY = (1f - v) * QuickGrid.RISE * density
             compositingStrategy = CompositingStrategy.ModulateAlpha
         },
-        preparing,
+        pending,
     )
 }
 
@@ -157,10 +155,10 @@ internal class QuickColors(
     }
 
     /**
-     * The ink a value on its way sinks into as it breathes: a muted value's, the quietest that
-     * still reads well where it stands, chosen or at rest.
+     * The ink a pending value breathes toward: a muted value's, the quietest that still reads well
+     * where it stands, chosen or at rest.
      */
-    fun waitingInk(focused: Boolean): Color = valueInk(focused, muted = true)
+    fun pendingInk(focused: Boolean): Color = valueInk(focused, muted = true)
 
     companion object {
         fun of(appearance: Appearance): QuickColors {
@@ -190,7 +188,7 @@ internal class QuickColors(
 }
 
 @Composable
-fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
+fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
     val colors = remember(appearance) { QuickColors.of(appearance) }
     val faces = faces()
     val labelStyle = remember(faces) { faces.textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT) }
@@ -251,13 +249,13 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
-                // The queue's way just chosen is on its way: its value breathes until the screen shows it.
-                val breath = if (row.item == QuickItem.QUEUE) rememberBreath(preparing) else null
-                val waitingColor by animateColorAsState(colors.waitingInk(focused), tween(240, easing = Motion.Dimmer), label = "quick-waiting")
+                // While the queue display just chosen is pending, its value breathes.
+                val breath = if (row.item == QuickItem.QUEUE) rememberBreath(pending) else null
+                val pendingColor by animateColorAsState(colors.pendingInk(focused), tween(240, easing = Motion.Dimmer), label = "quick-pending")
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
                     Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
-                        BasicText(v, style = valueStyle, color = { breathed(valueColor, waitingColor, breath?.value ?: 0f).let { it.copy(alpha = it.alpha * seen()) } }, maxLines = 1)
+                        BasicText(v, style = valueStyle, color = { breathed(valueColor, pendingColor, breath?.value ?: 0f).let { it.copy(alpha = it.alpha * seen()) } }, maxLines = 1)
                     }
                 }
             }

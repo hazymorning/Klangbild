@@ -113,12 +113,13 @@ object MenuGrid {
 }
 
 /**
- * The settings menu over whatever is on screen. It fades in over a dark wall; the stage
- * behind it keeps running and is there again the moment the menu closes. While the queue's way
- * just chosen is [preparing], the Queue line's value breathes ([rememberBreath]).
+ * The settings menu, fading in over whatever is on screen and out again, on its own background
+ * (black or light). The screen beneath stays composed, so it is back the moment the menu
+ * closes. While the queue display just chosen is [pending], the Queue row's value breathes
+ * ([rememberBreath]).
  */
 @Composable
-fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
+fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
     // The last menu stays while it fades out.
     val last = remember { arrayOfNulls<MenuState>(1) }
     if (menu != null) last[0] = menu
@@ -137,7 +138,7 @@ fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = M
             compositingStrategy = CompositingStrategy.ModulateAlpha
         },
         appearance,
-        preparing,
+        pending,
     )
 }
 
@@ -200,7 +201,7 @@ private class MenuColors(
  * out, the level left fades and the new one comes up, already resting on its line.
  */
 @Composable
-fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, preparing: Boolean = false) {
+fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, pending: Boolean = false) {
     val colors = remember(appearance) { MenuColors.of(appearance) }
     // The level left keeps showing as it was while it fades.
     val levels = remember { HashMap<MenuSection?, MenuState>() }
@@ -242,14 +243,14 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
             },
             label = "menu-level",
         ) { section ->
-            MenuLevel(levels[section] ?: menu, layout, focusY, colors, preparing)
+            MenuLevel(levels[section] ?: menu, layout, focusY, colors, pending)
         }
     }
 }
 
 /** One level of the menu: its heading, the chosen line's explanation and hint on the left, its lines on the right. */
 @Composable
-private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors: MenuColors, preparing: Boolean) {
+private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors: MenuColors, pending: Boolean) {
     val cursor = menu.cursor.coerceIn(0, menu.rows.size - 1)
     val row = menu.rows[cursor]
     val t = texts()
@@ -293,13 +294,13 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
                 },
             contentAlignment = Alignment.CenterStart,
         ) {
-            MenuItem(line, i == cursor, labelStyle, valueStyle, colors, preparing)
+            MenuItem(line, i == cursor, labelStyle, valueStyle, colors, pending)
         }
     }
 }
 
 @Composable
-private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valueStyle: TextStyle, colors: MenuColors, preparing: Boolean) {
+private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valueStyle: TextStyle, colors: MenuColors, pending: Boolean) {
     // A line that cannot work yet stays quiet; chosen, it is only as bright as another line at rest.
     val label = when {
         row.dimmed -> if (focused) colors.label else colors.dim
@@ -312,11 +313,10 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val labelColor by animateColorAsState(label, tween(260, easing = Motion.Dimmer), label = "label")
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
-    // The queue's way just chosen is on its way: the chosen Queue line's value breathes into the
-    // ink of a value at rest until the screen shows it. A line at rest has no quieter ink left
-    // that still reads well, so it stays as it is, and a breath under way as the cursor leaves
-    // glides back.
-    val breath = if (row.entry == MenuEntry.QUEUE) rememberBreath(preparing && focused) else null
+    // While the queue display just chosen is pending, the chosen Queue row's value breathes
+    // toward the ink of a value at rest. A row at rest has no quieter ink left that still reads
+    // well, so it doesn't breathe, and a breath under way when the cursor leaves glides back.
+    val breath = if (row.entry == MenuEntry.QUEUE) rememberBreath(pending && focused) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))

@@ -299,7 +299,7 @@ class NowPlayingController(
             screen = Screen.Rest(RestReason.CONNECTING),
             stage = null,
             flow = null,
-            queueComing = null,
+            queuePending = null,
             asleep = false,
             chapter = null,
             sleepAt = null,
@@ -610,7 +610,7 @@ class NowPlayingController(
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
         // The queue's way just chosen breathes in the quick settings and the menu until this
         // state shows it.
-        _ui.value = published.copy(queueComing = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
+        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
         // chosen, or switched off, go back at once.
         val chosen = if (s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
