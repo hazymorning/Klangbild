@@ -114,7 +114,7 @@ class FlowMirrorTest {
         android.graphics.Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
         val was = FlowCards.build(logo.asImageBitmap(), cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
         val paper = scene.palette.wall.asColor()
-        val cards = listOf(CardMotion(0, cover, 0f, 0f, was = was))
+        val cards = listOf(CardMotion(cover, 0f, 0f, was = was))
         var look by mutableFloatStateOf(0f)
         compose.setContent {
             Box(Modifier.fillMaxSize().background(paper)) {
@@ -138,7 +138,7 @@ class FlowMirrorTest {
     private fun turn(from: Float, to: Float, toAlpha: Float = 1f) {
         val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.DARK, flow = true)
         val geometry = FlowGeometry(scene.layout)
-        val cards = listOf(CardMotion(0, scene.card!!, from, to, toAlpha = toAlpha))
+        val cards = listOf(CardMotion(scene.card!!, from, to, toAlpha = toAlpha))
         var time by mutableFloatStateOf(0f)
         compose.setContent {
             Box(Modifier.fillMaxSize().background(Color.Black)) {

@@ -48,7 +48,6 @@ class Window(val start: Float, val end: Float) {
  */
 @Immutable
 class CardMotion(
-    val id: Long,
     val card: FlowCard,
     val from: Float,
     val to: Float,

@@ -328,7 +328,7 @@ internal fun balanceOf(flow: FlowData, geometry: FlowGeometry): Balance =
 /** The cards of [flow] standing still, the middle one at position 0. */
 private fun resting(flow: FlowData): List<CardMotion> = flow.cards.mapIndexed { i, e ->
     val p = (i - flow.current).toFloat()
-    CardMotion(e.id, e.scene.card!!, p, p)
+    CardMotion(e.scene.card!!, p, p)
 }
 
 /**
@@ -405,9 +405,9 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
         val to = now(e.id)
         val from = was(e.id)
         out += when {
-            e.id in rolling -> CardMotion(e.id, card, dir * (to + run!!), dir * to, move = turn, rolls = true)
-            from != null && (!soft || from == to) -> CardMotion(e.id, card, dir * from, dir * to, move = turn, was = oldCards.getValue(e.id).takeIf { newLook && it !== card })
-            else -> CardMotion(e.id, card, dir * to, dir * to, fromAlpha = 0f, fade = turn)
+            e.id in rolling -> CardMotion(card, dir * (to + run!!), dir * to, move = turn, rolls = true)
+            from != null && (!soft || from == to) -> CardMotion(card, dir * from, dir * to, move = turn, was = oldCards.getValue(e.id).takeIf { newLook && it !== card })
+            else -> CardMotion(card, dir * to, dir * to, fromAlpha = 0f, fade = turn)
         }
     }
     for (e in old.cards) {
@@ -422,9 +422,9 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
             // cards go a little sooner, so two leaving cards do not show through each other.
             val clear = timeline.clear
             val fade = if (clearMs > 0) Window(0f, clear.end * (1f - 0.35f * (abs(from) - 1f).coerceIn(0f, 1f))) else turn
-            CardMotion(e.id, card, dir * from, dir * from, toAlpha = 0f, fade = fade)
+            CardMotion(card, dir * from, dir * from, toAlpha = 0f, fade = fade)
         } else {
-            CardMotion(e.id, card, dir * from, dir * (from - 1f), toAlpha = 0f, move = turn, fade = turn)
+            CardMotion(card, dir * from, dir * (from - 1f), toAlpha = 0f, move = turn, fade = turn)
         }
     }
     return Plan(out, timeline)

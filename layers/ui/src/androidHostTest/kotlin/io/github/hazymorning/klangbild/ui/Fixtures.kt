@@ -34,7 +34,7 @@ import io.github.hazymorning.klangbild.ui.theme.faces
 object Fixtures : AppFixtures() {
     /** The cards of [scenes] at rest, the one at [current] in the middle. */
     fun restingCards(scenes: List<ArtworkScene>, current: Int) =
-        scenes.mapIndexed { i, sc -> CardMotion(i.toLong(), sc.card!!, (i - current).toFloat(), (i - current).toFloat()) }
+        scenes.mapIndexed { i, sc -> CardMotion(sc.card!!, (i - current).toFloat(), (i - current).toFloat()) }
 
     fun model(
         track: TrackInfo,

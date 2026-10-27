@@ -156,8 +156,6 @@ internal class QueuePlan(
     /** Where the bar's top stands, or the cap height of a line in its place. */
     val slotTop: Float,
     val rows: List<PlannedRow>,
-    /** Where the rows begin (px). */
-    val rowsTop: Float,
     /** The room the bar takes above the rows, as it comes and goes. */
     val room: SlotRoom,
     /** Where the column ends (px), and how far a row's artists hang below their baseline. */
@@ -378,7 +376,6 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         metaTop = metaTop?.plus(songTop),
         slotTop = songTop + slotTop,
         rows = rows,
-        rowsTop = rowsTop,
         room = room,
         foot = foot,
         rowDescent = descent,
