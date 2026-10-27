@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
@@ -32,7 +31,6 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
-import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.CoverLayer
@@ -46,42 +44,16 @@ import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
-import kotlin.math.max
 import kotlin.math.roundToInt
 
+/** What the setup screen shows besides its text. */
 object SetupArt {
-    /**
-     * The QR code as a printed card at the exact on-screen pixel size of the cover slot:
-     * ivory paper (a whiter one on the light wall), dark modules on whole pixels, generous
-     * quiet zone. Becomes the "cover" of the setup scene, so it hangs on the wall in the same
-     * light as an album.
-     */
-    fun card(qr: Array<BooleanArray>?, sizePx: Int, appearance: Appearance): ImageBitmap {
-        val px = IntArray(sizePx * sizePx)
-        px.fill(if (appearance == Appearance.DARK) 0xFFEAE2D4.toInt() else 0xFFF7F4EE.toInt())
-        if (qr != null) {
-            val n = qr.size
-            val module = max(1, (sizePx * 0.80f / n).toInt())
-            val offset = (sizePx - module * n) / 2
-            for (y in 0 until n) for (x in 0 until n) {
-                if (qr[y][x]) {
-                    val l = (offset + x * module).coerceIn(0, sizePx)
-                    val r = (offset + x * module + module).coerceIn(0, sizePx)
-                    for (row in (offset + y * module).coerceIn(0, sizePx) until (offset + y * module + module).coerceIn(0, sizePx)) {
-                        px.fill(0xFF1C1814.toInt(), row * sizePx + l, row * sizePx + r)
-                    }
-                }
-            }
-        }
-        return imageBitmapOf(px, sizePx, sizePx)
-    }
-
+    /** The setup screen's scene: the QR card ([QrCard]) as its cover, in the light a cover has. */
     fun scene(info: SetupInfo?, screen: ScreenSpec, appearance: Appearance = Appearance.DARK): ArtworkScene {
-        // The code hangs where the artwork would.
         val layout = StageGrid(screen)
         // Rounded as the scene sizes its cover, so the card is never resampled.
         val px = (layout.art * screen.density).roundToInt()
-        val card = card(info?.qr, px, appearance)
+        val card = QrCard.of(info?.qr, px, appearance)
         return SceneBuilder.build("setup|${info?.url}|${info?.code}", card, null, null, screen, appearance)
     }
 

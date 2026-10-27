@@ -24,7 +24,7 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.SetupArt
+import io.github.hazymorning.klangbild.ui.QrCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -88,7 +88,7 @@ internal fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap?
     } catch (_: IllegalArgumentException) {
         return null
     }
-    return SetupArt.card(matrix, sizePx, wall)
+    return QrCard.of(matrix, sizePx, wall)
 }
 
 /**

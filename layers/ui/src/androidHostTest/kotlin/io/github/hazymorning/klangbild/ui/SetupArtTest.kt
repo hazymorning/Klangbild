@@ -27,7 +27,7 @@ class SetupArtTest {
         // On a 720p screen the cover's side is 490.67 px.
         for (screen in listOf(ScreenSpec(1280, 720, 1.33125f), ScreenSpec.TV_1080)) {
             val cover = SetupArt.scene(info, screen).cover
-            assertThat(cover.pixels().contentEquals(SetupArt.card(qr, cover.width, Appearance.DARK).pixels()), name = "${screen.heightPx}p").isTrue()
+            assertThat(cover.pixels().contentEquals(QrCard.of(qr, cover.width, Appearance.DARK).pixels()), name = "${screen.heightPx}p").isTrue()
         }
     }
 }
