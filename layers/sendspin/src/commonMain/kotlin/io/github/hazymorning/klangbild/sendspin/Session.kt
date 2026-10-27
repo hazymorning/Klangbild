@@ -81,9 +81,6 @@ class Session(
         /** The server's clock as the time filter has it after each burst; null while it has not settled. */
         fun clock(map: ClockMap?)
 
-        /** The player role is active ([playing]: its stream may start), or not any more. */
-        fun playerActive(active: Boolean)
-
         /** A player stream starts (or its format is set again). */
         fun streamStart()
 
@@ -406,7 +403,6 @@ class Session(
         // A role taken away stops at once, whatever it still had queued.
         endStreams(player = Roles.PLAYER in old - newRoles, beats = Roles.VISUALIZER in old - newRoles)
         step = Step.ACTIVE
-        listener.playerActive(Roles.PLAYER in roles)
         // A role added needs its state: sent now, or once the clock has settled. The clock is
         // set going with the first role (a connection only for pairing needs none).
         if ((newRoles - old).isNotEmpty()) stateSent = false

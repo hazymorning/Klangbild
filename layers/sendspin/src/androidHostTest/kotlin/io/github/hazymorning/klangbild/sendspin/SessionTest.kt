@@ -47,7 +47,6 @@ class SessionTest {
         override fun clock(map: ClockMap?) {
             if (map != null) events += "clock"
         }
-        override fun playerActive(active: Boolean) { events += "player $active" }
         override fun streamStart() { events += "start" }
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
             audio += timestampUs to length
@@ -232,7 +231,7 @@ class SessionTest {
         assertThat(state.obj("player")!!.keys).containsAtLeast("volume", "muted", "output_delay_ms", "supported_commands")
         assertThat(state.obj("visualizer")!!["types"].toString()).isEqualTo("[\"beat\"]")
         assertThat(s.synced).isTrue()
-        assertThat(events).containsAtLeast("player true", "clock")
+        assertThat(events).contains("clock")
     }
 
     @Test
@@ -256,8 +255,9 @@ class SessionTest {
             pump(server, s)
         }
         assertThat(s.synced).isTrue()
-        assertThat(events).containsInOrder("player false", "player true")
-        assertThat(server.fromClient.single { it.type == "client/state" }.bool("available")).isNotNull().isTrue()
+        val state = server.fromClient.single { it.type == "client/state" }
+        assertThat(state.bool("available")).isNotNull().isTrue()
+        assertThat(state.obj("player")).isNotNull()
     }
 
     @Test
@@ -387,7 +387,10 @@ class SessionTest {
         assertThat(init.int("pairing_index")).isEqualTo(1)
         assertThat(events).containsInOrder("paired", "used")
         assertThat(records.single().serverId).isEqualTo(serverId)
-        assertThat(events).contains("player true")
+        // The long-term PSK brings the player.
+        server.send(Message.of("stream/start", buildJsonObject { put("player", PcmFormat.json()) }))
+        pump(server, s)
+        assertThat(events).contains("start")
         assertThat(ended).isNull()
 
         // Next time the server names the long-term PSK.

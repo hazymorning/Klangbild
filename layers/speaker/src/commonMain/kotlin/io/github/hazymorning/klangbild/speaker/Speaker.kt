@@ -290,10 +290,6 @@ class Speaker(
             playback.clock = map
         }
 
-        override fun playerActive(active: Boolean) {
-            if (!active && streaming) streamEnd()
-        }
-
         override fun streamStart() {
             streaming = true
             streamCame.trySend(Unit)
@@ -367,7 +363,6 @@ class Speaker(
         }
 
         override fun ended(end: SessionEnd, detail: String) {
-            if (streaming) streamEnd()
             log.info("Speaker connection ended: $end ($detail)")
             onEnded(end, detail)
         }

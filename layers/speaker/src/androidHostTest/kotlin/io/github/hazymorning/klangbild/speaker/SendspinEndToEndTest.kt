@@ -61,7 +61,6 @@ class SendspinEndToEndTest {
         override fun clock(map: ClockMap?) {
             if (map != null) clock = map
         }
-        override fun playerActive(active: Boolean) { events += "player $active" }
         override fun streamStart() { events += "start" }
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
             val first = (bytes[offset].toInt() and 0xff) or ((bytes[offset + 1].toInt() and 0xff) shl 8)
@@ -154,7 +153,7 @@ class SendspinEndToEndTest {
                 }
                 // The server reports its chunks before stream/end has gone out (stop_stream only queues it).
                 while ("end" !in speaker.events && System.nanoTime() < deadline) Thread.sleep(20)
-                assertThat(speaker.events).containsInOrder("player true", "start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end")
+                assertThat(speaker.events).containsInOrder("start", "volume 30", "mute true", "delay 20", "mute false", "clear", "end")
                 // The commands came back in the speaker's state.
                 assertThat(server.all.last { it.startsWith("CLIENT_STATE") }).contains("\"volume\":30,\"muted\":false,\"output_delay_ms\":20")
             } finally {
@@ -229,7 +228,7 @@ class SendspinEndToEndTest {
                 server.await("PAIRED")
                 server.await("PLAYER_READY")
                 assertThat(speaker.records.map { it.serverId }).containsExactlyInAnyOrder(serverId)
-                assertThat(speaker.events).containsInOrder("paired", "used $serverId", "player true")
+                assertThat(speaker.events).containsInOrder("paired", "used $serverId")
                 assertThat(connection.link.value).isEqualTo(SpeakerLink.CONNECTED)
             } finally {
                 connection.stop("shutdown")
