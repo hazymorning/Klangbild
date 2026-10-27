@@ -1,7 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
@@ -113,7 +111,7 @@ class OptionsTest {
     @Test fun menuOpensAGroup() {
         var state by androidx.compose.runtime.mutableStateOf(Fixtures.menuGroups(cursor = 1))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_open_%02d.png".format(frame++))
@@ -138,7 +136,7 @@ class OptionsTest {
     @Test fun menuGlide() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_glide_%02d.png".format(frame++))
@@ -156,7 +154,7 @@ class OptionsTest {
     @Test fun menuHeld() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.CLOCK))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_held_%02d.png".format(frame++))
@@ -183,11 +181,4 @@ class OptionsTest {
 
     /** The debug overlay's sound meter, as this TV's own playback feeds it, a downbeat just heard. */
     @Test fun debugSoundMeter() = shot("debug_sound_meter") { DebugOverlay(FrameStats.stats, DebugOverlayTest.Steady()) }
-
-    /**
-     * A sequence of frames on the test's own clock. The menu's light is made off the main thread on
-     * the real clock, so here it is made at once, as in a still: every run shows the same frames.
-     */
-    @Composable
-    private fun Frames(content: @Composable () -> Unit) = CompositionLocalProvider(LocalStill provides true, content = content)
 }

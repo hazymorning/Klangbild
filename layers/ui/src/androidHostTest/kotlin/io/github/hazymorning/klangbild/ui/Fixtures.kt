@@ -14,7 +14,6 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
@@ -194,28 +193,39 @@ object Fixtures : AppFixtures() {
     fun FlowTheaterOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
         val next = flow.cards.getOrNull(flow.current + 1)?.track
-        io.github.hazymorning.klangbild.ui.flow.FlowTheater(
-            flow = flow,
-            status = status,
-            modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            partyCode = partyCode,
-        )
+        CompositionLocalProvider(LocalTexts provides texts) {
+            io.github.hazymorning.klangbild.ui.flow.FlowTheater(
+                flow = flow,
+                status = status,
+                modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
+                partyCode = partyCode,
+            )
+        }
     }
 
     /**
-     * The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words; the
-     * bar shown as [progress] says, and staying as [barStays] says (else only for a moment).
+     * The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words, the
+     * speaker [group] in the status line; the bar shown as [progress] says, and staying as
+     * [barStays] says (else only for a moment).
      */
     @Composable
-    fun QueueTheater(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING, t: Texts = TestTexts.english(), next: TrackInfo? = null, progress: Boolean = true, barStays: Boolean = progress) {
+    fun QueueTheater(
+        stage: StageData,
+        status: PlayerStatus = PlayerStatus.PLAYING,
+        t: Texts = texts,
+        group: String = "Wohnzimmer",
+        next: TrackInfo? = null,
+        progress: Boolean = true,
+        barStays: Boolean = progress,
+    ) {
         CompositionLocalProvider(LocalTexts provides t) {
             StageTheater(
                 stage = stage,
                 status = status,
                 modelFor = { s ->
                     val list = s.queue
-                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = "Living room", t = t, progress = progress, barStays = barStays)
-                    else model(s.track, next = next, status = status, scene = s.scene, t = t, group = "Living room")
+                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = group, t = t, progress = progress, barStays = barStays)
+                    else model(s.track, next = next, status = status, scene = s.scene, t = t, group = group)
                 },
             )
         }
@@ -234,13 +244,15 @@ object Fixtures : AppFixtures() {
         partyCode: String? = null,
     ) {
         val lead = StageTexts.lead(status, muted, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = texts)
-        StageTheater(
-            stage = stage,
-            status = status,
-            modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            intensity = { intensity },
-            linkDown = linkDown,
-            partyCode = partyCode,
-        )
+        CompositionLocalProvider(LocalTexts provides texts) {
+            StageTheater(
+                stage = stage,
+                status = status,
+                modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
+                intensity = { intensity },
+                linkDown = linkDown,
+                partyCode = partyCode,
+            )
+        }
     }
 }

@@ -49,7 +49,7 @@ class QueueStageTest {
     @Test
     fun paused() {
         val stage = StageData(playing, Fixtures.scene(playing), queue = Fixtures.queueList(playlist))
-        captureRoboImage("build/screenshots/queue/paused.png") { Fixtures.Still(en) { Fixtures.QueueTheater(stage, PlayerStatus.PAUSED, t = en) } }
+        captureRoboImage("build/screenshots/queue/paused.png") { Fixtures.Still(en) { Fixtures.QueueTheater(stage, PlayerStatus.PAUSED, t = en, group = "Living room") } }
     }
 
     /** An album: its songs by number, then the next record with its cover and artist. */

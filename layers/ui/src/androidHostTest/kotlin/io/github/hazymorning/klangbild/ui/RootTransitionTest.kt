@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
+import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
@@ -39,8 +40,8 @@ class RootTransitionTest {
     fun trackChangeAndRest() {
         val a = Fixtures.stage(Fixtures.track(SyntheticCover.MOSS), mdpi)
         val b = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI), mdpi)
-        fun stageUi(s: io.github.hazymorning.klangbild.app.StageData) =
-            UiState(screen = Screen.Stage(s.track, PlayerStatus.PLAYING, null), stage = s)
+        fun stageUi(s: StageData) =
+            UiState(screen = Screen.Stage(s.track, PlayerStatus.PLAYING, null), stage = s, texts = Fixtures.texts)
         var ui by mutableStateOf(stageUi(a))
         compose.mainClock.autoAdvance = false
         compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L }, glyphs = AndroidGlyphs)) }
