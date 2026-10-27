@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
@@ -102,15 +101,14 @@ fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
 fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, dim: () -> Float) {
     if (card == null) return
     val brush = remember(card) { ShaderBrush(ImageShader(card, TileMode.Clamp, TileMode.Clamp)) }
-    val filters = remember(scene.appearance) { HashMap<Int, ColorFilter>() }
+    val filters = remember { CoverFilters() }
     val rect = scene.layout.artRect
     Canvas(Modifier.fillMaxSize()) {
         // The fade goes with the draw call: no layer of the screen's size.
         val a = alpha().coerceIn(0f, 1f)
         if (a <= 0f) return@Canvas
-        val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
-        val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
-        val corner = CornerRadius(scene.layout.radius * density)
+        val filter = filters.at(dim(), scene.appearance)
+        val corner = CornerRadius(scene.corner * density)
         // The card's pixels start at its corner, which stands on a whole pixel.
         translate((rect.left * density).roundToInt().toFloat(), (rect.top * density).roundToInt().toFloat()) {
             drawRoundRect(brush, Offset.Zero, Size(card.width.toFloat(), card.height.toFloat()), corner, alpha = a, colorFilter = filter)

@@ -564,7 +564,7 @@ internal fun QueueRowsLayer(
 ) {
     if (cur == null && prev == null) return
     val density = LocalDensity.current.density
-    val filters = remember { HashMap<Long, ColorFilter>() }
+    val filters = remember { CoverFilters() }
     val gliding = remember(prev, cur, motion.matched) {
         if (!motion.matched || prev == null || cur == null) return@remember emptyMap<String, PlannedRow>()
         val glide = gliding(prev.rows.map { it.id }, cur.rows.map { it.id })
@@ -572,11 +572,8 @@ internal fun QueueRowsLayer(
     }
     Canvas(Modifier.fillMaxSize()) {
         val textDim = text().coerceIn(0f, 1f)
-        val coverDim = picture().coerceIn(0f, 1f)
-        fun filterFor(appearance: Appearance): ColorFilter {
-            val step = (coverDim * 50f).roundToInt()
-            return filters.getOrPut(step.toLong() * 2 + appearance.ordinal) { coverFilter(step / 50f, appearance) }
-        }
+        val coverDim = picture()
+        fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverDim, appearance)
         val g = motion.glide().coerceIn(0f, 1f)
         if (prev != null) {
             val a = motion.old()

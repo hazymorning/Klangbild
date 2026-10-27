@@ -101,7 +101,7 @@ fun WallLayer(
     // With the cover colors background, the cover's own colors are the wall.
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, level)
     val image = scene.wall
-    val filters = remember { HashMap<Int, ColorFilter?>() }
+    val filters = remember { HashMap<Int, ColorFilter>() }
     val lit = scene.appearance == Appearance.DARK
     val beside = lit && scene.layout.flow
     val density = LocalDensity.current.density
@@ -112,7 +112,7 @@ fun WallLayer(
         if (a <= 0.002f || l <= 0.002f) return@Canvas
         // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
         val step = (l.pow(1f / 2.2f) * 40f).roundToInt()
-        val filter = filters.getOrPut(step) { if (step == 40) null else scaleFilter(step / 40f) }
+        val filter = if (step == 40) null else filters.getOrPut(step) { scaleFilter(step / 40f) }
         drawImage(
             image,
             dstOffset = IntOffset((shift() * density).roundToInt(), 0),
@@ -161,15 +161,14 @@ fun ArtworkLayer(
     dim: () -> Float = { 1f },
 ) {
     val brush = remember(scene) { ShaderBrush(ImageShader(scene.cover, TileMode.Clamp, TileMode.Clamp)) }
-    val filters = remember(scene) { HashMap<Int, ColorFilter>() }
+    val filters = remember { CoverFilters() }
     val rect = scene.layout.artRect
     Canvas(
         modifier
             .fillMaxSize()
             .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
     ) {
-        val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
-        val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
+        val filter = filters.at(dim(), scene.appearance)
         val w = scene.cover.width.toFloat()
         val h = scene.cover.height.toFloat()
         val corner = CornerRadius(scene.corner * density)
@@ -199,6 +198,20 @@ fun coverFilter(dim: Float, appearance: Appearance): ColorFilter {
             ),
         ),
     )
+}
+
+/** [coverFilter] by level, in fiftieths, each made once: a pause dims the cover through a few dozen. */
+internal class CoverFilters {
+    private val filters = HashMap<Int, ColorFilter>()
+
+    fun at(level: Float, appearance: Appearance): ColorFilter {
+        val step = (level.coerceIn(0f, 1f) * LEVEL_STEPS).roundToInt()
+        return filters.getOrPut(step * 2 + appearance.ordinal) { coverFilter(step / LEVEL_STEPS.toFloat(), appearance) }
+    }
+
+    private companion object {
+        const val LEVEL_STEPS = 50
+    }
 }
 
 /** The per-channel scale of [coverFilter] (red, green, blue). */
