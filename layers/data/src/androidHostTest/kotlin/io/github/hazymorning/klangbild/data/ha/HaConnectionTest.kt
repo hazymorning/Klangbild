@@ -244,7 +244,7 @@ class HaConnectionTest {
         conn.start(config(), listOf("media_player.wz"))
         withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.wz") } }
 
-        conn.watch(setOf("media_player.kueche"))
+        conn.followAlso(setOf("media_player.kueche"))
         val both = withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.kueche") } }
         assertThat(both.getValue("media_player.kueche").string("friendly_name")).isEqualTo("Küche")
         assertThat(both.keys).contains("media_player.wz")
@@ -258,7 +258,7 @@ class HaConnectionTest {
         withTimeout(5_000) { conn.entities.first { it["media_player.kueche"]?.state == "paused" } }
 
         // The group breaks up: the second subscription ends, its entity leaves.
-        conn.watch(emptySet())
+        conn.followAlso(emptySet())
         val alone = withTimeout(5_000) { conn.entities.first { !it.containsKey("media_player.kueche") } }
         assertThat(alone.keys).contains("media_player.wz")
         withTimeout(5_000) { while (ofType("unsubscribe_events").isEmpty()) delay(20) }

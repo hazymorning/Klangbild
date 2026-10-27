@@ -188,7 +188,7 @@ internal class QueueReader(
     }
 
     /** The song [key] plays on [player]: a new one starts its queue's read (called under the [lock]). */
-    fun follow(key: String, player: PlayerSnapshot) {
+    fun onTrack(key: String, player: PlayerSnapshot) {
         if (key == songKey) return
         // What Music Assistant itself said comes next belonged to the song before (the same
         // song again later has a queue of its own).

@@ -109,7 +109,8 @@ class HaSource(
     /** The player as Home Assistant last reported it, written while publishing and read by the commands. */
     @Volatile private var lastSnapshot: PlayerSnapshot? = null
     private var receivedAt = 0L
-    private var watched: Set<String> = emptySet()
+    /** What the connection was asked to follow besides the chosen speaker and the sun. */
+    private var alsoFollowed: Set<String> = emptySet()
 
     /** The lights that join in, followed for `LightSync` alongside the group's speakers. */
     @Volatile private var lightIds: Set<String> = emptySet()
@@ -179,7 +180,7 @@ class HaSource(
             combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
                 .collect { (st, ents) -> publish(st, ents) }
         }
-        partyPoller = ma?.let { client -> scope.launch { followParty(client) } }
+        partyPoller = ma?.let { client -> scope.launch { pollParty(client) } }
         queue.start()
         own?.start()
     }
@@ -198,7 +199,7 @@ class HaSource(
      * then. An answer that fails twice in a row counts as no party; a server without the plugin
      * is not asked again.
      */
-    private suspend fun followParty(client: MaClient) {
+    private suspend fun pollParty(client: MaClient) {
         var failed = 0
         while (true) {
             val queue = try {
@@ -303,7 +304,7 @@ class HaSource(
         }
         linkDownSince = if (link == LinkState.CONNECTED) null else (linkDownSince ?: t)
 
-        var player = follow(entities, t)
+        var player = chooseSpeaker(entities, t)
         val entity = speakerShown?.let { entities[it] }
         if (player != null && player != lastSnapshot) {
             receivedAt = t
@@ -312,7 +313,7 @@ class HaSource(
         player = player ?: lastSnapshot.takeIf { link != LinkState.CONNECTED }
 
         val key = player?.track?.let { TrackMatch.key(it) }
-        if (key != null) queue.follow(key, player)
+        if (key != null) queue.onTrack(key, player)
 
         // One estimate of Home Assistant's clock for the whole state: the position is published on it.
         val skew = connection.clockSkew.offsetMs
@@ -321,10 +322,10 @@ class HaSource(
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
         val others = player?.groupMembers.orEmpty()
-        val follow = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
-        if (follow != watched) {
-            watched = follow
-            connection.watch(watched)
+        val followed = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
+        if (followed != alsoFollowed) {
+            alsoFollowed = followed
+            connection.followAlso(followed)
         }
         val lightStates = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
         if (lightStates != _lights.value) _lights.value = lightStates
@@ -364,7 +365,7 @@ class HaSource(
      * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue. Returns what
      * the speaker shown plays.
      */
-    private fun follow(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
+    private fun chooseSpeaker(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
         val ownId = own?.entity
         val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
         val here = ownId?.takeIf { it != chosen }

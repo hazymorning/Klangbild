@@ -141,10 +141,10 @@ class HaConnection(
     }
 
     /**
-     * Also follows these entities (the other speakers of a group, the lights). Their states
-     * appear in [entities] next to the main ones; the set is followed again after a reconnect.
+     * Also follows [ids] (a group's other speakers, the lights, the quick settings' entities, this
+     * TV's speaker). Their states appear in [entities] and are followed again after a reconnect.
      */
-    fun watch(ids: Set<String>) {
+    fun followAlso(ids: Set<String>) {
         extraIds.value = ids
     }
 
