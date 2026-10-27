@@ -183,6 +183,30 @@ class CenteringTest {
     }
 
     @Test
+    fun theStagesSpacesGrowFromTheTitlesLinesToItsArtistToTheBar() {
+        // Titles whose every line reaches down (p, g), at the largest size (two lines) and the
+        // smallest (four): the spaces as the eye sees them, from the lowest descender of one line
+        // to the highest ink of the next.
+        val spiegel = "Spiegel im Spiegel"
+        for (title in listOf("$spiegel im Spiegel", List(6) { spiegel }.joinToString(" im "))) {
+            val track = io.github.hazymorning.klangbild.domain.TrackInfo(title, listOf("Arvo Pärt"), durationMs = 557_000)
+            val model = Fixtures.model(track, album = false)
+            val ink = render { Fixtures.Still { Stage(model) } }
+            val lines = ink.lines(((model.scene.layout.columnLeft - 2) * 2).toInt(), 1920)
+            // The title's lines are the only ones over 20 dp tall; then come the artist and the bar.
+            val titleLines = lines.filter { it.inkBottom - it.inkTop > 40 }
+            val after = lines.filter { it.inkTop > titleLines.last().inkBottom }
+            val (artist, bar) = after
+            val case = "${titleLines.size} lines"
+            assertThat(titleLines.size, name = "$case: the title's lines").isGreaterThan(1)
+            val within = titleLines.zipWithNext { a, b -> b.inkTop - a.inkBottom }.max()
+            val below = artist.inkTop - titleLines.last().inkBottom
+            assertThat(below.toFloat(), name = "$case: under the title against between its lines").isGreaterThan(2f * within)
+            assertThat((bar.inkTop - artist.inkBottom).toFloat(), name = "$case: above the bar against under the title").isGreaterThan(1.5f * below)
+        }
+    }
+
+    @Test
     fun theMenuHasAsMuchRoomOnEachSide() {
         val settings = Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.wohnzimmer")
         val ink = render { Fixtures.Still { MenuScreen(Fixtures.menu(io.github.hazymorning.klangbild.config.MenuEntry.APPEARANCE, settings)) } }

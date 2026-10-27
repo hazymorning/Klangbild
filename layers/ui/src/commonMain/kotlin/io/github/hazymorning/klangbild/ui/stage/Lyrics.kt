@@ -364,7 +364,7 @@ internal fun LyricsText(
         val song = measurables[2].measure(Constraints(maxWidth = colW))
         // The song's descenders end where the column ends; the bar's labels (or a notice) stand above it.
         val footer = (layout.footerBottom * density - styles.next.fontSize.toPx() * Fonts.DESCENT).roundToInt()
-        val slotBaseline = footer - (styles.next.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (Gaps.BOTTOM * density).roundToInt()
+        val slotBaseline = footer - (styles.next.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             words.place(0, 0)
             // Read while placing: a column that glides is only placed anew.
@@ -408,7 +408,7 @@ private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, room: Float,
 internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
     private val status = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
     private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
-    private val bar = song - Gaps.BOTTOM - BAR_BLOCK
+    private val bar = song - SLOT_GAP - BAR_BLOCK
 
     /**
      * As much above the middle as below, so the words fade alike up and down: to the status
@@ -521,6 +521,9 @@ private const val FRAME_SHARE = 1.6f
 
 /** A line leaving at an edge fades over this share of the space between lines. */
 private const val EDGE_FADE = 0.5f
+
+/** From the bar's labels (or a notice in their place) to the song's cap height under them (dp). */
+private const val SLOT_GAP = 26f
 
 /** The progress bar's block from its top to its labels' baseline (dp): the bar, the gap, the labels' cap height. */
 private const val BAR_BLOCK = BAR_THICKNESS + BAR_LABEL_GAP + 15f * Fonts.CAP_HEIGHT

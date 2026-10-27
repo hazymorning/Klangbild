@@ -215,9 +215,12 @@ are in the code, and the tests named here check them.
 - The layout follows `StageGrid` and is centered on what's actually drawn, in both languages
   (`CenteringTest`). The whole screen drifts by up to 6 dp to protect the OLED.
 - Spaces grow with what they separate: the lines of one entry stand closest, then two entries,
-  then what frames them. In the queue's list the song stands in the middle between the status line
-  and the rows, and the last row ends where the cover does (`CenteringTest`). Judge spacing by
-  measuring every gap in the rendered pictures, above and below, not by eye.
+  then what frames them (`Rhythm`). A space runs from the descenders of the line above to the cap
+  height of the line below, never from the baseline, so the space under the title grows with its
+  size and a y or g never crowds the next line. In the queue's list the song stands in the middle
+  between the status line and the rows, and the last row ends where the cover does
+  (`CenteringTest`). Judge spacing by measuring the ink of every gap in the rendered pictures, with
+  titles whose letters reach down, not by eye.
 - There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
   (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
   with no letter spacing or italics, and never in the system font. Outside the debug overlay,

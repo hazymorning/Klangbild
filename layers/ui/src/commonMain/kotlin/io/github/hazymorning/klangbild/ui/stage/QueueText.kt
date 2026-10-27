@@ -53,6 +53,10 @@ import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.apart
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.frame
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.together
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Face
@@ -206,16 +210,24 @@ internal class QueueRooms {
     }
 }
 
-/** The room [slot] takes above the rows (px): the bar's block or a line's cap height, with the gap above it. */
+/** The room [slot] takes above the rows (px): the bar's block or a line's cap height, with the space above it. */
 private fun slotRoom(slot: String?, styles: StageStyles, density: Density): Float {
     val d = density.density
     return when (slot) {
         null -> 0f
         // The bar's block, from its top to its labels' baseline, as the bar measures it.
-        BAR -> BAR_GAP * d + (BAR_THICKNESS * d).roundToInt() + (BAR_LABEL_GAP * d).roundToInt() + (with(density) { styles.time.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
-        else -> BAR_GAP * d + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
+        BAR -> barSpace(styles, density) + (BAR_THICKNESS * d).roundToInt() + (BAR_LABEL_GAP * d).roundToInt() + (with(density) { styles.time.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
+        else -> barSpace(styles, density) + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
     }
 }
+
+/**
+ * From the song's last baseline to the bar (px): the descenders of its line of artist, album and
+ * year (set as the album is), then the song's [Rhythm.frame] at the list's largest title, so the
+ * bar's room is known before the title's size and stands a step beyond the title's at any size.
+ */
+private fun barSpace(styles: StageStyles, density: Density): Float =
+    with(density) { descent(styles.album) + frame(styles.title(queueTitleLadder.first()), styles.album) }
 
 /**
  * The room the bar takes above the rows (px). When the bar or a line in its place comes or goes,
@@ -285,34 +297,38 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
             TitleChoice(step, balancer.layout(fitLines(balancer, title, style, colW, step.lines), style, colW, step.lines, TextOverflow.Ellipsis))
         }
     val titleStyle = choice.layout.layoutInput.style
+    // The spaces around the title follow its step in Latin letters ([TextPlan.titleRhythm]).
+    val titleRhythm = styles.title(choice.step)
     val versionStyle = styles.version(choice.step.size)
     val metaStyle = styles.faces.textType(17f, 400, styles.quiet, lineHeight = 23f, tracking = 0.005f)
         .merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
     val meta = metaLine(t, model.chapter ?: t.album, model.year, styles, metaStyle, measurer, colW)
 
-    // From the song's first cap height down, each part's cap height after the one before; the song
-    // is set in its place once the rows are known.
+    // From the song's first cap height down, each part's cap height after the one before, the
+    // white above it ([Rhythm]) from the descenders of the line before; the song is set in its
+    // place once the rows are known.
     var y = 0f
     var workTop: Float? = null
     val work = t.work
     if (work != null) {
         workTop = y
-        y += cap(styles.work) + height(measure(AnnotatedString(work), styles.work)) + Gaps.WORK * d
+        y += cap(styles.work) + height(measure(AnnotatedString(work), styles.work)) + with(density) { descent(styles.work) + together(styles.work, titleRhythm) }
     }
     val titleTop = y
     y += cap(titleStyle) + height(choice.layout)
     var versionTop: Float? = null
     if (t.version != null) {
-        versionTop = y + Gaps.VERSION * d
+        versionTop = y + with(density) { descent(titleRhythm) + together(titleRhythm, versionStyle) }
         y = versionTop + cap(versionStyle)
     }
+    // The title's group ends the title's descenders below its last line, the version's too.
     var metaTop: Float? = null
     if (meta != null) {
-        metaTop = y + META_GAP * d
+        metaTop = y + with(density) { descent(titleRhythm) + apart(titleRhythm, metaStyle) }
         y = metaTop + cap(metaStyle)
     }
     // The bar (or a line in its place) under them.
-    val slotTop = y + BAR_GAP * d
+    val slotTop = y + barSpace(styles, density)
 
     // The rows under the song, lower by the room the bar takes: as many whole ones as fit with the
     // room it takes at rest, every one as tall as its small cover, the last one ending on the
@@ -694,12 +710,6 @@ private val queueTitleLadder = listOf(
     TitleStep(26f, 2, 430, 1.16f, 0f),
     TitleStep(24f, 2, 430, 1.16f, 0f),
 )
-
-/** From the title's baseline to the cap height of the artist, album and year (dp). */
-private const val META_GAP = 12f
-
-/** From the artist, album and year to the bar (dp). */
-private const val BAR_GAP = 20f
 
 /**
  * Between two rows' small covers (dp): at least this, so from one's artists' baseline to the next
