@@ -51,7 +51,7 @@ enum class Face(
     internal val colonRaise: Float,
 ) {
     TITLE(intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
-    TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
+    TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560), 9f..40f, 0.10f),
 }
 
 object Fonts {
