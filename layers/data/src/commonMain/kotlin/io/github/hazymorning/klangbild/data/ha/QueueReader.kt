@@ -154,7 +154,7 @@ internal class QueueReader(
             while (isActive) {
                 delay(timing.refreshMs)
                 val p = shown()
-                if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startQueueRead(force = true)
+                if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startReread()
             }
         }
         // Home Assistant hears nothing of a queue changed while the same song plays (a song added
@@ -203,7 +203,7 @@ internal class QueueReader(
         // song again later has a queue of its own).
         maNext = null
         trackKey = key
-        if (player.isMusicAssistant) startQueueRead(force = false)
+        if (player.isMusicAssistant) startFirstRead()
     }
 
     /** Whether the queue has been read for the song [key]. */
@@ -450,18 +450,29 @@ internal class QueueReader(
         return best
     }
 
-    /** Starts reading the queue anew; a read under way for an older track is canceled, a periodic one waits its turn. */
-    private fun startQueueRead(force: Boolean) {
+    /** Reads the queue for a new track, canceling a read under way for the one before. */
+    private fun startFirstRead() {
         synchronized(lock) {
-            if (force && queueJob?.isActive == true) return
             queueJob?.cancel()
-            queueJob = scope.launch { refreshQueue(force) }
+            queueJob = scope.launch { readQueue(reread = false) }
         }
     }
 
-    private suspend fun refreshQueue(force: Boolean) {
+    /** Reads the queue of the track that plays again, unless a read is under way. */
+    private fun startReread() {
+        synchronized(lock) {
+            if (queueJob?.isActive == true) return
+            queueJob = scope.launch { readQueue(reread = true) }
+        }
+    }
+
+    /**
+     * Reads the queue for the track that plays. A first read is skipped when the track's queue is
+     * known; it reads once more after [QueueTiming.settleMs]. A [reread] that fails keeps what is known.
+     */
+    private suspend fun readQueue(reread: Boolean) {
         val key = trackKey ?: return
-        if (!force && queueReadFor == key) return
+        if (!reread && queueReadFor == key) return
         delay(timing.burstMs)
         if (trackKey != key) return
         val target = entity() ?: return
@@ -475,7 +486,7 @@ internal class QueueReader(
         queueWorks = response != null
         // No answer (a source without a queue, like a streaming app playing on the speaker directly):
         // nothing is known to follow. A periodic refresh that fails keeps what is known.
-        val again = force && queueReadFor == key
+        val again = reread && queueReadFor == key
         val parsed = response?.let { PlayerParser.queue(it, target, baseUrl) }
         if (parsed == null && again) return
         // Music Assistant's queue is read again only when something moved, or for spoken word,
@@ -493,12 +504,12 @@ internal class QueueReader(
         // has started: a queue replaced as it starts still names the old queue's next for a moment.
         delay(timing.settleMs)
         if (trackKey != key) return
-        refreshQueue(force = true)
+        readQueue(reread = true)
         // A book's or an episode's chapters may follow a moment after it starts (Music Assistant 2.11).
         val current = window?.current
         if (current != null && current.kind.spoken && current.chapters.isEmpty()) {
             delay(CHAPTERS_AGAIN_MS)
-            if (trackKey == key) refreshQueue(force = true)
+            if (trackKey == key) readQueue(reread = true)
         }
     }
 
