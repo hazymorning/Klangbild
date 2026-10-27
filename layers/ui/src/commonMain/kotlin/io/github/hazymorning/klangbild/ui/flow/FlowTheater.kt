@@ -40,7 +40,6 @@ import io.github.hazymorning.klangbild.ui.stage.drawnAlike
 import io.github.hazymorning.klangbild.ui.stage.partyCard
 import io.github.hazymorning.klangbild.ui.stage.rememberPartyCode
 import io.github.hazymorning.klangbild.ui.stage.rememberStageDim
-import io.github.hazymorning.klangbild.ui.stage.rememberTextPlan
 import io.github.hazymorning.klangbild.ui.stage.samePicture
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
@@ -183,8 +182,6 @@ fun FlowTheater(
     val prevStage = prev?.stage
     val curModel = remember(curStage, modelFor) { modelFor(curStage) }
     val prevModel = remember(prevStage, modelFor) { prevStage?.let(modelFor) }
-    val curPlan = rememberTextPlan(curModel)
-    val prevPlan = prevModel?.let { rememberTextPlan(it) }
     val geometry = remember(middle.scene.layout) { FlowGeometry(middle.scene.layout) }
     val rest = remember(current, geometry) { balanceOf(current, geometry) }
     val from = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: rest }
@@ -261,17 +258,16 @@ fun FlowTheater(
             look = { if (restrip) p(0, total, Motion.Sine) else 1f },
         )
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
-            if (prevModel != null && prevPlan != null && kind != FlowChange.SIDES) {
+            if (prevModel != null && kind != FlowChange.SIDES) {
                 TextLayer(
                     prevModel,
-                    plan = prevPlan,
                     alpha = { row -> stood(row) * (if (softText) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
                     rise = { row -> 10f * (1f - stood(row)) - (if (softText) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) },
                     dim = { dim.text },
                     shift = oldColumn,
                 )
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, shift = newColumn)
+            TextLayer(curModel, alpha = textIn, rise = textRise, dim = { dim.text }, shift = newColumn)
         }
         // On the other wall the status line's inks cross-fade with the stage.
         if (prevModel != null && kind == FlowChange.WALL) {

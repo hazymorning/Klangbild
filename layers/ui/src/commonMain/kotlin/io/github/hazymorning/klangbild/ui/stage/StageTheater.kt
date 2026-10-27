@@ -132,8 +132,6 @@ fun StageTheater(
     val prevModel = remember(prev, modelFor) { prev?.let(modelFor) }
     val px = cur.scene.cover.width
     val party = rememberPartyCode(partyCode, setOfNotNull(cur.scene.appearance, prev?.scene?.appearance), px) { url, wall -> partyCard(url, px, wall) }
-    val curPlan = rememberTextPlan(curModel)
-    val prevPlan = prevModel?.let { rememberTextPlan(it) }
     // The bar's room of the stage shown and of the one leaving, kept by stage through a change.
     val queueRooms = remember { QueueRooms() }
     val curQueue = rememberQueuePlan(curModel, queueRooms)
@@ -257,10 +255,10 @@ fun StageTheater(
         PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { dim.picture })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
-            if (prevModel != null && prevPlan != null && kind != Change.ROWS) {
-                TextLayer(prevModel, plan = prevPlan, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue)
+            if (prevModel != null && kind != Change.ROWS) {
+                TextLayer(prevModel, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue)
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue)
+            TextLayer(curModel, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue)
         }
         if (curQueue != null || prevQueue != null) {
             QueueRowsLayer(curQueue, prevQueue.takeIf { prev != null }, rows, text = { dim.text }, picture = { dim.picture })

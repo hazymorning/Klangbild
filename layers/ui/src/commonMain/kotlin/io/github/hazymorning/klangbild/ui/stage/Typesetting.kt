@@ -208,11 +208,11 @@ private fun planText(
     val layout = model.scene.layout
     val d = density.density
     val colW = (layout.columnWidth * d).roundToInt()
-    val normal = StageStyles(model.scene.palette, faces)
+    val styles = StageStyles(model.scene.palette, faces)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
 
-    val title = EmojiText.annotate(t.title, dimTo = normal.ink.copy(alpha = 0.62f))
+    val title = EmojiText.annotate(t.title, dimTo = styles.ink.copy(alpha = 0.62f))
 
     // Everything but the title, from the title's last baseline down (or the work line above
     // it), to know how much height the title may take.
@@ -222,41 +222,40 @@ private fun planText(
         return r.getLineBaseline(r.lineCount - 1) - r.getLineBaseline(0)
     }
     fun budget(step: TitleStep): Float = with(density) {
-        val title = normal.title(step)
+        val title = styles.title(step)
         var rest = 0f
         val work = t.work
-        if (work != null) rest += cap(normal.work) + linesHeight(work, normal.work, 2) + descent(normal.work) + together(normal.work, title)
+        if (work != null) rest += cap(styles.work) + linesHeight(work, styles.work, 2) + descent(styles.work) + together(styles.work, title)
         // Each space starts from the descenders of the line above it; the title's group ends the
         // title's descenders below its last line, the version's too.
         if (version != null) {
-            val style = normal.version(step.size)
+            val style = styles.version(step.size)
             rest += descent(title) + together(title, style) + cap(style)
         }
-        rest += descent(title) + apart(title, normal.artist) + cap(normal.artist)
-        var last = normal.artist
+        rest += descent(title) + apart(title, styles.artist) + cap(styles.artist)
+        var last = styles.artist
         if (t.album != null || model.year != null || model.chapter != null) {
-            rest += descent(last) + together(last, normal.album) + cap(normal.album)
-            last = normal.album
+            rest += descent(last) + together(last, styles.album) + cap(styles.album)
+            last = styles.album
         }
         if (model.line != null || (model.progress && model.durationMs != null)) {
-            rest += descent(last) + frame(title, normal.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(normal.label)
+            rest += descent(last) + frame(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.label)
         }
         layout.art * BLOCK_SHARE * d - rest
     }
 
     val balancer = lineBalancer(measurer)
-    val choice = pickTitleSize(title, { step -> normal.title(step, cjk) }, balancer, colW, ::budget, d)
-        ?: titleLadder.last().let { step -> TitleChoice(step, balancer.layout(title, normal.title(step, cjk), colW, step.lines, TextOverflow.Ellipsis)) }
-    val block = normal
+    val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, balancer, colW, ::budget, d)
+        ?: titleLadder.last().let { step -> TitleChoice(step, balancer.layout(title, styles.title(step, cjk), colW, step.lines, TextOverflow.Ellipsis)) }
 
     // Artists on one line: the most complete form that fits, at the artist's size, then a
     // step smaller, before anything is cut.
     val options = t.artistOptions()
     fun fits(option: String, style: TextStyle) =
         measurer.measure(AnnotatedString(option), style, maxLines = 1, softWrap = false).size.width <= colW
-    var artistStyle = block.artist
+    var artistStyle = styles.artist
     var artists: String? = null
-    for (style in listOf(block.artist, block.artistSmall)) {
+    for (style in listOf(styles.artist, styles.artistSmall)) {
         artists = options.firstOrNull { fits(it, style) }
         if (artists != null) {
             artistStyle = style
@@ -265,14 +264,14 @@ private fun planText(
     }
     if (artists == null && options.isNotEmpty()) {
         artists = options.last()
-        artistStyle = block.artistSmall
+        artistStyle = styles.artistSmall
     }
     // The album with its year; the year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
-    val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, block.album)) t.album else albumYear
+    val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
     // What comes next: title and artist, or the title alone rather than a cut-off artist.
     val next = model.next?.let { full ->
-        if (model.nextTitle == null || measurer.measure(nextText(full, normal, nextLead), normal.next, maxLines = 1, softWrap = false).size.width <= colW) {
+        if (model.nextTitle == null || measurer.measure(nextText(full, styles, nextLead), styles.next, maxLines = 1, softWrap = false).size.width <= colW) {
             full
         } else {
             model.nextTitle
@@ -283,10 +282,10 @@ private fun planText(
         titleStyle = choice.layout.layoutInput.style,
         titleLines = choice.step.lines,
         titleConstraints = choice.layout.layoutInput.constraints,
-        titleRhythm = normal.title(choice.step),
-        styles = block,
+        titleRhythm = styles.title(choice.step),
+        styles = styles,
         version = version,
-        versionStyle = block.version(choice.step.size),
+        versionStyle = styles.version(choice.step.size),
         artists = artists,
         artistStyle = artistStyle,
         album = album,

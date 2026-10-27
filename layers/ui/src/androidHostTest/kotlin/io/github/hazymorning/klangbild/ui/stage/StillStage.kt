@@ -11,13 +11,12 @@ import androidx.compose.ui.Modifier
  */
 @Composable
 fun Stage(model: StageModel, modifier: Modifier = Modifier) {
-    val plan = rememberTextPlan(model)
     val queue = rememberQueuePlan(model)
     Box(modifier.fillMaxSize()) {
         BaseWall(model.scene.palette.wall.asColor())
         WallLayer(model.scene)
         ArtworkLayer(model.scene)
-        TextLayer(model, plan = plan, queuePlan = queue)
+        TextLayer(model, queuePlan = queue)
         QueueRowsLayer(queue, null, RowsMotion.Still)
         StatusLayer(model)
     }

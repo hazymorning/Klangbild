@@ -223,7 +223,6 @@ fun coverScale(dim: Float, appearance: Appearance): Triple<Float, Float, Float> 
 internal fun TextLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
-    plan: TextPlan = rememberTextPlan(model),
     alpha: (TextLine) -> Float = { 1f },
     rise: (TextLine) -> Float = { 0f },
     dim: () -> Float = { 1f },
@@ -239,11 +238,10 @@ internal fun TextLayer(
         QueueText(model, queuePlan, modifier, alpha, rise, dim)
         return
     }
+    val plan = rememberTextPlan(model)
+    val styles = plan.styles
     val layout = model.scene.layout
     val t = model.text
-    val faces = faces()
-    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
-    val block = plan.styles
     val localDensity = LocalDensity.current
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
 
@@ -258,7 +256,7 @@ internal fun TextLayer(
         content = {
             // 0: work line
             val work = t.work
-            if (work != null) BasicText(work, line(TextLine.WORK), style = block.work, maxLines = 2, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            if (work != null) BasicText(work, line(TextLine.WORK), style = styles.work, maxLines = 2, overflow = TextOverflow.Ellipsis) else Box(Modifier)
             // 1: title
             BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
             // 2: version
@@ -278,10 +276,10 @@ internal fun TextLayer(
                     label = "chapter",
                 ) { chapter ->
                     // A long name ends after a whole word, never inside one.
-                    val fitted = remember(chapter, colW, block.album) { fitWords(measurer, chapter, block.album, colW) }
-                    BasicText(fitted, style = block.album, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val fitted = remember(chapter, colW, styles.album) { fitWords(measurer, chapter, styles.album, colW) }
+                    BasicText(fitted, style = styles.album, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                plan.album != null -> BasicText(plan.album, line(TextLine.ALBUM), style = block.album, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                plan.album != null -> BasicText(plan.album, line(TextLine.ALBUM), style = styles.album, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 else -> Box(Modifier)
             }
             // 5: progress bar, station or notice; changes cross-fade
@@ -314,14 +312,14 @@ internal fun TextLayer(
             parts += Part(p, first - capOf(style), last, depth, white, px(opticalIndent(style.fontSize.value)))
         }
         val rhythm = plan.titleRhythm
-        text(work, block.work, 0f)
-        text(title, plan.titleStyle, together(block.work, rhythm), depth = descent(rhythm))
+        text(work, styles.work, 0f)
+        text(title, plan.titleStyle, together(styles.work, rhythm), depth = descent(rhythm))
         // The title's group ends the title's descenders below its last line, so who made it
         // stands as far from it whether the version ends it or the title does.
         text(version, plan.versionStyle, together(rhythm, plan.versionStyle), depth = descent(rhythm))
         text(artist, plan.artistStyle, apart(rhythm, plan.artistStyle))
         // The album with the artist, or apart from the title without one.
-        text(album, block.album, if (artist.height > 0) together(plan.artistStyle, block.album) else apart(rhythm, block.album))
+        text(album, styles.album, if (artist.height > 0) together(plan.artistStyle, styles.album) else apart(rhythm, styles.album))
         if (bottom.height > 0) {
             // The bar block measures from the bar's top to the labels' baseline; a line of
             // text in its place is aligned by its own cap height.
