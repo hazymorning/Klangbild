@@ -35,6 +35,7 @@ import io.github.hazymorning.klangbild.ui.stage.StatusLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLine
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
+import io.github.hazymorning.klangbild.ui.stage.WallMargin
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import io.github.hazymorning.klangbild.ui.stage.drawnAlike
 import io.github.hazymorning.klangbild.ui.stage.partyCard
@@ -228,7 +229,7 @@ fun FlowTheater(
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
             WallLayer(oldWall, level = level, shift = { balance().cards }, column = { balance().column })
-            BaseWall(wall, alpha = newWall, beyondOnly = true)
+            WallMargin(wall, alpha = newWall)
         }
         WallLayer(middle.scene, alpha = newWall, level = level, shift = { balance().cards }, column = { balance().column })
         // One strip, also while it takes a new look: each card is the mix of its texture before

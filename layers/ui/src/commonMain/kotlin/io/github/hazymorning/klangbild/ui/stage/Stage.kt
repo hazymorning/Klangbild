@@ -53,27 +53,34 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
- * The wall under everything: black in the dark (on an OLED the pixels are off), paper in
- * the light. It reaches [BEYOND_EDGES_DP] beyond the screen on every side, so the screen's drift
- * against burn-in never uncovers an edge. [beyondOnly] draws only that margin (a new wall's
- * color coming up with its light during a change); [alpha] fades it.
+ * The plain background under everything: black in the dark (on an OLED the pixels are off), the
+ * light background's color by day. It reaches [BEYOND_EDGES_DP] past each screen edge, so the
+ * screen's drift against burn-in never shows an edge.
  */
 @Composable
-fun BaseWall(color: Color, modifier: Modifier = Modifier, alpha: () -> Float = { 1f }, beyondOnly: Boolean = false) {
+fun BaseWall(color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier.fillMaxSize()) {
+        val m = BEYOND_EDGES_DP * density
+        drawRect(color, Offset(-m, -m), Size(size.width + 2 * m, size.height + 2 * m))
+    }
+}
+
+/**
+ * Only the part of [BaseWall] beyond the screen's edges, faded by [alpha]: a new background's
+ * color coming up with its light during a change, over the old background.
+ */
+@Composable
+fun WallMargin(color: Color, alpha: () -> Float) {
+    Canvas(Modifier.fillMaxSize()) {
         val a = alpha().coerceIn(0f, 1f)
         if (a <= 0.002f) return@Canvas
         val m = BEYOND_EDGES_DP * density
         val w = size.width
         val h = size.height
-        if (!beyondOnly) {
-            drawRect(color, Offset(-m, -m), Size(w + 2 * m, h + 2 * m), alpha = a)
-        } else {
-            drawRect(color, Offset(-m, -m), Size(m, h + 2 * m), alpha = a)
-            drawRect(color, Offset(w, -m), Size(m, h + 2 * m), alpha = a)
-            drawRect(color, Offset(0f, -m), Size(w, m), alpha = a)
-            drawRect(color, Offset(0f, h), Size(w, m), alpha = a)
-        }
+        drawRect(color, Offset(-m, -m), Size(m, h + 2 * m), alpha = a)
+        drawRect(color, Offset(w, -m), Size(m, h + 2 * m), alpha = a)
+        drawRect(color, Offset(0f, -m), Size(w, m), alpha = a)
+        drawRect(color, Offset(0f, h), Size(w, m), alpha = a)
     }
 }
 

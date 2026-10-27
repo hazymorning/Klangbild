@@ -237,7 +237,7 @@ fun StageTheater(
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
             WallLayer(oldWall, level = level)
-            BaseWall(cur.scene.palette.wall.asColor(), alpha = newGlow, beyondOnly = true)
+            WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
         }
         WallLayer(cur.scene, alpha = newGlow, level = level)
         if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, dim = { dim.picture })
