@@ -31,7 +31,7 @@ class KkPsk2Initiator(
         ss.mixKey(Noise.dh(eph, remote))
         ss.mixKey(Noise.dh(static, remote))
         ss.mixKeyAndHash(psk)
-        val payload = ss.decryptAndHash(message, Noise.KEY_BYTES)
+        val payload = ss.decryptAndHash(message.copyOfRange(Noise.KEY_BYTES, message.size))
         val (c1, c2) = ss.split()
         return payload to NoiseChannel(send = c1, receive = c2, handshakeHash = ss.h.copyOf())
     }
