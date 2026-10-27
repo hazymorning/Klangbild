@@ -35,7 +35,7 @@ import kotlin.concurrent.Volatile
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SpeakerConnection(
-    /** Pings the server every [PING_MS] (messaging.md: the liveness mechanism). */
+    /** The WebSocket's client; it must ping the server every [PING_MS] (messaging.md: the liveness mechanism). */
     private val http: HttpClient,
     private val scope: CoroutineScope,
     private val url: String,

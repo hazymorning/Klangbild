@@ -14,9 +14,8 @@ import android.os.Looper
  * thread. Its timestamps say when a frame left the device at its HDMI port; what the TV or a
  * sound bar adds after that is the output delay's to cover.
  *
- * The track is made for music on the standard path (no low-latency track: those refuse rate
- * changes and gain nothing here) with room for [BUFFER_MS] of audio, which is also how far ahead
- * the audio is written. When it gives no timestamps at all for a while, the frames it has
+ * The track is made for music on the standard path (a low-latency track gains nothing here)
+ * with room for [BUFFER_MS] of audio, which is also how far ahead the audio is written. When it gives no timestamps at all for a while, the frames it has
  * consumed stand in for them; that leaves out what lies beyond the mixer, so it is a last resort.
  */
 class AudioTrackSink(

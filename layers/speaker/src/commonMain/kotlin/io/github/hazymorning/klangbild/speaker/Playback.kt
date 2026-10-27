@@ -21,8 +21,8 @@ import kotlin.math.pow
  * were written, and not one that has stood still while frames went out (a stalled output).
  * Frame counts are compared in 32 bits, as the output keeps them.
  *
- * [step] is the whole of it and runs on the audio thread; nothing there allocates. The other
- * methods may be called from any thread.
+ * [open], [step] and [close] run on the audio thread, and [step] allocates nothing. The setters,
+ * [clear] and [resync] may be called from any thread.
  */
 class Playback(
     private val sink: AudioSink,

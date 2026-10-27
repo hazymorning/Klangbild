@@ -48,7 +48,7 @@ class SpeakerIdentity(val name: String, val productName: String?, val manufactur
  */
 class Speaker(
     private val scope: CoroutineScope,
-    /** Pings the server now and then ([SpeakerConnection.PING_MS]). */
+    /** The WebSocket's client; it must ping the server every [SpeakerConnection.PING_MS], as `speakerClient` does. */
     private val http: HttpClient,
     private val store: SpeakerStore,
     /** Music Assistant's Sendspin address (`ws://host:8927/sendspin`). */

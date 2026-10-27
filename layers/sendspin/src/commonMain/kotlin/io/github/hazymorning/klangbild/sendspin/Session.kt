@@ -251,7 +251,7 @@ class Session(
         burst()
     }
 
-    /** The player's state changed here (volume by the TV, the output delay): the server hears of it. */
+    /** Sends `client/state` again after the player's state changed here (a new minimum buffer). */
     fun stateChanged(): Unit = synchronized(this) {
         if (step == Step.ACTIVE && stateSent) sendState()
     }
