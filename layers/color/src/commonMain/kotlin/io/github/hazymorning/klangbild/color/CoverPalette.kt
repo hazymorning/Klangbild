@@ -33,7 +33,7 @@ data class ScenePalette(
     val inkQuiet: Int,
     /**
      * The progress bar's fill: the artist's level on the plain wall. On the cover's colors
-     * ([CoverPalette.derive] with `cover`) it takes the cover's leading hue, light enough to stand out.
+     * ([CoverPalette.derive] with `coverField`) it takes the cover's leading hue, light enough to stand out.
      */
     val accent: Int = inkMuted,
 )
@@ -151,15 +151,16 @@ object CoverPalette {
             (1f - (2f * c.lab.l - 1.1f).pow(2)).coerceAtLeast(0.15f)
 
     /**
-     * The palette for [analysis] on a [appearance] wall, seen in the [Lamp]. [wallTint] scales
-     * how much of the cover's color the light wall takes (the Intensity setting; 0 = plain
-     * paper).
+     * The palette for [analysis] on the [appearance] background, seen in the [Lamp]. [wallTint]
+     * scales how much of the cover's color the light background takes (the Intensity setting; 0
+     * gives it none). With [coverField] the text stands on the field, the cover colors
+     * background, instead of the plain one.
      */
     fun derive(
         analysis: CoverAnalysis,
         appearance: Appearance = Appearance.DARK,
         wallTint: Float = 1f,
-        cover: Boolean = false,
+        coverField: Boolean = false,
     ): ScenePalette {
         val chromatic = analysis.clusters
             .filter { it.lab.chroma >= NEUTRAL_CHROMA && it.weight >= 0.02f }
@@ -170,7 +171,7 @@ object CoverPalette {
         // picture, but never ivory. A neutral cover gets neutral text.
         val neutralChroma = if (lead == null) 0.003f else min(0.009f, lead.chroma * 0.08f + 0.002f)
         // On the cover's own colors the text takes a little more of their hue, but stays near-neutral.
-        val inkChroma = neutralChroma * (if (cover) 1.6f else 1f)
+        val inkChroma = neutralChroma * (if (coverField) 1.6f else 1f)
 
         // Three levels (lightness in Oklab): the title; artist, clock and the progress bar's
         // fill; everything else. They step down evenly, as far as the quietest can go: on black
@@ -179,7 +180,7 @@ object CoverPalette {
         val levels = if (appearance == Appearance.DARK) {
             // On the cover's own colors the lower two levels stand a little lighter: they are read
             // against color, not black.
-            if (cover) floatArrayOf(0.94f, 0.82f, 0.71f) else floatArrayOf(0.93f, 0.77f, 0.61f)
+            if (coverField) floatArrayOf(0.94f, 0.82f, 0.71f) else floatArrayOf(0.93f, 0.77f, 0.61f)
         } else {
             floatArrayOf(LIGHT_INK, LIGHT_INK + 0.13f, LIGHT_INK + 0.25f)
         }
@@ -204,7 +205,7 @@ object CoverPalette {
         // on its darkest part, not on the paper.
         val paperLimit = when {
             appearance == Appearance.DARK -> 1f
-            cover -> min(lightestInkOn(wall), lightestInkOn(Lamp.apply(Lch(FIELD_PALEST_DARK, 0.04f, hue).toLab()).toArgb()))
+            coverField -> min(lightestInkOn(wall), lightestInkOn(Lamp.apply(Lch(FIELD_PALEST_DARK, 0.04f, hue).toLab()).toArgb()))
             else -> lightestInkOn(wall)
         }
         fun ink(level: Int): Int {
@@ -215,7 +216,7 @@ object CoverPalette {
         val muted = ink(1)
         // The bar's fill on the cover's colors: their leading hue, light (or dark on paper) enough
         // to read against them. A neutral cover keeps the artist's level.
-        val accent = if (!cover || lead == null) {
+        val accent = if (!coverField || lead == null) {
             muted
         } else if (appearance == Appearance.DARK) {
             Lamp.apply(Lch(0.80f, (lead.chroma * 0.9f).coerceIn(0.05f, 0.12f), lead.hue).toLab()).toArgb()
