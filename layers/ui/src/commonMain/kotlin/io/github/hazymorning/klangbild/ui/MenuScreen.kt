@@ -106,8 +106,8 @@ object MenuGrid {
 /**
  * The settings menu, fading in over whatever is on screen and out again, on its own background
  * (black or light). The screen beneath stays composed, so it is back the moment the menu
- * closes. While the queue display just chosen is [pending], the Queue row's value breathes
- * ([rememberBreath]).
+ * closes. While the queue display just chosen is [pending], dots pulse after the Queue row's
+ * value ([PendingDots]).
  */
 @Composable
 fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
@@ -299,10 +299,8 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val labelColor by animateColorAsState(label, tween(260, easing = Motion.Dimmer), label = "label")
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
-    // While the queue display just chosen is pending, the chosen Queue row's value breathes
-    // toward the ink of a value at rest. A row at rest has no quieter ink left that still reads
-    // well, so it doesn't breathe, and a breath under way when the cursor leaves glides back.
-    val breath = if (row.entry == MenuEntry.QUEUE) rememberBreath(pending && focused) else null
+    // While the queue display just chosen is pending, dots pulse after the Queue row's value.
+    val dots = if (row.entry == MenuEntry.QUEUE) rememberPendingDots(pending) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
@@ -326,7 +324,7 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
             animationSpec = tween(260, easing = Motion.Dimmer),
             label = "menu-value",
         ) { value ->
-            BasicText(value, style = valueStyle, color = { breathed(valueColor, colors.value, breath?.value ?: 0f) }, maxLines = 1)
+            ValueText(value, valueStyle, color = { valueColor }, dots)
         }
     }
 }

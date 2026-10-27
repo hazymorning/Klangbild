@@ -101,7 +101,7 @@ internal object Motion {
     /** The way back up a breath: [Dimmer] played backwards, so the breath rises as it sank. */
     val Exhale = Easing { 1f - Dimmer.transform(1f - it) }
 
-    /** One way of a breath, down or up (ms): the light while the speaker buffers, a value on its way. */
+    /** One way of a breath, down or up (ms): the stage's light while the speaker buffers. */
     const val BREATH_MS = 1_600
 
     /**

@@ -608,8 +608,8 @@ class NowPlayingController(
         // with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
-        // The queue's way just chosen breathes in the quick settings and the menu until this
-        // state shows it.
+        // The queue display just chosen stays pending, with dots after its value in the quick
+        // settings and the menu, until this state shows it.
         _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
         // chosen, or switched off, go back at once.

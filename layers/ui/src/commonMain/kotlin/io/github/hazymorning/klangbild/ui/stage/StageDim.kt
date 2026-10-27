@@ -1,13 +1,16 @@
 package io.github.hazymorning.klangbild.ui.stage
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.rememberBreath
 
 /**
  * How a pause, or a lost connection, dims the stage (a single cover or Cover Flow): the
@@ -53,6 +56,28 @@ internal fun rememberStageDim(status: PlayerStatus, linkDown: Boolean, appearanc
     // The breath's depth: 0 at full light, 1 at [BREATH_LOW].
     val breath = rememberBreath(status == PlayerStatus.BUFFERING)
     return StageDim(light, breath, cover, text)
+}
+
+/**
+ * The breath's depth while [buffering]: down to 1 in [Motion.BREATH_MS] and back as slowly, for as
+ * long as it lasts, then back to 0 in [Motion.PAUSE_MS]. A still stands at rest.
+ */
+@Composable
+private fun rememberBreath(buffering: Boolean): State<Float> {
+    val depth = remember { Animatable(0f) }
+    if (!LocalStill.current) {
+        LaunchedEffect(buffering) {
+            if (buffering) {
+                while (true) {
+                    depth.animateTo(1f, tween(Motion.BREATH_MS, easing = Motion.Dimmer))
+                    depth.animateTo(0f, tween(Motion.BREATH_MS, easing = Motion.Exhale))
+                }
+            } else if (depth.value > 0f) {
+                depth.animateTo(0f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer))
+            }
+        }
+    }
+    return depth.asState()
 }
 
 /** The light's lowest point while the speaker buffers. */

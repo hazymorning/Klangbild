@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
@@ -30,7 +31,8 @@ import kotlin.test.Test
 
 /**
  * The queue goes to or from Cover Flow: what showed stays on screen until the first scene of the
- * other is made, then the two cross through the dark at once. The screen never waits in the dark.
+ * other is made, then the two cross through the background at once: black, or by day the light
+ * background. The screen never waits in the dark, and by day it never goes dark.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,8 +45,8 @@ class CoverFlowSwitchTest {
     private val tracks = listOf(SyntheticCover.MOSS, SyntheticCover.MIST, SyntheticCover.BAUHAUS, SyntheticCover.SALT_WATER, SyntheticCover.CONFETTI).map(Fixtures::track)
     private val track = tracks[2]
 
-    private fun flow(): FlowData {
-        val scenes = Fixtures.flowScenes(tracks, screen = mdpi)
+    private fun flow(appearance: Appearance = Appearance.DARK): FlowData {
+        val scenes = Fixtures.flowScenes(tracks, appearance, mdpi)
         return FlowData(tracks.indices.map { FlowEntry(it.toLong(), tracks[it], scenes[it]) }, 2)
     }
 
@@ -71,6 +73,24 @@ class CoverFlowSwitchTest {
         ui = ui.copy(queue = QueueDisplay.OFF)
         compose.mainClock.advanceTimeBy(2_000)
         assertThat(capture().sameAs(cards)).isTrue()
+    }
+
+    @Test
+    fun onTheLightBackgroundTheSwitchNeverGoesDark() {
+        val light = Appearance.LIGHT
+        var ui by mutableStateOf(
+            UiState(screen = Screen.Stage(track, PlayerStatus.PLAYING, null), stage = Fixtures.stage(track, mdpi, light), appearance = light),
+        )
+        compose.mainClock.autoAdvance = false
+        compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L }, glyphs = AndroidGlyphs)) }
+        compose.mainClock.advanceTimeBy(2_500)
+        val single = Pixels(capture()).mean(0, 0, mdpi.widthPx, mdpi.heightPx)
+        ui = ui.copy(queue = QueueDisplay.FLOW, flow = flow(light), stage = null)
+        // Frame by frame through the switch, the screen stays about as light as the stage was.
+        repeat(30) {
+            compose.mainClock.advanceTimeBy(100)
+            assertThat(Pixels(capture()).mean(0, 0, mdpi.widthPx, mdpi.heightPx), name = "at ${(it + 1) * 100} ms").isGreaterThan(single - 40f)
+        }
     }
 
     private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()

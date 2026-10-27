@@ -1,9 +1,13 @@
 package io.github.hazymorning.klangbild.ui
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.app.QuickState
@@ -95,7 +100,7 @@ object QuickGrid {
  * back when they close. Each entry is its label over its value, and the chosen one stands in a
  * band of light like the menu's chosen row. A muted value (lyrics on, but none for this track)
  * has a quieter ink. Entries keep their places when values change. While the queue display just
- * chosen is [pending], its value breathes ([rememberBreath]).
+ * chosen is [pending], dots pulse after its value ([PendingDots]).
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
@@ -149,12 +154,6 @@ internal class QuickColors(
         else -> if (focused) valueFocus else value
     }
 
-    /**
-     * The ink a pending value breathes toward: a muted value's, the quietest that still reads well
-     * where it stands, chosen or at rest.
-     */
-    fun pendingInk(focused: Boolean): Color = valueInk(focused, muted = true)
-
     companion object {
         fun of(appearance: Appearance): QuickColors {
             fun c(l: Float) = OverlayColors.ink(l)
@@ -191,7 +190,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val keys = quick.rows.map { it.key }
     val labels = quick.rows.map { it.label }
-    val density = LocalDensity.current.density
+    val density = LocalDensity.current
     val widths = remember(keys, labels, density, labelStyle, valueStyle) { quickWidths(quick, measurer, labelStyle, valueStyle, density) }
     val lefts = widths.runningFold(QuickGrid.LEFT) { x, w -> x + w + QuickGrid.GAP }.dropLast(1)
     val cursor = quick.cursor.coerceIn(0, keys.size - 1)
@@ -205,7 +204,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
 
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
-            val d = density
+            val d = density.density
             // The veil reaches beyond the screen's sides and bottom (and below, where the bar rises
             // from), so it leaves no gap at the edges, whatever the drift against burn-in.
             val m = BEYOND_EDGES_DP * d
@@ -244,13 +243,21 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
-                // While the queue display just chosen is pending, its value breathes.
-                val breath = if (row.item == QuickItem.QUEUE) rememberBreath(pending) else null
-                val pendingColor by animateColorAsState(colors.pendingInk(focused), tween(240, easing = Motion.Dimmer), label = "quick-pending")
+                // While the queue display just chosen is pending, dots pulse after its value.
+                val dots = if (row.item == QuickItem.QUEUE) rememberPendingDots(pending) else null
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
-                    Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
-                        BasicText(v, style = valueStyle, color = { breathed(valueColor, pendingColor, breath?.value ?: 0f).let { it.copy(alpha = it.alpha * seen()) } }, maxLines = 1)
+                    // A new value comes once the old one has gone, so two words never stand on each other.
+                    // Nothing is clipped meanwhile, since the dots stand beyond the value.
+                    AnimatedContent(
+                        targetState = row.value,
+                        transitionSpec = {
+                            fadeIn(tween(VALUE_IN_MS, delayMillis = VALUE_OUT_MS, easing = Motion.Dimmer)) togetherWith
+                                fadeOut(tween(VALUE_OUT_MS, easing = Motion.Dimmer)) using SizeTransform(clip = false)
+                        },
+                        label = "quick-value-text",
+                    ) { v ->
+                        ValueText(v, valueStyle, color = { valueColor.copy(alpha = valueColor.alpha * seen()) }, dots)
                     }
                 }
             }
@@ -281,11 +288,15 @@ private fun inView(x: Float, width: Float): Float {
     return (1f - out / QuickGrid.EDGE_FADE).coerceIn(0f, 1f)
 }
 
-/** Each entry's width (dp): as wide as its label or its widest value, so a value that changes never moves the others. */
-internal fun quickWidths(quick: QuickState, measurer: TextMeasurer, labelStyle: TextStyle, valueStyle: TextStyle, density: Float): List<Float> =
+/**
+ * Each entry's width (dp): as wide as its label or its widest value, the queue's with room for the
+ * dots that pulse after it while it is pending, so a value that changes never moves the others.
+ */
+internal fun quickWidths(quick: QuickState, measurer: TextMeasurer, labelStyle: TextStyle, valueStyle: TextStyle, density: Density): List<Float> =
     quick.rows.map { row ->
-        fun w(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width
-        max(w(row.label, labelStyle), (row.values + row.value).maxOf { w(it, valueStyle) }) / density
+        fun w(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width / density.density
+        val dots = if (row.item == QuickItem.QUEUE) PendingDots.WIDTH_EM * with(density) { valueStyle.fontSize.toDp().value } else 0f
+        max(w(row.label, labelStyle), (row.values + row.value).maxOf { w(it, valueStyle) } + dots)
     }
 
 /**
@@ -309,6 +320,10 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
 /** The bar rising in, and sinking away once it closes (ms). */
 private const val BAR_IN_MS = 360
 private const val BAR_OUT_MS = 280
+
+/** A changed value: the old one fades out, then the new one fades in (ms). */
+private const val VALUE_OUT_MS = 100
+private const val VALUE_IN_MS = 160
 
 /** The bar's glide to the chosen entry from rest (ms). */
 private const val ROW_GLIDE_MS = 280
