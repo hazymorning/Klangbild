@@ -248,7 +248,6 @@ class SessionTest {
         s.start()
         pump(server, s)
         assertThat(s.activated).isTrue()
-        assertThat(s.playerRole).isTrue()
         repeat(Session.SYNC_BURSTS - 1) {
             now += 300_000
             s.burst()

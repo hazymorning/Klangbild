@@ -135,6 +135,7 @@ class Session(
     private var pendingRecord: PairingRecord? = null
 
     private var roles = emptySet<String>()
+    private var everActivated = false
     private var pairingIndex = 0
     private var playerStream = false
     private var beatStream = false
@@ -147,11 +148,8 @@ class Session(
     private var burstBestAt = 0L
     private var bursts = 0
 
-    /** Whether the server has activated the player role. */
-    val playerRole: Boolean get() = synchronized(this) { Roles.PLAYER in roles }
-
-    /** Whether the server's first activation has come: the connection is set up, roles or not. */
-    val activated: Boolean get() = synchronized(this) { step == Step.ACTIVE }
+    /** Whether the server has activated the session at least once: the connection is set up, roles or not. */
+    val activated: Boolean get() = synchronized(this) { everActivated }
 
     /** Whether the time filter has settled enough to schedule playback. */
     val synced: Boolean get() = synchronized(this) { bursts >= SYNC_BURSTS && filter.errorUs < SYNC_ERROR_US }
@@ -403,6 +401,7 @@ class Session(
         // A role taken away stops at once, whatever it still had queued.
         endStreams(player = Roles.PLAYER in old - newRoles, beats = Roles.VISUALIZER in old - newRoles)
         step = Step.ACTIVE
+        everActivated = true
         // A role added needs its state: sent now, or once the clock has settled. The clock is
         // set going with the first role (a connection only for pairing needs none).
         if ((newRoles - old).isNotEmpty()) stateSent = false

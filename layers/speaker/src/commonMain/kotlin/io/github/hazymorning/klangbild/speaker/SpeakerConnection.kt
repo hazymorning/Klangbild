@@ -156,7 +156,7 @@ class SpeakerConnection(
         try {
             // The handshake, the hellos and the activation within a while, or the attempt ends.
             val active = withTimeoutOrNull(handshakeTimeoutMs) {
-                while (!s.playerRole && !done.isCompleted && !s.activated) delay(POLL_MS)
+                while (!done.isCompleted && !s.activated) delay(POLL_MS)
                 true
             }
             if (active == null) {
