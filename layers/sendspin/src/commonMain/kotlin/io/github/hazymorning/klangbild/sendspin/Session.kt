@@ -550,7 +550,7 @@ class Session(
 
     private fun send(m: Message) {
         val c = channel ?: return
-        val body = utf8(m.encode())
+        val body = m.encode().encodeToByteArray()
         if (body.size + 1 > Noise.MAX_MESSAGE - Noise.TAG_BYTES) throw ProtocolException("message too long to send")
         val plain = ByteArray(body.size + 1)
         body.copyInto(plain, 1)
