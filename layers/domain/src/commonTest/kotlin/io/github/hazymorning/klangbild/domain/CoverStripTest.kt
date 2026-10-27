@@ -69,7 +69,7 @@ class CoverStripTest {
         val s = strip.update(song("e1", "Epsilon"), coming = listOf(a1, b1, c1))
         assertThat(s.current).isEqualTo(2)
         assertThat(s.cards).hasSize(5)
-        val fromQueue = strip.update(song("e1", "Epsilon"), before = listOf(c1, b1))
+        val fromQueue = strip.update(song("e1", "Epsilon"), played = listOf(c1, b1))
         assertThat(fromQueue.albums().take(fromQueue.current)).containsExactly("Gamma", "Beta")
     }
 

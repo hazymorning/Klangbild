@@ -26,15 +26,15 @@ class CoverStrip {
 
     /**
      * [track] plays now, [coming] is what follows in the queue (null while not known yet: then
-     * what stood behind a card that came to the middle stays), [before] what the queue played
+     * what stood behind a card that came to the middle stays), [played] what the queue played
      * before it (most recent last; empty when unknown, and then the strip remembers on its own).
      */
-    fun update(track: TrackInfo, coming: List<TrackInfo>? = null, before: List<TrackInfo> = emptyList()): Strip {
+    fun update(track: TrackInfo, coming: List<TrackInfo>? = null, played: List<TrackInfo> = emptyList()): Strip {
         val picture = track.pictureKey
         val cur = current
         var spare: StripCard? = null
         var stays: List<StripCard> = emptyList()
-        current = when {
+        val now = when {
             cur == null -> card(track)
             cur.picture == picture || cur.track.key == track.key -> {
                 stays = upcoming
@@ -55,12 +55,12 @@ class CoverStrip {
                 card(track)
             }
         }
-        val now = current!!
-        if (before.isNotEmpty()) {
+        current = now
+        if (played.isNotEmpty()) {
             val known = (history + listOfNotNull(spare)).associateBy { it.picture }
-            val played = distinct(before.asReversed(), now.picture).take(KEEP).map { t -> known[t.pictureKey]?.copy(track = t) ?: card(t) }
+            val cards = distinct(played.asReversed(), now.picture).take(KEEP).map { t -> known[t.pictureKey]?.copy(track = t) ?: card(t) }
             history.clear()
-            history.addAll(played.asReversed())
+            history.addAll(cards.asReversed())
         }
         val reuse = (upcoming + listOfNotNull(spare)).associateBy { it.picture }
         upcoming = if (coming == null) {

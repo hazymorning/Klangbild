@@ -941,7 +941,7 @@ class NowPlayingController(
         val src = ui.source
         // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
         val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
-        val s = strip.update(stage.track, coming, before = src.played)
+        val s = strip.update(stage.track, coming, played = src.played)
         scenes.retain(s.cards.map { it.track.sceneKey }.toSet())
         val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
         for (i in order) {
