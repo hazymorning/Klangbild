@@ -466,7 +466,7 @@ internal fun QueueText(
     modifier: Modifier,
     alpha: (TextLine) -> Float,
     rise: (TextLine) -> Float,
-    dim: () -> Float,
+    textLevel: () -> Float,
 ) {
     val styles = plan.styles
     val bottomLine = model.line
@@ -475,7 +475,7 @@ internal fun QueueText(
     Layout(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = dim().coerceIn(0f, 1f) },
+            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
         content = {
             if (plan.work != null) BasicText(plan.work, line(TextLine.WORK), style = styles.work, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
             BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
@@ -544,8 +544,8 @@ internal class RowsMotion(
 
 /**
  * The rows of the list [cur], and while a change runs those of the list before ([prev]), moving as
- * [motion] says. Their words are dimmed by [text] (a pause), their small covers like the cover by
- * [picture]. Rows that keep their order glide; one whose order changed goes and comes again at
+ * [motion] says. Their words are dimmed by [textLevel] (a pause), their small covers like the cover by
+ * [coverLevel]. Rows that keep their order glide; one whose order changed goes and comes again at
  * its new place, so no two rows ever pass through each other.
  */
 @Composable
@@ -553,8 +553,8 @@ internal fun QueueRowsLayer(
     cur: QueuePlan?,
     prev: QueuePlan?,
     motion: RowsMotion,
-    text: () -> Float = { 1f },
-    picture: () -> Float = { 1f },
+    textLevel: () -> Float = { 1f },
+    coverLevel: () -> Float = { 1f },
 ) {
     if (cur == null && prev == null) return
     val density = LocalDensity.current.density
@@ -565,9 +565,9 @@ internal fun QueueRowsLayer(
         prev.rows.filter { it.id in glide }.associateBy { it.id }
     }
     Canvas(Modifier.fillMaxSize()) {
-        val textDim = text().coerceIn(0f, 1f)
-        val coverDim = picture()
-        fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverDim, appearance)
+        val textNow = textLevel().coerceIn(0f, 1f)
+        val coverNow = coverLevel()
+        fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverNow, appearance)
         val g = motion.glide().coerceIn(0f, 1f)
         if (prev != null) {
             val a = motion.old()
@@ -578,7 +578,7 @@ internal fun QueueRowsLayer(
                 val row = prev.rows[i]
                 if (row.id in gliding) continue
                 val shown = prev.shown(row)
-                drawRow(prev, row, row.top + y0, a * shown, textDim, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
+                drawRow(prev, row, row.top + y0, a * shown, textNow, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
             }
         }
         if (cur != null) {
@@ -595,9 +595,9 @@ internal fun QueueRowsLayer(
                     // A small cover made meanwhile comes over the one before (or in its empty place).
                     val newCover = before.bitmap !== row.bitmap
                     if (newCover && before.cover != null) drawCover(prev, before, y, shown, filterFor(prev.appearance))
-                    drawRow(cur, row, y, shown, textDim, filterFor(cur.appearance), coverAlpha = shown * if (newCover) motion.cover() else 1f)
+                    drawRow(cur, row, y, shown, textNow, filterFor(cur.appearance), coverAlpha = shown * if (newCover) motion.cover() else 1f)
                 } else {
-                    drawRow(cur, row, row.top + cur.room.now + r, a * cur.shown(row), textDim, filterFor(cur.appearance))
+                    drawRow(cur, row, row.top + cur.room.now + r, a * cur.shown(row), textNow, filterFor(cur.appearance))
                 }
             }
         }
@@ -652,12 +652,12 @@ private fun QueuePlan.shown(row: PlannedRow): Float {
 
 /**
  * One row with its cap height at [y] (px from the screen's top), as strong as [alpha]: its words
- * dimmed by [textDim], its small cover through [filter], as the cover is.
+ * dimmed by [textLevel], its small cover through [filter], as the cover is.
  */
-private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha: Float, textDim: Float, filter: ColorFilter, coverAlpha: Float = alpha) {
+private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha: Float, textLevel: Float, filter: ColorFilter, coverAlpha: Float = alpha) {
     drawCover(plan, row, y, coverAlpha, filter)
     if (alpha <= 0.003f) return
-    val words = alpha * textDim
+    val words = alpha * textLevel
     val x = plan.columnLeft
     // The two lines stand within the small cover's straight edge, a corner radius in from its top and bottom.
     val inset = ROW_COVER_CORNER * density

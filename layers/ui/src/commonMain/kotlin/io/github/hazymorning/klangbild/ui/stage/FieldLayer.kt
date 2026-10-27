@@ -59,14 +59,14 @@ val LocalFieldTime = staticCompositionLocalOf { FieldTime.STILL }
  * otherwise show bands) and the veil: the shade under the text.
  * While the field moves, it is redrawn with the stage's tick (~30 times a second), nothing else.
  *
- * [alpha] fades it during a change, [level] dims it (pause, a lost link).
+ * [alpha] fades it during a change, [lightLevel] dims it (pause, a lost link).
  */
 @Composable
 fun FieldLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
-    level: () -> Float = { 1f },
+    lightLevel: () -> Float = { 1f },
 ) {
     val field = scene.field ?: return
     val veil = field.veil
@@ -137,8 +137,8 @@ fun FieldLayer(
             drawRect(grain, topLeft, all, alpha = a, blendMode = BlendMode.Plus)
             veil?.let { drawImage(it, dstOffset = IntOffset(-m, -m), dstSize = IntSize(fw, fh), alpha = a, filterQuality = FilterQuality.Low) }
             // In the dark, a pause (or a lost link) dims the colors; paper stays paper, like the plain wall.
-            val dim = if (dark) 1f - level().coerceIn(0f, 1f) else 0f
-            if (dim > 0.002f) drawRect(Color.Black, topLeft, all, alpha = a * dim)
+            val shade = if (dark) 1f - lightLevel().coerceIn(0f, 1f) else 0f
+            if (shade > 0.002f) drawRect(Color.Black, topLeft, all, alpha = a * shade)
         }
     }
 }

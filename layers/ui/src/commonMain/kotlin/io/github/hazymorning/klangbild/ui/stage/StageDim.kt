@@ -16,42 +16,42 @@ import io.github.hazymorning.klangbild.ui.rememberBreath
  * light glides back from where the breath was. Read the values in draw lambdas.
  */
 internal class StageDim(
-    private val pause: State<Float>,
+    private val light: State<Float>,
     private val breath: State<Float>,
-    private val pictureLevel: State<Float>,
-    private val textLevel: State<Float>,
+    private val cover: State<Float>,
+    private val text: State<Float>,
 ) {
-    val light: Float get() = pause.value * (1f - (1f - BREATH_LOW) * breath.value)
-    val picture: Float get() = pictureLevel.value
-    val text: Float get() = textLevel.value
+    val lightLevel: Float get() = light.value * (1f - (1f - BREATH_LOW) * breath.value)
+    val coverLevel: Float get() = cover.value
+    val textLevel: Float get() = text.value
 }
 
-/** The dimming for [status] ([dimmed]: the link is down) on the wall of [appearance]. */
+/** The dimming for [status] ([linkDown]: the connection is lost) on the background of [appearance]. */
 @Composable
-internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance: Appearance): StageDim {
-    val quiet = status == PlayerStatus.PAUSED || dimmed
-    val pause = animateFloatAsState(
-        targetValue = if (quiet) Motion.PAUSED_LIGHT else 1f,
+internal fun rememberStageDim(status: PlayerStatus, linkDown: Boolean, appearance: Appearance): StageDim {
+    val dimmed = status == PlayerStatus.PAUSED || linkDown
+    val light = animateFloatAsState(
+        targetValue = if (dimmed) Motion.PAUSED_LIGHT else 1f,
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "pause-light",
     )
-    val picture = animateFloatAsState(
+    val cover = animateFloatAsState(
         targetValue = when {
-            !quiet -> 1f
+            !dimmed -> 1f
             appearance == Appearance.LIGHT -> Motion.PAUSED_COVER_ON_PAPER
             else -> Motion.PAUSED_COVER
         },
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
-        label = "pause-picture",
+        label = "pause-cover",
     )
     val text = animateFloatAsState(
-        targetValue = if (quiet) Motion.PAUSED_TEXT else 1f,
+        targetValue = if (dimmed) Motion.PAUSED_TEXT else 1f,
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "pause-text",
     )
     // The breath's depth: 0 at full light, 1 at [BREATH_LOW].
     val breath = rememberBreath(status == PlayerStatus.BUFFERING)
-    return StageDim(pause, breath, picture, text)
+    return StageDim(light, breath, cover, text)
 }
 
 /** The light's lowest point while the speaker buffers. */

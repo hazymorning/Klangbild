@@ -239,7 +239,7 @@ object Fixtures : AppFixtures() {
             status = status,
             modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
             intensity = { intensity },
-            dimmed = linkDown,
+            linkDown = linkDown,
             partyCode = partyCode,
         )
     }

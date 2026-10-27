@@ -121,8 +121,8 @@ fun FlowTheater(
     modelFor: (StageData) -> StageModel,
     modifier: Modifier = Modifier,
     intensity: () -> Float = { 1f },
-    /** The link is down: the stage dims like a pause. */
-    dimmed: Boolean = false,
+    /** The connection is lost: the stage dims like a pause. */
+    linkDown: Boolean = false,
     /** The link of the party playing here, while its code shows in the middle card's place. */
     partyCode: String? = null,
 ) {
@@ -175,7 +175,7 @@ fun FlowTheater(
 
     val middle = current.middle
     val appearance = middle.scene.appearance
-    val dim = rememberStageDim(status, dimmed, appearance)
+    val dim = rememberStageDim(status, linkDown, appearance)
 
     val prev = previous
     val kind = change
@@ -200,7 +200,7 @@ fun FlowTheater(
     val newColumn: () -> Float = { if (prev != null && kind.newText) rest.column else balance().column }
     val oldColumn: () -> Float = { if (kind.newText) from.column else balance().column }
     val wall = middle.scene.palette.wall.asColor()
-    val level: () -> Float = { dim.light * intensity() }
+    val lightLevel: () -> Float = { dim.lightLevel * intensity() }
     // The strip takes a new look (a better cover, the other wall): each card goes over from its
     // texture before to its new one. A song only described anew changes its text alone.
     val restrip = prev != null && newLook
@@ -234,10 +234,10 @@ fun FlowTheater(
         val oldWall = prev?.middle?.scene?.takeIf { kind == FlowChange.MOVE || restrip }
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
-            WallLayer(oldWall, level = level, shift = { balance().cards }, column = { balance().column })
+            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
             WallMargin(wall, alpha = newWall)
         }
-        WallLayer(middle.scene, alpha = newWall, level = level, shift = { balance().cards }, column = { balance().column })
+        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
         // One strip, also while it takes a new look: each card is the mix of its texture before
         // and its new one, so a card never shows through another and its mirror image keeps its
         // strength.
@@ -250,7 +250,7 @@ fun FlowTheater(
             appearance = appearance,
             wall = wall,
             time = at,
-            dim = { dim.picture },
+            coverLevel = { dim.coverLevel },
             edges = !middle.scene.coverField,
             shift = { balance().cards },
             sign = party.on(appearance),
@@ -264,11 +264,11 @@ fun FlowTheater(
                     prevModel,
                     alpha = { row -> stood(row) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
                     rise = { row -> Motion.RISE_DP * (1f - stood(row)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) },
-                    dim = { dim.text },
+                    textLevel = { dim.textLevel },
                     shift = oldColumn,
                 )
             }
-            TextLayer(curModel, alpha = textIn, rise = textRise, dim = { dim.text }, shift = newColumn)
+            TextLayer(curModel, alpha = textIn, rise = textRise, textLevel = { dim.textLevel }, shift = newColumn)
         }
         // On the other wall the status line's inks cross-fade with the stage.
         if (prevModel != null && kind == FlowChange.WALL) {

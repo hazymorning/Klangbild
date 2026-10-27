@@ -89,7 +89,7 @@ const val BEYOND_EDGES_DP = 24f
 
 /**
  * The wall around the artwork, one static bitmap scaled softly to the screen. In the dark it is
- * the artwork's light ([io.github.hazymorning.klangbild.render.WallGlow]), and [level] is its
+ * the artwork's light ([io.github.hazymorning.klangbild.render.WallGlow]), and [lightLevel] is its
  * brightness in linear light (pause, the Intensity setting: 0 = off, 1 = as designed,
  * 1.45 = strong). In the light it is plain paper. [alpha] fades the layer
  * during a change; [shift] moves the light with the cover flow's cards (dp), the cover's colors
@@ -101,12 +101,12 @@ fun WallLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
-    level: () -> Float = { 1f },
+    lightLevel: () -> Float = { 1f },
     shift: () -> Float = { 0f },
     column: () -> Float = { 0f },
 ) {
     // With the cover colors background, the cover's own colors are the wall.
-    if (scene.coverField) return FieldLayer(scene, modifier, alpha, level)
+    if (scene.coverField) return FieldLayer(scene, modifier, alpha, lightLevel)
     val image = scene.wall
     val filters = remember { HashMap<Int, ColorFilter>() }
     val lit = scene.appearance == Appearance.DARK
@@ -115,7 +115,7 @@ fun WallLayer(
     val shade = remember(density) { columnShade(density) }
     Canvas(modifier.fillMaxSize()) {
         val a = alpha().coerceIn(0f, 1f)
-        val l = if (lit) level().coerceIn(0f, 2f) else 1f
+        val l = if (lit) lightLevel().coerceIn(0f, 2f) else 1f
         if (a <= 0.002f || l <= 0.002f) return@Canvas
         // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
         val step = (l.pow(1f / 2.2f) * 40f).roundToInt()
@@ -157,7 +157,7 @@ private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
 
 /**
  * The artwork, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display
- * size) with softly rounded corners. [dim] (pause) darkens it through the color matrix, not
+ * size) with softly rounded corners. [coverLevel] (a pause) darkens it through the color matrix, not
  * through transparency. Nothing is drawn around it: no frame, no line, no shadow.
  */
 @Composable
@@ -165,7 +165,7 @@ fun ArtworkLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
-    dim: () -> Float = { 1f },
+    coverLevel: () -> Float = { 1f },
 ) {
     val brush = remember(scene) { ShaderBrush(ImageShader(scene.cover, TileMode.Clamp, TileMode.Clamp)) }
     val filters = remember { CoverFilters() }
@@ -175,7 +175,7 @@ fun ArtworkLayer(
             .fillMaxSize()
             .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
     ) {
-        val filter = filters.at(dim(), scene.appearance)
+        val filter = filters.at(coverLevel(), scene.appearance)
         val w = scene.cover.width.toFloat()
         val h = scene.cover.height.toFloat()
         val corner = CornerRadius(scene.corner * density)
@@ -187,14 +187,14 @@ fun ArtworkLayer(
 }
 
 /**
- * Color matrix for the artwork: the [Lamp]'s breath of warmth, [dim] (a pause) and a gentle
+ * Color matrix for the artwork: the [Lamp]'s breath of warmth, [level] (a pause) and a gentle
  * highlight compression, so even a white cover never glares on black. White becomes a soft paper
  * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
  * brightness limiter dim everything. On the light wall a white cover stays a little whiter
  * than the paper around it.
  */
-fun coverFilter(dim: Float, appearance: Appearance): ColorFilter {
-    val (r, g, b) = coverScale(dim, appearance)
+fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
+    val (r, g, b) = coverScale(level, appearance)
     return ColorFilter.colorMatrix(
         ColorMatrix(
             floatArrayOf(
@@ -222,8 +222,8 @@ internal class CoverFilters {
 }
 
 /** The per-channel scale of [coverFilter] (red, green, blue). */
-fun coverScale(dim: Float, appearance: Appearance): Triple<Float, Float, Float> {
-    val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
+fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float> {
+    val k = level * if (appearance == Appearance.LIGHT) 1.06f else 1f
     val w = Lamp.WARMTH
     return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
 }
@@ -233,7 +233,7 @@ fun coverScale(dim: Float, appearance: Appearance): Triple<Float, Float, Float> 
  * The text block beside the artwork, centered on it from the first line's cap height to the
  * last baseline: (work), title, (version), artist, album · year, then the progress bar (or the
  * station, or a notice). What comes next sits apart on the artwork's bottom edge. [alpha] and
- * [rise] animate a change line by line; [dim] darkens the text while paused; [shift] moves the
+ * [rise] animate a change line by line; [textLevel] darkens the text while paused; [shift] moves the
  * column to the right of its place in the grid (dp: a cover flow with cards missing). While the
  * song's words take the column ([StageModel.lyrics]), they stand there instead ([LyricsText]);
  * while the queue shows as a list ([StageModel.queue]), the song stands above it ([QueueText]).
@@ -244,17 +244,17 @@ internal fun TextLayer(
     modifier: Modifier = Modifier,
     alpha: (TextLine) -> Float = { 1f },
     rise: (TextLine) -> Float = { 0f },
-    dim: () -> Float = { 1f },
+    textLevel: () -> Float = { 1f },
     shift: () -> Float = { 0f },
     queuePlan: QueuePlan? = rememberQueuePlan(model),
 ) {
     val lyrics = model.lyrics
     if (lyrics != null) {
-        LyricsText(model, lyrics, modifier, alpha, rise, dim, shift)
+        LyricsText(model, lyrics, modifier, alpha, rise, textLevel, shift)
         return
     }
     if (queuePlan != null) {
-        QueueText(model, queuePlan, modifier, alpha, rise, dim)
+        QueueText(model, queuePlan, modifier, alpha, rise, textLevel)
         return
     }
     val plan = rememberTextPlan(model)
@@ -271,7 +271,7 @@ internal fun TextLayer(
     Layout(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = dim().coerceIn(0f, 1f) },
+            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
         content = {
             // 0: work line
             val work = t.work

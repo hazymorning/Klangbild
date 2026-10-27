@@ -85,7 +85,7 @@ class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, 
  * look before keeps its light while it gives way.
  *
  * @param time how far the change has come (0..1, linear); each card eases its own stretch.
- * @param dim brightness of the cards (pause).
+ * @param coverLevel brightness of the cards (a pause).
  * @param edges the cards dissolve into the plain wall before the screen's edges. On the
  *   cover's colors, which reach the edges, they pass the edges.
  * @param shift how far the cards stand to the right of their place in the grid (dp), so that
@@ -104,7 +104,7 @@ fun FlowStrip(
     wall: Color,
     modifier: Modifier = Modifier,
     time: () -> Float = { 1f },
-    dim: () -> Float = { 1f },
+    coverLevel: () -> Float = { 1f },
     edges: Boolean = true,
     shift: () -> Float = { 0f },
     sign: FlowCard? = null,
@@ -127,7 +127,7 @@ fun FlowStrip(
     val lightsBefore = remember(before) { before?.let { Lights(it.appearance, it.wall.toArgb()) } }
     Canvas(modifier.fillMaxSize()) {
         val t = time().coerceIn(0f, 1f)
-        val d = dim().coerceIn(0f, 1f)
+        val level = coverLevel().coerceIn(0f, 1f)
         val covered = signAlpha().coerceIn(0f, 1f)
         // How far a new look has come: the textures before are drawn only until it has.
         val come = if (before == null) 1f else look().coerceIn(0f, 1f)
@@ -166,7 +166,7 @@ fun FlowStrip(
                 val card = c.card
                 val p = pos[i]
                 tools.place(geometry, p, dx, density)
-                val lit = geometry.light(p) * d
+                val lit = geometry.light(p) * level
                 val lightness = c.lightness(come)
                 // How much the card is squeezed sideways: far turned cards take the half-size texture.
                 val width = hypot(tools.dst[2] - tools.dst[0], tools.dst[3] - tools.dst[1]) / card.sidePx
@@ -190,7 +190,7 @@ fun FlowStrip(
             val signBefore = old?.sign?.takeIf { it !== sign }
             if ((sign != null || signBefore != null) && covered > UNSEEN) {
                 tools.place(geometry, 0f, dx, density)
-                val lit = geometry.light(0f) * d
+                val lit = geometry.light(0f) * level
                 tools.clear()
                 // Until the new wall's sign is made, the one before stands in: lit as before, so it
                 // never jumps.

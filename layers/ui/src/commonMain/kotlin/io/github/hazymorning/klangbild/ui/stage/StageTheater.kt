@@ -72,8 +72,8 @@ fun StageTheater(
     modelFor: (StageData) -> StageModel,
     modifier: Modifier = Modifier,
     intensity: () -> Float = { 1f },
-    /** The link is down: the stage dims like a pause. */
-    dimmed: Boolean = false,
+    /** The connection is lost: the stage dims like a pause. */
+    linkDown: Boolean = false,
     /** The link of the party playing here, while its code shows where the cover stands. */
     partyCode: String? = null,
 ) {
@@ -118,7 +118,7 @@ fun StageTheater(
 
     val cur = current
     val prev = previous
-    val dim = rememberStageDim(status, dimmed, cur.scene.appearance)
+    val dim = rememberStageDim(status, linkDown, cur.scene.appearance)
     val kind = change
     val total = durationOf(kind)
     // A change can begin between composing a frame and drawing it. Until it is composed, the frame
@@ -137,7 +137,7 @@ fun StageTheater(
     val curQueue = rememberQueuePlan(curModel, queueRooms)
     val prevQueue = prevModel?.let { rememberQueuePlan(it, queueRooms) }
 
-    val level: () -> Float = { dim.light * intensity() }
+    val lightLevel: () -> Float = { dim.lightLevel * intensity() }
     val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.COLUMN && kind != Change.ROWS
     // A new picture comes up over the old one; the old goes once it is covered (a station's logo,
     // clear around its mark, lets the old one fade with it there).
@@ -236,25 +236,25 @@ fun StageTheater(
         val oldWall = prev?.scene?.takeIf { pictureChanges }
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
-            WallLayer(oldWall, level = level)
+            WallLayer(oldWall, lightLevel = lightLevel)
             WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
         }
-        WallLayer(cur.scene, alpha = newGlow, level = level)
-        if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, dim = { dim.picture })
-        ArtworkLayer(cur.scene, alpha = newPicture, dim = { dim.picture })
+        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel)
+        if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, coverLevel = { dim.coverLevel })
+        ArtworkLayer(cur.scene, alpha = newPicture, coverLevel = { dim.coverLevel })
         // A party's code covers the picture and stays while the songs change beneath it; with the
         // wall it changes its paper.
         val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
-        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, dim = { dim.picture })
-        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { dim.picture })
+        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, coverLevel = { dim.coverLevel })
+        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, coverLevel = { dim.coverLevel })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
             if (prevModel != null && kind != Change.ROWS) {
-                TextLayer(prevModel, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue)
+                TextLayer(prevModel, alpha = textOut, rise = textOutRise, textLevel = { dim.textLevel }, queuePlan = prevQueue)
             }
-            TextLayer(curModel, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue)
+            TextLayer(curModel, alpha = textIn, rise = textRise, textLevel = { dim.textLevel }, queuePlan = curQueue)
         }
-        QueueRowsLayer(curQueue, prevQueue, rows, text = { dim.text }, picture = { dim.picture })
+        QueueRowsLayer(curQueue, prevQueue, rows, textLevel = { dim.textLevel }, coverLevel = { dim.coverLevel })
         // The status line belongs to the room, not to the track, so it stays; on the other wall
         // its inks cross-fade with the stage.
         if (prevModel != null && kind == Change.WALL) {

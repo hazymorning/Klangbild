@@ -284,7 +284,7 @@ internal fun LyricsText(
     modifier: Modifier,
     alpha: (TextLine) -> Float,
     rise: (TextLine) -> Float,
-    dim: () -> Float,
+    textLevel: () -> Float,
     shift: () -> Float,
 ) {
     val layout = model.scene.layout
@@ -317,7 +317,7 @@ internal fun LyricsText(
     Layout(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = dim().coerceIn(0f, 1f) },
+            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
         content = {
             // 0: the words
             Canvas(Modifier.fillMaxSize()) {

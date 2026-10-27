@@ -93,12 +93,12 @@ fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
 
 /**
  * The party's code ([card]) where the cover of [scene] stands, drawn 1:1 on whole pixels with the
- * cover's corners and its light, dimmed with it in a pause ([dim]): guests scan it from the
+ * cover's corners and its light, dimmed with it in a pause ([coverLevel]): guests scan it from the
  * couch to add songs. The song's lines stay beside it; the wall's light and the lights' colors
  * stay the song's.
  */
 @Composable
-fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, dim: () -> Float) {
+fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, coverLevel: () -> Float) {
     if (card == null) return
     val brush = remember(card) { ShaderBrush(ImageShader(card, TileMode.Clamp, TileMode.Clamp)) }
     val filters = remember { CoverFilters() }
@@ -107,7 +107,7 @@ fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, 
         // The fade goes with the draw call: no layer of the screen's size.
         val a = alpha().coerceIn(0f, 1f)
         if (a <= 0f) return@Canvas
-        val filter = filters.at(dim(), scene.appearance)
+        val filter = filters.at(coverLevel(), scene.appearance)
         val corner = CornerRadius(scene.corner * density)
         // The card's pixels start at its corner, which stands on a whole pixel.
         translate((rect.left * density).roundToInt().toFloat(), (rect.top * density).roundToInt().toFloat()) {
