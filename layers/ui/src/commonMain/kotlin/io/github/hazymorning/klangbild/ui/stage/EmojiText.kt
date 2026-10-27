@@ -19,10 +19,6 @@ object EmojiText {
     /** Emoji are set this much smaller than the text around them. */
     private const val SCALE = 0.74f
 
-    fun isEmoji(cp: Int): Boolean = Emoji.isEmoji(cp)
-
-    fun containsEmoji(text: String): Boolean = Emoji.containsEmoji(text)
-
     /** Splits [text] into runs of (isEmoji, run). */
     private fun runs(text: String): List<Pair<Boolean, String>> {
         val out = ArrayList<Pair<Boolean, String>>()
@@ -31,7 +27,7 @@ object EmojiText {
         var i = 0
         while (i < text.length) {
             val cp = Emoji.codePointAt(text, i)
-            val e = isEmoji(cp)
+            val e = Emoji.isEmoji(cp)
             if (current != null && e != current) {
                 out += current to sb.toString()
                 sb.clear()
@@ -50,7 +46,7 @@ object EmojiText {
      *              colors but become translucent on the dark wall, so they look dimmer).
      */
     fun annotate(text: String, dimTo: Color? = null): AnnotatedString {
-        if (!containsEmoji(text)) return AnnotatedString(text)
+        if (!Emoji.containsEmoji(text)) return AnnotatedString(text)
         val parts = runs(text)
         return buildAnnotatedString {
             parts.forEachIndexed { index, (emoji, run) ->

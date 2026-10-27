@@ -260,9 +260,7 @@ fun StageTheater(
             }
             TextLayer(curModel, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue)
         }
-        if (curQueue != null || prevQueue != null) {
-            QueueRowsLayer(curQueue, prevQueue.takeIf { prev != null }, rows, text = { dim.text }, picture = { dim.picture })
-        }
+        QueueRowsLayer(curQueue, prevQueue, rows, text = { dim.text }, picture = { dim.picture })
         // The status line belongs to the room, not to the track, so it stays; on the other wall
         // its inks cross-fade with the stage.
         if (prevModel != null && kind == Change.WALL) {

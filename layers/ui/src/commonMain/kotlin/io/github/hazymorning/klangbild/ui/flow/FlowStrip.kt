@@ -312,7 +312,7 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
         for (j in 0 until n) {
             quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], blend = CardBlend.ADD)
         }
-    } else if (own && n == 2) {
+    } else if (own) {
         // Full beneath at a(1 - h) / (1 - a h), half over at a h: together exactly a, for any a.
         val full = if (tools.halves[0]) 1 else 0
         val half = 1 - full
