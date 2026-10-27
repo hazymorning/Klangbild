@@ -116,14 +116,7 @@ internal inline fun faceFonts(font: (Face, FontWeight, FontVariation.Settings) -
  * A text style in [face] at [size] sp: line height [lineHeight] sp, tracking [tracking] em.
  * Layouts align the result by its baselines and [Fonts.CAP_HEIGHT], never by the boxes.
  */
-fun Faces.type(
-    face: Face,
-    size: Float,
-    weight: Int,
-    color: Color = Color.Unspecified,
-    lineHeight: Float = size * 1.25f,
-    tracking: Float = 0f,
-): TextStyle = TextStyle(
+private fun Faces.type(face: Face, size: Float, weight: Int, color: Color, lineHeight: Float, tracking: Float): TextStyle = TextStyle(
     fontFamily = family(face, size),
     fontWeight = FontWeight(weight),
     fontSize = size.sp,
@@ -133,9 +126,6 @@ fun Faces.type(
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 
-/** Where this layout's first baseline lies (px from its top), or 0 for one without. */
-internal fun Placeable.firstBaseline(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
-
 /** A style in the title face (Jost). */
 fun Faces.titleType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.2f, tracking: Float = 0f) =
     type(Face.TITLE, size, weight, color, lineHeight, tracking)
@@ -143,6 +133,9 @@ fun Faces.titleType(size: Float, weight: Int, color: Color = Color.Unspecified, 
 /** A style in the text face (DM Sans). */
 fun Faces.textType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.3f, tracking: Float = 0f) =
     type(Face.TEXT, size, weight, color, lineHeight, tracking)
+
+/** Where this layout's first baseline lies (px from its top), or 0 for one without. */
+internal fun Placeable.firstBaseline(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
 
 /**
  * Times set like a clock face. Every digit stands in a cell as wide as the widest digit and
@@ -171,9 +164,10 @@ class Figures internal constructor(
 @Composable
 fun rememberFigures(style: TextStyle, face: Face): Figures {
     val measurer = rememberTextMeasurer(cacheSize = 12)
-    return remember(style, face) {
+    val density = LocalDensity.current
+    return remember(style, face, measurer) {
         val plain = style.copy(letterSpacing = 0.em)
-        val sizePx = measurer.measure("0", plain).let { r -> r.layoutInput.density.run { plain.fontSize.toPx() } }
+        val sizePx = with(density) { plain.fontSize.toPx() }
         val advance = FloatArray(10) { d -> measurer.measure(d.toString(), plain, softWrap = false).getLineRight(0) / sizePx }
         Figures(advance.max(), advance, if (style.letterSpacing.isEm) style.letterSpacing.value else 0f, face.colonRaise)
     }
@@ -227,6 +221,6 @@ fun rememberClockFigures(time: String, style: TextStyle): ClockFigures {
     return remember(time, style, glyphs, resolver, density) {
         val sizePx = with(density) { style.fontSize.toPx() }
         val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        ClockFigures(time, glyphs.drawing(style, resolver, sizePx), sizePx, tracking)
+        ClockFigures(time, glyphs.pen(style, resolver, sizePx), sizePx, tracking)
     }
 }
