@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -22,8 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.StageData
@@ -87,8 +88,8 @@ class RootHooks(
 
 /**
  * The whole screen. Switches between stage, rest and setup with a slow fade through the
- * dark, fades in from black on start (no white flash, ever) and lets everything drift a
- * few pixels for OLED care.
+ * background (black, or the light background by day), fades in from black on start (no white
+ * flash, ever) and lets everything drift a few pixels for OLED care.
  */
 @Composable
 internal fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: Modifier = Modifier) {
@@ -112,10 +113,13 @@ internal fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, mo
 private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<Long>, entrance: Animatable<Float, *>, content: Content, modifier: Modifier) {
     val density = LocalDensity.current.density
     val t = texts()
+    // Between two screens the background itself shows, so on the light background a switch
+    // never passes through black. On start it comes up from black with everything else.
+    val light = ui.appearance == Appearance.LIGHT
     Box(
         modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .drawBehind { drawRect(if (light) lerp(Color.Black, OverlayColors.LIGHT, entrance.value) else Color.Black) }
             .graphicsLayer {
                 alpha = entrance.value
                 val (dx, dy) = Motion.drift(wall.value, DRIFT_DP * density)
@@ -182,12 +186,12 @@ private sealed interface Content {
     }
 
     data class FlowContent(val flow: FlowData) : Content {
-        // The cover flow animates its own changes, too; a switch to or from it fades through the dark.
+        // The cover flow animates its own changes, too; a switch to or from it fades through the background.
         override val key = "flow"
     }
 
     data class RestContent(val reason: RestReason, val speaker: String?, val appearance: Appearance) : Content {
-        // A new wall fades through the dark like a new screen.
+        // A change of background fades like a new screen.
         override val key = "rest:$reason:$appearance"
     }
 
