@@ -1,9 +1,13 @@
 package io.github.hazymorning.klangbild.ui
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -243,7 +247,16 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val dots = if (row.item == QuickItem.QUEUE) rememberPendingDots(pending) else null
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
-                    Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
+                    // A new value comes once the old one has gone, so two words never stand on each other.
+                    // Nothing is clipped meanwhile, since the dots stand beyond the value.
+                    AnimatedContent(
+                        targetState = row.value,
+                        transitionSpec = {
+                            fadeIn(tween(VALUE_IN_MS, delayMillis = VALUE_OUT_MS, easing = Motion.Dimmer)) togetherWith
+                                fadeOut(tween(VALUE_OUT_MS, easing = Motion.Dimmer)) using SizeTransform(clip = false)
+                        },
+                        label = "quick-value-text",
+                    ) { v ->
                         ValueText(v, valueStyle, color = { valueColor.copy(alpha = valueColor.alpha * seen()) }, dots)
                     }
                 }
@@ -307,6 +320,10 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
 /** The bar rising in, and sinking away once it closes (ms). */
 private const val BAR_IN_MS = 360
 private const val BAR_OUT_MS = 280
+
+/** A changed value: the old one fades out, then the new one fades in (ms). */
+private const val VALUE_OUT_MS = 100
+private const val VALUE_IN_MS = 160
 
 /** The bar's glide to the chosen entry from rest (ms). */
 private const val ROW_GLIDE_MS = 280
