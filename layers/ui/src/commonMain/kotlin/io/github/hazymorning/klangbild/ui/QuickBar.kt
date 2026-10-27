@@ -36,11 +36,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.render.ImageOps
-import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
@@ -160,11 +157,11 @@ internal class QuickColors(
 
     companion object {
         fun of(appearance: Appearance): QuickColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
+            fun c(l: Float) = OverlayColors.ink(l)
             return if (appearance == Appearance.DARK) {
                 QuickColors(
                     veil = Color.Black,
-                    band = Color(LampLight.lightTint(LampLight.LAMP, GLOW_PEAK)),
+                    band = OverlayColors.BAND_ON_BLACK,
                     label = c(0.56f),
                     labelFocus = c(0.74f),
                     value = c(0.66f),
@@ -172,8 +169,8 @@ internal class QuickColors(
                 )
             } else {
                 QuickColors(
-                    veil = c(CoverPalette.PAPER, 0.006f),
-                    band = Color(0xFF0D0C0B),
+                    veil = OverlayColors.LIGHT,
+                    band = OverlayColors.BAND_ON_LIGHT,
                     // 0.50 keeps 4.5:1 on the light background.
                     label = c(0.50f),
                     labelFocus = c(0.42f),
@@ -308,9 +305,6 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
         }
     }
 }
-
-/** The band's brightest point (≈ L* 10 on black), like the menu's. */
-private const val GLOW_PEAK = 0.011f
 
 /** The bar's glide to the chosen entry from rest (ms). */
 private const val ROW_GLIDE_MS = 280

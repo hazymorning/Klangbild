@@ -48,14 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.color.CoverPalette
-import io.github.hazymorning.klangbild.color.Lamp
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.ImageOps
-import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
@@ -86,13 +83,9 @@ object MenuGrid {
     /** Rows are gone this far away, well before the black band along the screen's edges. */
     const val FADE_TO = 226f
 
-    /**
-     * The light behind the chosen row: a soft, low band (Gaussian σ along the row and across it,
-     * dp) that lights this row only, and its brightest point (≈ L* 10).
-     */
+    /** The light behind the chosen row: a soft, low band (Gaussian σ along the row and across it, dp) that lights this row only. */
     const val GLOW_SIGMA_X = 120f
     const val GLOW_SIGMA_Y = 12f
-    const val GLOW_PEAK = 0.011f
 
     /** A row's label and value: size (sp) and weight. */
     const val LABEL_SP = 21f
@@ -158,11 +151,11 @@ private class MenuColors(
 ) {
     companion object {
         fun of(appearance: Appearance): MenuColors {
-            fun c(l: Float, chroma: Float = 0.004f) = Color(Lamp.neutral(l, chroma))
+            fun c(l: Float) = OverlayColors.ink(l)
             return if (appearance == Appearance.DARK) {
                 MenuColors(
                     wall = Color.Black,
-                    band = Color(LampLight.lightTint(LampLight.LAMP, MenuGrid.GLOW_PEAK)),
+                    band = OverlayColors.BAND_ON_BLACK,
                     heading = c(0.90f),
                     description = c(0.72f),
                     hint = c(0.60f),
@@ -175,8 +168,8 @@ private class MenuColors(
             } else {
                 // On the light background the chosen row lies in a band of slightly whiter light.
                 MenuColors(
-                    wall = c(CoverPalette.PAPER, 0.006f),
-                    band = Color(0xFF0D0C0B),
+                    wall = OverlayColors.LIGHT,
+                    band = OverlayColors.BAND_ON_LIGHT,
                     heading = c(0.26f),
                     description = c(0.42f),
                     hint = c(0.52f),
