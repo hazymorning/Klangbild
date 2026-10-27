@@ -575,7 +575,9 @@ internal fun QueueRowsLayer(
             val a = motion.old()
             val r = motion.oldRise() * density
             val y0 = prev.room.now + r
-            for (row in prev.rows) {
+            // Index loops: nothing allocated per frame.
+            for (i in prev.rows.indices) {
+                val row = prev.rows[i]
                 if (row.id in gliding) continue
                 val shown = prev.shown(row)
                 drawRow(prev, row, row.top + y0, a * shown, textDim, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
@@ -584,7 +586,8 @@ internal fun QueueRowsLayer(
         if (cur != null) {
             val a = motion.new()
             val r = motion.newRise() * density
-            for (row in cur.rows) {
+            for (i in cur.rows.indices) {
+                val row = cur.rows[i]
                 val before = gliding[row.id]
                 if (before != null && prev != null) {
                     // A row in both lists glides to its new place.
