@@ -206,14 +206,10 @@ internal class QueueRooms {
 }
 
 /** The room [slot] takes above the rows (px): the bar's block or a line's cap height, with the space above it. */
-private fun slotRoom(slot: Slot?, styles: StageStyles, density: Density): Float {
-    val d = density.density
-    return when (slot) {
-        null -> 0f
-        // The bar's block, from its top to its labels' baseline, as the bar measures it.
-        is Slot.Bar -> barSpace(styles, density) + (BAR_THICKNESS * d).roundToInt() + (BAR_LABEL_GAP * d).roundToInt() + (with(density) { styles.time.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
-        is Slot.Text -> barSpace(styles, density) + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
-    }
+private fun slotRoom(slot: Slot?, styles: StageStyles, density: Density): Float = when (slot) {
+    null -> 0f
+    is Slot.Bar -> barSpace(styles, density) + density.barBlock(styles.time)
+    is Slot.Text -> barSpace(styles, density) + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
 }
 
 /**

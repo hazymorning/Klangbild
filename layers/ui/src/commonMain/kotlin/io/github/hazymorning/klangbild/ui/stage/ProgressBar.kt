@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.ui.Motion
@@ -107,9 +108,7 @@ fun ProgressBar(
         val loose = constraints.copy(minWidth = 0)
         val elapsed = measurables[1].measure(loose)
         val remaining = measurables[2].measure(loose)
-        // Cap height of the labels [BAR_LABEL_GAP] below the bar.
-        val cap = (labelStyle.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
-        val baseline = bar.height + BAR_LABEL_GAP.dp.roundToPx() + cap
+        val baseline = barBlock(labelStyle)
         val first = elapsed[FirstBaseline]
         layout(constraints.maxWidth, baseline) {
             bar.place(0, 0)
@@ -151,6 +150,10 @@ private class Glide {
         return shown
     }
 }
+
+/** The bar's block from its top to its labels' baseline (px), its labels in [labelStyle], as [ProgressBar] lays it out. */
+internal fun Density.barBlock(labelStyle: TextStyle): Int =
+    BAR_THICKNESS.dp.roundToPx() + BAR_LABEL_GAP.dp.roundToPx() + (labelStyle.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
 
 /** The bar's thickness, and the room from it down to its labels' cap height (dp). */
 const val BAR_THICKNESS = 4f

@@ -246,7 +246,7 @@ private fun planText(
             last = styles.album
         }
         if (model.line != null || (model.progress && model.durationMs != null)) {
-            rest += descent(last) + frame(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.label)
+            rest += descent(last) + frame(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
         layout.art * BLOCK_SHARE * d - rest
     }

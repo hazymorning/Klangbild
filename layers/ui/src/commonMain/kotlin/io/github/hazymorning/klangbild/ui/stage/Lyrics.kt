@@ -402,7 +402,8 @@ private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, room: Float,
 internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
     private val status = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
     private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
-    private val bar = song - SLOT_GAP - BAR_BLOCK
+    // The bar's block from its top to its labels' baseline.
+    private val bar = song - SLOT_GAP - (BAR_THICKNESS + BAR_LABEL_GAP + styles.time.fontSize.value * Fonts.CAP_HEIGHT)
 
     /**
      * As much above the middle as below, so the words fade alike up and down: to the status
@@ -515,9 +516,6 @@ private const val EDGE_FADE = 0.5f
 
 /** From the bar's labels (or a notice in their place) to the song's cap height under them (dp). */
 private const val SLOT_GAP = 26f
-
-/** The progress bar's block from its top to its labels' baseline (dp): the bar, the gap, the labels' cap height. */
-private const val BAR_BLOCK = BAR_THICKNESS + BAR_LABEL_GAP + 15f * Fonts.CAP_HEIGHT
 
 /** A line takes at most this many rows, however long. */
 private const val MAX_ROWS = 4
