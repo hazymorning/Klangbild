@@ -211,12 +211,9 @@ class LightSync(
         if (target != null) lastTarget = target
         if (old?.lights != target?.lights || (old?.level == RoomLightBrightness.OFF) != (target?.level == RoomLightBrightness.OFF)) follow()
         // Nothing to do without lights, unless lights taken over are still to be given back.
-        if (target != null || activeLights) ensureLoop()
+        if (target != null || activeFor != null) ensureLoop()
         if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old?.lights != target?.lights || old == null || target == null) wake.trySend(Unit)
     }
-
-    /** Whether lights are taken over (read off the loop's thread; a stale answer only delays the loop by a tick). */
-    @Volatile private var activeLights = false
 
     /** The lights chosen and switched on, as the last [update] said; null: as the target says. */
     @Volatile private var chosen: Set<String>? = null
@@ -376,7 +373,6 @@ class LightSync(
         // Followed from now on until they are given back, whatever the target does meanwhile.
         follow()
         takenOnlyOn = onlyOn
-        activeLights = true
         for ((id, s) in taken) lights[id] = Light(id, wanted.getValue(id)).also { it.checkedUpdate = s.lastUpdated }
         shownSong = null
         waitingSong = null
@@ -545,7 +541,6 @@ class LightSync(
             lights.clear()
         }
         activeFor = null
-        activeLights = lights.isNotEmpty()
         // Given back: the lights are followed now only while they are to join in.
         follow()
     }
