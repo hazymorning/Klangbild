@@ -39,8 +39,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
@@ -62,7 +60,6 @@ import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Figures
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
-import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -125,7 +122,6 @@ internal class PlannedRow(
     /** The small cover as a brush for its rounded square ([bitmap] its picture), and its side (px). */
     val cover: ShaderBrush?,
     val bitmap: ImageBitmap?,
-    val coverPx: Int,
 )
 
 /**
@@ -165,6 +161,8 @@ internal class QueuePlan(
     val columnWidth: Int,
     val markWidth: Float,
     val rowCap: Float,
+    /** A row cover's side (px). */
+    val rowCoverPx: Int,
 )
 
 /**
@@ -328,8 +326,8 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
     val markWidth = coverPx + MARK_GAP * d
-    val rowTitle = styles.faces.textType(17f, 500, styles.muted, lineHeight = 23f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
-    val rowArtists = styles.label.merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
+    val rowTitle = styles.rowTitle
+    val rowArtists = styles.rowArtists
     val titleCap = cap(rowTitle)
     val descent = with(density) { rowArtists.fontSize.toPx() } * Fonts.DESCENT
     val spacing = rowSpacing(foot - statusBaseline - (y + rest), coverPx.toFloat(), d)
@@ -337,9 +335,9 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val rowsTop = songTop + y + spacing.part
     val rows = ArrayList<PlannedRow>(spacing.count)
     var top = rowsTop
+    val textWidth = colW - markWidth.roundToInt()
     for (row in queue.rows.take(spacing.count)) {
         val time = row.time?.let { measure(figures.of(it), styles.time) }
-        val textWidth = colW - markWidth.roundToInt()
         val titleWidth = textWidth - (time?.let { it.size.width + (TIME_GAP * d).roundToInt() } ?: 0)
         rows += PlannedRow(
             id = row.id,
@@ -349,7 +347,6 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
             time = time,
             cover = row.cover?.let { ShaderBrush(ImageShader(it)) },
             bitmap = row.cover,
-            coverPx = coverPx,
         )
         top += coverPx + spacing.gap
     }
@@ -378,6 +375,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         columnWidth = colW,
         markWidth = markWidth,
         rowCap = titleCap,
+        rowCoverPx = coverPx,
     )
 }
 
@@ -641,7 +639,7 @@ internal fun gliding(before: List<String>, now: List<String>): Set<String> {
  * one that comes into room comes in the last part, once its place is there.
  */
 private fun QueuePlan.shown(row: PlannedRow): Float {
-    fun fits(room: Float) = row.top + room + row.coverPx <= foot + 0.5f
+    fun fits(room: Float) = row.top + room + rowCoverPx <= foot + 0.5f
     val now = fits(room.target)
     val was = fits(room.start)
     return when {
@@ -665,7 +663,7 @@ private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha:
     val inset = ROW_COVER_CORNER * density
     val baseline = y + inset + plan.rowCap
     drawText(row.title, topLeft = Offset(x + plan.markWidth, baseline - row.title.firstBaseline), alpha = words)
-    row.artists?.let { drawText(it, topLeft = Offset(x + plan.markWidth, y + row.coverPx - inset - plan.rowDescent - it.firstBaseline), alpha = words) }
+    row.artists?.let { drawText(it, topLeft = Offset(x + plan.markWidth, y + plan.rowCoverPx - inset - plan.rowDescent - it.firstBaseline), alpha = words) }
     row.time?.let { drawText(it, topLeft = Offset(x + plan.columnWidth - it.size.width, baseline - it.firstBaseline), alpha = words) }
 }
 
@@ -674,7 +672,7 @@ private fun DrawScope.drawCover(plan: QueuePlan, row: PlannedRow, y: Float, alph
     val brush = row.cover ?: return
     if (alpha <= 0.003f) return
     translate(plan.columnLeft.roundToInt().toFloat(), y.roundToInt().toFloat()) {
-        val side = row.coverPx.toFloat()
+        val side = plan.rowCoverPx.toFloat()
         drawRoundRect(brush, size = Size(side, side), cornerRadius = CornerRadius(ROW_COVER_CORNER * density), alpha = alpha, colorFilter = filter)
     }
 }

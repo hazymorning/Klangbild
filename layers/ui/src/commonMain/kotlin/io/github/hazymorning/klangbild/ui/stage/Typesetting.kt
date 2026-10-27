@@ -75,24 +75,32 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
     }
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
-    fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).text()
+    fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).leftAligned()
 
-    val work = faces.textType(17f, 440, quiet, lineHeight = 23f, tracking = 0.005f).text()
-    val artist = faces.textType(21f, 500, muted, lineHeight = 27f).text()
-    val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).text()
-    val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).text()
+    val work = faces.textType(17f, 440, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
+    val artist = faces.textType(21f, 500, muted, lineHeight = 27f).leftAligned()
+    val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).leftAligned()
+    val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
 
     /** Status, station: small and calm, with a little air (light on black closes up). */
     val label = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
     val time = faces.titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
-    val next = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
+    val next = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).leftToRight()
 
     /** "Up next" differs from what follows by weight alone. */
     val nextLead = SpanStyle(fontWeight = FontWeight(560))
 
-    private fun TextStyle.text() = merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+    /** A row of the queue's list: its title, and its artists under it. */
+    val rowTitle = faces.textType(17f, 500, muted, lineHeight = 23f).leftToRight()
+    val rowArtists = label.leftToRight()
+
+    /** Left-aligned, in the direction of its own letters. */
+    private fun TextStyle.leftAligned() = merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+
+    /** Left to right whatever its letters: what such a line holds in a right-to-left script is isolated ([isolateRightToLeft]). */
+    private fun TextStyle.leftToRight() = merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
 
     companion object {
         const val CJK_SCALE = 0.88f
