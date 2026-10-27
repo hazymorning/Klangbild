@@ -43,29 +43,30 @@ val LocalStageTick = staticCompositionLocalOf<StageTick?> { null }
  * (no [running]: no bar shown, the colors still, or the settings over the stage) it stops.
  */
 @Composable
-fun rememberStageTick(fast: Boolean, running: Boolean = true): StageTick {
-    val frame = rememberFrameLoop(fast, running, TICK_MS)
+fun rememberStageTick(fast: Boolean, running: Boolean): StageTick {
+    val frame = rememberFrameLoop(fast, running)
     return remember(frame) { StageTick(frame) }
 }
 
 /**
  * The frames something that moves by itself is redrawn on: the stage's tick, or where there is
- * none (a part shown alone, as in a test) a loop of its own, every [fastMs] while [fast] and
- * twice a second otherwise, and none while not [running].
+ * none (a part shown alone, as in a test) a loop of its own, about 30 times a second while
+ * [fast], twice a second otherwise, none while not [running]. [fast] and [running] apply only to
+ * that loop.
  */
 @Composable
-fun rememberFrames(fast: Boolean, running: Boolean = true, fastMs: Long = TICK_MS): State<Long> =
-    LocalStageTick.current?.frame ?: rememberFrameLoop(fast, running, fastMs)
+fun rememberFrames(fast: Boolean, running: Boolean = true): State<Long> =
+    LocalStageTick.current?.frame ?: rememberFrameLoop(fast, running)
 
 /** A frame-aligned loop; nothing runs in a still. */
 @Composable
-private fun rememberFrameLoop(fast: Boolean, running: Boolean, fastMs: Long): State<Long> {
+private fun rememberFrameLoop(fast: Boolean, running: Boolean): State<Long> {
     val frame = remember { mutableLongStateOf(0L) }
     if (running && !LocalStill.current) {
         LaunchedEffect(fast) {
             while (true) {
                 withFrameNanos { frame.longValue = it }
-                delay(if (fast) fastMs else SLOW_TICK_MS)
+                delay(if (fast) TICK_MS else SLOW_TICK_MS)
             }
         }
     }

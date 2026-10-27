@@ -16,6 +16,9 @@ import io.github.hazymorning.klangbild.domain.Emoji
 object EmojiText {
     private const val NBSP = ' '
 
+    /** Emoji are set this much smaller than the text around them. */
+    private const val SCALE = 0.74f
+
     fun isEmoji(cp: Int): Boolean = Emoji.isEmoji(cp)
 
     fun containsEmoji(text: String): Boolean = Emoji.containsEmoji(text)
@@ -46,7 +49,7 @@ object EmojiText {
      * @param dimTo if set, emoji are drawn in this color's alpha (color glyphs keep their
      *              colors but become translucent on the dark wall, so they look dimmer).
      */
-    fun annotate(text: String, scale: Float = 0.74f, dimTo: Color? = null): AnnotatedString {
+    fun annotate(text: String, dimTo: Color? = null): AnnotatedString {
         if (!containsEmoji(text)) return AnnotatedString(text)
         val parts = runs(text)
         return buildAnnotatedString {
@@ -60,7 +63,7 @@ object EmojiText {
                 } else {
                     val start = length
                     append(r)
-                    addStyle(SpanStyle(fontSize = scale.em, color = dimTo ?: Color.Unspecified), start, length)
+                    addStyle(SpanStyle(fontSize = SCALE.em, color = dimTo ?: Color.Unspecified), start, length)
                 }
             }
         }

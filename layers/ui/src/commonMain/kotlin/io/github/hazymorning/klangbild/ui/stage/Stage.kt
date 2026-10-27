@@ -188,7 +188,7 @@ fun ArtworkLayer(
  * brightness limiter dim everything. On the light wall a white cover stays a little whiter
  * than the paper around it.
  */
-fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): ColorFilter {
+fun coverFilter(dim: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(dim, appearance)
     return ColorFilter.colorMatrix(
         ColorMatrix(
@@ -203,7 +203,7 @@ fun coverFilter(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Colo
 }
 
 /** The per-channel scale of [coverFilter] (red, green, blue). */
-fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Triple<Float, Float, Float> {
+fun coverScale(dim: Float, appearance: Appearance): Triple<Float, Float, Float> {
     val k = dim * if (appearance == Appearance.LIGHT) 1.06f else 1f
     val w = Lamp.WARMTH
     return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
@@ -217,9 +217,7 @@ fun coverScale(dim: Float = 1f, appearance: Appearance = Appearance.DARK): Tripl
  * [rise] animate a change line by line; [dim] darkens the text while paused; [shift] moves the
  * column to the right of its place in the grid (dp: a cover flow with cards missing). While the
  * song's words take the column ([StageModel.lyrics]), they stand there instead ([LyricsText]);
- * while the queue shows as a list ([StageModel.queue]), the song stands above it ([QueueText]),
- * its rows drawn too unless a theater draws them itself ([rows] false). [pictureDim] darkens
- * the rows' small covers as the cover is darkened.
+ * while the queue shows as a list ([StageModel.queue]), the song stands above it ([QueueText]).
  */
 @Composable
 internal fun TextLayer(
@@ -231,8 +229,6 @@ internal fun TextLayer(
     dim: () -> Float = { 1f },
     shift: () -> Float = { 0f },
     queuePlan: QueuePlan? = rememberQueuePlan(model),
-    rows: Boolean = true,
-    pictureDim: () -> Float = dim,
 ) {
     val lyrics = model.lyrics
     if (lyrics != null) {
@@ -240,7 +236,7 @@ internal fun TextLayer(
         return
     }
     if (queuePlan != null) {
-        QueueText(model, queuePlan, modifier, alpha, rise, dim, shift, rows, pictureDim)
+        QueueText(model, queuePlan, modifier, alpha, rise, dim)
         return
     }
     val layout = model.scene.layout

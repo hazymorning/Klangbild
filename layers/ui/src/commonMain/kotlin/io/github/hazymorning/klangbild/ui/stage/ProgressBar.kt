@@ -58,9 +58,9 @@ fun ProgressBar(
     playing: Boolean,
     colors: ProgressColors,
     labelStyle: TextStyle,
+    startMs: Long,
+    item: Any?,
     modifier: Modifier = Modifier,
-    startMs: Long = 0L,
-    item: Any? = null,
 ) {
     // The stage's one tick, shared with the color field.
     val frame = rememberFrames(fast = playing)

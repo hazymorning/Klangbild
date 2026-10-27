@@ -470,9 +470,8 @@ private fun isolated(text: String) = AnnotatedString(if (isRightToLeft(text)) "\
 
 /**
  * The column with the list ([TextLayer] while [StageModel.queue] is set): the song at the top
- * with its bar, the rows under it. [rows] draws the rows too (a still); a theater draws them
- * itself ([QueueRowsLayer]), so they can move through a change. [alpha] and [rise] animate a
- * change line by line as the text block's.
+ * with its bar. The rows under it are a layer of their own ([QueueRowsLayer]), so they can move
+ * through a change. [alpha] and [rise] animate a change line by line as the text block's.
  */
 @Composable
 internal fun QueueText(
@@ -482,60 +481,54 @@ internal fun QueueText(
     alpha: (TextLine) -> Float,
     rise: (TextLine) -> Float,
     dim: () -> Float,
-    shift: () -> Float,
-    rows: Boolean,
-    pictureDim: () -> Float,
 ) {
     val styles = plan.styles
     val bottomLine = model.line
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
-    Box(modifier.fillMaxSize()) {
-        Layout(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { this.alpha = dim().coerceIn(0f, 1f) },
-            content = {
-                if (plan.work != null) BasicText(plan.work, line(TextLine.WORK), style = styles.work, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-                BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
-                if (plan.version != null) BasicText(plan.version, line(TextLine.VERSION), style = plan.versionStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-                if (plan.meta != null) BasicText(plan.meta, line(TextLine.ARTIST), style = plan.metaStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-                BottomLine(
-                    model, styles,
-                    line(TextLine.BOTTOM).graphicsLayer { this.alpha = plan.room.line },
-                    label = "queue-bottom-line",
-                    barAlpha = { plan.room.bar },
-                )
-            },
-        ) { measurables, constraints ->
-            val colW = plan.columnWidth
-            val c = Constraints(maxWidth = colW)
-            val work = measurables[0].measure(c)
-            // The title within the constraints it was set in.
-            val title = measurables[1].measure(plan.titleConstraints)
-            val version = measurables[2].measure(c)
-            val meta = measurables[3].measure(c)
-            val bottom = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))
-            fun Placeable.first(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
-            fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                val x = (plan.columnLeft + shift() * density).roundToInt()
-                // Each line by its cap height, where the plan has it.
-                fun Placeable.at(top: Float?, style: TextStyle, dx: Int = 0) {
-                    if (top == null || height == 0) return
-                    place(x + dx, top.roundToInt() - (first() - capOf(style)))
-                }
-                work.at(plan.workTop, styles.work)
-                title.at(plan.titleTop, plan.titleStyle, (opticalIndent(plan.titleStyle.fontSize.value) * density).roundToInt())
-                version.at(plan.versionTop, plan.versionStyle)
-                meta.at(plan.metaTop, plan.metaStyle)
-                // The bar stays in its place while it fades; the rows make room for it as it comes.
-                if (bottom.height > 0) {
-                    if (bottomLine != null) bottom.at(plan.slotTop, styles.label) else bottom.place(x, plan.slotTop.roundToInt())
-                }
+    Layout(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer { this.alpha = dim().coerceIn(0f, 1f) },
+        content = {
+            if (plan.work != null) BasicText(plan.work, line(TextLine.WORK), style = styles.work, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
+            if (plan.version != null) BasicText(plan.version, line(TextLine.VERSION), style = plan.versionStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            if (plan.meta != null) BasicText(plan.meta, line(TextLine.ARTIST), style = plan.metaStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            BottomLine(
+                model, styles,
+                line(TextLine.BOTTOM).graphicsLayer { this.alpha = plan.room.line },
+                label = "queue-bottom-line",
+                barAlpha = { plan.room.bar },
+            )
+        },
+    ) { measurables, constraints ->
+        val colW = plan.columnWidth
+        val c = Constraints(maxWidth = colW)
+        val work = measurables[0].measure(c)
+        // The title within the constraints it was set in.
+        val title = measurables[1].measure(plan.titleConstraints)
+        val version = measurables[2].measure(c)
+        val meta = measurables[3].measure(c)
+        val bottom = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))
+        fun Placeable.first(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
+        fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            val x = plan.columnLeft.roundToInt()
+            // Each line by its cap height, where the plan has it.
+            fun Placeable.at(top: Float?, style: TextStyle, dx: Int = 0) {
+                if (top == null || height == 0) return
+                place(x + dx, top.roundToInt() - (first() - capOf(style)))
+            }
+            work.at(plan.workTop, styles.work)
+            title.at(plan.titleTop, plan.titleStyle, (opticalIndent(plan.titleStyle.fontSize.value) * density).roundToInt())
+            version.at(plan.versionTop, plan.versionStyle)
+            meta.at(plan.metaTop, plan.metaStyle)
+            // The bar stays in its place while it fades; the rows make room for it as it comes.
+            if (bottom.height > 0) {
+                if (bottomLine != null) bottom.at(plan.slotTop, styles.label) else bottom.place(x, plan.slotTop.roundToInt())
             }
         }
-        if (rows) QueueRowsLayer(plan, null, RowsMotion.Still, text = dim, picture = pictureDim, shift = shift)
     }
 }
 
@@ -574,9 +567,8 @@ internal fun QueueRowsLayer(
     cur: QueuePlan?,
     prev: QueuePlan?,
     motion: RowsMotion,
-    text: () -> Float,
-    picture: () -> Float,
-    shift: () -> Float = { 0f },
+    text: () -> Float = { 1f },
+    picture: () -> Float = { 1f },
 ) {
     if (cur == null && prev == null) return
     val density = LocalDensity.current.density
@@ -593,35 +585,33 @@ internal fun QueueRowsLayer(
             val step = (coverDim * 50f).roundToInt()
             return filters.getOrPut(step.toLong() * 2 + appearance.ordinal) { coverFilter(step / 50f, appearance) }
         }
-        translate(shift() * density, 0f) {
-            val g = motion.glide().coerceIn(0f, 1f)
-            if (prev != null) {
-                val a = motion.old()
-                val r = motion.oldRise() * density
-                val y0 = prev.room.now + r
-                for (row in prev.rows) {
-                    if (row.id in gliding) continue
-                    val shown = prev.shown(row)
-                    drawRow(prev, row, row.top + y0, a * shown, textDim, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
-                }
+        val g = motion.glide().coerceIn(0f, 1f)
+        if (prev != null) {
+            val a = motion.old()
+            val r = motion.oldRise() * density
+            val y0 = prev.room.now + r
+            for (row in prev.rows) {
+                if (row.id in gliding) continue
+                val shown = prev.shown(row)
+                drawRow(prev, row, row.top + y0, a * shown, textDim, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
             }
-            if (cur != null) {
-                val a = motion.new()
-                val r = motion.newRise() * density
-                for (row in cur.rows) {
-                    val before = gliding[row.id]
-                    if (before != null && prev != null) {
-                        // A row in both lists glides to its new place.
-                        val from = before.top + prev.room.now
-                        val y = from + (row.top + cur.room.now - from) * g
-                        val shown = prev.shown(before) + (cur.shown(row) - prev.shown(before)) * g
-                        // A small cover made meanwhile comes over the one before (or in its empty place).
-                        val newCover = before.bitmap !== row.bitmap
-                        if (newCover && before.cover != null) drawCover(prev, before, y, shown, filterFor(prev.appearance))
-                        drawRow(cur, row, y, shown, textDim, filterFor(cur.appearance), coverAlpha = shown * if (newCover) motion.cover() else 1f)
-                    } else {
-                        drawRow(cur, row, row.top + cur.room.now + r, a * cur.shown(row), textDim, filterFor(cur.appearance))
-                    }
+        }
+        if (cur != null) {
+            val a = motion.new()
+            val r = motion.newRise() * density
+            for (row in cur.rows) {
+                val before = gliding[row.id]
+                if (before != null && prev != null) {
+                    // A row in both lists glides to its new place.
+                    val from = before.top + prev.room.now
+                    val y = from + (row.top + cur.room.now - from) * g
+                    val shown = prev.shown(before) + (cur.shown(row) - prev.shown(before)) * g
+                    // A small cover made meanwhile comes over the one before (or in its empty place).
+                    val newCover = before.bitmap !== row.bitmap
+                    if (newCover && before.cover != null) drawCover(prev, before, y, shown, filterFor(prev.appearance))
+                    drawRow(cur, row, y, shown, textDim, filterFor(cur.appearance), coverAlpha = shown * if (newCover) motion.cover() else 1f)
+                } else {
+                    drawRow(cur, row, row.top + cur.room.now + r, a * cur.shown(row), textDim, filterFor(cur.appearance))
                 }
             }
         }

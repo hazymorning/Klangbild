@@ -258,9 +258,9 @@ fun StageTheater(
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
             if (prevModel != null && prevPlan != null && kind != Change.ROWS) {
-                TextLayer(prevModel, plan = prevPlan, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue, rows = false)
+                TextLayer(prevModel, plan = prevPlan, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue)
             }
-            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue, rows = false)
+            TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue)
         }
         if (curQueue != null || prevQueue != null) {
             QueueRowsLayer(curQueue, prevQueue.takeIf { prev != null }, rows, text = { dim.text }, picture = { dim.picture })
