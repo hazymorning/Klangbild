@@ -8,6 +8,9 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** The Oklab color of [rgb] (linear sRGB), with a negative channel as 0. */
+internal fun labOf(rgb: FloatArray): Lab = Oklab.fromLinear(rgb[0].coerceAtLeast(0f), rgb[1].coerceAtLeast(0f), rgb[2].coerceAtLeast(0f))
+
 /** A color as lights take it: CIE 1931 xy (brightness goes separately). */
 data class Xy(val x: Float, val y: Float) {
     fun distance(o: Xy): Float = kotlin.math.hypot(x - o.x, y - o.y)
@@ -50,8 +53,7 @@ object LightColor {
 
     /** The color for the light from [rgb] (linear sRGB, 0..1); [night] 0 by day to 1 at night. */
     fun of(rgb: FloatArray, night: Float): Xy {
-        val lab = Oklab.fromLinear(rgb[0].coerceAtLeast(0f), rgb[1].coerceAtLeast(0f), rgb[2].coerceAtLeast(0f))
-        val lch = lab.toLch()
+        val lch = labOf(rgb).toLch()
         val white = white(night)
         val pure = pureXy(lch.h) ?: return white
         // Very dark colors give their hue softly: no glowing navy from a black cover.
@@ -85,7 +87,7 @@ object LightColor {
         var bestC = -1f
         for (l in CUSP_LIGHTNESS) {
             val lab = Oklab.gamutMap(Lch(l, 0.4f, h).toLab())
-            val c = lab.toLch().c
+            val c = lab.chroma
             if (c > bestC) {
                 bestC = c
                 best = lab
@@ -95,10 +97,7 @@ object LightColor {
     }
 
     /** How bright the light may be for this color (a share of the level): dark covers give less light. */
-    fun dimFor(rgb: FloatArray): Float {
-        val l = Oklab.fromLinear(rgb[0].coerceAtLeast(0f), rgb[1].coerceAtLeast(0f), rgb[2].coerceAtLeast(0f)).l
-        return 0.5f + 0.5f * smoothstep(0.08f, 0.35f, l)
-    }
+    fun dimFor(rgb: FloatArray): Float = 0.5f + 0.5f * smoothstep(0.08f, 0.35f, labOf(rgb).l)
 
     /** xy of an Oklab color; null for black. */
     fun xyOf(lab: Lab): Xy? {

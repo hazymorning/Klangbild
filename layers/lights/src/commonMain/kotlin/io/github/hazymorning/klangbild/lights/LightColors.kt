@@ -6,28 +6,27 @@ import io.github.hazymorning.klangbild.color.Oklab
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
 import kotlin.math.floor
+import kotlin.math.sqrt
 
 /** Where a light stands: left of the screen, behind its middle (above it), right of it. */
 enum class LightSlot { LEFT, CENTER, RIGHT }
 
 /**
- * Three lights, three colors: each light shows a color of its own from the cover. These are the
- * cover's most telling colors, kept apart (a cover of one color gives that color and two
- * neighbors of it, a gray one three whites), placed as they sit in the cover: the color that
- * stands leftmost in the field goes to the left light, the rightmost to the right one, the third
- * to the middle. With motion on, the colors move on from light to light as the field moves,
- * slowly, each resting a while before it passes on.
+ * One color from the cover for each light: the field's strongest colors (weighted by area,
+ * chroma and lightness), kept apart and ordered as they sit from left to right. A cover of one
+ * color adds two neighboring hues, a gray one a warmer and a cooler white. With motion, the
+ * colors pass from light to light, resting for most of each step ([HOLD]).
  */
 class LightColors(field: FieldScene, private val moving: Boolean) {
-    /** The lights' colors (linear sRGB), the left light's first: three, or up to five when they move on. */
-    val colors: List<FloatArray> = palette(field)
+    /** Three to five colors (linear sRGB): the first three in slot order, the rest join when the colors move on. */
+    private val colors: List<FloatArray> = palette(field)
 
     /** The color (linear sRGB, 0..1) for the light at [slot] at the field's time [t] (seconds). */
     fun color(slot: LightSlot, t: Double, out: FloatArray) {
         val n = colors.size
         val i = slot.ordinal
-        if (!moving || n < 2) {
-            colors[i % n].copyInto(out)
+        if (!moving) {
+            colors[i].copyInto(out)
             return
         }
         // One step along the lights every ROTATE_S of the field's time; most of it resting.
@@ -55,24 +54,27 @@ class LightColors(field: FieldScene, private val moving: Boolean) {
         /** A cover of one color: its neighbors this far round the hue circle (degrees). */
         private const val NEIGHBOR_HUE = 32f
 
+        /** Three colors for the lights, and two more that join when the colors move on. */
+        private const val MAX_COLORS = 5
+
         /** The cover's colors for the lights: the most telling ones, kept apart, ordered as they sit from left to right. */
-        fun palette(field: FieldScene): List<FloatArray> {
-            class C(val rgb: FloatArray, val lab: Lab, val x: Float, var weight: Float)
-            val found = ArrayList<C>()
+        private fun palette(field: FieldScene): List<FloatArray> {
+            class Candidate(val rgb: FloatArray, val lab: Lab, val x: Float, var weight: Float)
+            val found = ArrayList<Candidate>()
             fun add(rgb: FloatArray, x: Float, weight: Float) {
-                val lab = Oklab.fromLinear(rgb[0].coerceAtLeast(0f), rgb[1].coerceAtLeast(0f), rgb[2].coerceAtLeast(0f))
+                val lab = labOf(rgb)
                 // Color counts for more than size: a small red patch tells more than a big gray.
-                val telling = weight * (0.25f + lab.toLch().c * 6f) * (0.4f + lab.l)
-                val same = found.firstOrNull { distance(it.lab, lab) < SAME }
+                val telling = weight * (0.25f + lab.chroma * 6f) * (0.4f + lab.l)
+                val same = found.firstOrNull { sqrt(it.lab.distanceSq(lab)) < SAME }
                 if (same != null) {
                     same.weight += telling
                     return
                 }
-                found += C(rgb.copyOf(), lab, x, telling)
+                found += Candidate(rgb.copyOf(), lab, x, telling)
             }
             for (b in field.blobs) add(b.light, b.homeX, b.alpha * b.radius * b.radius * if (b.glow) 0.6f else 1f)
             add(field.baseLight, 0.5f, 0.05f)
-            val chosen = found.sortedByDescending { it.weight }.take(5).toMutableList()
+            val chosen = found.sortedByDescending { it.weight }.take(MAX_COLORS).toMutableList()
             // Fewer than three: the strongest color's neighbors round the hue circle, or for a
             // gray cover whites a little warmer and cooler.
             if (chosen.size < 3) {
@@ -86,19 +88,12 @@ class LightColors(field: FieldScene, private val moving: Boolean) {
                 for ((n, lch) in extra.withIndex()) {
                     if (chosen.size >= 3) break
                     val lab = Oklab.gamutMap(lch.toLab())
-                    chosen += C(Oklab.toLinear(lab), lab, if (n == 0) 0f else 1f, 0f)
+                    chosen += Candidate(Oklab.toLinear(lab), lab, if (n == 0) 0f else 1f, 0f)
                 }
             }
             // The three most telling, as they sit from left to right; the others follow (they join when the colors move on).
             val three = chosen.take(3).sortedBy { it.x }
             return (three + chosen.drop(3)).map { it.rgb }
-        }
-
-        private fun distance(a: Lab, b: Lab): Float {
-            val dl = a.l - b.l
-            val da = a.a - b.a
-            val db = a.b - b.b
-            return kotlin.math.sqrt(dl * dl + da * da + db * db)
         }
     }
 }
@@ -108,10 +103,6 @@ private fun mixOklab(a: FloatArray, b: FloatArray, f: Float, out: FloatArray) {
     when {
         f <= 0f -> a.copyInto(out)
         f >= 1f -> b.copyInto(out)
-        else -> {
-            val x = Oklab.fromLinear(a[0].coerceAtLeast(0f), a[1].coerceAtLeast(0f), a[2].coerceAtLeast(0f))
-            val y = Oklab.fromLinear(b[0].coerceAtLeast(0f), b[1].coerceAtLeast(0f), b[2].coerceAtLeast(0f))
-            Oklab.toLinear(Lab(x.l + (y.l - x.l) * f, x.a + (y.a - x.a) * f, x.b + (y.b - x.b) * f)).copyInto(out)
-        }
+        else -> Oklab.toLinear(labOf(a).lerp(labOf(b), f)).copyInto(out)
     }
 }
