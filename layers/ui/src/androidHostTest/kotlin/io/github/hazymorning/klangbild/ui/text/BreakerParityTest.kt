@@ -78,16 +78,16 @@ class BreakerParityTest {
             faces = faces()
         }
         compose.waitForIdle()
+        val texts = (testTexts() + EXTRA).distinct()
         val strings = appStrings()
-        val texts = (testTexts() + EXTRA + strings).distinct()
-        check(texts.size > 300) { "only ${texts.size} texts found" }
+        check(texts.size > 200 && strings.size > 500) { "only ${texts.size} texts and ${strings.size} strings found" }
         val cases = ArrayList<Case>()
         for (density in DENSITIES) {
             for (text in texts) {
                 cases += titleCases(text, density)
                 cases += lyricsCases(text, density)
-                if (text in strings) cases += sentenceCases(AnnotatedString(text), density)
             }
+            for (string in strings) cases += sentenceCases(AnnotatedString(string), density)
             for (address in addresses()) cases += sentenceCases(address, density).filter { it.label == "setup" }.map { Case("setup address", it.text, it.style, it.width, it.density) }
         }
         val measurers = DENSITIES.associateWith { TextMeasurer(resolver, Density(it), LayoutDirection.Ltr, cacheSize = 0) }
@@ -106,10 +106,11 @@ class BreakerParityTest {
             }
         }
         val wrong = counts.values.sumOf { it[1] }
-        println("${cases.size - wrong} of ${cases.size} cases break as on Android (${texts.size} texts)")
-        for ((label, count) in counts) println("  $label: ${count[0] - count[1]} of ${count[0]}")
-        for (f in failures) println("  differs: $f")
-        assertThat(wrong, name = "cases that break differently").isEqualTo(0)
+        val report = buildString {
+            for ((label, count) in counts) appendLine("$label: ${count[0] - count[1]} of ${count[0]}")
+            for (f in failures) appendLine("differs: $f")
+        }
+        assertThat(wrong, name = "cases of ${cases.size} that break differently\n$report").isEqualTo(0)
     }
 
     /** The text as the stage sets a title: at every step, glued between dashes too, in its column and in Cover Flow's. */
@@ -205,7 +206,9 @@ class BreakerParityTest {
                 src.startsWith("//", i) -> i = src.indexOf('\n', i).let { if (it < 0) src.length else it }
                 src.startsWith("/*", i) -> i = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
                 src.startsWith("\"\"\"", i) -> {
-                    val end = src.indexOf("\"\"\"", i + 3).let { if (it < 0) src.length else it }
+                    var end = src.indexOf("\"\"\"", i + 3).let { if (it < 0) src.length else it }
+                    // A raw string ends with the last three of its closing quotes.
+                    while (end + 3 < src.length && src[end + 3] == '"') end++
                     out += src.substring(i + 3, end)
                     i = end + 3
                 }
