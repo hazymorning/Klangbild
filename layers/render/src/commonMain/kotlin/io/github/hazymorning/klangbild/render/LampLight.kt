@@ -6,11 +6,11 @@ import io.github.hazymorning.klangbild.color.Oklab
 import kotlin.math.roundToInt
 
 /**
- * Lamp light for the screens without artwork (rest, menu): a warm white bulb. The stage's own
- * light is [WallGlow].
+ * A warm lamp's light: the glows on screens without a cover (rest, menu, quick settings), and the
+ * Cover Flow light behind a gray top edge ([FlowLight]).
  */
 object LampLight {
-    /** Light for neutral surroundings: warm white, like a 2700 to 3000 K bulb. */
+    /** The lamp's color: a warm white (about 4500 K). */
     val LAMP = Lch(0.70f, 0.045f, Lamp.HUE)
 
     /** The sRGB tint for a pool of light: [color], a little warmed by the [Lamp], at [peak] luminance. */

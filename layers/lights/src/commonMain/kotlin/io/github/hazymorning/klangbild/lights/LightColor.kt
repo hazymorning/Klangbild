@@ -134,7 +134,7 @@ object LightColor {
     /** Home Assistant's brightness (1 to 255) from a share of full brightness; never below [FLOOR]. */
     fun brightness(share: Float): Int = max(FLOOR, (share * 255f).roundToInt()).coerceAtMost(255)
 
-    /** The least brightness sent while on: some lights treat the lowest levels as off. */
+    /** The lowest brightness the colors are shown at: some lights treat lower levels as off. */
     const val FLOOR = 8
 
     private const val DARK_L = 0.18f

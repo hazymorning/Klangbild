@@ -2,15 +2,15 @@ package io.github.hazymorning.klangbild.render
 
 
 /**
- * The stage's grid on a 960 × 540 dp screen. The artwork is the heaviest element and sets
- * the composition's height: 368 dp, two thirds of the screen. The text block beside it is
- * clearly shorter (at most about 60 % of the artwork's height) and centered on it, measured
- * from the first line's cap height to the last baseline. Two quiet lines frame the column
- * within the artwork's straight edge beside it, a corner radius in from its top and bottom
- * edges, measured on what is seen: the status line (time, where the music plays) hangs there
- * with its cap height, and what comes next ends there with its descenders. So the column never
- * reaches past the artwork, whose own edges recede at its round corners (and on a dark wall
- * where a dark cover meets it). Every line in the column starts on one left edge.
+ * The stage's grid on a 960 × 540 dp screen. The artwork is the heaviest element and sets the
+ * composition's height: 368 dp, two thirds of the screen. The text block beside it is clearly
+ * shorter (at most 62 % of the artwork's height, `BLOCK_SHARE` in the UI) and centered on it,
+ * measured from the first line's cap height to the last baseline. Two quiet lines frame the
+ * column within the artwork's straight edge beside it, a corner radius in from its top and
+ * bottom edges, measured on what is seen: the status line (time, where the music plays) hangs
+ * there with its cap height, and what comes next ends there with its descenders. So the column
+ * never reaches past the artwork, whose own edges recede at its round corners (and on a dark
+ * wall where a dark cover meets it). Every line in the column starts on one left edge.
  *
  * The group stands exactly in the middle of the screen: as much room above the artwork as
  * below it, as much left of it as right of the column (the progress bar's end).
@@ -38,8 +38,10 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
     private val sy = screen.heightDp / 540f
     private val grid = if (flow) FLOW else SINGLE
 
-    /** Left margin before the artwork, and after the column on the right. */
+    /** Space left of the artwork. */
     val margin = grid.margin * sx
+
+    /** Space right of the column. */
     val rightMargin = grid.rightMargin * sx
 
     /** Side of the artwork's square. */

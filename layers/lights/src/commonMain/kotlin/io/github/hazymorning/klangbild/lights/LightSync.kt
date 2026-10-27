@@ -63,11 +63,11 @@ class LightSync(
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val context: CoroutineContext = Dispatchers.Default.limitedParallelism(1),
 ) {
-    /** What the lights are to show now, set on every tick; null while nothing is on stage. */
+    /** What the lights show now; null while nothing is on stage. */
     data class Target(
         val lights: RoomLights,
         val level: RoomLightBrightness,
-        /** The colors for each light; a new one is faded to. */
+        /** The colors for each light. Compared by identity: a new instance fades the lights to it. */
         val colors: LightColors,
         /** The song: a new one changes the lights once it has played a moment. */
         val song: String,
