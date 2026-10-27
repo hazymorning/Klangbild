@@ -151,7 +151,7 @@ class HaConnectionTest {
                 }
                 "subscribe_events" -> ok()
                 "unsubscribe_events" -> ok()
-                "get_config" -> ok("""{"latitude":52.52,"longitude":13.4,"time_zone":"Europe/Berlin"}""")
+                "get_config" -> ok("""{"unit_system":{"length":"km","temperature":"°C"},"time_zone":"Europe/Berlin"}""")
                 "config/entity_registry/list_for_display" -> ok(
                     """{"entity_categories":{},"entities":[{"ei":"button.wz_favorite","pl":"music_assistant","di":"d1","tk":"favorite_now_playing"},{"ei":"light.x"}]}""",
                 )
@@ -213,8 +213,8 @@ class HaConnectionTest {
         assertThat(call["target"].toString()).isEqualTo("""{"entity_id":"media_player.wz"}""")
         assertThat(conn.callServiceForContext("media_player", "media_pause", "media_player.wz")).isEqualTo("c")
 
-        // Where Home Assistant stands and its entity registry, asked once on the side.
-        assertThat(withTimeout(5_000) { conn.config.first { it != null } }!!["time_zone"]).isEqualTo(JsonPrimitive("Europe/Berlin"))
+        // Its unit for temperatures and its entity registry, asked once on the side.
+        assertThat(withTimeout(5_000) { conn.temperatureUnit.first { it != null } }).isEqualTo("°C")
         val registry = withTimeout(5_000) { conn.registry.first { it != null } }!!
         assertThat(registry).containsExactlyInAnyOrder(RegistryEntry("button.wz_favorite", "music_assistant", "d1", "favorite_now_playing"))
         conn.stop()

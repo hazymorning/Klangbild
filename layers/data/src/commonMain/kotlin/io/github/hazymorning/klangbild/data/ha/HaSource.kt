@@ -174,7 +174,7 @@ class HaSource(
     override fun start() {
         connection.start(auth, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
         collector = scope.launch {
-            merge(connection.status, connection.entities, connection.registry, connection.config, connection.missing).collect { publish() }
+            merge(connection.status, connection.entities, connection.registry, connection.temperatureUnit, connection.missing).collect { publish() }
         }
         partyPoller = ma?.let { client -> scope.launch { pollParty(client) } }
         queue.start()
@@ -342,7 +342,7 @@ class HaSource(
             favorites = player?.isMusicAssistant == true && (favoriteButton() != null || (ma != null && player.activeQueue != null)),
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
-            temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
+            temperatureUnit = connection.temperatureUnit.value,
             lyrics = enriched?.track?.let { queue.lyricsOf(it, entity, currentWindow) },
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
             speaker = speakerShown,
@@ -403,10 +403,6 @@ class HaSource(
         favorites = shown.favorites,
         lyrics = shown.lyrics,
     )
-
-    /** Home Assistant's unit for temperatures ("°C", "°F") from its configuration. */
-    private fun temperatureUnitOf(cfg: JsonObject?): String? =
-        ((cfg?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
 
     /**
      * Who plays along: a sync group lists its members in `group_members` (on the leader and

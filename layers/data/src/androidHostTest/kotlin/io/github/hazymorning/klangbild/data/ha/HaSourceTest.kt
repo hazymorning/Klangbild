@@ -164,7 +164,7 @@ class HaSourceTest {
                 } else {
                     ok("""{"entity_categories":{},"entities":$registry}""")
                 }
-                "get_config" -> ok("""{"latitude":52.52,"longitude":13.4,"unit_system":{"temperature":"°C"}}""")
+                "get_config" -> ok("""{"unit_system":{"temperature":"°C"}}""")
                 "unsubscribe_events" -> ok()
                 "call_service" -> {
                     calls += msg

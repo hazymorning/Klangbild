@@ -119,10 +119,10 @@ class HaConnection(
     private val wakeUp = Channel<Unit>(Channel.CONFLATED)
     private val extraIds = MutableStateFlow<Set<String>>(emptySet())
 
-    private val _config = MutableStateFlow<JsonObject?>(null)
+    private val _temperatureUnit = MutableStateFlow<String?>(null)
 
-    /** Home Assistant's own configuration (`get_config`: its location, time zone and so on), once a session has asked for it. */
-    val config: StateFlow<JsonObject?> = _config.asStateFlow()
+    /** Home Assistant's unit for temperatures ("°C", "°F") from its configuration, once a session has asked for it. */
+    val temperatureUnit: StateFlow<String?> = _temperatureUnit.asStateFlow()
 
     private val _registry = MutableStateFlow<List<RegistryEntry>?>(null)
 
@@ -405,7 +405,9 @@ class HaConnection(
             // Asked once per session without holding up the subscription: Home Assistant's
             // configuration (for its temperature unit) and the entity registry's display list.
             sessionScope.launch {
-                (optional(s) { id -> buildJsonObject { put("id", id); put("type", "get_config") } } as? JsonObject)?.let { _config.value = it }
+                val config = optional(s) { id -> buildJsonObject { put("id", id); put("type", "get_config") } } as? JsonObject
+                val unit = ((config?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content
+                unit?.takeIf { it.isNotBlank() }?.let { _temperatureUnit.value = it }
             }
             sessionScope.launch {
                 val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
