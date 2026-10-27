@@ -83,8 +83,14 @@ fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, size: Any,
  * The QR code of [url] as a printed card [sizePx] square, like the setup's: dark modules on whole
  * pixels on ivory (a whiter paper on the light wall). Null for a link no QR code can hold.
  */
-fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? =
-    runCatching { QrCode.matrix(url) }.getOrNull()?.let { SetupArt.card(it, sizePx, wall) }
+fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
+    val matrix = try {
+        QrCode.matrix(url)
+    } catch (_: IllegalArgumentException) {
+        return null
+    }
+    return SetupArt.card(matrix, sizePx, wall)
+}
 
 /**
  * The party's code ([card]) where the cover of [scene] stands, drawn 1:1 on whole pixels with the
