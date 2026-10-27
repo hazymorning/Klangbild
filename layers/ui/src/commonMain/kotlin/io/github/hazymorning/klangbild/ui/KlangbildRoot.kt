@@ -162,7 +162,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         }
         // The quick settings rise from the bottom edge over whatever shows; the settings menu lies
         // over everything. Both come and go on their own. While the queue's way just chosen is
-        // being made, their Queue value shimmers.
+        // being made, their Queue value breathes.
         val preparing = ui.queueComing != null
         QuickBarOverlay(ui.quick, ui.appearance, preparing = preparing)
         MenuOverlay(ui.menu, ui.appearance, preparing = preparing)

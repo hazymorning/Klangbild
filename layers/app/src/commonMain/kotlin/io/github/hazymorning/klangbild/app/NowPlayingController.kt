@@ -153,7 +153,7 @@ data class UiState(
     /**
      * How the queue should show, chosen but not on screen yet, while its stage is being made
      * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
-     * value shimmer meanwhile.
+     * value breathe meanwhile.
      */
     val queueComing: QueueDisplay? = null,
     /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
@@ -812,7 +812,7 @@ class NowPlayingController(
         // with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
-        // The queue's way just chosen shimmers in the quick settings and the menu until this
+        // The queue's way just chosen breathes in the quick settings and the menu until this
         // state shows it.
         _ui.value = published.copy(queueComing = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer

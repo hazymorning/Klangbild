@@ -422,7 +422,7 @@ class QuickControlTest {
         quick.change()
         assertThat(queueValue()).isEqualTo("Cover Flow")
         assertThat(queue).isEqualTo(QueueDisplay.OFF)
-        // Waiting from the press on (the Queue value shimmers), and until the setting has it.
+        // Waiting from the press on (the Queue value breathes), and until the setting has it.
         assertThat(quick.pending).isEqualTo(QueueDisplay.FLOW)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(queue).isEqualTo(QueueDisplay.FLOW)

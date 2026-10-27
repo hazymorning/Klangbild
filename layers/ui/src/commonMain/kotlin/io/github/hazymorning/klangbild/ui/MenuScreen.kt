@@ -115,7 +115,7 @@ object MenuGrid {
 /**
  * The settings menu over whatever is on screen. It fades in over a dark wall; the stage
  * behind it keeps running and is there again the moment the menu closes. While the queue's way
- * just chosen is [preparing], the Queue line's value shimmers ([Shimmer]).
+ * just chosen is [preparing], the Queue line's value breathes ([rememberBreath]).
  */
 @Composable
 fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
@@ -312,11 +312,11 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val labelColor by animateColorAsState(label, tween(260, easing = Motion.Dimmer), label = "label")
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
-    // The queue's way just chosen is on its way: the chosen Queue line's value waits in the quiet
-    // ink of a name at rest (its own name stands brighter than its value) and shimmers until the
-    // screen shows it. A line at rest has no quieter ink left to wait in that still reads well, so
-    // it stays as it is, and a pass running as the cursor leaves ends in the line's own ink.
-    val sweep = if (row.entry == MenuEntry.QUEUE) rememberSweep(preparing && focused) else null
+    // The queue's way just chosen is on its way: the chosen Queue line's value breathes into the
+    // ink of a value at rest until the screen shows it. A line at rest has no quieter ink left
+    // that still reads well, so it stays as it is, and a breath under way as the cursor leaves
+    // glides back.
+    val breath = if (row.entry == MenuEntry.QUEUE) rememberBreath(preparing && focused) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
@@ -340,11 +340,7 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
             animationSpec = tween(260, easing = Motion.Dimmer),
             label = "menu-value",
         ) { value ->
-            if (sweep != null) {
-                ShimmerText(value, valueStyle, sweep, ink = { valueColor }, waiting = if (focused) colors.label else colors.value)
-            } else {
-                BasicText(value, style = valueStyle, color = { valueColor }, maxLines = 1)
-            }
+            BasicText(value, style = valueStyle, color = { breathed(valueColor, colors.value, breath?.value ?: 0f) }, maxLines = 1)
         }
     }
 }

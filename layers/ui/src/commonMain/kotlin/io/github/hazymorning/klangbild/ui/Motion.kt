@@ -106,6 +106,12 @@ object Motion {
     /** A sine in-out: the gentlest way for a picture to come up. */
     val Sine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
 
+    /** The way back up a breath: [Dimmer] played backwards, so the breath rises as it sank. */
+    val Exhale = Easing { 1f - Dimmer.transform(1f - it) }
+
+    /** One way of a breath, down or up (ms): the light while the speaker buffers, a value on its way. */
+    const val BREATH_MS = 1_600
+
     /**
      * A glide that comes while one runs ([animateGlide]) follows a spring this stiff: at the
      * remote's own repeat a held key moves a list on evenly, two or three lines behind the key,
