@@ -1,16 +1,13 @@
 package io.github.hazymorning.klangbild.ui.stage
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.remember
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
-import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.rememberBreath
 
 /**
  * How a pause, or a lost link, dims the stage (a single cover or Cover Flow): the wall's
@@ -24,7 +21,7 @@ internal class StageDim(
     private val pictureLevel: State<Float>,
     private val textLevel: State<Float>,
 ) {
-    val light: Float get() = pause.value * breath.value
+    val light: Float get() = pause.value * (1f - (1f - BREATH_LOW) * breath.value)
     val picture: Float get() = pictureLevel.value
     val text: Float get() = textLevel.value
 }
@@ -52,23 +49,9 @@ internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance:
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "pause-text",
     )
-    // One value for the breath, so it always carries on from where the light stands: buffering
-    // again while it glides back starts there.
-    val breath = remember { Animatable(1f) }
-    val buffering = status == PlayerStatus.BUFFERING
-    if (!LocalStill.current) {
-        LaunchedEffect(buffering) {
-            if (buffering) {
-                while (true) {
-                    breath.animateTo(BREATH_LOW, tween(Motion.BREATH_MS, easing = Motion.Dimmer))
-                    breath.animateTo(1f, tween(Motion.BREATH_MS, easing = Motion.Exhale))
-                }
-            } else if (breath.value < 1f) {
-                breath.animateTo(1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer))
-            }
-        }
-    }
-    return StageDim(pause, breath.asState(), picture, text)
+    // The breath's depth: 0 at full light, 1 at [BREATH_LOW].
+    val breath = rememberBreath(status == PlayerStatus.BUFFERING)
+    return StageDim(pause, breath, picture, text)
 }
 
 /** The light's lowest point while the speaker buffers. */
