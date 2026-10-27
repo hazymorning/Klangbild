@@ -170,17 +170,11 @@ fun StageTheater(
             else -> text.level(line)
         }
     }
-    val textRise: (TextLine) -> Float = { line ->
-        when {
-            began != seen -> 10f * (1f - text.before(line))
-            text.rising -> 10f * (1f - text.level(line))
-            else -> 0f
-        }
-    }
+    val textRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - if (began != seen) text.before(line) else text.level(line)) }
     val stood: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
     val textOut: (TextLine) -> Float = { line -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) }
-    val textOutRise: (TextLine) -> Float = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) }
+    val textOutRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - stood(line)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) }
     // The queue's rows are the queue, not the song: they come the whole way also when another song
     // hurries a change (the skipped song's own lines stay down), so every change finds them whole
     // and moves them on from there. They glide when the list goes on from the one before (a new
@@ -192,9 +186,9 @@ fun StageTheater(
             else -> text.unheld(TextLine.NEXT)
         }
     }
-    val rowsInRise: () -> Float = { if (began != seen) 0f else 10f * (1f - text.unheld(TextLine.NEXT)) }
+    val rowsInRise: () -> Float = { if (began != seen) 0f else Motion.RISE_DP * (1f - text.unheld(TextLine.NEXT)) }
     val rowsOut: () -> Float = { if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS) }
-    val rowsOutRise: () -> Float = { if (kind.isSoft) 0f else -6f * p(0, Motion.TEXT_OUT_MS) }
+    val rowsOutRise: () -> Float = { if (kind.isSoft) 0f else -Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS) }
     // The queue changed beneath the song (with a new look of it too): only the rows move.
     val reordered = kind == Change.ROWS ||
         (kind == Change.SOFT && prevQueue != null && curQueue != null && prevQueue.rows.map { it.id } != curQueue.rows.map { it.id })
@@ -296,7 +290,7 @@ private fun durationOf(change: Change) = when (change) {
     Change.TEXT, Change.COLUMN -> Motion.TEXT_CHANGE_MS
     Change.SOFT -> Motion.SOFT_SWAP_MS
     Change.WALL -> Motion.WALL_CHANGE_MS
-    Change.ROWS -> Motion.FLOW_SIDES_MS
+    Change.ROWS -> Motion.QUEUE_CHANGE_MS
 }
 
 /** The queue's rows glide to their new places in this long (ms), once the text before has left. */

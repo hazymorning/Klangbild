@@ -214,13 +214,7 @@ fun FlowTheater(
             else -> text.level(row)
         }
     }
-    val textRise: (TextLine) -> Float = { row ->
-        when {
-            began != seen -> 10f * (1f - text.before(row))
-            text.rising -> 10f * (1f - text.level(row))
-            else -> 0f
-        }
-    }
+    val textRise: (TextLine) -> Float = { row -> Motion.RISE_DP * (1f - if (began != seen) text.before(row) else text.level(row)) }
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
     val stood: (TextLine) -> Float = { row -> if (softText) text.level(row) else text.leaving(row) }
 
@@ -262,7 +256,7 @@ fun FlowTheater(
                 TextLayer(
                     prevModel,
                     alpha = { row -> stood(row) * (if (softText) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
-                    rise = { row -> 10f * (1f - stood(row)) - (if (softText) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) },
+                    rise = { row -> Motion.RISE_DP * (1f - stood(row)) - (if (softText) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) },
                     dim = { dim.text },
                     shift = oldColumn,
                 )
@@ -388,7 +382,7 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
     val turnMs = when (kind) {
         FlowChange.MOVE -> Motion.FLOW_TURN_MS
         FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_CHANGE_MS
-        FlowChange.SIDES -> Motion.FLOW_SIDES_MS
+        FlowChange.SIDES -> Motion.QUEUE_CHANGE_MS
         FlowChange.SOFT -> Motion.SOFT_SWAP_MS
         FlowChange.WALL -> Motion.WALL_CHANGE_MS
     }

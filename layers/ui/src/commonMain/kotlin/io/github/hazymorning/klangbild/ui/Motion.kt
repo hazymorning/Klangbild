@@ -144,7 +144,7 @@ object Motion {
     const val TEXT_IN_MS = 260
     const val TEXT_LINE_MS = 380
 
-    /** New track, same picture (next song of the album): only the text changes, sooner. */
+    /** Only the text changes: the next track of the same cover, or lyrics coming or going. */
     const val TEXT_CHANGE_MS = 950
     const val TEXT_IN_SAME_PICTURE_MS = 250
 
@@ -159,11 +159,17 @@ object Motion {
     const val FLOW_TEXT_IN_MS = 780
     const val FLOW_CLEAR_MS = 300
 
+    /** New lines rise into place from this far below it (dp). */
+    const val RISE_DP = 10f
+
+    /** Lines that leave rise this far as they fade (dp). */
+    const val LEAVE_RISE_DP = 6f
+
     /** A change that something newer is waiting behind finishes within this (ms). */
     const val HURRY_MS = 350
 
-    /** Cards beside the middle come or go (the queue changed). */
-    const val FLOW_SIDES_MS = 900
+    /** The queue changed: cards beside the middle, or the list's rows, come or go. */
+    const val QUEUE_CHANGE_MS = 900
 
     /** Same track, a better cover. */
     const val SOFT_SWAP_MS = 900
