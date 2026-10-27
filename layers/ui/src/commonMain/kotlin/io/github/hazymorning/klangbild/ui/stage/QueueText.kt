@@ -444,12 +444,12 @@ private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextS
         if (end <= 0) return text
         var head = plain.substring(0, end)
         if (head.count { it == '(' } > head.count { it == ')' }) head = head.substring(0, head.lastIndexOf('('))
-        // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
-        head = head.trimEnd(' ', NBSP, '–', '·', ',', ':', ';')
+        head = trimBeforeEllipsis(head)
         if (head.isEmpty()) continue
+        // The ellipsis stays with the last word, as in [fitWords].
         val cut = buildAnnotatedString {
             append(text.subSequence(0, head.length))
-            append(" …")
+            append("$NBSP…")
         }
         if (fits(cut)) return cut
     }

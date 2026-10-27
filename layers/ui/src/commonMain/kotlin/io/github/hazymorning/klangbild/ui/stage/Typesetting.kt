@@ -487,8 +487,10 @@ internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, wi
     while (true) {
         end = text.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
         if (end <= 0) return text
-        // Never end on a dash or a separator: they are trimmed before the ellipsis is added.
-        val head = text.substring(0, end).trimEnd(' ', NBSP, '–', '·', ',', ':', ';')
+        val head = trimBeforeEllipsis(text.substring(0, end))
         if (head.isNotEmpty() && fits("$head$NBSP…")) return "$head$NBSP…"
     }
 }
+
+/** [head] without the spaces, dashes and separators it ends on, so a cut never ends on them. */
+internal fun trimBeforeEllipsis(head: String): String = head.trimEnd(' ', NBSP, '–', '·', ',', ':', ';')
