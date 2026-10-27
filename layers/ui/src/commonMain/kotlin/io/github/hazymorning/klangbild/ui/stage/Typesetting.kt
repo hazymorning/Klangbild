@@ -350,7 +350,7 @@ internal fun pickTitleSize(
     ladder: List<TitleStep> = titleLadder,
 ): TitleChoice? {
     val base = glueShortWords(glueParentheses(text))
-    val glued = glueBetweenDashes(base)
+    val dashBreaks = glueBetweenDashes(base)
     fun height(r: TextLayoutResult): Float =
         r.layoutInput.style.fontSize.value * Fonts.CAP_HEIGHT * density + (r.getLineBaseline(r.lineCount - 1) - r.getLineBaseline(0))
     // [t] at [step] if it takes no more lines than the step has, breaks only where [allowed]
@@ -362,11 +362,11 @@ internal fun pickTitleSize(
         val r = balancer.layout(t, style, maxW, step.lines, TextOverflow.Ellipsis)
         return if (height(r) <= budget(step)) TitleChoice(step, r) else null
     }
-    fun gluedFits(step: TitleStep) = glued?.let { g -> fit(g, step) { breaksOnlyAfterDashes(g.text, it) } }
+    fun fitAtDashes(step: TitleStep) = dashBreaks?.let { d -> fit(d, step) { breaksOnlyAfterDashes(d.text, it) } }
     for ((i, step) in ladder.withIndex()) {
-        gluedFits(step)?.let { return it }
+        fitAtDashes(step)?.let { return it }
         val free = fit(base, step) { !breaksInsideWord(base.text, it) } ?: continue
-        return ladder.getOrNull(i + 1)?.let(::gluedFits) ?: free
+        return ladder.getOrNull(i + 1)?.let(::fitAtDashes) ?: free
     }
     return null
 }
@@ -395,7 +395,7 @@ internal fun glueShortWords(text: AnnotatedString): AnnotatedString {
 /** The no-break space, which glues words for the line breaker. */
 internal const val NBSP = '\u00A0'
 
-/** Short parentheses never break inside: "(alla marcia)" stays one piece. */
+/** Short parentheses ([SHORT_PARENTHESES]) never break inside: "(alla marcia)" stays one piece. */
 internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
     val s = text.text
     if (!s.contains('(')) return text
@@ -405,7 +405,7 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
         when (chars[i]) {
             '(' -> open = i
             ')' -> {
-                if (open >= 0 && i - open <= 28) for (j in open until i) if (chars[j] == ' ') chars[j] = NBSP
+                if (open >= 0 && i - open <= SHORT_PARENTHESES) for (j in open until i) if (chars[j] == ' ') chars[j] = NBSP
                 open = -1
             }
         }
@@ -413,7 +413,10 @@ internal fun glueParentheses(text: AnnotatedString): AnnotatedString {
     return AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)
 }
 
-/** The title with every space that is not right after a dash made non-breaking; null without dashes. */
+/** Parentheses at most this long (characters) stay one piece: a tempo or a nickname, not a sentence. */
+private const val SHORT_PARENTHESES = 28
+
+/** The title with every space that is not right after a dash made non-breaking, or null without dashes. */
 internal fun glueBetweenDashes(text: AnnotatedString): AnnotatedString? {
     val s = text.text
     if (!s.contains("\u00A0– ")) return null
@@ -445,7 +448,7 @@ private fun breaksInsideWord(text: String, ends: IntArray): Boolean {
     return false
 }
 
-/** True if most letters of [text] are Chinese, Japanese or Korean (no capitals, full-width). */
+/** True if at least half the letters of [text] are Chinese, Japanese or Korean. */
 fun isMostlyCjk(text: String): Boolean {
     var cjk = 0
     var letters = 0
@@ -461,7 +464,7 @@ fun isMostlyCjk(text: String): Boolean {
 /** "Up next" ([lead]) in a heavier weight, 12 dp, then what comes next (isolated if right-to-left). */
 internal fun footerText(lead: String, text: String, styles: StageStyles): AnnotatedString = buildAnnotatedString {
     withStyle(styles.footerLead) { append(lead) }
-    // A no-break space widened to about 12 dp.
+    // A no-break space widened by 0.55 em: about 12 dp at the footer's 15 sp.
     withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(NBSP) }
     append(isolateRightToLeft(text))
 }
