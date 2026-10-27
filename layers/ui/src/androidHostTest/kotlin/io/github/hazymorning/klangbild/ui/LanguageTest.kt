@@ -10,6 +10,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.contains
@@ -315,18 +316,18 @@ class LanguageTest {
 
     private lateinit var measurer: TextMeasurer
     private lateinit var faces: Faces
-    private var density = 1f
+    private var density = Density(1f)
 
     private fun measuring() {
         compose.setContent {
             measurer = rememberTextMeasurer()
             faces = faces()
-            density = LocalDensity.current.density
+            density = LocalDensity.current
         }
         compose.waitForIdle()
     }
 
-    private fun width(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width / density
+    private fun width(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width / density.density
 
     @Test
     fun everyMenuLineFitsTheColumnInBothLanguages() {
