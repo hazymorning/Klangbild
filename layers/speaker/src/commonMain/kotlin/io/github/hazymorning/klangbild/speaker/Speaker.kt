@@ -271,12 +271,11 @@ class Speaker(
                     while (running && !streaming) streamCame.receive()
                     continue
                 }
-                if (!playback.open()) {
-                    // No output (none on this device, or it is busy): tried again in a moment.
+                if (!playback.open() || !playback.step()) {
+                    // No output (none on this device, or it is busy), or one that failed: another in a moment.
+                    playback.close()
                     delay(OPEN_RETRY_MS)
-                    continue
                 }
-                if (!playback.step()) playback.close()
             }
         } finally {
             playback.close()

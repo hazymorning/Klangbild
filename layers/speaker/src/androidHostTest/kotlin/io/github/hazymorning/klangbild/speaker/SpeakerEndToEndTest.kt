@@ -41,6 +41,27 @@ class SpeakerEndToEndTest {
         override fun isPlain(stored: String) = true
     }
 
+    /** An output that opens but fails every write, as one whose audio server has died. */
+    private class FailingSink : AudioSink {
+        override val rate = 48_000
+        override val bufferFrames = rate / 5
+
+        /** How often it was opened. */
+        @Volatile var opens = 0
+            private set
+
+        override fun open(): Boolean {
+            opens++
+            return true
+        }
+
+        override fun write(pcm: ShortArray, frames: Int) = -1
+        override fun timestamp(out: SinkTimestamp) = false
+        override fun underruns() = 0
+        override fun flush() = Unit
+        override fun close() = Unit
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val store = SpeakerStore(speakerValues(ApplicationProvider.getApplicationContext<Context>()), PlainBox)
 
@@ -91,6 +112,23 @@ class SpeakerEndToEndTest {
                 assertThat(sink.musicFrames).isGreaterThan(48_000 * 3)
                 // The volume Music Assistant set is kept for the next start.
                 assertThat(store.load().volume).isEqualTo(40)
+            } finally {
+                speaker.stop("shutdown")
+            }
+        }
+    }
+
+    @Test
+    fun `an output that fails is opened again only after a pause`(): Unit = runBlocking {
+        SendspinServer("--play-seconds", "1", "--end", "--linger", "1").use { server ->
+            val sink = FailingSink()
+            val speaker = speaker(server, sink)
+            try {
+                speaker.start()
+                server.await("STREAM_STARTED")
+                server.await("STREAM_ENDED")
+                // About once a second while the stream ran.
+                assertThat(sink.opens).isBetween(1, 20)
             } finally {
                 speaker.stop("shutdown")
             }
