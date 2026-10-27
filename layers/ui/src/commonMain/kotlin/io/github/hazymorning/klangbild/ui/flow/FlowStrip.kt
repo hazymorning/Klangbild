@@ -65,34 +65,35 @@ internal class CardMotion(
 }
 
 /**
- * How the strip looked before it took a new look (a better cover, a song of the same picture
- * whose cover differs, the other wall): the wall its cards stood on, whether they dissolved
- * before the screen's edges, and the sign in the middle card's place.
+ * How the strip looked before it took a new look (a better cover, the next track on the same card
+ * with another cover, the other background): the background its cards stood on ([appearance],
+ * [wall]), whether they dissolved before the screen's edges, and the sign in the middle card's
+ * place.
  */
 @Immutable
 internal class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, val sign: FlowCard?)
 
 /**
- * The cards of the cover flow, drawn in one perspective. Every frame, each card's position
- * is interpolated, its four corners computed ([FlowGeometry]) and its texture drawn as one
- * quad through a perspective matrix, farthest first (cards never cut through each other,
- * see [FlowGeometry]). Nothing is laid out or allocated per frame; color filters are cached
- * by step.
+ * The cards of Cover Flow, drawn in one perspective. Every frame, each card's position is
+ * interpolated, its four corners computed ([FlowGeometry]) and its texture drawn as one quad
+ * through a perspective matrix, farthest first (cards never cut through each other, see
+ * [FlowGeometry]). Nothing is laid out per frame, and the color filters and the edge bands are
+ * made only when they change.
  *
- * A card that turns between its full and its half-size texture, or takes a new look, is the
- * mix of its textures laid over the wall as one ([mix]): its half-transparent mirror image keeps
- * its strength all the way. Each texture is lit as on the wall it was made for, so a card of the
- * look before keeps its light while it gives way.
+ * A card that turns between its full and its half-size texture, or takes a new look, is the mix
+ * of its textures laid over the background as one ([mix]), so its half-transparent reflection
+ * keeps its strength all the way. Each texture is lit as on the background it was made for, so a
+ * card of the look before keeps its light while it gives way.
  *
- * @param time how far the change has come (0..1, linear); each card eases its own stretch.
- * @param coverLevel brightness of the cards (a pause).
- * @param edges the cards dissolve into the plain wall before the screen's edges. On the
- *   cover's colors, which reach the edges, they pass the edges.
- * @param shift how far the cards stand to the right of their place in the grid (dp), so that
- *   a strip with cards missing stands in the middle ([FlowGeometry.balance]).
+ * @param time how far the change has come (0..1, linear). Each card eases its own stretch.
+ * @param coverLevel the cards' brightness level (a pause).
+ * @param edges the cards dissolve into the plain background before the screen's edges. On the
+ *   cover colors background, which reaches the edges, they pass the edges.
+ * @param shift how far the cards stand from their place in the grid (dp), so that a strip with
+ *   cards missing stands in the middle ([FlowGeometry.balance]).
  * @param sign a card that stands in the middle card's place (a party's code), facing the room
- *   whatever the strip does; [signAlpha] is how far it has come up. The cards passing the middle
- *   fade beneath it, their mirror images with them.
+ *   whatever the strip does, with [signAlpha] how far it has come up. The cards passing the
+ *   middle fade beneath it, their reflections with them.
  * @param before how the strip looked before a new look, and [look] how far the new one has come
  *   (0..1): each card goes from its texture before ([CardMotion.was]) to its new one.
  */
@@ -142,7 +143,7 @@ internal fun FlowStrip(
             val p = if (c.rolls) geometry.rolled(c.from, c.to, s) else c.from + (c.to - c.from) * s
             pos[i] = p
             val fade = c.fromAlpha + (c.toAlpha - c.fromAlpha) * Motion.Sine.transform(c.fade.of(t))
-            // Beneath a sign, the cards passing the middle fade, their mirror images with them.
+            // Beneath a sign, the cards passing the middle fade, their reflections with them.
             alphas[i] = fade * geometry.presence(p) * (1f - signShown * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
             order[i] = i
         }
@@ -192,18 +193,19 @@ internal fun FlowStrip(
                 tools.place(geometry, 0f, dx, density)
                 val lit = geometry.light(0f) * level
                 tools.clear()
-                // Until the new wall's sign is made, the one before stands in: lit as before, so it
-                // never jumps.
+                // Until the new background's sign is made, the one before stands in, lit as before, so
+                // it never jumps.
                 val signLights = if (sign != null && sign.appearance != appearance && lightsBefore != null) lightsBefore else lights
                 if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else lookProgress, signLights.filter(lit))
                 if (signBefore != null && lightsBefore != null) tools.add(signBefore, false, if (sign == null) 1f else 1f - lookProgress, lightsBefore.filter(lit))
                 mix(canvas, tools, signShown, snap = true)
             }
         }
-        // The cards dissolve into the wall before the screen's edges (on an OLED the band stays
-        // black; on paper the fade is short, so a card leaving does not look bleached). The fade
-        // ends before the middle card's place, which a first song brings near the left edge.
-        // During a new look the band goes over from the wall before to the new one, as the wall does.
+        // The cards dissolve into the background before the screen's edges (on an OLED the band
+        // stays black, and on the light background the fade is short, so a card leaving does not
+        // look bleached). The fade ends before the middle card's place, which a first track brings
+        // near the left edge. During a new look the band goes over from the background before to
+        // the new one, as the background does.
         val edge = (if (edges) lookProgress else 0f) + (if (old?.edges == true) 1f - lookProgress else 0f)
         if (edge <= 0f) return@Canvas
         val ink = (if (old == null) wall else over(old.wall, wall, lookProgress)).let { if (edge < 1f) it.copy(alpha = it.alpha * edge) else it }
@@ -247,10 +249,10 @@ private class EdgeBands {
     }
 }
 
-/** The stretch over which the cards dissolve before the band at the screen's edges, on [appearance]'s wall (dp). */
+/** The stretch over which the cards dissolve before the band at the screen's edges, on the [appearance] background (dp). */
 private fun edgeFade(appearance: Appearance) = if (appearance == Appearance.LIGHT) LIGHT_EDGE_FADE_DP else DARK_EDGE_FADE_DP
 
-/** [to] laid over [from] at [alpha], as the screen blends (in sRGB), so the band matches the wall cross-fading beneath it. */
+/** [to] laid over [from] at [alpha], as the screen blends (in sRGB), so the band matches the background crossfading beneath it. */
 private fun over(from: Color, to: Color, alpha: Float) = Color(
     red = from.red + (to.red - from.red) * alpha,
     green = from.green + (to.green - from.green) * alpha,
@@ -259,10 +261,10 @@ private fun over(from: Color, to: Color, alpha: Float) = Color(
 )
 
 /**
- * On the dark wall a card beside the middle one also steps back by its brightness. One much
- * lighter than the middle card (a cream sleeve beside a night sky) dims until it is at most a
- * little lighter, never below half, so the middle card stays the heaviest. The effect fades in
- * with the distance from the middle.
+ * On the dark background, a side card much lighter than the middle card dims until it is at most
+ * [STEP_BACK_RATIO] times as light as the middle card, but never below half its own light, so the
+ * middle card stays the heaviest. The effect grows with the distance from the middle, up to one
+ * place.
  */
 private fun stepBack(lightness: Float, middle: Float, position: Float, appearance: Appearance): Float {
     if (appearance != Appearance.DARK) return 1f
@@ -270,7 +272,7 @@ private fun stepBack(lightness: Float, middle: Float, position: Float, appearanc
     return 1f + (relative - 1f) * min(abs(position), 1f)
 }
 
-/** The cards' color filters on one wall, cached by step of light. */
+/** The cards' color filters on one background ([background], ARGB), cached by step of light. */
 private class Lights(private val appearance: Appearance, private val background: Int) {
     private val cache = HashMap<Int, ColorFilter>()
 
@@ -324,15 +326,16 @@ private class DrawTools {
  * is one quad.
  *
  * A card turning between its own two textures is drawn without a layer, since that happens on
- * every turn. On the dark wall, laying one over the other would count its half-transparent
- * mirror image twice, so what lies beneath (the black floor) is darkened once by the card and
- * then each texture adds its share of light, which is exactly the mix. On paper there is no mirror
- * image, and the print is opaque, so the full texture goes beneath, just strong enough that the
- * half-size one laid over it leaves the card at [alpha], and the edges stay as crisp as at rest.
+ * every turn. On the dark background, laying one over the other would count its half-transparent
+ * reflection twice, so what lies beneath (the black floor) is erased once by the card's alpha and
+ * then each texture adds its share of light, which is exactly the mix. On the light background
+ * there is no reflection, and the cover is opaque, so the full texture goes beneath, just strong
+ * enough that the half-size one laid over it leaves the card at [alpha], and the edges stay as
+ * crisp as at rest.
  *
- * Textures of different cards (a new look: another cover, which may have clear parts, or the other
- * wall) are mixed in a small layer of the card's own, exactly whatever they hold. That happens
- * only now and then, for a moment.
+ * Textures of different cards (a new look: another cover, which may have clear parts, or the
+ * other background) are mixed in a small layer of the card's own, exactly whatever they hold.
+ * That happens only now and then, for a moment.
  */
 private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
     val n = tools.count
@@ -405,9 +408,9 @@ private fun quad(
 }
 
 /**
- * The color matrix for a card lit at [light] (1 in the middle, less to the sides and in a
- * pause). On black the card gets darker; on paper it fades toward the paper, the way things
- * farther from the window look in daylight.
+ * The color matrix for a card lit at [light] (1 in the middle, less to the sides and in a pause).
+ * On black the card darkens, and on the light background it fades toward the [background] color
+ * by up to [BACKGROUND_FOG].
  */
 private fun cardMatrix(light: Float, appearance: Appearance, background: Int): ColorMatrix {
     val (r, g, b) = coverScale(1f, appearance)
@@ -452,7 +455,7 @@ private const val STEPS = 48
 /** How much a card on the light background fades into it where the light falls off. */
 private const val BACKGROUND_FOG = 0.3f
 
-/** A card beside the middle one is at most this much lighter than it (dark wall). */
+/** A card beside the middle one is at most this much lighter than it (on the dark background). */
 private const val STEP_BACK_RATIO = 1.1f
 
 /** Squeezed below this share of its width, a card starts to take the half-size texture, fully below [HALF_TO]. */

@@ -55,23 +55,23 @@ internal enum class FlowChange {
     /** Another card came to the middle: the strip turns over. */
     MOVE,
 
-    /** The next song of the same picture: the text changes (the picture only if it differs after all). */
+    /** The next track on the same card: the text changes, and the cover only if it differs after all. */
     TEXT,
 
     /** Only cards beside the middle came or went (the queue changed). */
     SIDES,
 
-    /** Same track, new scene (a better cover) or described anew: a quiet cross-fade. */
+    /** The same track with a new scene (a better cover) or new metadata: a crossfade. */
     SOFT,
 
-    /** Same track on the other wall (light ↔ dark): the same, slower. */
+    /** The same track on the other background (light ↔ dark): a slower crossfade. */
     WALL,
 
-    /** Same track and picture, other words in the column (its lyrics come or go): only the text changes. */
+    /** The same track and cover with the lyrics coming or going in the column: only the text changes. */
     LYRICS,
     ;
 
-    /** A cross-fade of the same track. */
+    /** A crossfade of the same track. */
     val isSoft get() = this == SOFT || this == WALL
 
     /** New text comes: the old lines leave and the new ones rise at their own places. */
@@ -80,7 +80,7 @@ internal enum class FlowChange {
 
 /**
  * When the parts of a change happen (ms): cards that make way dissolve first ([clearMs], 0
- * when none have to), then the strip turns ([turnMs]); the whole change lasts [totalMs]. The
+ * when none have to), then the strip turns ([turnMs]), and the whole change lasts [totalMs]. The
  * composition moves to its new balance with the turn, or first, while nothing else moves
  * ([roomFirst]), when the text column has to make room for cards that come. New text rises as
  * [rise] says.
@@ -95,25 +95,25 @@ private class Timeline(val clearMs: Int, val turnMs: Int, val totalMs: Int, val 
 private class Choreography(val motions: List<CardMotion>, val timeline: Timeline)
 
 /**
- * Cover Flow with its transitions. When another picture comes to the middle, the strip turns
- * over in one unhurried, eased movement: the leaving cover swings away to the side as the next
- * one turns to face the room. The old text leaves first, the new lines rise as the new cover
- * arrives (as they do when the song's words come or go, the cards standing still), and the
- * light above the cards takes its color. New cards roll in opaque from beyond
- * the end of the strip. Cards that are no longer wanted dissolve first, before anything moves
- * behind them ([choreograph]), so two covers are never on top of each other. A pause dims the light,
- * the cards and the text; nothing moves.
+ * Cover Flow with its transitions. When another card comes to the middle, the strip turns over
+ * in one unhurried, eased movement: the leaving cover swings away to the side as the next one
+ * turns to face the room. The old text leaves first, the new lines rise as the new cover arrives
+ * (as they do when the lyrics come or go, the cards standing still), and the light above the
+ * cards takes its color. New cards roll in opaque from beyond the end of the strip. Cards that
+ * are no longer wanted dissolve first, before anything moves behind them ([choreograph]), so two
+ * covers are never on top of each other. A pause dims the light, the cards and the text, and
+ * nothing moves.
  *
- * Where cards are missing (the first song, the last, a player without a queue), what is there
+ * Where cards are missing (the first track, the last, a player without a queue), what is there
  * stands with the text in the middle of the screen ([FlowGeometry.balance]). When that changes,
  * the composition moves with the strip's own turn: lines that leave go from where they stood,
  * new ones rise at the new place, and what stays moves along.
  *
  * One change at a time: what arrives meanwhile waits until the running change has landed. If
- * that is another song, the running change hurries, and the lines of a song that is skipped
+ * that is another track, the running change hurries, and the lines of a track that is skipped
  * past never come up ([RisingText]).
  *
- * Every animated value is read inside draw/layer lambdas, so animations never recompose.
+ * Every animated value is read inside draw or layer lambdas, so animations never recompose.
  */
 @Composable
 internal fun FlowTheater(
@@ -124,7 +124,7 @@ internal fun FlowTheater(
     intensity: () -> Float = { 1f },
     /** The connection is lost: the stage dims like a pause. */
     linkDown: Boolean = false,
-    /** The link of the party playing here, while its code shows in the middle card's place. */
+    /** The URL of the party playing here, while its code shows in the middle card's place. */
     partyCode: String? = null,
 ) {
     var current by remember { mutableStateOf(flow) }
@@ -141,17 +141,17 @@ internal fun FlowTheater(
     LaunchedEffect(Unit) {
         snapshotFlow { latest }.conflate().collect { target ->
             val old = current
-            val song = target.middle.track.key
-            // Only another song hurries a change; a card that joins the strip waits for it to land.
-            val newer: suspend () -> Unit = { snapshotFlow { latest.middle.track.key }.first { it != song } }
+            val trackKey = target.middle.track.key
+            // Only another track hurries a change. A card that joins the strip waits for it to land.
+            val newer: suspend () -> Unit = { snapshotFlow { latest.middle.track.key }.first { it != trackKey } }
             // Lines held by a skip that came to nothing rise the rest of the way first.
-            if (song == old.middle.track.key) text.release(newer)
+            if (trackKey == old.middle.track.key) text.release(newer)
             if (target == old) return@collect
             val kind = changeOf(old, target)
             val look = takesNewLook(old, target, kind)
             val choreography = choreograph(old, target, kind, FlowGeometry(target.middle.scene.layout), look)
             if (kind == FlowChange.SIDES && choreography.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha }) {
-                // Only a card's scene was renewed (the same picture in the same light): nothing to watch.
+                // Only a card's scene was renewed (the same cover in the same light): nothing to watch.
                 current = target
                 motions = choreography.motions
                 return@collect
@@ -169,7 +169,7 @@ internal fun FlowTheater(
             previous = null
             text.landed()
             motions = cardsAtRest(target)
-            if (latest.middle.track.key == song) text.release(newer)
+            if (latest.middle.track.key == trackKey) text.release(newer)
         }
     }
 
@@ -198,13 +198,13 @@ internal fun FlowTheater(
     val balance: () -> Balance = {
         if (prev == null) targetBalance else fromBalance.towards(targetBalance, Motion.Turn.transform(timing.settle.of(at())))
     }
-    // Lines that leave and rise anew keep to their own places; lines that stay move along.
+    // Lines that leave and rise anew keep to their own places, and lines that stay move along.
     val newColumn: () -> Float = { if (prev != null && kind.newText) targetBalance.column else balance().column }
     val oldColumn: () -> Float = { if (kind.newText) fromBalance.column else balance().column }
     val wall = middle.scene.palette.wall.asColor()
     val lightLevel: () -> Float = { dim.lightLevel * intensity() }
-    // The strip takes a new look (a better cover, the other wall): each card goes over from its
-    // texture before to its new one. A song only described anew changes its text alone.
+    // The strip takes a new look (a better cover, the other background): each card goes over from
+    // its texture before to its new one. A track only described anew changes its text alone.
     val restrip = prev != null && newLook
     val oldStrip = prev?.middle?.scene?.takeIf { restrip }
     val party = rememberPartyCode(partyCode, setOfNotNull(appearance, oldStrip?.appearance), geometry) { url, wall -> partySign(url, wall, geometry) }
@@ -224,15 +224,15 @@ internal fun FlowTheater(
         }
     }
     val textRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - if (began != seen) text.before(line) else text.level(line)) }
-    // The text so far leaves from where it stood; a new look of the same track crossfades in place.
+    // The text so far leaves from where it stood. A new look of the same track crossfades in place.
     val oldLevel: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
 
-    // The words of the song shown and of the one leaving keep their places through a change.
+    // The lyrics of the track shown and of the one leaving keep their places through a change.
     val lyricsStates = remember { LyricsStates() }
     SideEffect { lyricsStates.keep(curStage.lyrics, prevStage?.lyrics) }
 
     Box(modifier.fillMaxSize()) {
-        // As on the single stage: the old wall stays whole until the new one has come up over it.
+        // As on the single stage: the old background stays whole until the new one has come up over it.
         val oldWall = prev?.middle?.scene?.takeIf { kind == FlowChange.MOVE || restrip }
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
@@ -241,7 +241,7 @@ internal fun FlowTheater(
         }
         WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
         // One strip, also while it takes a new look: each card is the mix of its texture before
-        // and its new one, so a card never shows through another and its mirror image keeps its
+        // and its new one, so a card never shows through another and its reflection keeps its
         // strength.
         val before = remember(oldStrip, party.on(oldStrip?.appearance ?: appearance)) {
             oldStrip?.let { FlowLook(it.appearance, it.palette.wall.asColor(), !it.coverField, party.on(it.appearance)) }
@@ -272,7 +272,7 @@ internal fun FlowTheater(
             }
             TextLayer(curModel, alpha = textIn, rise = textRise, textLevel = { dim.textLevel }, shift = newColumn)
         }
-        // On the other wall the status line's inks cross-fade with the stage.
+        // On the other background the status line's inks crossfade with the stage.
         if (prevModel != null && kind == FlowChange.WALL) {
             StatusLayer(prevModel, shift = { balance().column }, alpha = { 1f - p(0, total, Motion.Sine) })
             StatusLayer(curModel, shift = { balance().column }, alpha = { p(0, total, Motion.Sine) })
@@ -283,8 +283,8 @@ internal fun FlowTheater(
 }
 
 /**
- * A party's code as a card of the strip for [wall]: facing the room in the middle card's place,
- * with its mirror image on the dark gloss.
+ * A party's code as a card of the strip on the [wall] appearance: facing the room in the middle
+ * card's place, with its reflection on the dark background.
  */
 private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): FlowCard? {
     val layout = geometry.layout
@@ -304,11 +304,12 @@ internal fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boole
     else -> false
 }
 
-/** Whether [a] and [b] show the same cards in the same places, each with the same picture. */
+/** Whether [a] and [b] show the same cards in the same places, each with the same scene. */
 private fun sameCards(a: FlowData, b: FlowData): Boolean =
     a.current == b.current && a.cards.size == b.cards.size &&
         a.cards.indices.all { a.cards[it].id == b.cards[it].id && a.cards[it].scene === b.cards[it].scene }
 
+/** How [new] differs from [old], the strip on screen. */
 internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
     val a = old.middle
     val b = new.middle
@@ -318,7 +319,7 @@ internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
         old.lyrics !== new.lyrics -> FlowChange.LYRICS
-        // The same song described anew (a year that came late): its text cross-fades, as on the single stage.
+        // The same track described anew (a year that came late): its text crossfades, as on the single stage.
         !drawnAlike(a.track, b.track) -> FlowChange.SOFT
         else -> FlowChange.SIDES
     }
@@ -338,14 +339,14 @@ private fun cardsAtRest(flow: FlowData): List<CardMotion> = flow.cards.mapIndexe
 private val FlowEntry.card: FlowCard get() = checkNotNull(scene.card) { "A Cover Flow scene has a card" }
 
 /**
- * Each card's way from [old] to [new]. The strip moves away from the side new pictures come
- * from (the right going forward, the left going back), and on that side:
+ * Each card's way from [old] to [new]. The strip moves away from the side new cards come from
+ * (the right going forward, the left going back), and on that side:
  *
  * - cards that arrive roll in opaque from beyond the end of the strip, in formation, the first
  *   one from [FlowGeometry.EDGE];
  * - cards that leave dissolve first, before anything moves behind them, so two covers are never
  *   on top of each other;
- * - if the order there does not simply continue (a song put in between, the queue rearranged),
+ * - if the order there does not simply continue (an item put in between, the queue rearranged),
  *   the whole side is replaced: what stood there dissolves, and all of its cards roll in.
  *
  * Cards in both strips move from their old place to their new one. On the other side, cards
@@ -353,12 +354,12 @@ private val FlowEntry.card: FlowCard get() = checkNotNull(scene.card) { "A Cover
  * stand.
  *
  * The text column never passes over a card: where the composition's new balance moves it right,
- * it makes room first and the cards follow; where it moves left, the cards leaving on the
+ * it makes room first and the cards follow, and where it moves left, the cards leaving on the
  * screen's right go first.
  *
  * When the strip takes a [newLook], a card in both strips goes over from its texture before to
- * its new one. In a new look of the same song (a better cover, the other wall) nothing rolls or
- * moves: cards that come, go or change places fade where they stand.
+ * its new one. In a new look of the same track (a better cover, the other background) nothing
+ * rolls or moves: cards that come, go or change places fade where they stand.
  */
 private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry, newLook: Boolean): Choreography {
     val oldPos = HashMap<Long, Float>()
@@ -368,7 +369,7 @@ private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry
     new.cards.forEachIndexed { i, e -> newPos[e.id] = (i - new.current).toFloat() }
     val oldMiddle = old.middle.id
     // Forward unless the old middle card now stands to the right. Positions below are taken in
-    // the strip's direction: new pictures arrive from the positive side.
+    // the strip's direction: new cards arrive from the positive side.
     val dir = if ((newPos[oldMiddle] ?: -1f) <= 0f) 1f else -1f
     fun was(id: Long) = oldPos[id]?.times(dir)
     fun now(id: Long) = newPos.getValue(id) * dir
@@ -385,8 +386,8 @@ private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry
     val run = arriving.filter { it.id in rolling }.minOfOrNull { now(it.id) }?.let { FlowGeometry.EDGE - it }
     // Cards on the arriving side that make way (they leave, or roll in again).
     val clearing = old.cards.any { e -> was(e.id)!! > 0f && (e.id !in newPos || e.id in rolling) }
-    // Where the text column goes: it moves right first, to make room; it moves left only once
-    // the cards on the screen's right that leave have gone.
+    // Where the text column goes: it moves right first, to make room, and left only once the
+    // cards on the screen's right that leave have gone.
     val column = balanceOf(new, geometry).column - balanceOf(old, geometry).column
     val roomFirst = column > COLUMN_STILL_DP && new.cards.any { e -> newPos.getValue(e.id) > 0f && (e.id !in oldPos || e.id in rolling) }
     val leaveFirst = column < -COLUMN_STILL_DP && old.cards.any { e -> oldPos.getValue(e.id) > 0f && (e.id !in newPos || e.id in rolling) }
@@ -398,8 +399,8 @@ private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry
         FlowChange.SOFT -> Motion.SOFT_SWAP_MS
         FlowChange.WALL -> Motion.WALL_CHANGE_MS
     }
-    // Something rolls in where cards must make way: they go first; and so does the room the text
-    // column makes, or the cards it moves into.
+    // Where something rolls in, the cards in its way go first, and so do the room the text column
+    // makes and the cards it moves into.
     val clearMs = if (!soft && ((run != null && clearing) || roomFirst || leaveFirst)) Motion.FLOW_CLEAR_MS else 0
     // New text rises as the new cover turns to face the room, or sooner when only the text changes.
     val riseMs = when (kind) {

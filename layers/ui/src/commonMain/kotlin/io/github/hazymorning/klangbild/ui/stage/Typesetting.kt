@@ -83,6 +83,7 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
     val time = faces.titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
+    /** The footer: left to right, so "Up next" stays first even before right-to-left text. */
     val footer = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).leftToRight()
 
     /** "Up next" differs from what follows by weight alone. */
