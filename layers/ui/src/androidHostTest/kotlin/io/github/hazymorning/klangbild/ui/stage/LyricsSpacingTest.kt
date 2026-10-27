@@ -36,11 +36,11 @@ class LyricsSpacingTest {
         for (flow in listOf(false, true)) {
             val room = LyricsRoom(StageGrid(ScreenSpec(960, 540, 1f), flow), styles)
             for (step in lyricsLadder) {
-                val style = lyricsStyle(faces, step, cjk = false)
+                val style = faces.headingStyle(step, cjk = false)
                 val cap = style.fontSize.value * Fonts.CAP_HEIGHT
                 val leading = style.lineHeight.value
-                val gap = lineGap(style, step.rows, room.around())
-                val most = cap + (step.rows - 1) * leading
+                val gap = lineGap(style, step.lines, room.around())
+                val most = cap + (step.lines - 1) * leading
                 val name = "${if (flow) "Cover Flow" else "single cover"} at ${step.size} sp"
                 assertThat(gap, name = "$name, between lines").isGreaterThan(1.5f * (leading - cap))
                 assertThat(room.around() - cap / 2f - gap - most, name = "$name, to the status line and the song").isGreaterThan(1.5f * gap)

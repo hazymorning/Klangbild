@@ -30,9 +30,9 @@ import io.github.hazymorning.klangbild.ui.stage.StageStyles
 import io.github.hazymorning.klangbild.ui.stage.glueBetweenDashes
 import io.github.hazymorning.klangbild.ui.stage.glueParentheses
 import io.github.hazymorning.klangbild.ui.stage.glueShortWords
+import io.github.hazymorning.klangbild.ui.stage.headingStyle
 import io.github.hazymorning.klangbild.ui.stage.isMostlyCjk
 import io.github.hazymorning.klangbild.ui.stage.lyricsLadder
-import io.github.hazymorning.klangbild.ui.stage.lyricsStyle
 import io.github.hazymorning.klangbild.ui.stage.titleLadder
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.faces
@@ -131,7 +131,7 @@ class BreakerParityTest {
         val cjk = isMostlyCjk(text)
         return lyricsLadder.flatMap { step ->
             locales(cjk).map { locale ->
-                Case("lyrics ${step.size}sp", part, lyricsStyle(faces, step, cjk).merge(TextStyle(localeList = locale)), px(grid(density, false).columnWidth, density), density)
+                Case("lyrics ${step.size}sp", part, faces.headingStyle(step, cjk).merge(TextStyle(localeList = locale)), px(grid(density, false).columnWidth, density), density)
             }
         }
     }

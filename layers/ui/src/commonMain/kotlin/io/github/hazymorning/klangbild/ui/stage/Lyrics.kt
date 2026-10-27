@@ -40,9 +40,6 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineBreak
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
@@ -59,7 +56,6 @@ import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
-import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -80,22 +76,15 @@ import kotlin.math.roundToInt
  * off the main thread; a frame only moves the list and mixes two inks.
  */
 
-/** One size for a song's words: [size] sp, a line on at most [rows] rows, [leading] between rows. */
-internal class LyricsStep(val size: Float, val rows: Int, val weight: Int, val leading: Float, val tracking: Float)
-
-/** From large to small, as the title's ladder: two rows a line at the larger sizes, three at the smallest. */
+/**
+ * The lyrics' sizes from large to small, set as titles are ([headingStyle]): a lyric line takes
+ * at most two rows at the larger sizes, three at the smallest.
+ */
 internal val lyricsLadder = listOf(
-    LyricsStep(30f, 2, 420, 1.15f, -0.005f),
-    LyricsStep(26f, 2, 430, 1.16f, 0f),
-    LyricsStep(24f, 3, 430, 1.16f, 0f),
+    TitleStep(30f, 2, 420, 1.15f, -0.005f),
+    TitleStep(26f, 2, 430, 1.16f, 0f),
+    TitleStep(24f, 3, 430, 1.16f, 0f),
 )
-
-/** The words' style at [step]; Japanese, Chinese and Korean words a little smaller, as titles are. */
-internal fun lyricsStyle(faces: Faces, step: LyricsStep, cjk: Boolean): TextStyle {
-    val size = if (cjk) step.size * StageStyles.CJK_SCALE else step.size
-    return faces.titleType(size = size, weight = step.weight, lineHeight = size * step.leading + if (cjk) 6f else 0f, tracking = if (cjk) 0f else step.tracking)
-        .merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
-}
 
 /** The words of one song as set for the column: each row on its own line, and where each line stands (px). */
 @Immutable
@@ -150,13 +139,13 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measure
     // The longest parts decide, so they are tried first.
     val longest = parts.flatten().sortedByDescending { it.length }
     val step = lyricsLadder.firstOrNull { s ->
-        val style = lyricsStyle(faces, s, cjk)
-        longest.all { ends(it, style).size <= s.rows }
+        val style = faces.headingStyle(s, cjk)
+        longest.all { ends(it, style).size <= s.lines }
     } ?: lyricsLadder.last()
-    val style = lyricsStyle(faces, step, cjk)
+    val style = faces.headingStyle(step, cjk)
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT * density
     val leading = style.lineHeight.value * density
-    val gap = lineGap(style, step.rows, room) * density
+    val gap = lineGap(style, step.lines, room) * density
     val rows = ArrayList<LyricRow>(lyrics.lines.size * 2)
     val tops = FloatArray(lyrics.lines.size)
     val bottoms = FloatArray(lyrics.lines.size)

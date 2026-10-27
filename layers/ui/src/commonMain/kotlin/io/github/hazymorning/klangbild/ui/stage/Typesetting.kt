@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -59,20 +60,8 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
     /** The progress bar's track: the title's color, or the cover's leading hue, faint. */
     val track = if (palette.accent == palette.inkMuted) ink.copy(alpha = 0.16f) else accent.copy(alpha = 0.24f)
 
-    /**
-     * The title at one step of [titleLadder]. Japanese, Chinese and Korean titles are a little smaller (their characters
-     * stand taller than capitals).
-     */
-    fun title(step: TitleStep, cjk: Boolean = false): TextStyle {
-        val size = if (cjk) step.size * CJK_SCALE else step.size
-        return faces.titleType(
-            size = size,
-            weight = step.weight,
-            color = ink,
-            lineHeight = size * step.leading + if (cjk) 6f else 0f,
-            tracking = if (cjk) 0f else step.tracking,
-        ).merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
-    }
+    /** The title at one step of [titleLadder] ([headingStyle]). */
+    fun title(step: TitleStep, cjk: Boolean = false): TextStyle = faces.headingStyle(step, cjk, ink)
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
     fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).leftAligned()
@@ -101,11 +90,28 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
 
     /** Left to right whatever its letters: what such a line holds in a right-to-left script is isolated ([isolateRightToLeft]). */
     private fun TextStyle.leftToRight() = merge(TextStyle(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left))
-
-    companion object {
-        const val CJK_SCALE = 0.88f
-    }
 }
+
+/**
+ * A title or the lyrics at [step], with balanced breaks. Chinese, Japanese and Korean are set
+ * [CJK_SCALE] smaller, [CJK_EXTRA_LEADING] farther apart and without tracking.
+ */
+internal fun Faces.headingStyle(step: TitleStep, cjk: Boolean, color: Color = Color.Unspecified): TextStyle {
+    val size = if (cjk) step.size * CJK_SCALE else step.size
+    return titleType(
+        size = size,
+        weight = step.weight,
+        color = color,
+        lineHeight = size * step.leading + if (cjk) CJK_EXTRA_LEADING else 0f,
+        tracking = if (cjk) 0f else step.tracking,
+    ).merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+}
+
+/** Chinese, Japanese and Korean titles and lyrics are set at this share of the size: their characters stand taller than capitals. */
+private const val CJK_SCALE = 0.88f
+
+/** The lines of Chinese, Japanese and Korean titles and lyrics stand this much farther apart (sp): their characters fill most of the em. */
+private const val CJK_EXTRA_LEADING = 6f
 
 /** The stage's styles for [palette], in the composition's faces. */
 @Composable
@@ -114,7 +120,7 @@ internal fun rememberStageStyles(palette: ScenePalette): StageStyles {
     return remember(palette, faces) { StageStyles(palette, faces) }
 }
 
-/** One size of the title: [size] sp, at most [lines] lines, [tracking] em. */
+/** One size of a title or of lyrics: [size] sp, at most [lines] lines (of one lyric line: rows), [tracking] em. */
 class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: Float, val tracking: Float)
 
 /**
