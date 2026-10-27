@@ -17,14 +17,11 @@ import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import kotlinx.datetime.toJavaZoneId
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
-import java.util.TimeZone
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
@@ -37,11 +34,6 @@ import kotlin.test.Test
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class ReadmeShotsTest {
-    @BeforeTest
-    fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
-    }
-
     private val en = TestTexts.english()
 
     private fun cover(c: SyntheticCover) = Catalog.SCHEME + c.name
