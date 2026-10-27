@@ -112,11 +112,13 @@ internal class QueueReader(
     private var lastLyrics: SongLyrics? = null
 
     /**
-     * What comes next as Music Assistant itself has it, for the song [key]: [next] (null: nothing
-     * follows) and what it was told from ([basis]: the current item's place, the next item's id,
-     * how many items).
+     * What comes next as Music Assistant itself has it, for the track [key]: [next] (null: nothing
+     * follows), and the [shape] of the queue that said so.
      */
-    private class MaNext(val key: String, val next: TrackInfo?, val basis: Triple<Int?, String?, Int?>)
+    private class MaNext(val key: String, val next: TrackInfo?, val shape: QueueShape)
+
+    /** Where Music Assistant's queue stood: the current item's index, the next item's ID and how many items it had. */
+    private data class QueueShape(val index: Int?, val nextId: String?, val items: Int?)
 
     @Volatile private var maNext: MaNext? = null
 
@@ -132,9 +134,14 @@ internal class QueueReader(
     /** Music Assistant knows no `time` command: its clock is not asked again. */
     @Volatile private var maClockUnknown = false
 
-    /** Music Assistant's queue was last read at this time, for what it was then (id, place, next). */
+    /** When Music Assistant's queue was last read, and for which of Home Assistant's queues. */
     private var windowReadAt = 0L
-    private var windowFor: Triple<String?, Int?, String?>? = null
+    private var windowReadFor: WindowBasis? = null
+
+    /** Home Assistant's queue as a read of Music Assistant's was made for: its ID, its current index and the next track. */
+    private data class WindowBasis(val queueId: String?, val currentIndex: Int?, val nextKey: String?)
+
+    private fun basisOf(q: QueueInfo) = WindowBasis(q.queueId, q.currentIndex, q.next?.key)
 
     fun start() {
         queuePoller = scope.launch {
@@ -185,7 +192,7 @@ internal class QueueReader(
         maNext = null
         queueWorks = null
         awaited = null
-        windowFor = null
+        windowReadFor = null
         maPosition = null
     }
 
@@ -390,8 +397,8 @@ internal class QueueReader(
         val shown = latest()?.track ?: return
         // Music Assistant has moved on to another item: that song's own read follows.
         if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
-        val basis = Triple(state.index, state.nextId, state.items)
-        val same = maNext?.let { it.key == key && it.basis == basis } == true
+        val shape = QueueShape(state.index, state.nextId, state.items)
+        val same = maNext?.let { it.key == key && it.shape == shape } == true
         val read = state.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
         val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } }
         if (trackKey != key) return
@@ -402,7 +409,7 @@ internal class QueueReader(
             if (moved) publish()
             return
         }
-        maNext = MaNext(key, state.next, basis)
+        maNext = MaNext(key, state.next, shape)
         if (read != null) {
             window = read
             lyrics?.want(listOfNotNull(read.currentSong, read.nextSong))
@@ -497,7 +504,7 @@ internal class QueueReader(
 
     /** Whether Music Assistant's queue is worth reading again: it moved, it is old, or it is spoken word. */
     private fun windowStale(q: QueueInfo): Boolean =
-        Triple(q.queueId, q.currentIndex, q.next?.key) != windowFor ||
+        basisOf(q) != windowReadFor ||
             now() - windowReadAt > WINDOW_MAX_AGE_MS ||
             q.current?.kind?.spoken == true ||
             window?.current?.kind?.spoken == true
@@ -511,7 +518,7 @@ internal class QueueReader(
         val id = q.queueId ?: latest()?.activeQueue ?: return null
         val index = q.currentIndex ?: return null
         val w = windowAt(client, id, index) ?: return null
-        windowFor = Triple(q.queueId, q.currentIndex, q.next?.key)
+        windowReadFor = basisOf(q)
         return w.takeIf { matches(it, q.current) }
     }
 
