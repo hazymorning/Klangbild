@@ -681,13 +681,13 @@ private fun QueuePlan.shown(row: PlannedRow): Float {
  * dimmed by [textDim], its small cover through [filter], as the cover is.
  */
 private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha: Float, textDim: Float, filter: ColorFilter, coverAlpha: Float = alpha) {
+    drawCover(plan, row, y, coverAlpha, filter)
     if (alpha <= 0.003f) return
     val words = alpha * textDim
     val x = plan.columnLeft
     // The two lines stand within the small cover's straight edge, a corner radius in from its top and bottom.
     val inset = ROW_COVER_CORNER * density
     val baseline = y + inset + plan.rowCap
-    drawCover(plan, row, y, coverAlpha, filter)
     drawText(row.title, topLeft = Offset(x + plan.markWidth, baseline - row.title.firstBaseline), alpha = words)
     row.artists?.let { drawText(it, topLeft = Offset(x + plan.markWidth, y + row.coverPx - inset - plan.rowDescent - it.firstBaseline), alpha = words) }
     row.time?.let { drawText(it, topLeft = Offset(x + plan.columnWidth - it.size.width, baseline - it.firstBaseline), alpha = words) }
