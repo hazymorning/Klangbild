@@ -360,7 +360,7 @@ class LanguageTest {
             val states = allQuick(t, buttons = true).distinctBy { q -> q.rows.map { it.item to it.value } }
             compose.runOnIdle {
                 for (quick in states) {
-                    val widths = quickWidths(quick, measurer, label, value, density, widest = true)
+                    val widths = quickWidths(quick, measurer, label, value, density)
                     quick.rows.forEachIndexed { k, row ->
                         assertThat(QuickGrid.LEFT + widths[k], name = "${row.label}: ${row.values} (${t.locale})").isLessThanOrEqualTo(right)
                     }

@@ -28,6 +28,8 @@ import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -196,21 +198,13 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val keys = quick.rows.map { it.key }
     val labels = quick.rows.map { it.label }
-    val values = quick.rows.map { it.value }
-    // Each entry's place (dp): as wide as its name or its widest value, so a value that changes
-    // never moves the others; only the last one is as wide as what it says now (nothing stands
-    // after it).
     val density = LocalDensity.current.density
-    val widths = remember(keys, labels, values.last(), density, labelStyle, valueStyle) {
-        quickWidths(quick, measurer, labelStyle, valueStyle, density)
-    }
-    val reaches = remember(keys, labels, density, labelStyle, valueStyle) { quickWidths(quick, measurer, labelStyle, valueStyle, density, widest = true) }
+    val widths = remember(keys, labels, density, labelStyle, valueStyle) { quickWidths(quick, measurer, labelStyle, valueStyle, density) }
     val lefts = widths.runningFold(QuickGrid.LEFT) { x, w -> x + w + QuickGrid.GAP }.dropLast(1)
     val cursor = quick.cursor.coerceIn(0, keys.size - 1)
-    // A row longer than the room glides to show the chosen entry whole (by its widest value, so a
-    // value that changes never moves the row).
+    // A row longer than the room glides to show the chosen entry whole.
     val glide = remember { Glide() }
-    val shift by animateGlide(glide.toShow(lefts[cursor], reaches[cursor]), ROW_GLIDE_MS)
+    val shift by animateGlide(glide.toShow(lefts[cursor], widths[cursor]), ROW_GLIDE_MS)
     // The light glides to the chosen entry.
     val glowX by animateGlide(lefts[cursor] + widths[cursor] / 2f, ROW_GLIDE_MS)
     val glowSigma by animateGlide(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, ROW_GLIDE_MS)
@@ -294,22 +288,12 @@ private fun inView(x: Float, width: Float): Float {
     return (1f - out / QuickGrid.EDGE_FADE).coerceIn(0f, 1f)
 }
 
-/**
- * The places of the quick settings' entries (dp): each as wide as its name or the widest value
- * it can show, the last as wide as what it says now (or, [widest], as its widest value too).
- */
-fun quickWidths(
-    quick: QuickState,
-    measurer: androidx.compose.ui.text.TextMeasurer,
-    labelStyle: androidx.compose.ui.text.TextStyle,
-    valueStyle: androidx.compose.ui.text.TextStyle,
-    density: Float,
-    widest: Boolean = false,
-): List<Float> = quick.rows.mapIndexed { i, row ->
-    fun w(text: String, style: androidx.compose.ui.text.TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width
-    val value = if (i == quick.rows.lastIndex && !widest) w(row.value, valueStyle) else (row.values + row.value).maxOf { w(it, valueStyle) }
-    max(w(row.label, labelStyle), value) / density
-}
+/** Each entry's width (dp): as wide as its label or its widest value, so a value that changes never moves the others. */
+internal fun quickWidths(quick: QuickState, measurer: TextMeasurer, labelStyle: TextStyle, valueStyle: TextStyle, density: Float): List<Float> =
+    quick.rows.map { row ->
+        fun w(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width
+        max(w(row.label, labelStyle), (row.values + row.value).maxOf { w(it, valueStyle) }) / density
+    }
 
 /**
  * An entry: its label and its value on their baselines ([QuickGrid]), from [x] (read when it is
