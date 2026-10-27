@@ -30,7 +30,10 @@ import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.http.Url
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlinx.io.Buffer
 import kotlinx.io.readString
 import kotlinx.serialization.json.Json
@@ -49,6 +52,9 @@ class SetupHandlerTest {
     private var texts: Texts = TestTexts.german
     private var now = 1_000_000L
     private var exchangeFails = false
+
+    /** While set, swapping an authorization code for tokens waits for it. */
+    private var exchangeGate: CompletableDeferred<Unit>? = null
 
     /** This TV's own speaker in Home Assistant, and its pairing code, while it plays as a speaker. */
     private var own: String? = null
@@ -77,6 +83,7 @@ class SetupHandlerTest {
         clientId = { clientId },
         exchange = { url, code, client ->
             exchanged += Triple(url, code, client)
+            exchangeGate?.await()
             if (exchangeFails) throw HaAuthRejectedException("invalid_request")
             HaTokens("access-$code", "refresh-$code", 1800)
         },
@@ -507,6 +514,22 @@ class SetupHandlerTest {
         // The setup screen closes without saving.
         handler.reset()
         assertThat(revoked).containsExactly("http://192.168.1.5:8123" to "refresh-one", "http://192.168.1.5:8123" to "refresh-two")
+    }
+
+    @Test
+    fun `a sign-in that arrives after the setup has ended is revoked`() = runTest {
+        val state = startSignIn().parameters["state"]!!
+        // The setup screen closes while the TV swaps the authorization code for tokens.
+        val gate = CompletableDeferred<Unit>()
+        exchangeGate = gate
+        val back = async { get("/auth/callback", mapOf("code" to "late", "state" to state)) }
+        yield()
+        handler.reset()
+        gate.complete(Unit)
+        assertThat(back.await().headers["Location"]).isEqualTo(SetupHandler.SIGN_IN_FAILED)
+        assertThat(revoked).containsExactly("http://192.168.1.5:8123" to "refresh-late")
+        // The next setup knows nothing of it.
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["auth"]!!.jsonPrimitive.content).isEqualTo("token")
     }
 
     @Test

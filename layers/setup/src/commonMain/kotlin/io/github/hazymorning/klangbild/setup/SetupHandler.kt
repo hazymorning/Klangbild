@@ -147,14 +147,17 @@ class SetupHandler(
     /** Called when the code changed (the TV redraws the QR code). */
     @Volatile var onCodeChanged: (String) -> Unit = {}
 
-    /** A sign-in under way: Home Assistant's login page was opened for [url] with [state]. */
-    private class Authorization(val state: String, val url: String, val clientId: String, val at: Long)
+    /** A sign-in under way: Home Assistant's login page was opened for [url] with [state] while [setupsEnded] was [setup]. */
+    private class Authorization(val state: String, val url: String, val clientId: String, val at: Long, val setup: Int)
 
     /** A sign-in that worked, waiting to be saved with the rest of the form. */
     private class SignedIn(val url: String, val clientId: String, val refreshToken: String)
 
     @Volatile private var authorization: Authorization? = null
     @Volatile private var signedIn: SignedIn? = null
+
+    /** Counts the [reset]s, guarded by [lock]: a sign-in is kept only in the setup it began in. */
+    private var setupsEnded = 0
 
     private fun newCode(): String = (0 until 6).joinToString("") { random.nextInt(10).toString() }
 
@@ -164,11 +167,13 @@ class SetupHandler(
         onCodeChanged(code)
     }
 
-    /** The setup is over (the screen closed): a sign-in that was never saved is revoked. */
+    /** The setup is over (the screen closed): a sign-in that was never saved is revoked, now or once it arrives. */
     suspend fun reset() {
-        authorization = null
-        val dropped = signedIn
-        signedIn = null
+        val dropped = synchronized(lock) {
+            setupsEnded++
+            authorization = null
+            signedIn.also { signedIn = null }
+        }
         if (dropped != null) revoke(dropped.url, dropped.refreshToken)
     }
 
@@ -253,7 +258,7 @@ class SetupHandler(
             ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
         val client = clientId() ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorNotAllowed]))
         val state = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(random.nextBytes(ByteArray(STATE_BYTES)))
-        authorization = Authorization(state, url, client, now())
+        authorization = synchronized(lock) { Authorization(state, url, client, now(), setupsEnded) }
         val authorize = "$url/auth/authorize?response_type=code" +
             "&client_id=${enc(client)}&redirect_uri=${enc(redirectUri(client))}&state=${enc(state)}"
         return MiniHttp.Response.json(200, buildJsonObject {
@@ -282,9 +287,14 @@ class SetupHandler(
             return redirect(SIGN_IN_FAILED)
         }
         val refresh = tokens.refreshToken ?: return redirect(SIGN_IN_FAILED)
-        signedIn?.let { revoke(it.url, it.refreshToken) }
-        signedIn = SignedIn(pending.url, pending.clientId, refresh)
-        return redirect(SIGN_IN_OK)
+        val signIn = SignedIn(pending.url, pending.clientId, refresh)
+        // Kept for the save, and the sign-in it replaces is revoked. If its setup ended during
+        // the exchange, nothing would save it: it is revoked at once.
+        val (kept, dropped) = synchronized(lock) {
+            if (pending.setup == setupsEnded) true to signedIn.also { signedIn = signIn } else false to signIn
+        }
+        if (dropped != null) revoke(dropped.url, dropped.refreshToken)
+        return redirect(if (kept) SIGN_IN_OK else SIGN_IN_FAILED)
     }
 
     /**
