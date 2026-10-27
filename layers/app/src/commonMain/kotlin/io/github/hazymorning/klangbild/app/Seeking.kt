@@ -110,11 +110,11 @@ internal class Seeking(private val host: ControllerHost) {
         }
     }
 
-    /** Called under the lock. */
+    /** Shows and sends a jump to [target], unless the player can't seek. Called under the lock. */
     private fun seekTo(track: TrackInfo, target: Long, t: Long, wait: Long = SETTLE_MS) {
+        val p = host.ui.source.player?.takeIf { it.abilities.seek } ?: return
         val end = track.durationMs?.let { (it - END_MARGIN_MS).coerceAtLeast(0) } ?: return
-        val p = host.ui.source.player
-        val o = Pending(track.key, target.coerceIn(0, end), t, if (p?.status == PlayerStatus.PLAYING) p.speed else 0f)
+        val o = Pending(track.key, target.coerceIn(0, end), t, if (p.status == PlayerStatus.PLAYING) p.speed else 0f)
         pending = o
         // Presses close together make one jump: it is sent once they stop.
         send(o, wait)

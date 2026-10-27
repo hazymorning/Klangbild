@@ -477,12 +477,16 @@ class NowPlayingController(
 
     // --- spoken word: jumps and chapters ---------------------------------------------------
 
-    /** Left and right jump within what plays (a book, an episode) instead of changing it. */
+    /** Left and right jump within what plays (a book, an episode) instead of changing it, where it [canSeek]. */
     val spokenKeys: Boolean
         get() {
             val s = settings.value
-            return s.remoteControl && s.spokenSkip && (_ui.value.screen as? Screen.Stage)?.track?.kind?.spoken == true
+            return s.remoteControl && s.spokenSkip && (_ui.value.screen as? Screen.Stage)?.track?.kind?.spoken == true && canSeek
         }
+
+    /** The track on stage has a known duration, and the player can seek. */
+    private val canSeek: Boolean
+        get() = (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && _ui.value.source.player?.abilities?.seek == true
 
     /** Jumps back ([direction] -1) or ahead (+1) within what plays. */
     fun skip(direction: Int) = seeking.skip(direction)
@@ -495,11 +499,7 @@ class NowPlayingController(
      * in, on a player that can.
      */
     val holdKeys: Boolean
-        get() {
-            val s = settings.value
-            val p = _ui.value.source.player
-            return s.remoteControl && !spokenKeys && (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && p?.abilities?.seek == true
-        }
+        get() = settings.value.remoteControl && !spokenKeys && canSeek
 
     /** Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1), the farther the longer. */
     fun hold(direction: Int, heldMs: Long) = seeking.hold(direction, heldMs)

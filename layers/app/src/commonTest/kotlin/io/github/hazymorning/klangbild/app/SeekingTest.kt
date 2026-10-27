@@ -9,6 +9,7 @@ import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.PlayerAbilities
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
@@ -51,8 +52,8 @@ class SeekingTest {
         }
     }
 
-    private fun at(track: TrackInfo, positionMs: Long) =
-        SourceState(LinkState.CONNECTED, player = PlayerSnapshot(PlayerStatus.PAUSED, track, positionMs = positionMs))
+    private fun at(track: TrackInfo, positionMs: Long, abilities: PlayerAbilities = PlayerAbilities()) =
+        SourceState(LinkState.CONNECTED, player = PlayerSnapshot(PlayerStatus.PAUSED, track, positionMs = positionMs, abilities = abilities))
 
     private var ui = UiState(screen = Screen.Stage(a, PlayerStatus.PAUSED, null), source = at(a, 600_000L))
 
@@ -124,6 +125,16 @@ class SeekingTest {
         seeking.hold(-1, 0)
         seeking.hold(-1, 20_000)
         assertThat(seeking.position(host.now())).isEqualTo(0L)
+    }
+
+    @Test
+    fun aPlayerThatCannotSeekShowsNoJump() {
+        ui = ui.copy(source = at(a, 600_000L, PlayerAbilities(seek = false)))
+        seeking.skip(+1)
+        assertThat(seeking.position(host.now())).isEqualTo(600_000L)
+        test.advanceTimeBy(Seeking.SETTLE_MS + 100)
+        test.runCurrent()
+        assertThat(seeks).isEmpty()
     }
 
     @Test
