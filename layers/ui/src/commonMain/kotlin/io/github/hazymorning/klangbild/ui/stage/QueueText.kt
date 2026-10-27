@@ -297,8 +297,8 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     // The spaces around the title follow its step in Latin letters ([TextPlan.titleRhythm]).
     val titleRhythm = styles.title(choice.step)
     val versionStyle = styles.version(choice.step.size)
-    val metaStyle = styles.faces.textType(17f, 400, styles.quiet, lineHeight = 23f, tracking = 0.005f)
-        .merge(TextStyle(textDirection = TextDirection.Content, textAlign = TextAlign.Left))
+    // The line of artist, album and year is set as the album is.
+    val metaStyle = styles.album
     val meta = metaLine(t, model.chapter ?: t.album, model.year, styles, metaStyle, measurer, colW)
 
     // From the song's first cap height down, each part's cap height after the one before, the
