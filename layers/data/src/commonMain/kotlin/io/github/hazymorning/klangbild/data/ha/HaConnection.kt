@@ -40,11 +40,6 @@ import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
-/** Where and how to reach Home Assistant. */
-data class HaConfig(val auth: HaAuth) {
-    val baseUrl: String get() = auth.baseUrl
-}
-
 /** Connection state as the rest of the app sees it, never raw exceptions. */
 sealed interface HaStatus {
     data object Stopped : HaStatus
@@ -136,9 +131,10 @@ class HaConnection(
 
     @Volatile private var session: Session? = null
 
-    fun start(config: HaConfig, entityIds: List<String>) {
+    /** Connects with [auth] and follows [entityIds], until [stop]. */
+    fun start(auth: HaAuth, entityIds: List<String>) {
         stop()
-        loop = scope.launch { runLoop(config, entityIds) }
+        loop = scope.launch { runLoop(auth, entityIds) }
     }
 
     /**
@@ -226,14 +222,14 @@ class HaConnection(
         }
     }
 
-    private suspend fun runLoop(config: HaConfig, entityIds: List<String>) {
+    private suspend fun runLoop(auth: HaAuth, entityIds: List<String>) {
         val backoff = backoffFactory()
         // A refused access token from a sign-in is replaced by a fresh one once before giving up.
         var freshTokenTried = false
         while (true) {
             _status.value = HaStatus.Connecting
             val end = try {
-                runSession(config, entityIds) {
+                runSession(auth, entityIds) {
                     backoff.reset()
                     freshTokenTried = false
                 }
@@ -248,9 +244,9 @@ class HaConnection(
             }
             when (end) {
                 is SessionEnd.Refused -> {
-                    if (end.token != null && !freshTokenTried && config.auth.refreshable) {
+                    if (end.token != null && !freshTokenTried && auth.refreshable) {
                         freshTokenTried = true
-                        config.auth.invalidate(end.token)
+                        auth.invalidate(end.token)
                         continue
                     }
                     _status.value = HaStatus.AuthFailed
@@ -336,10 +332,10 @@ class HaConnection(
         EVENTS,
     }
 
-    private suspend fun runSession(config: HaConfig, entityIds: List<String>, onSubscribed: () -> Unit): SessionEnd = coroutineScope {
-        val token = config.auth.accessToken()
+    private suspend fun runSession(auth: HaAuth, entityIds: List<String>, onSubscribed: () -> Unit): SessionEnd = coroutineScope {
+        val token = auth.accessToken()
         val events = Channel<WsEvent>(Channel.UNLIMITED)
-        val socket = WebSocketLink(this, http, HaUrls.webSocketUrl(config.baseUrl), object : WebSocketLink.Listener {
+        val socket = WebSocketLink(this, http, HaUrls.webSocketUrl(auth.baseUrl), object : WebSocketLink.Listener {
             override fun onText(text: String) {
                 events.trySend(WsEvent.Text(text))
             }
@@ -353,7 +349,7 @@ class HaConnection(
             }
         })
         try {
-            signIn(events, socket, token) ?: Subscriptions(this, Session(socket), HaRest(http, config.auth), entityIds, onSubscribed).run(events)
+            signIn(events, socket, token) ?: Subscriptions(this, Session(socket), HaRest(http, auth), entityIds, onSubscribed).run(events)
         } finally {
             socket.cancel()
         }

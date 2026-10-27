@@ -253,7 +253,7 @@ class HaSourceTest {
     ) = HaSource(
         http,
         scope,
-        HaConfig(HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good"))),
+        HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good")),
         entity,
         ma = ma,
         queueTiming = queue,

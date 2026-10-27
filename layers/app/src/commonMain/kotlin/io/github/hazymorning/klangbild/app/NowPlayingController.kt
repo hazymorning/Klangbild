@@ -24,7 +24,6 @@ import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.PictureDecoder
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.ha.HaAuth
-import io.github.hazymorning.klangbild.data.ha.HaConfig
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaSource
 import io.github.hazymorning.klangbild.data.ha.TrackMatch
@@ -677,7 +676,7 @@ class NowPlayingController(
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
         val newSource: NowPlayingSource? =
-            newAuth?.let { HaSource(tokenHttp, scope, HaConfig(it), s.entityId!!, s.sunEntity, now, ma, speaker = speaker) }
+            newAuth?.let { HaSource(tokenHttp, scope, it, s.entityId!!, s.sunEntity, now, ma, speaker = speaker) }
         source = newSource
         if (newSource == null) {
             _ui.value = _ui.value.copy(source = SourceState(if (s.haRefused) LinkState.AUTH_FAILED else LinkState.UNCONFIGURED))

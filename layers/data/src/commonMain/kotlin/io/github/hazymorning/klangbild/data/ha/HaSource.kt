@@ -52,7 +52,7 @@ import kotlin.time.Clock
 class HaSource(
     http: HttpClient,
     private val scope: CoroutineScope,
-    private val config: HaConfig,
+    private val auth: HaAuth,
     /** The speaker chosen: an entity, or [EntityId.THIS_TV] for this TV's own. */
     private val playerEntity: String,
     private val sunEntity: String = "sun.sun",
@@ -102,7 +102,7 @@ class HaSource(
     private var backAt: Long? = null
 
     private val queue = QueueReader(
-        scope, connection, { speakerShown }, config.baseUrl, ma, now,
+        scope, connection, { speakerShown }, auth.baseUrl, ma, now,
         latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock, timing = queueTiming,
     ) { publish() }
 
@@ -172,7 +172,7 @@ class HaSource(
         orNull { connection.callServiceForContext(domain, service, entityId, data) }
 
     override fun start() {
-        connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
+        connection.start(auth, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
         collector = scope.launch {
             merge(connection.status, connection.entities, connection.registry, connection.config, connection.missing).collect { publish() }
         }
@@ -361,8 +361,8 @@ class HaSource(
         val ownId = own?.entity
         val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
         val here = ownId?.takeIf { it != chosen }
-        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
-        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
+        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
+        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
         val showsOwn = if (here == null) {
             switch.reset()
             false

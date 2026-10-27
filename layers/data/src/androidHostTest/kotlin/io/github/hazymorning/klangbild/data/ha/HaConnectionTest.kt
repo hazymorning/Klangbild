@@ -182,12 +182,12 @@ class HaConnectionTest {
 
     private fun baseUrl() = server.url("/").toString().trimEnd('/')
 
-    private fun config(token: String = "good") = HaConfig(HaAuth(http, baseUrl(), HaCredentials.LongLived(token)))
+    private fun auth(token: String = "good") = HaAuth(http, baseUrl(), HaCredentials.LongLived(token))
 
     @Test
     fun `follows entities with a state trigger, reads them over REST and calls services`() = runBlocking {
         val conn = connection()
-        conn.start(config(), listOf("media_player.wz", "sun.sun"))
+        conn.start(auth(), listOf("media_player.wz", "sun.sun"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
         val first = withTimeout(5_000) { conn.entities.first { it.keys.containsAll(listOf("media_player.wz", "sun.sun")) } }
         assertThat(first.getValue("media_player.wz").string("media_title")).isEqualTo("Erstes Lied")
@@ -224,7 +224,7 @@ class HaConnectionTest {
     fun `a user who is no administrator follows state events instead`() = runBlocking {
         admin = false
         val conn = connection()
-        conn.start(config(), listOf("media_player.wz"))
+        conn.start(auth(), listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
         withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.wz") } }
         val sub = ofType("subscribe_events").single()
@@ -250,7 +250,7 @@ class HaConnectionTest {
     @Test
     fun `follows the other speakers of a group in a second trigger`() = runBlocking {
         val conn = connection()
-        conn.start(config(), listOf("media_player.wz"))
+        conn.start(auth(), listOf("media_player.wz"))
         withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.wz") } }
 
         conn.followAlso(setOf("media_player.kueche"))
@@ -278,7 +278,7 @@ class HaConnectionTest {
     @Test
     fun `an entity Home Assistant does not have is reported missing`() = runBlocking {
         val conn = connection()
-        conn.start(config(), listOf("media_player.gone", "sun.sun"))
+        conn.start(auth(), listOf("media_player.gone", "sun.sun"))
         val missing = withTimeout(5_000) { conn.missing.first { it.isNotEmpty() } }
         assertThat(missing).containsExactlyInAnyOrder("media_player.gone")
         assertThat(conn.entities.value.keys).doesNotContain("media_player.gone")
@@ -288,7 +288,7 @@ class HaConnectionTest {
     @Test
     fun `a refused token is never sent again, not even on request`() = runBlocking {
         val conn = connection()
-        conn.start(config(token = "wrong"), listOf("media_player.wz"))
+        conn.start(auth(token = "wrong"), listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.AuthFailed } }
         // Each attempt counts as a failed login in Home Assistant.
         conn.retryNow()
@@ -301,7 +301,7 @@ class HaConnectionTest {
     fun `a signed-in connection gets its access token with the refresh token`() = runBlocking {
         val conn = connection()
         val auth = HaAuth(http, baseUrl(), HaCredentials.SignedIn("refresh-1", "http://192.168.1.23:8765/"))
-        conn.start(HaConfig(auth), listOf("media_player.wz"))
+        conn.start(auth, listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
         assertThat(tokenRequests.single()).isEqualTo(
             "grant_type=refresh_token&refresh_token=refresh-1&client_id=http%3A%2F%2F192.168.1.23%3A8765%2F",
@@ -314,7 +314,7 @@ class HaConnectionTest {
         refusedRefreshes = 1
         val conn = connection()
         val auth = HaAuth(http, baseUrl(), HaCredentials.SignedIn("revoked", "http://192.168.1.23:8765/"))
-        conn.start(HaConfig(auth), listOf("media_player.wz"))
+        conn.start(auth, listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.AuthFailed } }
         // Each refused refresh counts as a failed login in Home Assistant: no second one, not even on request.
         conn.retryNow()
@@ -328,7 +328,7 @@ class HaConnectionTest {
     fun `reconnects with backoff after the server goes away`() = runBlocking {
         closeAfterSubscribe = true
         val conn = connection()
-        conn.start(config(), listOf("media_player.wz"))
+        conn.start(auth(), listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.Waiting } }
         // Home Assistant is back.
         closeAfterSubscribe = false
@@ -341,7 +341,7 @@ class HaConnectionTest {
     @Test
     fun `a wake-up skips only a wait that is under way`() = runBlocking {
         val conn = HaConnection(http, scope, backoffFactory = { Backoff(baseMs = 10_000, maxMs = 10_000, random = Random(3)) })
-        conn.start(config(), listOf("media_player.wz"))
+        conn.start(auth(), listOf("media_player.wz"))
         withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
         // The network is reported back while the connection stands, then the connection is lost.
         conn.retryNow()
@@ -360,7 +360,7 @@ class HaConnectionTest {
         val port = server.port
         server.close()
         val conn = connection()
-        conn.start(HaConfig(HaAuth(http, "http://127.0.0.1:$port", HaCredentials.LongLived("good"))), listOf("media_player.wz"))
+        conn.start(HaAuth(http, "http://127.0.0.1:$port", HaCredentials.LongLived("good")), listOf("media_player.wz"))
         // A wait comes after every attempt.
         withTimeout(5_000) { conn.status.filter { it == HaStatus.Waiting }.take(3).collect() }
         conn.stop()
