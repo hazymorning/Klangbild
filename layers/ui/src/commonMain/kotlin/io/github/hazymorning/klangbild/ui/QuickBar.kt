@@ -44,6 +44,7 @@ import io.github.hazymorning.klangbild.render.LampLight
 import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
+import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.exp
@@ -224,7 +225,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
             val g = glow ?: return@Canvas
             // The band of light, centered on the value's middle; it adds to the veil. The blob
             // holds ±3 σ.
-            val cy = (QuickGrid.VALUE_BASELINE - QuickGrid.VALUE_SP * 0.35f) * d
+            val cy = (QuickGrid.VALUE_BASELINE - QuickGrid.VALUE_SP * Fonts.CAP_HEIGHT / 2f) * d
             val hw = glowSigma * 3f * d
             val hh = QuickGrid.GLOW_SIGMA_Y * 3f * d
             drawImage(
