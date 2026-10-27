@@ -305,25 +305,25 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
                 statusLine = statusLine,
                 year = s.track.year.takeIf { display.album },
-                progress = barWanted(lyrics),
+                barShown = barWanted(lyrics),
                 barStays = display.progressBar,
-                line = StageTexts.line(linkDown, s.track, t),
-                next = when {
+                slotText = StageTexts.slotText(linkDown, s.track, t),
+                footer = when {
                     showHint -> t[Strings.hintDown]
-                    lyrics != null -> StageTexts.next(s.track, t)
+                    lyrics != null -> StageTexts.footer(s.track, t)
                     queueList != null -> null
-                    else -> nextChapter ?: StageTexts.next(nextKept, t)
+                    else -> nextChapter ?: StageTexts.footer(nextKept, t)
                 },
-                nextTitle = when {
+                footerTitle = when {
                     showHint -> null
-                    lyrics != null -> StageTexts.nextTitle(s.track, t)
+                    lyrics != null -> StageTexts.footerTitle(s.track, t)
                     queueList != null -> null
                     nextChapter != null -> null
-                    else -> StageTexts.nextTitle(nextKept, t)
+                    else -> StageTexts.footerTitle(nextKept, t)
                 },
-                nextLead = if (showHint) t[Strings.hintDownKey] else null,
+                footerLead = if (showHint) t[Strings.hintDownKey] else null,
                 chapter = chapterPlace?.label,
-                rangeStartMs = chapterPlace?.startMs ?: 0L,
+                barStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,
                 queue = queueList?.let { QueueModel.of(it, t) },
             )

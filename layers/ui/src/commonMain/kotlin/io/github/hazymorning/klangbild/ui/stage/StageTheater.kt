@@ -183,10 +183,10 @@ fun StageTheater(
         when {
             began != seen -> 1f
             kind == Change.WALL -> p(0, total, Motion.Sine)
-            else -> text.unheld(TextLine.NEXT)
+            else -> text.unheld(TextLine.FOOTER)
         }
     }
-    val rowsInRise: () -> Float = { if (began != seen) 0f else Motion.RISE_DP * (1f - text.unheld(TextLine.NEXT)) }
+    val rowsInRise: () -> Float = { if (began != seen) 0f else Motion.RISE_DP * (1f - text.unheld(TextLine.FOOTER)) }
     val rowsOut: () -> Float = { if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS) }
     val rowsOutRise: () -> Float = { if (kind.isSoft) 0f else -Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS) }
     // The queue changed beneath the song (with a new look of it too): only the rows move.

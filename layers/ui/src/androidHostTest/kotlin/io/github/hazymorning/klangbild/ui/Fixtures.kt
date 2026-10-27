@@ -61,10 +61,10 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = { positionMs },
             year = track.year.takeIf { album },
-            progress = progress,
-            line = StageTexts.line(linkDown, track, t),
-            next = StageTexts.next(next, t),
-            nextTitle = StageTexts.nextTitle(next, t),
+            barShown = progress,
+            slotText = StageTexts.slotText(linkDown, track, t),
+            footer = StageTexts.footer(next, t),
+            footerTitle = StageTexts.footerTitle(next, t),
             statusLine = StatusLine(lead, clock, values),
         )
     }
@@ -94,11 +94,11 @@ object Fixtures : AppFixtures() {
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
             positionMs = { position },
-            next = chapter?.next ?: StageTexts.next(next, t),
-            nextTitle = if (chapter?.next != null) null else StageTexts.nextTitle(next, t),
+            footer = chapter?.next ?: StageTexts.footer(next, t),
+            footerTitle = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
             statusLine = StatusLine(lead, "21:47"),
             chapter = chapter?.label,
-            rangeStartMs = chapter?.startMs ?: 0L,
+            barStartMs = chapter?.startMs ?: 0L,
         )
     }
 
@@ -130,10 +130,10 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = position,
             year = track.year,
-            progress = peek,
-            line = StageTexts.line(linkDown, track, t),
-            next = StageTexts.next(track, t),
-            nextTitle = StageTexts.nextTitle(track, t),
+            barShown = peek,
+            slotText = StageTexts.slotText(linkDown, track, t),
+            footer = StageTexts.footer(track, t),
+            footerTitle = StageTexts.footerTitle(track, t),
             statusLine = StatusLine(lead, clock),
             lyrics = lyrics,
         )
@@ -165,9 +165,9 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = { positionMs },
             year = track.year.takeIf { album },
-            progress = progress,
+            barShown = progress,
             barStays = barStays,
-            line = StageTexts.line(false, track, t),
+            slotText = StageTexts.slotText(false, track, t),
             statusLine = StatusLine(lead, clock),
             queue = QueueModel.of(list, t),
         )

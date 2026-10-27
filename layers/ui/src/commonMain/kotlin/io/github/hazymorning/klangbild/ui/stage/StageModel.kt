@@ -31,27 +31,27 @@ class StageModel(
     /** Year of the album, shown after its name. */
     val year: Int? = null,
     /** The progress bar is shown (setting, or a key was just pressed). */
-    val progress: Boolean = true,
-    /** The progress bar stays (the setting); else [progress] shows it only for a moment after a key. */
+    val barShown: Boolean = true,
+    /** The progress bar stays (the setting); else [barShown] shows it only for a moment after a key. */
     val barStays: Boolean = true,
     /**
-     * A line in the progress bar's place: the station of a radio without duration, or a
-     * notice ("Reconnecting…"). Wins over the bar.
+     * The words in the slot under the text block: the station of a radio without duration, or a
+     * notice ("Reconnecting…"). They win over the bar.
      */
-    val line: String? = null,
-    /** What comes next, as in "Spiegel im Spiegel · Arvo Pärt". */
-    val next: String? = null,
-    /** The next item's title alone, for when title and artist don't both fit. */
-    val nextTitle: String? = null,
-    /** The words before [next]: "Up next", unless the line tells how to open the quick settings. */
-    val nextLead: String? = null,
+    val slotText: String? = null,
+    /** The footer, what comes next: "Spiegel im Spiegel · Arvo Pärt". */
+    val footer: String? = null,
+    /** The footer's title alone, for when title and artist don't both fit. */
+    val footerTitle: String? = null,
+    /** The words before the [footer]: "Up next", unless the footer tells how to open the quick settings. */
+    val footerLead: String? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */
     val chapter: String? = null,
     /** Where the progress bar starts in the item's time: the chapter's start. */
-    val rangeStartMs: Long = 0L,
+    val barStartMs: Long = 0L,
     /**
-     * The song's words, while they take the text column: then [next] names the song itself,
-     * and the progress bar shows only for a moment after a key ([progress]).
+     * The song's words, while they take the text column: then the [footer] names the song itself,
+     * and the progress bar shows only for a moment after a key ([barShown]).
      */
     val lyrics: Lyrics? = null,
     /** The queue as a list beside the cover, while it shows (and no words take the column): then the song stands at the top of the column. */
@@ -108,15 +108,15 @@ object StageTexts {
     fun sleep(atMs: Long, t: Texts, zone: TimeZone = TimeZone.currentSystemDefault()): String =
         t.format(Strings.statusPauseAt, t.clock(atMs, zone))
 
-    /** "Spiegel im Spiegel · Arvo Pärt". */
-    fun next(track: TrackInfo?, t: Texts): String? =
+    /** [track] as the footer names it: "Spiegel im Spiegel · Arvo Pärt". */
+    fun footer(track: TrackInfo?, t: Texts): String? =
         track?.let { TrackText.from(it, t[Strings.artistsOthers]) }?.let { listOfNotNull(it.title, it.shortArtists).joinToString(TimeText.SEPARATOR) }
 
-    /** "Spiegel im Spiegel". */
-    fun nextTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[Strings.artistsOthers]).title }
+    /** [track]'s title alone in the footer: "Spiegel im Spiegel". */
+    fun footerTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[Strings.artistsOthers]).title }
 
-    /** A line in the progress bar's place: the lost connection, or a radio's station. */
-    fun line(linkDown: Boolean, track: TrackInfo, t: Texts): String? = when {
+    /** The words in the progress bar's place: the lost connection, or a radio's station. */
+    fun slotText(linkDown: Boolean, track: TrackInfo, t: Texts): String? = when {
         linkDown -> t[Strings.stageLinkDown]
         track.durationMs == null -> track.source
         else -> null

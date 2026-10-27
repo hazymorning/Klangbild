@@ -76,7 +76,7 @@ class ChangesTest {
         val title = text.level(TextLine.TITLE)
         assertThat(title).isGreaterThan(0.1f)
         assertThat(title).isLessThan(0.95f)
-        assertThat(text.level(TextLine.NEXT)).isEqualTo(0f)
+        assertThat(text.level(TextLine.FOOTER)).isEqualTo(0f)
         assertThat(text.rising).isTrue()
         // A change that brings no new text (cards beside the middle) leaves them where they are.
         t.snapTo(0f)
@@ -94,7 +94,7 @@ class ChangesTest {
         t.snapTo(0f)
         text.begin(rise)
         assertThat(text.leaving(TextLine.TITLE)).isEqualTo(title)
-        assertThat(text.leaving(TextLine.NEXT)).isEqualTo(0f)
+        assertThat(text.leaving(TextLine.FOOTER)).isEqualTo(0f)
         assertThat(text.level(TextLine.TITLE)).isEqualTo(0f)
     }
 
@@ -120,7 +120,7 @@ class ChangesTest {
         skippedChange(t, text, 150)
         val start = currentTime
         text.release(newer = { awaitCancellation() })
-        assertThat(text.level(TextLine.NEXT)).isEqualTo(1f)
+        assertThat(text.level(TextLine.FOOTER)).isEqualTo(1f)
         assertThat(currentTime - start).isLessThanOrEqualTo(1_000L + 50)
     }
 
@@ -129,11 +129,11 @@ class ChangesTest {
         val t = Animatable(1f)
         val text = RisingText(t)
         skippedChange(t, text, 600)
-        assertThat(text.level(TextLine.NEXT)).isEqualTo(0f)
+        assertThat(text.level(TextLine.FOOTER)).isEqualTo(0f)
         text.release(newer = { delay(300) })
         assertThat(text.rising).isTrue()
-        assertThat(text.level(TextLine.NEXT)).isGreaterThan(0.2f)
-        assertThat(text.level(TextLine.NEXT)).isLessThan(0.95f)
+        assertThat(text.level(TextLine.FOOTER)).isGreaterThan(0.2f)
+        assertThat(text.level(TextLine.FOOTER)).isLessThan(0.95f)
     }
 
     @Test

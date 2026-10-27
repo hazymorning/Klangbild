@@ -2,7 +2,9 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -76,10 +78,10 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
     val time = faces.titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
-    val next = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).leftToRight()
+    val footer = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).leftToRight()
 
     /** "Up next" differs from what follows by weight alone. */
-    val nextLead = SpanStyle(fontWeight = FontWeight(560))
+    val footerLead = SpanStyle(fontWeight = FontWeight(560))
 
     /** A row of the queue's list: its title, and its artists under it. */
     val rowTitle = faces.textType(17f, 500, muted, lineHeight = 23f).leftToRight()
@@ -197,10 +199,10 @@ class TextPlan(
     val artistStyle: TextStyle,
     /** "Album · 2024", or only the album when both don't fit. */
     val album: String?,
-    /** What comes next: title and artist, or only the title when both don't fit. */
-    val next: String?,
+    /** The footer, what comes next: title and artist, or only the title when both don't fit. */
+    val footer: String?,
     /** The words before it ("Up next"). */
-    val nextLead: String,
+    val footerLead: String,
 )
 
 /** Measures the block once per model. */
@@ -208,13 +210,13 @@ class TextPlan(
 fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val nextLead = model.nextLead ?: texts()[Strings.stageNext]
+    val footerLead = model.footerLead ?: texts()[Strings.stageNext]
     val faces = faces()
     return remember(
-        model.text, model.year, model.next, model.nextTitle, model.scene.layout, model.scene.palette, model.progress, model.line, model.durationMs == null,
-        model.chapter != null, localDensity, nextLead, faces,
+        model.text, model.year, model.footer, model.footerTitle, model.scene.layout, model.scene.palette, model.barShown, model.slotText, model.durationMs == null,
+        model.chapter != null, localDensity, footerLead, faces,
     ) {
-        planText(model, measurer, localDensity, nextLead, faces)
+        planText(model, measurer, localDensity, footerLead, faces)
     }
 }
 
@@ -222,7 +224,7 @@ private fun planText(
     model: StageModel,
     measurer: androidx.compose.ui.text.TextMeasurer,
     density: androidx.compose.ui.unit.Density,
-    nextLead: String,
+    footerLead: String,
     faces: Faces,
 ): TextPlan {
     val t = model.text
@@ -259,7 +261,7 @@ private fun planText(
             rest += descent(last) + together(last, styles.album) + cap(styles.album)
             last = styles.album
         }
-        if (model.line != null || (model.progress && model.durationMs != null)) {
+        if (model.slotText != null || (model.barShown && model.durationMs != null)) {
             rest += descent(last) + frame(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
         layout.art * BLOCK_SHARE * d - rest
@@ -291,11 +293,11 @@ private fun planText(
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
     // What comes next: title and artist, or the title alone rather than a cut-off artist.
-    val next = model.next?.let { full ->
-        if (model.nextTitle == null || measurer.measure(nextText(full, styles, nextLead), styles.next, maxLines = 1, softWrap = false).size.width <= colW) {
+    val footer = model.footer?.let { full ->
+        if (model.footerTitle == null || measurer.measure(footerText(footerLead, full, styles), styles.footer, maxLines = 1, softWrap = false).size.width <= colW) {
             full
         } else {
-            model.nextTitle
+            model.footerTitle
         }
     }
     return TextPlan(
@@ -310,16 +312,22 @@ private fun planText(
         artists = artists,
         artistStyle = artistStyle,
         album = album,
-        next = next,
-        nextLead = nextLead,
+        footer = footer,
+        footerLead = footerLead,
     )
 }
 
 /**
- * The lines of the text block, for transitions that treat them one by one: new lines rise one
- * after another, each [stagger] ms after the first.
+ * The lines of the text column, for transitions that treat them one by one: new lines rise one
+ * after another, each [staggerMs] after the first.
  */
-enum class TextLine(val stagger: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), BOTTOM(200), NEXT(260) }
+enum class TextLine(val staggerMs: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), SLOT(200), FOOTER(260) }
+
+/** A line of the column as a change moves it: its [alpha] and how far it still has to rise (dp, on whole pixels). */
+internal fun Modifier.lineMotion(which: TextLine, alpha: (TextLine) -> Float, rise: (TextLine) -> Float): Modifier = graphicsLayer {
+    this.alpha = alpha(which).coerceIn(0f, 1f)
+    translationY = (rise(which) * density).roundToInt().toFloat()
+}
 
 /** The title's step, and the title laid out at it as it is set: at most the step's lines, the last one ellipsized. */
 internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)
@@ -451,8 +459,8 @@ fun isMostlyCjk(text: String): Boolean {
 }
 
 /** "Up next" ([lead]) in a heavier weight, 12 dp, then what comes next (isolated if right-to-left). */
-internal fun nextText(text: String, styles: StageStyles, lead: String): AnnotatedString = buildAnnotatedString {
-    withStyle(styles.nextLead) { append(lead) }
+internal fun footerText(lead: String, text: String, styles: StageStyles): AnnotatedString = buildAnnotatedString {
+    withStyle(styles.footerLead) { append(lead) }
     // A no-break space widened to about 12 dp.
     withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(NBSP) }
     append(isolateRightToLeft(text))

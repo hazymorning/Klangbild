@@ -307,9 +307,9 @@ internal fun LyricsText(
         }
     }
 
-    val bottomLine = model.line
+    val slotText = model.slotText
     // While the bar or a notice shows above the song, the words make room for it.
-    val slotShown = animateFloatAsState(if (slotOf(model) != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot")
+    val slotShown = animateFloatAsState(if (slotOf(model) != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot-shown")
     val colW = (layout.columnWidth * LocalDensity.current.density).roundToInt()
 
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
@@ -336,24 +336,24 @@ internal fun LyricsText(
                 drawLyrics(p, view.scroll.value, x, focus, around, inks, glow, a * come)
             }
             // 1: the progress bar or a notice, above the song; changes cross-fade
-            BottomLine(model, styles, line(TextLine.BOTTOM), label = "lyrics-slot-line")
+            SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
             // 2: the song itself, where "Up next" stands
-            val song = model.next?.let { fitSong(it, model.nextTitle, styles, colW) }
-            if (song != null) BasicText(AnnotatedString(isolateRightToLeft(song)), line(TextLine.NEXT), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            val song = model.footer?.let { fitSong(it, model.footerTitle, styles, colW) }
+            if (song != null) BasicText(AnnotatedString(isolateRightToLeft(song)), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
         val words = measurables[0].measure(constraints)
         val bottom = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
         val song = measurables[2].measure(Constraints(maxWidth = colW))
         // The song's descenders end where the column ends; the bar's labels (or a notice) stand above it.
-        val footer = (layout.footerBottom * density - styles.next.fontSize.toPx() * Fonts.DESCENT).roundToInt()
-        val slotBaseline = footer - (styles.next.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
+        val footer = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val slotBaseline = footer - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             words.place(0, 0)
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
             if (bottom.height > 0) {
-                val baseline = if (bottomLine != null) bottom[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: bottom.height else bottom.height
+                val baseline = if (slotText != null) bottom[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: bottom.height else bottom.height
                 bottom.place(x, slotBaseline - baseline)
             }
             if (song.height > 0) {
@@ -390,7 +390,7 @@ private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, room: Float,
 /** The room of the words around the middle (dp). */
 internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
     private val status = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
-    private val song = layout.footerBottom - styles.next.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
+    private val song = layout.footerBottom - styles.footer.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
     // The bar's block from its top to its labels' baseline.
     private val bar = song - SLOT_GAP - (BAR_THICKNESS + BAR_LABEL_GAP + styles.time.fontSize.value * Fonts.CAP_HEIGHT)
 
@@ -475,7 +475,7 @@ private fun glowOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
 private fun fitSong(full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
     return remember(full, title, styles, width) {
-        if (title == null || measurer.measure(AnnotatedString(isolateRightToLeft(full)), styles.next, maxLines = 1, softWrap = false).size.width <= width) full else title
+        if (title == null || measurer.measure(AnnotatedString(isolateRightToLeft(full)), styles.footer, maxLines = 1, softWrap = false).size.width <= width) full else title
     }
 }
 

@@ -231,8 +231,8 @@ class LanguageTest {
             }
         }
         val next = TrackInfo("Spiegel im Spiegel", listOf("Tasmin Little", "Martin Roscoe", "Paul Weber"))
-        assertEnglish("up next", StageTexts.next(next, en)?.removePrefix("Spiegel im Spiegel"))
-        assertEnglish("lost link", StageTexts.line(true, next, en))
+        assertEnglish("up next", StageTexts.footer(next, en)?.removePrefix("Spiegel im Spiegel"))
+        assertEnglish("lost link", StageTexts.slotText(true, next, en))
         assertEnglish("chapter", en.format(Strings.chapterNumber, 7))
         for (reason in RestReason.entries) {
             val lines = io.github.hazymorning.klangbild.ui.RestTexts.lines(reason, "Living room", "media_player.living_room", en)

@@ -265,7 +265,7 @@ internal fun TextLayer(
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
 
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
-    val bottomLine = model.line
+    val slotText = model.slotText
     val measurer = rememberTextMeasurer(cacheSize = 4)
 
     Layout(
@@ -302,9 +302,9 @@ internal fun TextLayer(
                 else -> Box(Modifier)
             }
             // 5: progress bar, station or notice; changes cross-fade
-            BottomLine(model, styles, line(TextLine.BOTTOM), label = "bottom-line")
+            SlotContent(model, styles, line(TextLine.SLOT), label = "slot")
             // 6: what comes next, on the artwork's bottom edge
-            NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT))
+            FooterLine(plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
@@ -342,7 +342,7 @@ internal fun TextLayer(
         if (bottom.height > 0) {
             // The bar block measures from the bar's top to the labels' baseline; a line of
             // text in its place is aligned by its own cap height.
-            val isText = bottomLine != null
+            val isText = slotText != null
             val first = if (isText) bottom[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: bottom.height else 0
             parts += Part(
                 bottom,
@@ -366,7 +366,7 @@ internal fun TextLayer(
         val blockH = parts.lastOrNull()?.let { capY.last() - it.capTop + it.baseline } ?: 0
         val top = (layout.textCenter * density).roundToInt() - blockH / 2
         // The last line's descenders end where the column ends.
-        val footer = (layout.footerBottom * density - styles.next.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val footer = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
@@ -386,12 +386,12 @@ internal fun TextLayer(
  * goes ([text] null: none).
  */
 @Composable
-internal fun NextLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
+internal fun FooterLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
     Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "next") { line ->
         if (line == null) {
             Box(Modifier)
         } else {
-            BasicText(nextText(line.second, styles, line.first), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(footerText(line.first, line.second, styles), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

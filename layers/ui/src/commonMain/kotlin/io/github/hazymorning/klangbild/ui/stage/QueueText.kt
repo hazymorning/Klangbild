@@ -469,7 +469,7 @@ internal fun QueueText(
     textLevel: () -> Float,
 ) {
     val styles = plan.styles
-    val bottomLine = model.line
+    val slotText = model.slotText
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
     Layout(
@@ -481,10 +481,11 @@ internal fun QueueText(
             BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
             if (plan.version != null) BasicText(plan.version, line(TextLine.VERSION), style = plan.versionStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
             if (plan.meta != null) BasicText(plan.meta, line(TextLine.ARTIST), style = plan.metaStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-            BottomLine(
-                model, styles,
-                line(TextLine.BOTTOM).graphicsLayer { this.alpha = plan.room.line },
-                label = "queue-bottom-line",
+            SlotContent(
+                model,
+                styles,
+                line(TextLine.SLOT).graphicsLayer { this.alpha = plan.room.line },
+                label = "queue-slot",
                 barAlpha = { plan.room.bar },
             )
         },
@@ -512,7 +513,7 @@ internal fun QueueText(
             meta.at(plan.metaTop, plan.metaStyle)
             // The bar stays in its place while it fades; the rows make room for it as it comes.
             if (bottom.height > 0) {
-                if (bottomLine != null) bottom.at(plan.slotTop, styles.label) else bottom.place(x, plan.slotTop.roundToInt())
+                if (slotText != null) bottom.at(plan.slotTop, styles.label) else bottom.place(x, plan.slotTop.roundToInt())
             }
         }
     }

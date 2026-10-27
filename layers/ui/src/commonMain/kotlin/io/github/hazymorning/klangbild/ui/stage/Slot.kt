@@ -11,32 +11,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import io.github.hazymorning.klangbild.ui.Motion
-import kotlin.math.roundToInt
 
-/** What stands in the progress bar's place ([slotOf]). */
+/** What stands in the slot under the text block ([slotOf]). */
 internal sealed interface Slot {
     /** The progress bar over [durationMs] from [startMs] in the track's time, for the track with [trackKey]. */
     data class Bar(val durationMs: Long, val startMs: Long, val trackKey: String) : Slot
 
-    /** A notice or a station ([StageModel.line]). */
+    /** A notice or a station ([StageModel.slotText]). */
     data class Text(val text: String) : Slot
 }
 
-/** What stands in [model]'s progress bar place: a notice or a station, the bar, or nothing. */
+/** What stands in [model]'s slot: a notice or a station, the progress bar, or nothing. */
 internal fun slotOf(model: StageModel): Slot? = when {
-    model.line != null -> Slot.Text(model.line)
-    model.progress && model.durationMs != null -> Slot.Bar(model.durationMs, model.rangeStartMs, model.scene.key)
+    model.slotText != null -> Slot.Text(model.slotText)
+    model.barShown && model.durationMs != null -> Slot.Bar(model.durationMs, model.barStartMs, model.scene.key)
     else -> null
 }
 
 /**
- * The progress bar's place in the column ([slotOf]): the bar, or a line of words. A change
+ * The slot under the text block ([slotOf]): the progress bar, or a line of words. A change
  * cross-fades, and a bar that leaves keeps its own length; a new chapter only starts a new bar.
  * The bar itself shows as much as [barAlpha] says on top of that.
  */
 @OptIn(ExperimentalAnimationApi::class) // For Transition.Crossfade's contentKey, so a new chapter updates the bar in place.
 @Composable
-internal fun BottomLine(model: StageModel, styles: StageStyles, modifier: Modifier, label: String, barAlpha: () -> Float = { 1f }) {
+internal fun SlotContent(model: StageModel, styles: StageStyles, modifier: Modifier, label: String, barAlpha: () -> Float = { 1f }) {
     updateTransition(slotOf(model), label).Crossfade(
         modifier,
         tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
@@ -57,10 +56,4 @@ internal fun BottomLine(model: StageModel, styles: StageStyles, modifier: Modifi
             is Slot.Text -> BasicText(slot.text, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
-}
-
-/** A line of the column as a change moves it: its [alpha] and how far it still has to rise (dp, on whole pixels). */
-internal fun Modifier.lineMotion(which: TextLine, alpha: (TextLine) -> Float, rise: (TextLine) -> Float): Modifier = graphicsLayer {
-    this.alpha = alpha(which).coerceIn(0f, 1f)
-    translationY = (rise(which) * density).roundToInt().toFloat()
 }
