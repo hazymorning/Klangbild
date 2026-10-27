@@ -131,6 +131,7 @@ class NowPlayingController(
     private var settingsJob: Job? = null
     private var machine = ScreenStateMachine()
     private val smooth = SmoothedPosition()
+    private val volumeFlash = VolumeFlash(now)
     private var lastReportKey: Any? = null
 
     /** The next chapter's start on the wall clock, so the stage turns to it on time. */
@@ -292,7 +293,7 @@ class NowPlayingController(
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
         lastReportKey = null
-        lastVolume = null
+        volumeFlash.reset()
         _ui.value = _ui.value.copy(
             source = SourceState(LinkState.CONNECTING),
             screen = Screen.Rest(RestReason.CONNECTING),
@@ -344,8 +345,7 @@ class NowPlayingController(
         // Back to the item before: that return is wanted at once.
         if (command == RemoteCommand.PREVIOUS) synchronized(lock) { flips.expectReturn(now()) }
         if (volume) {
-            // Answer the key at once; the new value follows from Home Assistant.
-            volumeFlashUntil = now() + VOLUME_FLASH_MS
+            volumeFlash.keyPressed()
             recompute()
         }
         scope.launch { source?.send(command) }
@@ -471,7 +471,7 @@ class NowPlayingController(
         }
         newSource.start()
         lightSync.attach(newSource as? LightBridge)
-        lastVolume = null
+        volumeFlash.reset()
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
         }
@@ -513,14 +513,7 @@ class NowPlayingController(
             // A jump with the remote holds until Home Assistant reports the new place (or another item).
             smooth.onReport(p?.track?.key, seeking.onReport(st, raw, t), t)
         }
-        // A new volume (set here, on a phone or anywhere else) is shown for a moment; another
-        // speaker shown (this TV's own, or back) has a volume of its own, which doesn't count as a change.
-        if (st.speaker != _ui.value.source.speaker) lastVolume = null
-        val volume = p?.volume?.let { it to p.muted }
-        if (volume != null) {
-            if (lastVolume != null && volume != lastVolume) volumeFlashUntil = t + VOLUME_FLASH_MS
-            lastVolume = volume
-        }
+        volumeFlash.reported(st, _ui.value.source.speaker, t)
         if (st.link != _ui.value.source.link) {
             log.info("Link: ${st.link}")
             // Dropped after this report is taken in, since dropping them stops the source that sent it.
@@ -533,9 +526,6 @@ class NowPlayingController(
 
     private var flips = FlipGuard()
     private var heldJob: Job? = null
-
-    private var lastVolume: Pair<Float, Boolean>? = null
-    @Volatile private var volumeFlashUntil = 0L
 
     /**
      * Stops [old] once the lights it was lighting have been given back through it (a few
@@ -597,7 +587,7 @@ class NowPlayingController(
             entityId = s.entityId,
             menu = menuState,
             quick = quickState,
-            volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && t < volumeFlashUntil,
+            volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && volumeFlash.shown(t),
             chapter = chapter,
             sleepAt = sleep.shownPauseAt(previous.sleepAt),
             texts = texts,
@@ -658,9 +648,6 @@ class NowPlayingController(
     }
 
     companion object {
-        /** How long a new volume stays in the status line. */
-        const val VOLUME_FLASH_MS = 3_500L
-
         /** A stop shorter than this is a hand-over between the app and the screensaver. */
         const val HANDOVER_MS = 10_000L
 
