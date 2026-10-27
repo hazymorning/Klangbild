@@ -577,7 +577,8 @@ object SetupPage {
   async function load() {
     if (code().length !== 6) return;
     sessionStorage.setItem('klangbild-code', code());
-    const s = await api('/api/state');
+    let s;
+    try { s = await api('/api/state'); } catch (e) { status(T.tvUnreachable, 'bad'); return; }
     if (s.ok === false) { status(s.message, 'bad'); return; }
     ${'$'}('url').value = s.url || '';
     hasToken = s.auth === 'token';
