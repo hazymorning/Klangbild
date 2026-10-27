@@ -425,7 +425,7 @@ class NowPlayingController(
 
     private fun onSettings(s: Settings): Unit = synchronized(lock) {
         val flow = s.queue == QueueDisplay.FLOW
-        if (flow != scenes.frame.flow || (_ui.value.queue == QueueDisplay.FLOW) != flow) {
+        if (flow != scenes.frame.flow) {
             // Cover Flow needs scenes of its own, and its strip starts afresh. What showed before
             // stays on screen until the first scene is made (it goes then), so the switch never
             // waits in the dark. Off and the list share the cover's scenes. The song on stage
@@ -756,10 +756,7 @@ class NowPlayingController(
         val s = strip.update(stage.track, coming, played = src.played)
         scenes.retain(s.cards.map { it.track.sceneKey }.toSet())
         val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
-        for (i in order) {
-            val track = s.cards[i].track
-            if (scenes.ready(track, look) == null) scenes.prepare(track, look) { recompute() }
-        }
+        for (i in order) scenes.prepare(s.cards[i].track, look) { recompute() }
         val middle = scenes.ready(s.middle.track, look) ?: return ui
         val shown = ui.flow?.cards.orEmpty().associateBy { it.id }
         val newWall = shown.values.any { it.scene.appearance != look.appearance }
