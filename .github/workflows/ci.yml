@@ -15,7 +15,6 @@ on:
       - "LICENSE"
       - "docs/**"
       - "tools/**"
-      - ".claude/**"
       - ".github/ISSUE_TEMPLATE/**"
   pull_request:
     paths-ignore:
@@ -24,7 +23,6 @@ on:
       - "LICENSE"
       - "docs/**"
       - "tools/**"
-      - ".claude/**"
       - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
     inputs:
