@@ -28,6 +28,23 @@ import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
+/** How often [QueueReader] reads the queue and how long it waits; shorter in tests. */
+data class QueueTiming(
+    /** How often the queue is read again while music plays. */
+    val refreshMs: Long = 60_000L,
+    /** How long a new track may wait for Music Assistant's queue to describe it. */
+    val detailsWaitMs: Long = 2_000L,
+    /**
+     * How long after a new track's first read the queue is read once more. Music Assistant's
+     * players report about once a second while they play; this leaves a margin.
+     */
+    val settleMs: Long = 2_500L,
+    /** How often Music Assistant itself is asked for its queue while a track plays. */
+    val maQueueMs: Long = 15_000L,
+    /** Home Assistant reports a track change in several updates; the queue is read once they have settled. */
+    val burstMs: Long = 350L,
+)
+
 /**
  * The queue around the song that plays, for a Music Assistant player: Home Assistant's
  * `get_queue` (what comes next, full-size artwork, the artists one by one) and, with Music
@@ -52,14 +69,7 @@ internal class QueueReader(
     /** The player as last published (while a new song waits, still the one before). */
     private val shown: () -> PlayerSnapshot?,
     private val lock: SynchronizedObject,
-    /** How often the queue is read again while music plays. */
-    private val queueRefreshMs: Long,
-    /** How long a new song may wait for the queue to describe it. */
-    private val detailsWaitMs: Long,
-    /** How long after a new song's first read the queue is read once more. */
-    private val queueSettleMs: Long,
-    /** How often Music Assistant itself is asked what comes next while a song plays. */
-    private val maQueueMs: Long,
+    private val timing: QueueTiming,
     /** Publishes the source's state anew. */
     private val publish: () -> Unit,
 ) {
@@ -133,7 +143,7 @@ internal class QueueReader(
             // Light periodic refresh: the queue can change without the track changing. It is asked
             // only of a Music Assistant player that has a queue, and only while it plays.
             while (isActive) {
-                delay(queueRefreshMs)
+                delay(timing.refreshMs)
                 val p = shown()
                 if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startQueueRead(force = true)
             }
@@ -143,7 +153,7 @@ internal class QueueReader(
         maPoller = ma?.let { client ->
             scope.launch {
                 while (isActive) {
-                    delay(maQueueMs)
+                    delay(timing.maQueueMs)
                     val p = shown()
                     if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant && queueWorks == true) startMaCheck(client)
                 }
@@ -200,7 +210,7 @@ internal class QueueReader(
      * Whether the song [key] on [p] waits for Music Assistant's queue: Home Assistant reports a
      * new song first with a small picture (512 px) and without the album's year, and the queue
      * tells the rest a moment later. A song the queue has described or announced as next does not
-     * wait, nor does a player whose queue does not answer; none waits longer than [detailsWaitMs].
+     * wait, nor does a player whose queue does not answer; none waits longer than [QueueTiming.detailsWaitMs].
      */
     fun awaitsDetails(p: PlayerSnapshot, key: String, t: Long): Boolean {
         val track = p.track
@@ -213,11 +223,11 @@ internal class QueueReader(
             awaitedSince = t
             awaitEnd?.cancel()
             awaitEnd = scope.launch {
-                delay(detailsWaitMs)
+                delay(timing.detailsWaitMs)
                 publish()
             }
         }
-        return t - awaitedSince < detailsWaitMs
+        return t - awaitedSince < timing.detailsWaitMs
     }
 
     /**
@@ -443,7 +453,7 @@ internal class QueueReader(
     private suspend fun refreshQueue(force: Boolean) {
         val key = songKey ?: return
         if (!force && queueForKey == key) return
-        delay(350) // let a burst of state changes settle
+        delay(timing.burstMs)
         if (songKey != key) return
         val target = entity() ?: return
         val response = try {
@@ -472,7 +482,7 @@ internal class QueueReader(
         if (again || parsed == null) return
         // Music Assistant names the next item anew only when the player reports after the new one
         // has started: a queue replaced as it starts still names the old queue's next for a moment.
-        delay(queueSettleMs)
+        delay(timing.settleMs)
         if (songKey != key) return
         refreshQueue(force = true)
         // A book's or an episode's chapters may follow a moment after it starts (Music Assistant 2.11).
@@ -529,22 +539,11 @@ internal class QueueReader(
     }
 
     companion object {
-        const val QUEUE_REFRESH_MS = 60_000L
-
-        /** Music Assistant's players report about once a second while they play; this leaves a margin. */
-        const val QUEUE_SETTLE_MS = 2_500L
-
-        /** Music Assistant itself is asked this often what comes next while a song plays. */
-        const val MA_QUEUE_MS = 15_000L
-
         /** Music Assistant's queue is read again after this long even when nothing seems to have moved. */
         const val WINDOW_MAX_AGE_MS = 5 * 60_000L
 
         /** A book without chapters is asked once more after this long. */
         const val CHAPTERS_AGAIN_MS = 10_000L
-
-        /** A new song waits at most this long for Music Assistant's queue to describe it. */
-        const val DETAILS_WAIT_MS = 2_000L
 
         /** Music Assistant's position counts while it is this close to Home Assistant's. */
         const val AGREE_MS = 1_500L

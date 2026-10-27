@@ -56,18 +56,11 @@ class HaSource(
     private val sunEntity: String = "sun.sun",
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val ma: MaClient? = null,
-    /** How often the queue is read again while music plays (shorter in tests). */
-    queueRefreshMs: Long = QueueReader.QUEUE_REFRESH_MS,
+    queueTiming: QueueTiming = QueueTiming(),
     /** How often Music Assistant is asked whether a party runs (shorter in tests). */
     private val partyMs: Long = PARTY_MS,
     /** How long a button's call may go unanswered before it counts as still running (shorter in tests). */
     private val actionAnswerMs: Long = ACTION_ANSWER_MS,
-    /** How long a new song may wait for Music Assistant's queue to describe it (shorter in tests). */
-    detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
-    /** How long after a new song's first queue read the queue is read once more (shorter in tests). */
-    queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
-    /** How often Music Assistant itself is asked what comes next while a song plays (shorter in tests). */
-    maQueueMs: Long = QueueReader.MA_QUEUE_MS,
     /** This TV as a speaker, as far as it plays (with Music Assistant set up). */
     speaker: StateFlow<SpeakerStatus>? = null,
     /** How long the first wait is before Music Assistant and Home Assistant are asked again for this TV's own speaker (shorter in tests). */
@@ -108,8 +101,7 @@ class HaSource(
 
     private val queue = QueueReader(
         scope, connection, { speakerShown }, config.baseUrl, ma, now,
-        latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock,
-        queueRefreshMs = queueRefreshMs, detailsWaitMs = detailsWaitMs, queueSettleMs = queueSettleMs, maQueueMs = maQueueMs,
+        latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock, timing = queueTiming,
     ) { publish(connection.status.value, connection.entities.value) }
 
     private var linkDownSince: Long? = null
