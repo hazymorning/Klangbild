@@ -182,13 +182,8 @@ fun StageTheater(
     }
     val stood: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
-    val textOut: (TextLine) -> Float = { line ->
-        when (kind) {
-            Change.ROWS -> 0f
-            else -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS))
-        }
-    }
-    val textOutRise: (TextLine) -> Float = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft || kind == Change.ROWS) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) }
+    val textOut: (TextLine) -> Float = { line -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) }
+    val textOutRise: (TextLine) -> Float = { line -> 10f * (1f - stood(line)) - (if (kind.isSoft) 0f else 6f * p(0, Motion.TEXT_OUT_MS)) }
     // The queue's rows are the queue, not the song: they come the whole way also when another song
     // hurries a change (the skipped song's own lines stay down), so every change finds them whole
     // and moves them on from there. They glide when the list goes on from the one before (a new
@@ -262,7 +257,8 @@ fun StageTheater(
         if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, dim = { dim.picture })
         PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, dim = { dim.picture })
         CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
-            if (prevModel != null && prevPlan != null) {
+            // While only the queue's rows move, the text stays as it stands: nothing leaves.
+            if (prevModel != null && prevPlan != null && kind != Change.ROWS) {
                 TextLayer(prevModel, plan = prevPlan, alpha = textOut, rise = textOutRise, dim = { dim.text }, queuePlan = prevQueue, rows = false)
             }
             TextLayer(curModel, plan = curPlan, alpha = textIn, rise = textRise, dim = { dim.text }, queuePlan = curQueue, rows = false)
