@@ -66,15 +66,12 @@ data class Condition(val entity: String, val attribute: String?, val test: Test,
             fun str(key: String) = o.string(key)?.trim()
             val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
             val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
-            if (attribute != null && !ATTRIBUTE.matches(attribute)) return null
+            if (attribute != null && !EntityId.isAttribute(attribute)) return null
             val test = Test.of(str("test")) ?: return null
             val value = str("value")?.takeIf { it.length <= MAX_VALUE } ?: return null
             if ((test == Test.ABOVE || test == Test.BELOW) && value.toNumber() == null) return null
             return Condition(entity, attribute, test, value)
         }
-
-        /** An attribute's name as Home Assistant writes them. */
-        val ATTRIBUTE = Regex("[A-Za-z0-9_]{1,64}")
 
         /** [seen] as a number: a number, a number in words ("21.5"), or a list's count. */
         fun number(seen: JsonElement?): Double? = when (seen) {
