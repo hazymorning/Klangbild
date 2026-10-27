@@ -51,12 +51,12 @@ class SessionTest {
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
             audio += timestampUs to length
         }
-        override fun clear() { events += "clear" }
+        override fun streamClear() { events += "clear" }
         override fun streamEnd() { events += "end" }
         override fun volume(volume: Int) { events += "volume $volume" }
         override fun mute(muted: Boolean) { events += "mute $muted" }
         override fun outputDelay(ms: Int) { events += "delay $ms" }
-        override fun group(playing: Boolean, groupId: String, name: String) { events += "group $playing" }
+        override fun group(playing: Boolean) { events += "group $playing" }
         override fun beat(timestampUs: Long, downbeat: Boolean) { events += "beat $timestampUs" }
         override fun beatsCleared() { events += "beats cleared" }
         override fun paired(record: PairingRecord) {
@@ -82,20 +82,18 @@ class SessionTest {
         private var psk = Psk.SENTINEL
 
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean {
+            override fun sendText(text: String) {
                 val m = Message.parse(text)
                 if (m.type == "client/init") clientInit = text.toByteArray() else fromClient += m
                 textFromClient(m)
-                return true
             }
-            override fun sendBinary(bytes: ByteArray): Boolean {
+            override fun sendBinary(bytes: ByteArray) {
                 val c = channel!!
                 val plain = c.receive.decrypt(ByteArray(0), bytes)
                 assertThat(plain[0]).isEqualTo(0.toByte())
                 val m = Message.parse(String(plain, 1, plain.size - 1))
                 fromClient += m
                 messageFromClient(m)
-                return true
             }
             override fun close() { closed = true }
         }

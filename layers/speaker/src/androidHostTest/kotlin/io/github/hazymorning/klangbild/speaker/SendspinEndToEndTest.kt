@@ -73,7 +73,7 @@ class SendspinEndToEndTest {
             }
             chunks += Chunk(timestampUs, first, length / 4, arrivalUs, clock?.clientTime(timestampUs), steady, events.count { it == "clear" })
         }
-        override fun clear() { events += "clear" }
+        override fun streamClear() { events += "clear" }
         override fun streamEnd() { events += "end" }
         override fun volume(volume: Int) {
             this.volume = volume
@@ -87,7 +87,7 @@ class SendspinEndToEndTest {
             delay = ms
             events += "delay $ms"
         }
-        override fun group(playing: Boolean, groupId: String, name: String) = Unit
+        override fun group(playing: Boolean) = Unit
         override fun beat(timestampUs: Long, downbeat: Boolean) = Unit
         override fun beatsCleared() = Unit
         override fun paired(record: PairingRecord) {
@@ -180,8 +180,8 @@ class SendspinEndToEndTest {
                 speaker.audio(timestampUs, sendAheadUs, bytes, offset, length, arrivalUs)
                 playback.queue.add(timestampUs, bytes, offset, length / 4)
             }
-            override fun clear() {
-                speaker.clear()
+            override fun streamClear() {
+                speaker.streamClear()
                 playback.clear()
             }
         }

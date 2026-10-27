@@ -12,8 +12,8 @@ import kotlin.random.Random
 
 /** How a connection carries messages; the session never sees the WebSocket itself. */
 interface Transport {
-    fun sendText(text: String): Boolean
-    fun sendBinary(bytes: ByteArray): Boolean
+    fun sendText(text: String)
+    fun sendBinary(bytes: ByteArray)
 
     /** Closes the connection without another word. */
     fun close()
@@ -84,11 +84,14 @@ class Session(
         /** A player stream starts (or its format is set again). */
         fun streamStart()
 
-        /** [length] bytes of PCM at [offset] in [bytes], to be played from server time [timestampUs]; [arrivalUs] when it came. */
+        /**
+         * [length] bytes of PCM at [offset] in [bytes] to play at server time [timestampUs], sent
+         * [sendAheadUs] before that and received at local time [arrivalUs].
+         */
         fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long)
 
-        /** The player's queued audio goes (a seek, another song). */
-        fun clear()
+        /** The player's queued audio goes (a seek, another track). */
+        fun streamClear()
 
         /** The player's stream ended. */
         fun streamEnd()
@@ -97,8 +100,8 @@ class Session(
         fun mute(muted: Boolean)
         fun outputDelay(ms: Int)
 
-        /** The group plays or not. */
-        fun group(playing: Boolean, groupId: String, name: String)
+        /** Whether the speaker's group is playing (`group/update`). */
+        fun group(playing: Boolean)
 
         /** A beat heard at server time [timestampUs], [downbeat] when it begins a bar. */
         fun beat(timestampUs: Long, downbeat: Boolean)
@@ -109,7 +112,7 @@ class Session(
         /** Pairing finished: keep [record]. */
         fun paired(record: PairingRecord)
 
-        /** A long-term PSK was used to connect. */
+        /** The long-term PSK of [serverId] was used to connect. */
         fun used(serverId: String)
 
         /** The server ended the pairing with [serverId]: forget its record. */
@@ -369,7 +372,7 @@ class Session(
             "stream/start" -> streamStart(m)
             "stream/clear" -> streamClear(m)
             "stream/end" -> streamEnd(m)
-            "group/update" -> group(m)
+            "group/update" -> listener.group(m.string("playback_state") == "playing")
             "server/unpair" -> unpair()
             "noise/handshake" -> rehandshake(m)
             "server/pair-finalize" -> pairFinalized()
@@ -480,7 +483,7 @@ class Session(
 
     private fun streamClear(m: Message) {
         val targets = m.strings("roles")
-        if (playerStream && (targets == null || "player" in targets)) listener.clear()
+        if (playerStream && (targets == null || "player" in targets)) listener.streamClear()
         if (beatStream && (targets == null || "visualizer" in targets)) listener.beatsCleared()
     }
 
@@ -499,10 +502,6 @@ class Session(
             beatStream = false
             listener.beatsCleared()
         }
-    }
-
-    private fun group(m: Message) {
-        listener.group(m.string("playback_state") == "playing", m.string("group_id") ?: "", m.string("group_name") ?: "")
     }
 
     private fun unpair() {

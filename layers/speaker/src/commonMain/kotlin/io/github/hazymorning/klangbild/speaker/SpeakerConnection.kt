@@ -125,8 +125,14 @@ class SpeakerConnection(
         // Set by whichever comes first: the socket opening on the connection's thread, or its making returning here.
         val link = atomic<WebSocketLink?>(null)
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean = link.value?.send(text) == true
-            override fun sendBinary(bytes: ByteArray): Boolean = link.value?.send(bytes) == true
+            override fun sendText(text: String) {
+                link.value?.send(text)
+            }
+
+            override fun sendBinary(bytes: ByteArray) {
+                link.value?.send(bytes)
+            }
+
             override fun close() {
                 // A close frame after whatever is queued (a goodbye), never cutting it off.
                 link.value?.close()

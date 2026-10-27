@@ -304,14 +304,13 @@ class Speaker(
             queue.add(timestampUs, bytes, offset, length / PcmFormat.FRAME_BYTES)
         }
 
-        override fun clear() {
+        override fun streamClear() {
             playback.clear()
             sound.cleared()
         }
 
         override fun streamEnd() {
-            playback.clear()
-            sound.cleared()
+            streamClear()
             keepOpenUntilUs = monotonic.nowUs() + KEEP_OPEN_US
             streaming = false
             playingNow()
@@ -335,7 +334,7 @@ class Speaker(
             remember()
         }
 
-        override fun group(playing: Boolean, groupId: String, name: String) {
+        override fun group(playing: Boolean) {
             groupPlaying = playing
             playingNow()
         }
