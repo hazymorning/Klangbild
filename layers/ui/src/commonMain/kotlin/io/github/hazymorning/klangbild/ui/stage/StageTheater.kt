@@ -170,7 +170,6 @@ fun StageTheater(
         when {
             began != seen -> text.before(line)
             prev != null && kind == Change.WALL -> text.level(line) * p(0, total, Motion.Sine)
-            prev != null && kind == Change.ROWS -> 1f
             else -> text.level(line)
         }
     }
