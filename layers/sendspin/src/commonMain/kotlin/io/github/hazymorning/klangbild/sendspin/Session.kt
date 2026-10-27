@@ -409,14 +409,7 @@ class Session(
         val old = roles
         roles = newRoles
         // A role taken away stops at once, whatever it still had queued.
-        if (Roles.PLAYER in old - newRoles) {
-            if (playerStream) listener.streamEnd()
-            playerStream = false
-        }
-        if (Roles.VISUALIZER in old - newRoles) {
-            beatStream = false
-            listener.beatsCleared()
-        }
+        endStreams(player = Roles.PLAYER in old - newRoles, beats = Roles.VISUALIZER in old - newRoles)
         step = Step.ACTIVE
         listener.playerActive(Roles.PLAYER in roles)
         // A role added needs its state: sent now, or once the clock has settled. The clock is
@@ -503,11 +496,16 @@ class Session(
 
     private fun streamEnd(m: Message) {
         val targets = m.strings("roles")
-        if (playerStream && (targets == null || "player" in targets)) {
+        endStreams(player = targets == null || "player" in targets, beats = targets == null || "visualizer" in targets)
+    }
+
+    /** Ends the player's stream if [player], and the visualizer's if [beats], each only while it runs. */
+    private fun endStreams(player: Boolean, beats: Boolean) {
+        if (player && playerStream) {
             playerStream = false
             listener.streamEnd()
         }
-        if (beatStream && (targets == null || "visualizer" in targets)) {
+        if (beats && beatStream) {
             beatStream = false
             listener.beatsCleared()
         }
@@ -572,8 +570,7 @@ class Session(
     private fun end(end: SessionEnd, detail: String) {
         if (step == Step.OVER) return
         step = Step.OVER
-        if (playerStream) listener.streamEnd()
-        playerStream = false
+        endStreams(player = true, beats = true)
         transport.close()
         listener.ended(end, detail)
     }

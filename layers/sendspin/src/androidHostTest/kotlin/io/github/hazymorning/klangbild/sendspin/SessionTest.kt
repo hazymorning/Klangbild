@@ -355,6 +355,18 @@ class SessionTest {
     }
 
     @Test
+    fun `a session that ends ends its streams, the beats too`() {
+        val (server, s) = connect()
+        server.send(Message.of("stream/start", buildJsonObject {
+            put("player", PcmFormat.json())
+            putJsonObject("visualizer") { }
+        }))
+        pump(server, s)
+        s.goodbye("shutdown")
+        assertThat(events).containsInOrder("start", "end", "beats cleared", "ended GOODBYE shutdown")
+    }
+
+    @Test
     fun `pairing by PSK keeps a long-term PSK and the next connection uses it`() {
         val server = Server()
         server.greet = { it.handshakeWith(pairingPsk, PskCategory.PAIRING) }
