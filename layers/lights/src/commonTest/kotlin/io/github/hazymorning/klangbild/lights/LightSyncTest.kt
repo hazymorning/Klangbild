@@ -242,7 +242,7 @@ class LightSyncTest {
         motion: Float = 0f,
         f: FieldScene = field,
         lights: RoomLights = pair,
-    ) = LightSync.Target(lights, level, coverColors(f, motion > 0f), song, playing, night = 0f, warmth = 0.06f, motion = motion, fieldTime = { 0.0 })
+    ) = LightSync.Target(lights, level, coverColors(f, motion > 0f), song, playing, night = 0f, motion = motion, fieldTime = { 0.0 })
 
     private val field = field()
 
@@ -581,12 +581,12 @@ class LightSyncTest {
         val s = sync()
         s.attach(ha)
         val colors = coverColors(fourColors(), moving = true)
-        s.update(LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 0f, { 0.0 }))
+        s.update(LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0f, { 0.0 }))
         testScheduler.advanceTimeBy(60_000)
         assertThat(ha.to(left)).hasSize(1)
 
         var t = 0.0
-        val moving = LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 1f, { t })
+        val moving = LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 1f, { t })
         s.update(moving)
         // Five minutes: the colors move on from light to light slowly, and only visible steps are sent.
         repeat(600) {
@@ -875,17 +875,17 @@ class LightSyncTest {
     @Test
     fun `colors for the lights are their hue at its purest, grays a neutral white`() {
         val day = LightColor.whiteXy(LightColor.WHITE_DAY_K)
-        val gray = LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), warmth = 0f)
+        val gray = LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), night = 0f)
         assertThat(gray.distance(day)).isLessThan(0.002f)
         // Never the amber of a 2700 K bulb by day; at night a warmer white.
         assertThat(gray.distance(LightColor.whiteXy(2700f))).isGreaterThan(0.05f)
-        assertThat(LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), warmth = 1f).x).isGreaterThan(day.x)
+        assertThat(LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), night = 1f).x).isGreaterThan(day.x)
         // A pale sky blue is a clear blue light, far from white.
-        val sky = LightColor.of(io.github.hazymorning.klangbild.color.Oklab.toLinear(io.github.hazymorning.klangbild.color.Lch(0.82f, 0.05f, 245f).toLab()), warmth = 0f)
+        val sky = LightColor.of(io.github.hazymorning.klangbild.color.Oklab.toLinear(io.github.hazymorning.klangbild.color.Lch(0.82f, 0.05f, 245f).toLab()), night = 0f)
         assertThat(sky.distance(day)).isGreaterThan(0.12f)
         assertThat(sky.y).isLessThan(day.y - 0.05f)
         // A pure green stays a real color: Home Assistant fits it to what the light can show.
-        val green = LightColor.of(floatArrayOf(0f, 1f, 0f), warmth = 0f)
+        val green = LightColor.of(floatArrayOf(0f, 1f, 0f), night = 0f)
         assertThat(green.x + green.y).isLessThanOrEqualTo(1f)
         assertThat(green.y).isGreaterThan(0.5f)
         // Never below the floor while on.

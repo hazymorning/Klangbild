@@ -48,11 +48,11 @@ object LightColor {
     /** A light with white only takes this share of the way from white toward the color, as its warmth. */
     const val WHITE_ONLY_SHARE = 0.5f
 
-    /** The color for the light from [rgb] (linear sRGB, 0..1); [warmth] 0 by day to 1 at night. */
-    fun of(rgb: FloatArray, warmth: Float): Xy {
+    /** The color for the light from [rgb] (linear sRGB, 0..1); [night] 0 by day to 1 at night. */
+    fun of(rgb: FloatArray, night: Float): Xy {
         val lab = Oklab.fromLinear(rgb[0].coerceAtLeast(0f), rgb[1].coerceAtLeast(0f), rgb[2].coerceAtLeast(0f))
         val lch = lab.toLch()
-        val white = white(warmth)
+        val white = white(night)
         val pure = pureXy(lch.h) ?: return white
         // Very dark colors give their hue softly: no glowing navy from a black cover.
         val reach = min(SATURATION_MIN + lch.c * SATURATION_GAIN, if (lch.l < DARK_L) DARK_SATURATION else SATURATION_MAX)
@@ -67,9 +67,9 @@ object LightColor {
      * warmth of a color halfway between white and [rgb]'s light, by McCamy's approximation of
      * the correlated color temperature. A warm cover gives warm white, a cool one cool white.
      */
-    fun kelvin(rgb: FloatArray, warmth: Float, minK: Int, maxK: Int): Int {
-        val white = white(warmth)
-        val xy = of(rgb, warmth)
+    fun kelvin(rgb: FloatArray, night: Float, minK: Int, maxK: Int): Int {
+        val white = white(night)
+        val xy = of(rgb, night)
         val x = white.x + (xy.x - white.x) * WHITE_ONLY_SHARE
         val y = white.y + (xy.y - white.y) * WHITE_ONLY_SHARE
         val n = (x - 0.3320) / (0.1858 - y)
@@ -113,8 +113,8 @@ object LightColor {
         return if (sum <= 1e-6f) null else Xy(x / sum, y / sum)
     }
 
-    /** The white for grays at [warmth] (0 by day to 1 at night). */
-    private fun white(warmth: Float): Xy = whiteXy(WHITE_DAY_K + (WHITE_NIGHT_K - WHITE_DAY_K) * warmth.coerceIn(0f, 1f))
+    /** The white for grays at [night] (0 by day to 1 at night). */
+    private fun white(night: Float): Xy = whiteXy(WHITE_DAY_K + (WHITE_NIGHT_K - WHITE_DAY_K) * night.coerceIn(0f, 1f))
 
     /** White light of [kelvin] (1,667 to 25,000 K) on the Planckian locus (Kim et al.). */
     fun whiteXy(kelvin: Float): Xy {

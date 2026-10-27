@@ -34,7 +34,6 @@ internal class LightTargets(private val fieldClock: FieldClock, private val now:
             song = shown.track.key,
             playing = playing,
             night = night,
-            warmth = night,
             motion = s.motion.speed,
             fieldTime = fieldClock::now,
             onlyOn = s.lightsOnlyOn,

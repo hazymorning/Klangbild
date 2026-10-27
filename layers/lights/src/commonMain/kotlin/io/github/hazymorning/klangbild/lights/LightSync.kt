@@ -74,10 +74,8 @@ class LightSync(
         /** The song: a new one changes the lights once it has played a moment. */
         val song: String,
         val playing: Boolean,
-        /** 0 by day to 1 at night (by the sun): the lights dim with the evening. */
+        /** 0 by day to 1 at night (by the sun): the lights dim, and grays become a warmer white. */
         val night: Float,
-        /** Grays become a warmer white toward the night (0 to 1). */
-        val warmth: Float,
         /** How fast the field moves (0: it stands still). */
         val motion: Float,
         /** The field's time (seconds), shared with the screen. */
@@ -409,8 +407,8 @@ class LightSync(
             target.colors.color(light.slot, ft, rgb)
             val brightness = LightColor.brightness(share * LightColor.dimFor(rgb))
             val shown = when {
-                caps.color -> Shown.Color(LightColor.of(rgb, target.warmth), brightness)
-                caps.temperature -> Shown.White(LightColor.kelvin(rgb, target.warmth, caps.minKelvin, caps.maxKelvin), brightness)
+                caps.color -> Shown.Color(LightColor.of(rgb, target.night), brightness)
+                caps.temperature -> Shown.White(LightColor.kelvin(rgb, target.night, caps.minKelvin, caps.maxKelvin), brightness)
                 caps.dimmable -> Shown.Level(brightness)
                 else -> Shown.On
             }
