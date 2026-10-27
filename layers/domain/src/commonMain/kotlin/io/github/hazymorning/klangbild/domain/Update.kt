@@ -35,7 +35,8 @@ data class UpdateInfo(
     val available: String?
         get() {
             val now = installed ?: return null
-            return latest?.takeIf { (AppVersion.parse(it) ?: return null) > now }
+            val newest = AppVersion.parse(latest) ?: return null
+            return latest.takeIf { newest > now }
         }
 }
 
