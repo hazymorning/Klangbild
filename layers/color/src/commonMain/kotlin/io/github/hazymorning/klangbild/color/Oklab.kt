@@ -51,10 +51,7 @@ data class Lch(val l: Float, val c: Float, val h: Float) {
  * happen in Oklab, where equal steps look equally large.
  */
 object Oklab {
-    private val toLinearTable = FloatArray(256) { i ->
-        val c = i / 255f
-        if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
-    }
+    private val toLinearTable = FloatArray(256) { srgbToLinear(it / 255f) }
 
     /** The 8-bit sRGB channel in the low byte of [channel] in linear light. */
     fun srgbToLinear(channel: Int): Float = toLinearTable[channel and 0xFF]
