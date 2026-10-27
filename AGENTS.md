@@ -229,9 +229,10 @@ are in the code, and the tests named here check them.
   pictures, with titles whose letters reach down, not by eye.
 - There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
   (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
-  with no letter spacing or italics, and never in the system font. Outside the debug overlay,
-  nothing is smaller than 15 sp. Balanced lines go through `LineBalancer` or `BalancedText`, so
-  the JVM and the browser get them too.
+  without italics, and never in the system font. Letter spacing only makes slight optical
+  corrections, tighter for large type and looser for small text and for what people type from
+  the screen. Outside the debug overlay, nothing is smaller than 15 sp. Balanced lines go through
+  `LineBalancer` or `BalancedText`, so the JVM and the browser get them too.
 - Text comes in three inks, near-neutral with a hint of the cover's color, each with a contrast of
   at least 4.5:1 against its background (`DesignRulesTest`). Never pure white. Lyric lines fading
   away from the one sung are exempt.
