@@ -19,15 +19,15 @@ private class AndroidCardPainter : CardPainter {
     private val matrix = Matrix()
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val bounds = RectF()
-    private val beneath = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+    private val erase = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
     private val add = PorterDuffXfermode(PorterDuff.Mode.ADD)
 
-    override fun moved(canvas: Canvas, image: ImageBitmap, x: Float, y: Float, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
+    override fun drawTranslated(canvas: Canvas, image: ImageBitmap, x: Float, y: Float, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
         matrix.setTranslate(x, y)
         draw(canvas, image, alpha, filter, blend)
     }
 
-    override fun mapped(canvas: Canvas, image: ImageBitmap, src: FloatArray, dst: FloatArray, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
+    override fun drawMapped(canvas: Canvas, image: ImageBitmap, src: FloatArray, dst: FloatArray, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
         matrix.setPolyToPoly(src, 0, dst, 0, 4)
         draw(canvas, image, alpha, filter, blend)
     }
@@ -37,14 +37,14 @@ private class AndroidCardPainter : CardPainter {
         paint.colorFilter = filter?.asAndroidColorFilter()
         paint.xfermode = when (blend) {
             CardBlend.OVER -> null
-            CardBlend.BENEATH -> beneath
+            CardBlend.ERASE -> erase
             CardBlend.ADD -> add
         }
         canvas.nativeCanvas.drawBitmap(image.asAndroidBitmap(), matrix, paint)
         paint.xfermode = null
     }
 
-    override fun layer(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
+    override fun saveLayer(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
         bounds.set(left, top, right, bottom)
         canvas.nativeCanvas.saveLayerAlpha(bounds, alpha)
     }

@@ -38,7 +38,7 @@ internal fun rememberStageDim(status: PlayerStatus, linkDown: Boolean, appearanc
     val cover = animateFloatAsState(
         targetValue = when {
             !dimmed -> 1f
-            appearance == Appearance.LIGHT -> Motion.PAUSED_COVER_ON_PAPER
+            appearance == Appearance.LIGHT -> Motion.PAUSED_COVER_ON_LIGHT
             else -> Motion.PAUSED_COVER
         },
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),

@@ -128,13 +128,13 @@ fun FlowStrip(
     Canvas(modifier.fillMaxSize()) {
         val t = time().coerceIn(0f, 1f)
         val level = coverLevel().coerceIn(0f, 1f)
-        val covered = signAlpha().coerceIn(0f, 1f)
+        val signShown = signAlpha().coerceIn(0f, 1f)
         // How far a new look has come: the textures before are drawn only until it has.
-        val come = if (before == null) 1f else look().coerceIn(0f, 1f)
-        val old = if (come < 1f) before else null
+        val lookProgress = if (before == null) 1f else look().coerceIn(0f, 1f)
+        val old = if (lookProgress < 1f) before else null
         val arrived = arriving?.let { Motion.Turn.transform(it.move.of(t)) } ?: 1f
-        val arrivingLightness = arriving?.lightness(come) ?: NO_MIDDLE_LIGHTNESS
-        val leavingLightness = leaving?.lightness(come) ?: arrivingLightness
+        val arrivingLightness = arriving?.lightness(lookProgress) ?: NO_MIDDLE_LIGHTNESS
+        val leavingLightness = leaving?.lightness(lookProgress) ?: arrivingLightness
         val middleLightness = leavingLightness + (arrivingLightness - leavingLightness) * arrived
         for (i in 0 until n) {
             val c = cards[i]
@@ -143,7 +143,7 @@ fun FlowStrip(
             pos[i] = p
             val fade = c.fromAlpha + (c.toAlpha - c.fromAlpha) * Motion.Sine.transform(c.fade.of(t))
             // Beneath a sign, the cards passing the middle fade, their mirror images with them.
-            alphas[i] = fade * geometry.presence(p) * (1f - covered * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
+            alphas[i] = fade * geometry.presence(p) * (1f - signShown * (1f - smoothstep(SIGN_NEAR, SIGN_FAR, abs(p))))
             order[i] = i
         }
         // Farthest first (insertion sort: a handful of cards, no allocation).
@@ -167,48 +167,48 @@ fun FlowStrip(
                 val p = pos[i]
                 tools.place(geometry, p, dx, density)
                 val lit = geometry.light(p) * level
-                val lightness = c.lightness(come)
+                val lightness = c.lightness(lookProgress)
                 // How much the card is squeezed sideways: far turned cards take the half-size texture.
-                val width = hypot(tools.dst[2] - tools.dst[0], tools.dst[3] - tools.dst[1]) / card.sidePx
+                val width = hypot(tools.cornersPx[2] - tools.cornersPx[0], tools.cornersPx[3] - tools.cornersPx[1]) / card.sidePx
                 val half = 1f - smoothstep(HALF_FROM, HALF_TO, width)
                 val was = c.was?.takeIf { old != null }
-                val now = if (was == null) 1f else come
+                val newShare = if (was == null) 1f else lookProgress
                 tools.clear()
                 // A card that belongs to the look before (it leaves with it) is lit as it was.
-                val own = if (card.appearance != appearance && lightsBefore != null) lightsBefore else lights
-                val filter = own.filter(lit * stepBack(lightness, middleLightness, p, card.appearance))
-                tools.add(card, false, now * (1f - half), filter)
-                tools.add(card, true, now * half, filter)
+                val cardLights = if (card.appearance != appearance && lightsBefore != null) lightsBefore else lights
+                val filter = cardLights.filter(lit * stepBack(lightness, middleLightness, p, card.appearance))
+                tools.add(card, false, newShare * (1f - half), filter)
+                tools.add(card, true, newShare * half, filter)
                 if (was != null && lightsBefore != null) {
                     val filterBefore = lightsBefore.filter(lit * stepBack(lightness, middleLightness, p, was.appearance))
-                    tools.add(was, false, (1f - now) * (1f - half), filterBefore)
-                    tools.add(was, true, (1f - now) * half, filterBefore)
+                    tools.add(was, false, (1f - newShare) * (1f - half), filterBefore)
+                    tools.add(was, true, (1f - newShare) * half, filterBefore)
                 }
                 mix(canvas, tools, a, snap = p == 0f)
             }
             // The sign facing the room in the middle card's place, crisp on whole pixels, lit as the middle card.
             val signBefore = old?.sign?.takeIf { it !== sign }
-            if ((sign != null || signBefore != null) && covered > UNSEEN) {
+            if ((sign != null || signBefore != null) && signShown > UNSEEN) {
                 tools.place(geometry, 0f, dx, density)
                 val lit = geometry.light(0f) * level
                 tools.clear()
                 // Until the new wall's sign is made, the one before stands in: lit as before, so it
                 // never jumps.
                 val signLights = if (sign != null && sign.appearance != appearance && lightsBefore != null) lightsBefore else lights
-                if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else come, signLights.filter(lit))
-                if (signBefore != null && lightsBefore != null) tools.add(signBefore, false, if (sign == null) 1f else 1f - come, lightsBefore.filter(lit))
-                mix(canvas, tools, covered, snap = true)
+                if (sign != null) tools.add(sign, false, if (signBefore == null) 1f else lookProgress, signLights.filter(lit))
+                if (signBefore != null && lightsBefore != null) tools.add(signBefore, false, if (sign == null) 1f else 1f - lookProgress, lightsBefore.filter(lit))
+                mix(canvas, tools, signShown, snap = true)
             }
         }
         // The cards dissolve into the wall before the screen's edges (on an OLED the band stays
         // black; on paper the fade is short, so a card leaving does not look bleached). The fade
         // ends before the middle card's place, which a first song brings near the left edge.
         // During a new look the band goes over from the wall before to the new one, as the wall does.
-        val edge = (if (edges) come else 0f) + (if (old?.edges == true) 1f - come else 0f)
+        val edge = (if (edges) lookProgress else 0f) + (if (old?.edges == true) 1f - lookProgress else 0f)
         if (edge <= 0f) return@Canvas
-        val ink = (if (old == null) wall else over(old.wall, wall, come)).let { if (edge < 1f) it.copy(alpha = it.alpha * edge) else it }
+        val ink = (if (old == null) wall else over(old.wall, wall, lookProgress)).let { if (edge < 1f) it.copy(alpha = it.alpha * edge) else it }
         val band = WallGlow.EDGE_BLACK_DP * density
-        val fade = (if (old == null) edgeFade(appearance) else edgeFade(old.appearance) + (edgeFade(appearance) - edgeFade(old.appearance)) * come) * density
+        val fade = (if (old == null) edgeFade(appearance) else edgeFade(old.appearance) + (edgeFade(appearance) - edgeFade(old.appearance)) * lookProgress) * density
         val reach = min(band + fade, (geometry.cx - geometry.side / 2f + dx) * density)
         edgeBands.draw(this, ink, band, reach, fade)
     }
@@ -248,7 +248,7 @@ private class EdgeBands {
 }
 
 /** The stretch over which the cards dissolve before the band at the screen's edges, on [appearance]'s wall (dp). */
-private fun edgeFade(appearance: Appearance) = if (appearance == Appearance.LIGHT) PAPER_EDGE_FADE_DP else EDGE_FADE_DP
+private fun edgeFade(appearance: Appearance) = if (appearance == Appearance.LIGHT) LIGHT_EDGE_FADE_DP else DARK_EDGE_FADE_DP
 
 /** [to] laid over [from] at [alpha], as the screen blends (in sRGB), so the band matches the wall cross-fading beneath it. */
 private fun over(from: Color, to: Color, alpha: Float) = Color(
@@ -271,24 +271,24 @@ private fun stepBack(lightness: Float, middle: Float, position: Float, appearanc
 }
 
 /** The cards' color filters on one wall, cached by step of light. */
-private class Lights(private val appearance: Appearance, private val paper: Int) {
+private class Lights(private val appearance: Appearance, private val background: Int) {
     private val cache = HashMap<Int, ColorFilter>()
 
     fun filter(light: Float): ColorFilter {
         val step = (light * STEPS).roundToInt()
-        return cache.getOrPut(step) { ColorFilter.colorMatrix(cardMatrix(step / STEPS.toFloat(), appearance, paper)) }
+        return cache.getOrPut(step) { ColorFilter.colorMatrix(cardMatrix(step / STEPS.toFloat(), appearance, background)) }
     }
 }
 
 /**
- * Reused per strip: corners, matrix and paints, and the textures a card is mixed from this frame
- * (at most four: its full and half-size texture, and those of its look before), so nothing is
- * allocated per frame.
+ * Scratch space for one strip, so a frame allocates nothing: a quad's corners in dp and px, a
+ * texture's corners, the platform's painter, and the up to four textures a card is mixed from
+ * (its full and half-size texture, and those of its look before).
  */
 private class DrawTools {
-    val dp = FloatArray(8)
-    val dst = FloatArray(8)
-    val src = FloatArray(8)
+    val cornersDp = FloatArray(8)
+    val cornersPx = FloatArray(8)
+    val textureCorners = FloatArray(8)
     val painter = cardPainter()
 
     val textures = arrayOfNulls<FlowCard>(4)
@@ -297,10 +297,10 @@ private class DrawTools {
     val filters = arrayOfNulls<ColorFilter>(4)
     var count = 0
 
-    /** Puts the quad of a card at [position] into [dst] (px), moved right by [dx] dp. */
+    /** Puts the quad of a card at [position] into [cornersPx], moved right by [dx] dp. */
     fun place(geometry: FlowGeometry, position: Float, dx: Float, density: Float) {
-        geometry.corners(position, dp)
-        for (j in 0 until 8) dst[j] = (dp[j] + if (j % 2 == 0) dx else 0f) * density
+        geometry.corners(position, cornersDp)
+        for (j in 0 until 8) cornersPx[j] = (cornersDp[j] + if (j % 2 == 0) dx else 0f) * density
     }
 
     fun clear() {
@@ -319,8 +319,9 @@ private class DrawTools {
 }
 
 /**
- * Draws the textures in [tools] onto the quad in [tools].dst at [alpha], each with its share of
- * the mix, as the mix itself would be laid over what lies beneath. One texture is one quad.
+ * Draws the textures in [tools] onto the card's quad ([DrawTools.cornersPx]) at [alpha], each
+ * with its share of the mix, as the mix itself would be laid over what lies beneath. One texture
+ * is one quad.
  *
  * A card turning between its own two textures is drawn without a layer, since that happens on
  * every turn. On the dark wall, laying one over the other would count its half-transparent
@@ -341,14 +342,14 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
         quad(canvas, first, tools.halves[0], alpha, tools.filters[0]!!, tools, snap = snap && !tools.halves[0])
         return
     }
-    var own = true
-    for (j in 1 until n) if (tools.textures[j] !== first) own = false
-    if (own && first.appearance == Appearance.DARK) {
-        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], blend = CardBlend.BENEATH)
+    var oneCard = true
+    for (j in 1 until n) if (tools.textures[j] !== first) oneCard = false
+    if (oneCard && first.appearance == Appearance.DARK) {
+        quad(canvas, first, tools.halves[0], alpha, null, tools, snap = snap && !tools.halves[0], blend = CardBlend.ERASE)
         for (j in 0 until n) {
             quad(canvas, tools.textures[j]!!, tools.halves[j], alpha * tools.weights[j], tools.filters[j]!!, tools, snap = snap && !tools.halves[j], blend = CardBlend.ADD)
         }
-    } else if (own) {
+    } else if (oneCard) {
         // Full beneath at a(1 - h) / (1 - a h), half over at a h: together exactly a, for any a.
         val full = if (tools.halves[0]) 1 else 0
         val half = 1 - full
@@ -357,8 +358,8 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
         quad(canvas, first, false, beneath, tools.filters[full]!!, tools, snap = snap)
         quad(canvas, first, true, over, tools.filters[half]!!, tools, snap = false)
     } else {
-        val d = tools.dst
-        tools.painter.layer(
+        val d = tools.cornersPx
+        tools.painter.saveLayer(
             canvas,
             min(min(d[0], d[2]), min(d[4], d[6])) - LAYER_MARGIN_PX,
             min(min(d[1], d[3]), min(d[5], d[7])) - LAYER_MARGIN_PX,
@@ -373,7 +374,7 @@ private fun mix(canvas: Canvas, tools: DrawTools, alpha: Float, snap: Boolean) {
     }
 }
 
-/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [tools].dst, blended as [blend] says. */
+/** Draws [card]'s texture (the half-size one if [half]) onto the quad in [DrawTools.cornersPx], blended as [blend] says. */
 private fun quad(
     canvas: Canvas,
     card: FlowCard,
@@ -389,7 +390,7 @@ private fun quad(
     val pad = FlowCard.PAD * scale
     val w = card.sidePx * scale
     val h = card.heightPx * scale
-    val s = tools.src
+    val s = tools.textureCorners
     s[0] = pad; s[1] = pad
     s[2] = pad + w; s[3] = pad
     s[4] = pad + w; s[5] = pad + h
@@ -397,9 +398,9 @@ private fun quad(
     val k = (alpha.coerceIn(0f, 1f) * 255f).roundToInt()
     if (snap) {
         // Facing the room, the card is drawn 1:1 on whole pixels, as crisp as the single cover.
-        tools.painter.moved(canvas, image, (tools.dst[0] - pad).roundToInt().toFloat(), (tools.dst[1] - pad).roundToInt().toFloat(), k, filter, blend)
+        tools.painter.drawTranslated(canvas, image, (tools.cornersPx[0] - pad).roundToInt().toFloat(), (tools.cornersPx[1] - pad).roundToInt().toFloat(), k, filter, blend)
     } else {
-        tools.painter.mapped(canvas, image, s, tools.dst, k, filter, blend)
+        tools.painter.drawMapped(canvas, image, s, tools.cornersPx, k, filter, blend)
     }
 }
 
@@ -408,7 +409,7 @@ private fun quad(
  * pause). On black the card gets darker; on paper it fades toward the paper, the way things
  * farther from the window look in daylight.
  */
-private fun cardMatrix(light: Float, appearance: Appearance, paper: Int): ColorMatrix {
+private fun cardMatrix(light: Float, appearance: Appearance, background: Int): ColorMatrix {
     val (r, g, b) = coverScale(1f, appearance)
     return if (appearance == Appearance.DARK) {
         ColorMatrix(
@@ -420,10 +421,10 @@ private fun cardMatrix(light: Float, appearance: Appearance, paper: Int): ColorM
             ),
         )
     } else {
-        val f = (1f - light) * PAPER_FOG
-        val pr = ((paper shr 16) and 0xFF) * f
-        val pg = ((paper shr 8) and 0xFF) * f
-        val pb = (paper and 0xFF) * f
+        val f = (1f - light) * BACKGROUND_FOG
+        val pr = ((background shr 16) and 0xFF) * f
+        val pg = ((background shr 8) and 0xFF) * f
+        val pb = (background and 0xFF) * f
         ColorMatrix(
             floatArrayOf(
                 r * (1f - f), 0f, 0f, 0f, pr,
@@ -448,8 +449,8 @@ private const val SIGN_FAR = 0.8f
 /** Steps of the cached light levels. */
 private const val STEPS = 48
 
-/** How much a card fades into the paper where the light falls off. */
-private const val PAPER_FOG = 0.3f
+/** How much a card on the light background fades into it where the light falls off. */
+private const val BACKGROUND_FOG = 0.3f
 
 /** A card beside the middle one is at most this much lighter than it (dark wall). */
 private const val STEP_BACK_RATIO = 1.1f
@@ -461,6 +462,6 @@ private const val HALF_TO = 0.82f
 /** A card's own layer reaches this far beyond its quad, so its filtered edges are never cut (px). */
 private const val LAYER_MARGIN_PX = 4f
 
-/** The stretch over which the cards dissolve before the band at the screen's edges (dp): dark, paper. */
-private const val EDGE_FADE_DP = 70f
-private const val PAPER_EDGE_FADE_DP = 36f
+/** The stretch over which the cards dissolve before the band at the screen's edges, on the dark and the light background (dp). */
+private const val DARK_EDGE_FADE_DP = 70f
+private const val LIGHT_EDGE_FADE_DP = 36f

@@ -177,7 +177,7 @@ object Motion {
     /** Light, artwork and text while paused; on the light wall the artwork dims less (it would turn muddy). */
     const val PAUSED_LIGHT = 0.45f
     const val PAUSED_COVER = 0.72f
-    const val PAUSED_COVER_ON_PAPER = 0.86f
+    const val PAUSED_COVER_ON_LIGHT = 0.86f
     const val PAUSED_TEXT = 0.7f
 
     /** Eased progress of a phase that runs from [start] to [end] of the overall 0..1 [t]. */
