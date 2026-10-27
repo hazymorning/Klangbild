@@ -2,10 +2,12 @@ package io.github.hazymorning.klangbild.config
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
@@ -42,10 +44,13 @@ class DataStoreValues(private val store: DataStore<Preferences>) : ValueStore {
     companion object {
         /**
          * The values in the app's preferences file [name], where `preferencesDataStore` keeps it.
-         * DataStore refuses a second store on a file in use, so each file is opened once per
-         * process.
+         * A file that cannot be read starts empty instead of failing every read. DataStore refuses
+         * a second store on a file in use, so each file is opened once per process.
          */
-        fun open(context: Context, name: String) =
-            DataStoreValues(PreferenceDataStoreFactory.create { context.applicationContext.preferencesDataStoreFile(name) })
+        fun open(context: Context, name: String) = DataStoreValues(
+            PreferenceDataStoreFactory.create(corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }) {
+                context.applicationContext.preferencesDataStoreFile(name)
+            },
+        )
     }
 }

@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
 import android.content.Context
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
@@ -200,6 +201,12 @@ class SettingsStoreTest {
         box.stored.clear()
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
         assertThat(box.stored).containsExactlyInAnyOrder("sealed:" + "long-lived-secret".reversed())
+    }
+
+    @Test
+    fun `settings that cannot be read start afresh`(): Unit = runBlocking {
+        context.preferencesDataStoreFile("settings").apply { parentFile!!.mkdirs() }.writeText("not a preferences file")
+        assertThat(SettingsStore(settingsValues(context), FakeBox()).settings.first()).isEqualTo(Settings())
     }
 
     @Test
