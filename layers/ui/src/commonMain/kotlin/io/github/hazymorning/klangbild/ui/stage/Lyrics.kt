@@ -482,13 +482,13 @@ private fun fitSong(full: String, title: String?, styles: StageStyles, width: In
 /**
  * The space from a line's last baseline to the next line's cap height (dp) for words in [style]
  * on at most [rows] rows a line, with [room] above and below the middle: as much as lets lines of
- * the most rows, the one sung and one on either side, keep [FRAME_SHARE] times that space to the
+ * the most rows, the one sung and one on either side, keep [OUTER_GAP_SHARE] times that space to the
  * status line and the song, from [LINE_GAP_MIN] to [LINE_GAP_MAX] em.
  */
 internal fun lineGap(style: TextStyle, rows: Int, room: Float): Float {
     val size = style.fontSize.value
     val most = size * Fonts.CAP_HEIGHT + (rows - 1) * style.lineHeight.value
-    return ((room - most / 2f - most) / (1f + FRAME_SHARE)).coerceIn(size * LINE_GAP_MIN, size * LINE_GAP_MAX)
+    return ((room - most / 2f - most) / (1f + OUTER_GAP_SHARE)).coerceIn(size * LINE_GAP_MIN, size * LINE_GAP_MAX)
 }
 
 /** Lines stand at least this far apart (em of the words): clearly more than a line's rows... */
@@ -497,8 +497,8 @@ private const val LINE_GAP_MIN = 0.8f
 /** ...and at most this far, where the room allows. */
 private const val LINE_GAP_MAX = 1.2f
 
-/** The space to the status line and the song, as a share of the space between lines. */
-private const val FRAME_SHARE = 1.6f
+/** The gap to the status line and the footer, as a share of the gap between lines. */
+private const val OUTER_GAP_SHARE = 1.6f
 
 /** A line leaving at an edge fades over this share of the space between lines. */
 private const val EDGE_FADE = 0.5f

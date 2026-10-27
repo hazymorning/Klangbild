@@ -25,10 +25,10 @@ import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.apart
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.frame
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.together
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.entryGap
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.texts
@@ -141,34 +141,34 @@ val titleLadder = listOf(
 )
 
 /**
- * The vertical rhythm of the song's lines. A space is the white the eye sees between two lines:
+ * The vertical rhythm of the track's lines. A gap is the space the eye sees between two lines:
  * from the upper line's descenders to the lower line's cap height, by the faces' own measures,
  * so it is the same for every song whether its letters reach down or not. There are three, each
- * [STEP] times the one inside it, so the spaces grow with what they separate at every size of
- * the title: lines of one entry stand [together], the title stands [apart] from who made it, and
- * the bar stands a [frame] away from the song.
+ * [STEP] times the one inside it, so the gaps grow with what they separate at every size of
+ * the title: the lines of one entry stand an [innerGap] apart, the title an [entryGap] from who
+ * made it, and the bar an [outerGap] from the text block.
  */
 internal object Rhythm {
-    /** From one space to the next larger: the golden ratio. */
+    /** From one gap to the next larger: the golden ratio. */
     const val STEP = 1.618f
 
-    /** The white between two lines of [style] (px): its leading less a line's cap height and descenders. */
-    fun Density.white(style: TextStyle): Float = style.lineHeight.toPx() - style.fontSize.toPx() * (Fonts.CAP_HEIGHT + Fonts.DESCENT)
+    /** The gap between two lines of [style] (px): its leading less a line's cap height and descenders. */
+    fun Density.leadingGap(style: TextStyle): Float = style.lineHeight.toPx() - style.fontSize.toPx() * (Fonts.CAP_HEIGHT + Fonts.DESCENT)
 
     /** How far [style]'s descenders reach below its baseline (px). */
     fun Density.descent(style: TextStyle): Float = style.fontSize.toPx() * Fonts.DESCENT
 
     /**
-     * Two lines of one entry, such as the work and its title, the title and its version, the
-     * artist and the album (px): as far apart as the looser of their own leadings sets them.
+     * The gap between two lines of one entry, such as the work and its title, the title and its
+     * version, the artist and the album (px): the looser of their own leadings.
      */
-    fun Density.together(upper: TextStyle, lower: TextStyle): Float = maxOf(white(upper), white(lower))
+    fun Density.innerGap(upper: TextStyle, lower: TextStyle): Float = maxOf(leadingGap(upper), leadingGap(lower))
 
-    /** The title, with its work and version, from who made it ([credits]) (px). */
-    fun Density.apart(title: TextStyle, credits: TextStyle): Float = STEP * together(title, credits)
+    /** The gap from the title, with its work and version, to who made it ([credits]) (px). */
+    fun Density.entryGap(title: TextStyle, credits: TextStyle): Float = STEP * innerGap(title, credits)
 
-    /** The bar from the song (px). */
-    fun Density.frame(title: TextStyle, credits: TextStyle): Float = STEP * apart(title, credits)
+    /** The gap from the text block to the bar (px). */
+    fun Density.outerGap(title: TextStyle, credits: TextStyle): Float = STEP * entryGap(title, credits)
 }
 
 /**
@@ -248,21 +248,21 @@ private fun planText(
         val title = styles.title(step)
         var rest = 0f
         val work = t.work
-        if (work != null) rest += cap(styles.work) + linesHeight(work, styles.work, 2) + descent(styles.work) + together(styles.work, title)
+        if (work != null) rest += cap(styles.work) + linesHeight(work, styles.work, 2) + descent(styles.work) + innerGap(styles.work, title)
         // Each space starts from the descenders of the line above it; the title's group ends the
         // title's descenders below its last line, the version's too.
         if (version != null) {
             val style = styles.version(step.size)
-            rest += descent(title) + together(title, style) + cap(style)
+            rest += descent(title) + innerGap(title, style) + cap(style)
         }
-        rest += descent(title) + apart(title, styles.artist) + cap(styles.artist)
+        rest += descent(title) + entryGap(title, styles.artist) + cap(styles.artist)
         var last = styles.artist
         if (t.album != null || model.year != null || model.chapter != null) {
-            rest += descent(last) + together(last, styles.album) + cap(styles.album)
+            rest += descent(last) + innerGap(last, styles.album) + cap(styles.album)
             last = styles.album
         }
         if (model.slotText != null || (model.barShown && model.durationMs != null)) {
-            rest += descent(last) + frame(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
+            rest += descent(last) + outerGap(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
         layout.art * BLOCK_SHARE * d - rest
     }

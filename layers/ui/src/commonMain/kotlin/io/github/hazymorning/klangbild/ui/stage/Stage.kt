@@ -42,10 +42,10 @@ import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.FlowLight
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.apart
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.frame
-import io.github.hazymorning.klangbild.ui.stage.Rhythm.together
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.entryGap
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
+import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
@@ -321,24 +321,24 @@ internal fun TextLayer(
         fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
 
         // Each part: where its cap height is (from its top), where its last baseline is, how far
-        // its descenders reach below it, the white above it ([Rhythm]) and its optical indent.
-        class Part(val p: Placeable, val capTop: Int, val baseline: Int, val descent: Float, val white: Float, val dx: Int = 0)
+        // its descenders reach below it, the gap above it ([Rhythm]) and its optical indent.
+        class Part(val p: Placeable, val capTop: Int, val baseline: Int, val descent: Float, val gap: Float, val dx: Int = 0)
         val parts = ArrayList<Part>()
-        fun text(p: Placeable, style: TextStyle, white: Float, depth: Float = descent(style)) {
+        fun addLine(p: Placeable, style: TextStyle, gap: Float, depth: Float = descent(style)) {
             if (p.height == 0) return
             val first = p[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: p.height
             val last = p[LastBaseline].takeIf { it != AlignmentLine.Unspecified } ?: p.height
-            parts += Part(p, first - capOf(style), last, depth, white, px(opticalIndent(style.fontSize.value)))
+            parts += Part(p, first - capOf(style), last, depth, gap, px(opticalIndent(style.fontSize.value)))
         }
         val rhythm = plan.titleRhythm
-        text(work, styles.work, 0f)
-        text(title, plan.titleStyle, together(styles.work, rhythm), depth = descent(rhythm))
+        addLine(work, styles.work, 0f)
+        addLine(title, plan.titleStyle, innerGap(styles.work, rhythm), depth = descent(rhythm))
         // The title's group ends the title's descenders below its last line, so who made it
         // stands as far from it whether the version ends it or the title does.
-        text(version, plan.versionStyle, together(rhythm, plan.versionStyle), depth = descent(rhythm))
-        text(artist, plan.artistStyle, apart(rhythm, plan.artistStyle))
+        addLine(version, plan.versionStyle, innerGap(rhythm, plan.versionStyle), depth = descent(rhythm))
+        addLine(artist, plan.artistStyle, entryGap(rhythm, plan.artistStyle))
         // The album with the artist, or apart from the title without one.
-        text(album, styles.album, if (artist.height > 0) together(plan.artistStyle, styles.album) else apart(rhythm, styles.album))
+        addLine(album, styles.album, if (artist.height > 0) innerGap(plan.artistStyle, styles.album) else entryGap(rhythm, styles.album))
         if (bottom.height > 0) {
             // The bar block measures from the bar's top to the labels' baseline; a line of
             // text in its place is aligned by its own cap height.
@@ -349,17 +349,17 @@ internal fun TextLayer(
                 capTop = if (isText) first - capOf(styles.label) else 0,
                 baseline = if (isText) first else bottom.height,
                 descent = 0f,
-                white = frame(rhythm, plan.artistStyle),
+                gap = outerGap(rhythm, plan.artistStyle),
             )
         }
-        // Positions of each cap height, relative to the first one: the white above it from the
+        // Positions of each cap height, relative to the first one: the gap above it from the
         // descenders of the line before.
         var y = 0
         val capY = IntArray(parts.size)
         parts.forEachIndexed { i, part ->
             if (i > 0) {
                 val prev = parts[i - 1]
-                y = capY[i - 1] - prev.capTop + prev.baseline + (prev.descent + part.white).roundToInt()
+                y = capY[i - 1] - prev.capTop + prev.baseline + (prev.descent + part.gap).roundToInt()
             }
             capY[i] = y
         }

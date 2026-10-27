@@ -204,7 +204,7 @@ fun StageTheater(
             oldRise = { 0f },
             new = { p(if (rowsGo) ROWS_COME_MS else ROWS_CLEAR_MS, total) },
             newRise = { 0f },
-            // A small cover made meanwhile comes in over the whole change, where its row stands.
+            // A row cover made meanwhile comes in over the whole change, where its row stands.
             cover = { p(0, total, Motion.Sine) },
         )
         rowsGo -> RowsMotion(
@@ -215,7 +215,7 @@ fun StageTheater(
             new = rowsIn,
             newRise = rowsInRise,
         )
-        // On another wall the old small covers stay whole under the new ones, as the cover does,
+        // On another wall the old row covers stay whole under the new ones, as the cover does,
         // where the same rows stand.
         else -> {
             val sameRows = kind == Change.WALL && prevQueue?.rows?.map { it.id } == curQueue?.rows?.map { it.id }
