@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.LastBaseline
@@ -36,11 +37,8 @@ import io.github.hazymorning.klangbild.color.Lch
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.render.ImageOps
 import io.github.hazymorning.klangbild.render.LampLight
-import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.WallGlow
-import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
@@ -102,8 +100,8 @@ object RestTexts {
  * the screen's middle, as strong as the Intensity setting (none when it is off).
  */
 private object RestLight {
-    const val MAP_W = 480
-    const val MAP_H = 270
+    private const val MAP_W = 480
+    private const val MAP_H = 270
 
     /** The screen the map is made for (dp), the 960 × 540 grid: drawn, it is scaled to the screen. */
     private const val SCREEN_W = 960f
@@ -114,16 +112,15 @@ private object RestLight {
     private const val RY = 175f
 
     /**
-     * The light as a grayscale map of the screen (sRGB-encoded, dithered): brightest in its middle,
-     * and black before the band along its edges, like every light.
+     * The light as a map of the screen, drawn multiplied by [tint]: brightest in its middle, and
+     * black before the band along its edges, like every light.
      */
-    fun map(ditherLsb: Float): IntArray {
-        val img = LinearImage(MAP_W, MAP_H)
+    fun map(tint: Int): ImageBitmap {
         val cx = SCREEN_W / 2f
         val cy = SCREEN_H / 2f
         val sx = SCREEN_W / MAP_W
         val sy = SCREEN_H / MAP_H
-        for (y in 0 until MAP_H) for (x in 0 until MAP_W) {
+        return lightMap(MAP_W, MAP_H, seed = 11, tint) { x, y ->
             val px = (x + 0.5f) * sx
             val py = (y + 0.5f) * sy
             val u = (px - cx) / RX
@@ -134,11 +131,8 @@ private object RestLight {
             val ex = (px - cx) / (cx - WallGlow.EDGE_BLACK_DP)
             val ey = (py - cy) / (cy - WallGlow.EDGE_BLACK_DP)
             val vignette = smoothstep(1f, 0.2f, ex * ex + ey * ey)
-            val value = exp(-q * 1.4f) * reach * reach * vignette
-            val o = y * MAP_W + x
-            img.r[o] = value; img.g[o] = value; img.b[o] = value
+            exp(-q * 1.4f) * reach * reach * vignette
         }
-        return ImageOps.toArgbDithered(img, seed = 11, ditherLsb = ditherLsb, blackBelow = 0.0005f)
     }
 
     /** Brightest point of the light (relative luminance). */
@@ -172,9 +166,7 @@ fun RestScreen(
 
     Box(modifier.fillMaxSize()) {
         BaseWall(colors.wall)
-        val map = rememberOffMain(tint) {
-            tint?.let { imageBitmapOf(RestLight.map(ImageOps.ditherFor(it)), RestLight.MAP_W, RestLight.MAP_H) }
-        }
+        val map = rememberOffMain(tint) { tint?.let { RestLight.map(it) } }
         if (map != null && tint != null) {
             Canvas(Modifier.fillMaxSize()) {
                 drawImage(

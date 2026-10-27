@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
@@ -53,12 +54,9 @@ import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.math.smoothstep
-import io.github.hazymorning.klangbild.render.ImageOps
-import io.github.hazymorning.klangbild.render.LinearImage
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.WallGlow
-import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.text.BalancedText
@@ -209,10 +207,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
         val focusY = maxHeight.value / 2f
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
-        val map = rememberOffMain(screen, colors) {
-            val px = glowMap(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
-            imageBitmapOf(px, GLOW_MAP_W, GLOW_MAP_H)
-        }
+        val map = rememberOffMain(screen, colors) { glowMap(glowCx, focusY, screen.widthDp, screen.heightDp, colors.band.toArgb()) }
         if (map != null) Canvas(Modifier.fillMaxSize()) {
             // The band's light adds to the background, dark or light.
             drawImage(
@@ -380,22 +375,16 @@ private const val GLOW_MAP_H = 270
  * and not its neighbors (grayscale, dithered, tinted when drawn). It never moves; the list moves
  * through it. Like every light, it is gone before the band along the screen's edges.
  */
-private fun glowMap(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
-    val img = LinearImage(GLOW_MAP_W, GLOW_MAP_H)
+private fun glowMap(cx: Float, cy: Float, widthDp: Float, heightDp: Float, tint: Int): ImageBitmap {
     val sx = widthDp / GLOW_MAP_W
     val sy = heightDp / GLOW_MAP_H
-    for (y in 0 until GLOW_MAP_H) for (x in 0 until GLOW_MAP_W) {
+    return lightMap(GLOW_MAP_W, GLOW_MAP_H, seed = 5, tint) { x, y ->
         val px = (x + 0.5f) * sx
         val py = (y + 0.5f) * sy
         val u = (px - cx) / MenuGrid.GLOW_SIGMA_X
         val v = (py - cy) / MenuGrid.GLOW_SIGMA_Y
         val edges = smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 80f, min(px, widthDp - px)) *
             smoothstep(WallGlow.EDGE_BLACK_DP, WallGlow.EDGE_BLACK_DP + 40f, min(py, heightDp - py))
-        val value = exp(-0.5f * (u * u + v * v)) * edges
-        val o = y * GLOW_MAP_W + x
-        img.r[o] = value
-        img.g[o] = value
-        img.b[o] = value
+        exp(-0.5f * (u * u + v * v)) * edges
     }
-    return ImageOps.toArgbDithered(img, seed = 5, ditherLsb = ditherLsb, blackBelow = 0.0005f)
 }

@@ -38,9 +38,6 @@ import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.QuickItem
-import io.github.hazymorning.klangbild.render.ImageOps
-import io.github.hazymorning.klangbild.render.LinearImage
-import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
@@ -204,7 +201,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     // The light glides to the chosen entry.
     val glowX by animateGlide(lefts[cursor] + widths[cursor] / 2f, ROW_GLIDE_MS)
     val glowSigma by animateGlide(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, ROW_GLIDE_MS)
-    val glow = rememberOffMain(colors.band) { glowBlob(ImageOps.ditherFor(colors.band.toArgb())) }
+    val glow = rememberOffMain(colors.band) { glowBlob(colors.band.toArgb()) }
 
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
@@ -320,17 +317,8 @@ private const val BLOB_W = 96
 private const val BLOB_H = 48
 
 /** A soft oval of light (a Gaussian, ±3 σ across the bitmap): grayscale, dithered, tinted when drawn. */
-private fun glowBlob(ditherLsb: Float): ImageBitmap {
-    val img = LinearImage(BLOB_W, BLOB_H)
-    for (y in 0 until BLOB_H) for (x in 0 until BLOB_W) {
-        val u = ((x + 0.5f) / BLOB_W * 2f - 1f) * 3f
-        val v = ((y + 0.5f) / BLOB_H * 2f - 1f) * 3f
-        val value = exp(-0.5f * (u * u + v * v))
-        val o = y * BLOB_W + x
-        img.r[o] = value
-        img.g[o] = value
-        img.b[o] = value
-    }
-    val px = ImageOps.toArgbDithered(img, seed = 7, ditherLsb = ditherLsb, blackBelow = 0.0005f)
-    return imageBitmapOf(px, BLOB_W, BLOB_H)
+private fun glowBlob(tint: Int): ImageBitmap = lightMap(BLOB_W, BLOB_H, seed = 7, tint) { x, y ->
+    val u = ((x + 0.5f) / BLOB_W * 2f - 1f) * 3f
+    val v = ((y + 0.5f) / BLOB_H * 2f - 1f) * 3f
+    exp(-0.5f * (u * u + v * v))
 }
