@@ -37,7 +37,7 @@ sealed interface HaCredentials {
     data class SignedIn(val refreshToken: String, val clientId: String) : HaCredentials
 }
 
-/** Home Assistant refused the credentials: signing in again (or a new token) is the only way on. */
+/** Home Assistant refused the credentials. Only signing in again or a new token helps. */
 class HaAuthRejectedException(message: String) : IOException(message)
 
 /** The tokens of a sign-in: the refresh token to keep and a first access token. */
@@ -61,9 +61,11 @@ class HaAuth(
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val lock = Mutex()
-    @Volatile private var cached: String? = (credentials as? HaCredentials.LongLived)?.token
-    @Volatile private var expiresAt = Long.MAX_VALUE
-    @Volatile private var rejected: String? = null
+    @Volatile private var cached: String? = null
+    @Volatile private var expiresAt = 0L
+
+    /** Why Home Assistant refused the refresh token, once it has. */
+    @Volatile private var refused: String? = null
 
     /** Whether a token that stopped working can be replaced by a fresh one. */
     val refreshable: Boolean get() = credentials is HaCredentials.SignedIn
@@ -73,30 +75,34 @@ class HaAuth(
      * [HaAuthRejectedException] when Home Assistant refused the credentials and an IOException
      * when it cannot be reached.
      */
-    suspend fun accessToken(): String = lock.withLock {
-        rejected?.let { throw HaAuthRejectedException(it) }
-        cached?.takeIf { now() < expiresAt - MARGIN_MS }?.let { return it }
-        val signedIn = credentials as? HaCredentials.SignedIn ?: return cached!!
-        val tokens = tokenRequest(
-            http,
-            baseUrl,
-            formBody(
+    suspend fun accessToken(): String {
+        val signedIn = when (credentials) {
+            is HaCredentials.LongLived -> return credentials.token
+            is HaCredentials.SignedIn -> credentials
+        }
+        return lock.withLock {
+            refused?.let { throw HaAuthRejectedException(it) }
+            cached?.takeIf { now() < expiresAt - MARGIN_MS }?.let { return it }
+            val form = formBody(
                 "grant_type" to "refresh_token",
                 "refresh_token" to signedIn.refreshToken,
                 "client_id" to signedIn.clientId,
-            ),
-        ) { reason -> rejected = reason }
-        cached = tokens.accessToken
-        expiresAt = now() + tokens.expiresInS * 1000L
-        tokens.accessToken
+            )
+            val tokens = try {
+                tokenRequest(http, baseUrl, form)
+            } catch (e: HaAuthRejectedException) {
+                refused = e.message
+                throw e
+            }
+            cached = tokens.accessToken
+            expiresAt = now() + tokens.expiresInS * 1000L
+            tokens.accessToken
+        }
     }
 
-    /** The access token [token] was refused: the next one is fetched anew (after a sign-in). */
+    /** Marks [token] as refused, so the next [accessToken] fetches a new one. Does nothing for a long-lived token. */
     fun invalidate(token: String) {
-        if (refreshable && cached == token) {
-            cached = null
-            expiresAt = 0L
-        }
+        if (cached == token) cached = null
     }
 
     companion object {
@@ -121,7 +127,7 @@ class HaAuth(
                 http,
                 baseUrl,
                 formBody("grant_type" to "authorization_code", "code" to code, "client_id" to clientId),
-            ) { }
+            )
 
         /**
          * Revokes [refreshToken] and every access token it gave (when Klangbild signs in anew or
@@ -139,18 +145,12 @@ class HaAuth(
             setBody(TextContent(form, FORM))
         }
 
-        private suspend fun tokenRequest(
-            http: HttpClient,
-            baseUrl: String,
-            form: String,
-            onRejected: (String) -> Unit,
-        ): HaTokens = http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/token", form) }) { response ->
+        private suspend fun tokenRequest(http: HttpClient, baseUrl: String, form: String): HaTokens = http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/token", form) }) { response ->
             val text = response.textBelow(MAX_ANSWER_BYTES)
             val code = response.status.value
             if (code in 400..499) {
                 val reason = runCatching { (Json.parseToJsonElement(text) as? JsonObject)?.string("error") }.getOrNull()
                     ?: "HTTP $code"
-                onRejected(reason)
                 throw HaAuthRejectedException(reason)
             }
             if (!response.status.isSuccess()) throw HttpStatusException("Home Assistant", code)
