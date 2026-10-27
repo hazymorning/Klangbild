@@ -111,7 +111,7 @@ class LightSync(
     /** A light's state when it was taken over: on or off, and enough to restore it if the snapshot is gone. */
     private class Saved(val on: Boolean, val brightness: Int?, val mode: String?, val xy: List<Float>?, val hs: List<Float>?, val kelvin: Int?)
 
-    private class Light(val id: String, val slot: LightSlot) {
+    private class Light(val id: String, var slot: LightSlot) {
         var shown: Shown? = null
 
         /** When the last call to it went out; null before the first. */
@@ -209,7 +209,7 @@ class LightSync(
         if (old?.lights != target?.lights || (old?.level == RoomLightBrightness.OFF) != (target?.level == RoomLightBrightness.OFF)) follow()
         // Nothing to do without lights, unless lights taken over are still to be given back.
         if (target != null || activeLights) ensureLoop()
-        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old == null || target == null) wake.trySend(Unit)
+        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old?.lights != target?.lights || old == null || target == null) wake.trySend(Unit)
     }
 
     /** Whether lights are taken over (read off the loop's thread; a stale answer only delays the loop by a tick). */
@@ -286,6 +286,15 @@ class LightSync(
             return giveBackSwitchedOn(b)
         }
         takenOnlyOn = tg.onlyOn
+        // A light moved to another place on the setup page takes that place's color.
+        var moved = false
+        for (light in lights.values) {
+            val slot = wanted[light.id] ?: continue
+            if (slot != light.slot) {
+                light.slot = slot
+                moved = true
+            }
+        }
         adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
         if (tg.onlyOn) letGoSwitchedOff(states)
@@ -307,7 +316,7 @@ class LightSync(
             }
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
-            tg.colors !== shownColors -> {
+            moved || tg.colors !== shownColors -> {
                 shownColors = tg.colors
                 send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             }

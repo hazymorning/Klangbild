@@ -276,6 +276,22 @@ class LightSyncTest {
     }
 
     @Test
+    fun `lights moved to other places take the colors of their new places`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val red = ha.to(left).last().data!!["xy_color"]
+        val blue = ha.to(right).last().data!!["xy_color"]
+        // Swapped on the setup page while the track plays.
+        s.update(target("a", lights = RoomLights(left = right, right = left)))
+        testScheduler.advanceTimeBy(3_000)
+        assertThat(ha.to(left).last().data!!["xy_color"]).isEqualTo(blue)
+        assertThat(ha.to(right).last().data!!["xy_color"]).isEqualTo(red)
+    }
+
+    @Test
     fun `a light that shows up later joins in`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true)))
         val s = sync()
