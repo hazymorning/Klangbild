@@ -47,7 +47,7 @@ internal fun SlotContent(model: StageModel, styles: StageStyles, modifier: Modif
                 durationMs = slot.durationMs,
                 positionMs = model.positionMs,
                 startMs = slot.startMs,
-                item = slot.trackKey,
+                trackKey = slot.trackKey,
                 playing = model.playing,
                 colors = ProgressColors(groove = styles.barGroove, fill = styles.barFill, label = styles.quiet),
                 labelStyle = styles.time,

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import io.github.hazymorning.klangbild.domain.TimeText
+import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.rememberFrames
 import io.github.hazymorning.klangbild.ui.theme.Face
@@ -49,8 +50,9 @@ class ProgressColors(val groove: Color, val fill: Color, val label: Color)
  * The labels' cap height sits [BAR_LABEL_GAP] below the bar; the measured height ends at their
  * baseline, so a layout can align the block by it.
  *
- * In a book with chapters the bar spans the chapter: from [startMs] in the item's own time, for
- * [durationMs]; a new chapter starts a new bar, without gliding back, and so does another [item].
+ * In a book with chapters the bar spans the chapter: from [startMs] in the track's own time, for
+ * [durationMs]. A new chapter starts a new bar, without gliding back, and so does another track
+ * ([trackKey]).
  */
 @Composable
 fun ProgressBar(
@@ -60,22 +62,24 @@ fun ProgressBar(
     colors: ProgressColors,
     labelStyle: TextStyle,
     startMs: Long,
-    item: Any?,
+    trackKey: String,
     modifier: Modifier = Modifier,
 ) {
-    // The stage's one tick, shared with the color field.
+    // The stage's one tick, shared with the cover field and the lyrics.
     val frame = rememberFrames(fast = playing)
     val fillLevel by animateFloatAsState(
-        targetValue = if (playing) 1f else 0.6f,
+        targetValue = if (playing) 1f else PAUSED_FILL,
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
         label = "progress-pause",
     )
-    val glide = remember(item, startMs, durationMs) { Glide() }
+    val glide = remember(trackKey, startMs, durationMs) { Glide() }
+    // A still has no clock to glide by.
+    val still = LocalStill.current
     // Always the newest reading, also for the labels' state, which outlives the first one.
     val position by rememberUpdatedState(positionMs)
     val elapsed: () -> Long = { ((position() ?: startMs) - startMs).coerceIn(0L, durationMs) }
     // The labels only change when the displayed second does.
-    val second by remember(item, startMs, durationMs) {
+    val second by remember(trackKey, startMs, durationMs) {
         derivedStateOf {
             frame.value // re-read every refresh
             elapsed() / 1000L
@@ -91,7 +95,7 @@ fun ProgressBar(
             Canvas(Modifier.fillMaxWidth().height(BAR_THICKNESS.dp).graphicsLayer()) {
                 val now = frame.value // redraw on every refresh
                 val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
-                val f = glide.at(target, now, durationMs)
+                val f = if (still) target else glide.at(target, now, durationMs)
                 val r = CornerRadius(size.height / 2f)
                 drawRoundRect(colors.groove, cornerRadius = r)
                 if (f > 0f) {
@@ -106,45 +110,43 @@ fun ProgressBar(
     ) { measurables, constraints ->
         val bar = measurables[0].measure(constraints)
         val loose = constraints.copy(minWidth = 0)
-        val elapsed = measurables[1].measure(loose)
-        val remaining = measurables[2].measure(loose)
+        val elapsedLabel = measurables[1].measure(loose)
+        val lengthLabel = measurables[2].measure(loose)
         val baseline = barBlock(labelStyle)
-        val first = elapsed[FirstBaseline]
         layout(constraints.maxWidth, baseline) {
             bar.place(0, 0)
-            elapsed.place(0, baseline - first)
-            remaining.place(constraints.maxWidth - remaining.width, baseline - remaining[FirstBaseline])
+            elapsedLabel.place(0, baseline - elapsedLabel[FirstBaseline])
+            lengthLabel.place(constraints.maxWidth - lengthLabel.width, baseline - lengthLabel[FirstBaseline])
         }
     }
 }
 
 /**
- * Follows the position, except after a jump (a seek, more than 1.5 s at once): then it
- * eases from where it was to the new place over [GLIDE_MS].
+ * Follows the position, except after a seek (more than [SEEK_MS] at once): then it eases from
+ * where it was to the new place over [GLIDE_MS].
  */
 private class Glide {
     private var shown = -1f
     private var from = 0f
-    private var startNs = 0L
+    private var startNs: Long? = null
 
     fun at(target: Float, nowNs: Long, durationMs: Long): Float {
         if (shown < 0f) {
             shown = target
             return target
         }
-        val jump = abs(target - shown) * durationMs > JUMP_MS
-        if (jump && startNs == 0L) {
+        if (startNs == null && abs(target - shown) * durationMs > SEEK_MS) {
             from = shown
             startNs = nowNs
         }
-        if (startNs != 0L) {
-            val t = ((nowNs - startNs) / 1e6f / GLIDE_MS).coerceIn(0f, 1f)
-            if (t >= 1f) {
-                startNs = 0L
-            } else {
+        val start = startNs
+        if (start != null) {
+            val t = ((nowNs - start) / 1e6f / GLIDE_MS).coerceIn(0f, 1f)
+            if (t < 1f) {
                 shown = from + (target - from) * Motion.Decelerate.transform(t)
                 return shown
             }
+            startNs = null
         }
         shown = target
         return shown
@@ -159,5 +161,9 @@ internal fun Density.barBlock(labelStyle: TextStyle): Int =
 const val BAR_THICKNESS = 4f
 const val BAR_LABEL_GAP = 10f
 
-private const val JUMP_MS = 1_500f
-private const val GLIDE_MS = 350f
+/** Paused, the played part keeps this much of its ink, so the bar shows the pause too. */
+private const val PAUSED_FILL = 0.6f
+
+/** A change in position of more than this (ms) is a seek, which glides over [GLIDE_MS]. */
+private const val SEEK_MS = 1_500L
+private const val GLIDE_MS = 350L
