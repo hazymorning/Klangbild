@@ -32,4 +32,13 @@ class LanguageTagsTest {
         assertThat(en.decimal(1.25, 2)).isEqualTo("1.25")
         assertThat(en.date(1_791_655_200_000L, testZone("Europe/Berlin"))).isEqualTo("Saturday, October 10")
     }
+
+    @Test
+    fun `the time of day in 24 hours, or in 12 as the system is set`() {
+        val at = 1_791_483_667_000L
+        val berlin = testZone("Europe/Berlin")
+        assertThat(TestTexts.german.clock(at, berlin)).isEqualTo("20:21")
+        assertThat(TestTexts.english().clock(at, berlin)).isEqualTo("8:21\u00A0PM")
+        assertThat(TestTexts.english(clock24 = true).clock(at, berlin)).isEqualTo("20:21")
+    }
 }

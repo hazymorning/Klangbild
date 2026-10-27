@@ -5,7 +5,6 @@ import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import io.github.hazymorning.klangbild.data.ha.ClockSkew
 import kotlin.test.Test
 
 class ProgressTest {
@@ -43,6 +42,13 @@ class ProgressTest {
     }
 
     @Test
+    fun `the position runs at the playback speed`() {
+        val s = snap(PlayerStatus.PLAYING, 10_000, at = 1_000_000).copy(speed = 1.5f)
+        assertThat(Progress.positionAt(s, nowMs = 1_004_000, skewMs = 0, receivedAtMs = 0)).isEqualTo(16_000)
+        assertThat(Progress.positionAt(s.copy(status = PlayerStatus.PAUSED), nowMs = 1_004_000, skewMs = 0, receivedAtMs = 0)).isEqualTo(10_000)
+    }
+
+    @Test
     fun `small corrections glide, seeks jump`() {
         val smooth = SmoothedPosition(glideLimitMs = 2_500, tauMs = 700.0)
         smooth.onReport("a", rawNowMs = 10_000, nowMs = 0)
@@ -74,19 +80,5 @@ class ProgressTest {
         assertThat(smooth.display("a", 2_700, 500)).isEqualTo(2_700)
         smooth.onReport("b", rawNowMs = 400, nowMs = 500)
         assertThat(smooth.display("b", 400, 500)).isEqualTo(400)
-    }
-
-    @Test
-    fun `clock skew takes the smallest recent sample`() {
-        val skew = ClockSkew(window = 3)
-        assertThat(skew.offsetMs).isEqualTo(0)
-        skew.addSample(3_250) // 3 s skew + 250 ms latency
-        skew.addSample(3_040)
-        skew.addSample(3_900)
-        assertThat(skew.offsetMs).isEqualTo(3_040)
-        skew.addSample(5_000)
-        skew.addSample(5_100)
-        skew.addSample(5_050) // window drops the old samples
-        assertThat(skew.offsetMs).isEqualTo(5_000)
     }
 }

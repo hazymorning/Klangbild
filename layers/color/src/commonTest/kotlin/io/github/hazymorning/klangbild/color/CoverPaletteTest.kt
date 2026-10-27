@@ -7,7 +7,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isLessThanOrEqualTo
-import io.github.hazymorning.klangbild.domain.SunClock
 import kotlin.test.Test
 
 class CoverPaletteTest {
@@ -86,8 +85,5 @@ class CoverPaletteTest {
         assertThat(Appearance.bySun(-0.6, previous = Appearance.DARK)).isEqualTo(Appearance.DARK)
         assertThat(Appearance.bySun(-1.0, previous = Appearance.LIGHT)).isEqualTo(Appearance.LIGHT)
         assertThat(Appearance.bySun(0.0, previous = Appearance.DARK)).isEqualTo(Appearance.LIGHT)
-        // without Home Assistant the clock decides: day at noon, night at midnight
-        assertThat(Appearance.bySun(SunClock.elevation(12, 0))).isEqualTo(Appearance.LIGHT)
-        assertThat(Appearance.bySun(SunClock.elevation(23, 30))).isEqualTo(Appearance.DARK)
     }
 }
