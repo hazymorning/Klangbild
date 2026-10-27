@@ -11,6 +11,7 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
@@ -27,14 +28,14 @@ class HaRest(private val http: HttpClient, private val auth: HaAuth) {
         /** Home Assistant has no such entity (404). */
         data object Missing : Fetched
 
-        /** No answer, or not one that says anything. */
+        /** No answer, or an answer that isn't a state. */
         data object Failed : Fetched
     }
 
     suspend fun state(entityId: String): Fetched = if (!EntityId.isValid(entityId)) Fetched.Missing else try {
         get("/api/states/$entityId") { code, text ->
             when (code) {
-                200 -> (Json.parseToJsonElement(text) as? JsonObject)?.let(EntityState::of)?.let { Fetched.Found(it) } ?: Fetched.Failed
+                200 -> objectOf(text)?.let(EntityState::of)?.let { Fetched.Found(it) } ?: Fetched.Failed
                 404 -> Fetched.Missing
                 else -> Fetched.Failed
             }
@@ -79,6 +80,13 @@ class HaRest(private val http: HttpClient, private val auth: HaAuth) {
             return withContext(Dispatchers.Default) { read(code, text) }
         }
         throw IOException("Home Assistant refused the token")
+    }
+
+    /** [text] as a JSON object; null when it isn't one, such as a proxy's error page. */
+    private fun objectOf(text: String): JsonObject? = try {
+        Json.parseToJsonElement(text) as? JsonObject
+    } catch (_: SerializationException) {
+        null
     }
 
     companion object {
