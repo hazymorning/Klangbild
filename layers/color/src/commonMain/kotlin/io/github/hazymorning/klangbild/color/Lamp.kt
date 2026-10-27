@@ -1,9 +1,9 @@
 package io.github.hazymorning.klangbild.color
 
 /**
- * The light every color on screen is seen in: a lamp by day, a breath warm. It shifts colors a
- * little toward amber in proportion to their lightness, so blacks stay black. The stage looks
- * the same at every hour; only the wall and the lights behind the TV follow the sun.
+ * The warm lamp every color on screen is seen in: it shifts colors a little toward amber in
+ * proportion to their lightness, so black stays black. It is the same at every hour; only the
+ * background and the lights behind the TV follow the sun.
  */
 object Lamp {
     /** How warm the lamp is (0..1). */
@@ -12,6 +12,10 @@ object Lamp {
     /** The lamp's own hue (Oklab, degrees): a warm amber. Neutral covers and the screens without one take it. */
     const val HUE = 72f
 
+    /**
+     * [lab] as the lamp shows it: its a and b lose a little chroma and move toward amber
+     * (0.012, 0.050) in proportion to its lightness.
+     */
     fun apply(lab: Lab): Lab {
         val w = WARMTH * lab.l
         return Lab(
@@ -21,8 +25,8 @@ object Lamp {
         )
     }
 
-    fun applyArgb(argb: Int): Int = apply(Oklab.fromArgb(argb)).toArgb(argb ushr 24)
+    private fun applyArgb(argb: Int): Int = apply(Oklab.fromArgb(argb)).toArgb(argb ushr 24)
 
-    /** A near-neutral color of lightness [l] with a breath of [chroma] in the lamp's hue, as the lamp shows it. */
+    /** A near-neutral color of lightness [l] with [chroma] in the lamp's hue, as the lamp shows it. */
     fun neutral(l: Float, chroma: Float = 0.004f): Int = applyArgb(Lch(l, chroma, HUE).toArgb())
 }
