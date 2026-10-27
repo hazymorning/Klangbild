@@ -32,6 +32,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.VolumeDisplay
+import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -44,6 +45,7 @@ import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
@@ -201,6 +203,9 @@ private sealed interface Content {
 
 private const val QUIET_START_MS = 4_000L
 
+/** A new Intensity setting takes this long to turn the light to it (ms). */
+private const val INTENSITY_MS = 1_200
+
 /** The hint for the quick settings comes this long after the stage, and stays this long. */
 private const val HINT_AFTER_MS = 3_000L
 private const val HINT_MS = 12_000L
@@ -260,47 +265,15 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val linkDown = stageScreen?.linkDown == true
     val status = stageScreen?.status ?: PlayerStatus.PAUSED
     val display = ui.display
-    val player = ui.source.player
-    val muted = player?.muted == true
-    // A key press brings hidden parts back for a few seconds.
-    val peekUntil = hooks.peekUntil.value
-    var peek by remember { mutableStateOf(false) }
-    LaunchedEffect(peekUntil) {
-        val left = peekUntil - hooks.now()
-        if (left > 0) {
-            peek = true
-            delay(left)
-        }
-        peek = false
-    }
-    // Until the quick settings have been opened once, the bottom line tells how for a while each
-    // time the stage comes (in a still at once).
-    val still = LocalStill.current
-    var hinting by remember { mutableStateOf(false) }
-    LaunchedEffect(ui.downHint) {
-        hinting = false
-        if (!ui.downHint || still) return@LaunchedEffect
-        delay(HINT_AFTER_MS)
-        hinting = true
-        delay(HINT_MS)
-        hinting = false
-    }
-    val hint = if (still) ui.downHint else hinting
+    val peek = rememberPeek(hooks)
+    val hint = rememberHint(ui.downHint)
     val t = texts()
-    val clock = if (display.clock || peek) t.clock(wall.value) else null
-    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
-    val volume = SpeakerLabel.volume(player?.volume, t)
-    // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
-    val spoken = stageScreen?.track?.kind?.spoken == true
-    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
-    val own = ui.source.speaker != null && ui.source.speaker == ui.source.ownSpeaker
-    val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
-    val lead = StageTexts.lead(status, muted, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
-    // The values of one's own, after the time (hidden by setting, back for a moment on a key).
-    val statusLine = StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
+    val statusLine = statusLineOf(ui, status, peek, wall.value, t)
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
     val chapter = ui.chapter
+    // The bar shows by setting, or for a moment after a key; beside lyrics only then.
+    fun barWanted(lyrics: Lyrics?) = peek || (lyrics == null && display.progressBar)
     // A stage still on screen after its song has ended (the next scene still being made, or its
     // lines leaving) keeps its own time, next and chapter; only the song that plays reads them live.
     val playingKey = stageScreen?.track?.key
@@ -313,69 +286,119 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             val text = TrackText.from(s.track, t[Strings.artistsOthers])
             // A book or an episode with chapters: the chapter in the album's place, the bar over
             // the chapter, the next chapter after it.
-            val ch = played.chapter(key, plays, chapter)
-            val after = played.next(key, plays, nextTrack)
-            val nextChapter = ch?.next?.takeIf { display.next }
+            val chapterPlace = played.chapter(key, plays, chapter)
+            val nextKept = played.next(key, plays, nextTrack)
+            val nextChapter = chapterPlace?.next?.takeIf { display.next }
             // The song's words: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
             // The queue as a list, which names what comes next itself.
-            val list = s.queue?.takeIf { lyrics == null }
+            val queueList = s.queue?.takeIf { lyrics == null }
             // The hint takes the place of what comes next (beside the song's words the song stays,
             // and the list names what comes next itself).
-            val tip = hint && lyrics == null && list == null
+            val showHint = hint && lyrics == null && queueList == null
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
                 status = status,
-                durationMs = ch?.let { it.endMs - it.startMs } ?: s.track.durationMs,
+                durationMs = chapterPlace?.let { it.endMs - it.startMs } ?: s.track.durationMs,
                 // Read for this song by name: the player reports the next a moment before the screen shows it.
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
+                statusLine = statusLine,
                 year = s.track.year.takeIf { display.album },
-                progress = if (lyrics != null) peek else display.progressBar || peek,
+                progress = barWanted(lyrics),
                 barStays = display.progressBar,
                 line = StageTexts.line(linkDown, s.track, t),
                 next = when {
-                    tip -> t[Strings.hintDown]
+                    showHint -> t[Strings.hintDown]
                     lyrics != null -> StageTexts.next(s.track, t)
-                    list != null -> null
-                    else -> nextChapter ?: StageTexts.next(after, t)
+                    queueList != null -> null
+                    else -> nextChapter ?: StageTexts.next(nextKept, t)
                 },
                 nextTitle = when {
-                    tip -> null
+                    showHint -> null
                     lyrics != null -> StageTexts.nextTitle(s.track, t)
-                    list != null -> null
+                    queueList != null -> null
                     nextChapter != null -> null
-                    else -> StageTexts.nextTitle(after, t)
+                    else -> StageTexts.nextTitle(nextKept, t)
                 },
-                nextLead = if (tip) t[Strings.hintDownKey] else null,
-                statusLine = statusLine,
-                chapter = ch?.label,
-                rangeStartMs = ch?.startMs ?: 0L,
+                nextLead = if (showHint) t[Strings.hintDownKey] else null,
+                chapter = chapterPlace?.label,
+                rangeStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,
-                queue = list?.let { QueueModel.of(it, t) },
+                queue = queueList?.let { QueueModel.of(it, t) },
             )
         }
     }
     // Changing the light's strength in the menu turns it like a dimmer.
     val intensity by animateFloatAsState(
         targetValue = display.intensity.factor,
-        animationSpec = tween(1_200, easing = Motion.Dimmer),
+        animationSpec = tween(INTENSITY_MS, easing = Motion.Dimmer),
         label = "light-setting",
     )
     // The cover's colors move only while music plays (a pause holds them, like everything else).
     val moving = display.motion != MotionLevel.OFF && status == PlayerStatus.PLAYING && !linkDown
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
-    // The bar shows when its length is known and nothing stands in its place, by setting or for a
-    // moment (beside the song's words only for a moment).
-    val showsLyrics = stage.lyrics != null
-    val barShown = (if (showsLyrics) peek else display.progressBar || peek) && !linkDown && (chapter != null || stage.track.durationMs != null)
+    // The bar moves when its length is known and nothing stands in its place.
+    val barMoves = barWanted(stage.lyrics) && !linkDown && (chapter != null || stage.track.durationMs != null)
     // One tick for the bar, the colors and the words, so they are redrawn in the same frames. With
     // nothing to redraw, or with the settings covering the stage, it stops.
     val tick = rememberStageTick(
-        fast = moving || status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
-        running = (moving || barShown || showsLyrics) && ui.menu == null,
+        fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
+        running = (moving || barMoves || stage.lyrics != null) && ui.menu == null,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
         theater(status, modelFor, { intensity }, linkDown)
     }
+}
+
+/** Whether hidden parts show again for a moment, after a key press ([RootHooks.peekUntil]). */
+@Composable
+private fun rememberPeek(hooks: RootHooks): Boolean {
+    val until = hooks.peekUntil.value
+    var peek by remember { mutableStateOf(false) }
+    LaunchedEffect(until) {
+        val left = until - hooks.now()
+        if (left > 0) {
+            peek = true
+            delay(left)
+        }
+        peek = false
+    }
+    return peek
+}
+
+/**
+ * Whether the hint for the quick settings shows: until they have been opened once ([downHint]),
+ * for a while each time the stage comes, and in a still at once.
+ */
+@Composable
+private fun rememberHint(downHint: Boolean): Boolean {
+    val still = LocalStill.current
+    var hinting by remember { mutableStateOf(false) }
+    LaunchedEffect(downHint) {
+        hinting = false
+        if (!downHint || still) return@LaunchedEffect
+        delay(HINT_AFTER_MS)
+        hinting = true
+        delay(HINT_MS)
+        hinting = false
+    }
+    return if (still) downHint else hinting
+}
+
+/** The status line for [ui]: the clock at [nowMs], the custom values and the lead, the hidden parts back while [peek]. */
+private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts): StatusLine {
+    val display = ui.display
+    val player = ui.source.player
+    val clock = if (display.clock || peek) t.clock(nowMs) else null
+    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
+    val volume = SpeakerLabel.volume(player?.volume, t)
+    // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
+    val spoken = (ui.screen as? Screen.Stage)?.track?.kind?.spoken == true
+    val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
+    val own = ui.source.speaker != null && ui.source.speaker == ui.source.ownSpeaker
+    val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
+    val lead = StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
+    // The values of one's own, after the time (hidden by setting, back for a moment on a key).
+    return StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
 }
