@@ -168,6 +168,9 @@ class LightSync(
 
     /** The lights whose state Home Assistant holds in a snapshot scene of ours. */
     private var snapshots: Set<String> = emptySet()
+
+    /** When the last restore's calls were out: the lights fade back for [RESTORE_TRANSITION_MS]. */
+    private var restoredAt: Long? = null
     private var shownSong: String? = null
     private var shownColors: LightColors? = null
     private var waitingSong: String? = null
@@ -276,8 +279,10 @@ class LightSync(
             // Other lights chosen: the lights are restored, and taken over anew on a later step
             // with the states they have then.
             if (activeFor != null) return restore(b)
-            // Saved once their states have arrived (they are followed only now), or after a while
-            // with what is there.
+            // Saved once the last restore's fade is over (some lights report each step of a fade,
+            // and would be saved between Klangbild's color and their own), and once their states
+            // have arrived (they are followed only now), or after a while with what is there.
+            if (restoredAt.let { it != null && t - it < RESTORE_TRANSITION_MS + SETTLE_REPORT_MS }) return
             if (wanted.keys.any { it !in states } && t - followedAt < STATES_WAIT_MS) return
             activate(b, wanted, states, t, tg.onlyOn)
         }
@@ -533,6 +538,7 @@ class LightSync(
         idleSince = null
         if (b != null) {
             putBack(b, toRestore, notes, scenes)
+            restoredAt = now()
             for (id in scenes) b.call("scene", "delete", "scene.${sceneId(id)}", null)
             snapshots = emptySet()
         } else {

@@ -786,6 +786,30 @@ class LightSyncTest {
     }
 
     @Test
+    fun `lights taken over right after a restore are saved once its fade is over`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // The app hands over to the screensaver: the lights are restored and taken over again at
+        // once. These lights report the restore's fade only once it is over.
+        ha.holding = true
+        s.release()
+        s.attach(null)
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(LightSync.RESTORE_TRANSITION_MS)
+        ha.deliver()
+        ha.holding = false
+        testScheduler.advanceTimeBy(5_000)
+        // Saved as they were before the music, not in Klangbild's colors.
+        assertThat(ha.named("scene.create")).hasSize(4)
+        assertThat(ha.scenes.getValue("scene.klangbild_tv_left").number("brightness")).isEqualTo(120.0)
+        assertThat(ha.scenes.getValue("scene.klangbild_tv_right").number("brightness")).isEqualTo(60.0)
+    }
+
+    @Test
     fun `a light switched off after the music stays off`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
         val s = sync()
