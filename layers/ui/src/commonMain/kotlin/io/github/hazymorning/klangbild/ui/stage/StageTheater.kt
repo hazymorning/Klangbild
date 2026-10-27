@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Easing
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -125,13 +126,13 @@ fun StageTheater(
     // shows the stage as the change before left it, its lines where they stood.
     val seen = began
     val at: () -> Float = { if (began == seen) t.value else 1f }
-    fun p(startMs: Int, endMs: Int, easing: androidx.compose.animation.core.Easing = Motion.Dimmer) =
+    fun p(startMs: Int, endMs: Int, easing: Easing = Motion.Dimmer) =
         Motion.phaseMs(at(), startMs, endMs, total, easing)
 
     val curModel = remember(cur, modelFor) { modelFor(cur) }
     val prevModel = remember(prev, modelFor) { prev?.let(modelFor) }
-    val px = cur.scene.cover.width
-    val party = rememberPartyCode(partyCode, setOfNotNull(cur.scene.appearance, prev?.scene?.appearance), px) { url, wall -> partyCard(url, px, wall) }
+    val coverPx = cur.scene.cover.width
+    val party = rememberPartyCode(partyCode, setOfNotNull(cur.scene.appearance, prev?.scene?.appearance), coverPx) { url, wall -> partyCard(url, coverPx, wall) }
     // The bar's room of the stage shown and of the one leaving, kept by stage through a change.
     val queueRooms = remember { QueueRooms() }
     val curQueue = rememberQueuePlan(curModel, queueRooms)
@@ -171,10 +172,10 @@ fun StageTheater(
         }
     }
     val textRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - if (began != seen) text.before(line) else text.level(line)) }
-    val stood: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
+    val oldLevel: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
     // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
-    val textOut: (TextLine) -> Float = { line -> stood(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) }
-    val textOutRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - stood(line)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) }
+    val textOut: (TextLine) -> Float = { line -> oldLevel(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) }
+    val textOutRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - oldLevel(line)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) }
     // The queue's rows are the queue, not the song: they come the whole way also when another song
     // hurries a change (the skipped song's own lines stay down), so every change finds them whole
     // and moves them on from there. They glide when the list goes on from the one before (a new
@@ -192,34 +193,42 @@ fun StageTheater(
     // The queue changed beneath the song (with a new look of it too): only the rows move.
     val reordered = kind == Change.ROWS ||
         (kind == Change.SOFT && prevQueue != null && curQueue != null && prevQueue.rows.map { it.id } != curQueue.rows.map { it.id })
-    val rowsGo = prevQueue != null && curQueue != null && (kind == Change.FULL || kind == Change.TEXT || reordered) &&
+    val rowsGlide = prevQueue != null && curQueue != null && (kind == Change.FULL || kind == Change.TEXT || reordered) &&
         prevQueue.rows.any { a -> curQueue.rows.any { it.id == a.id } }
     val rows = when {
-        prev == null -> RowsMotion(false, { 1f }, { 0f }, { 0f }, rowsIn, rowsInRise)
+        prev == null -> RowsMotion(matched = false, glide = { 1f }, oldAlpha = { 0f }, oldRise = { 0f }, newAlpha = rowsIn, newRise = rowsInRise)
         // Rows that go dissolve first, the others move, and rows put in come once their place is clear.
         reordered -> RowsMotion(
-            matched = rowsGo,
+            matched = rowsGlide,
             glide = { p(ROWS_CLEAR_MS, ROWS_SETTLED_MS) },
-            old = { 1f - p(0, ROWS_CLEAR_MS) },
+            oldAlpha = { 1f - p(0, ROWS_CLEAR_MS) },
             oldRise = { 0f },
-            new = { p(if (rowsGo) ROWS_COME_MS else ROWS_CLEAR_MS, total) },
+            newAlpha = { p(if (rowsGlide) ROWS_COME_MS else ROWS_CLEAR_MS, total) },
             newRise = { 0f },
             // A row cover made meanwhile comes in over the whole change, where its row stands.
-            cover = { p(0, total, Motion.Sine) },
+            lateCoverAlpha = { p(0, total, Motion.Sine) },
         )
-        rowsGo -> RowsMotion(
+        rowsGlide -> RowsMotion(
             matched = true,
             glide = { p(Motion.TEXT_OUT_MS, Motion.TEXT_OUT_MS + ROWS_GLIDE_MS) },
-            old = rowsOut,
+            oldAlpha = rowsOut,
             oldRise = rowsOutRise,
-            new = rowsIn,
+            newAlpha = rowsIn,
             newRise = rowsInRise,
         )
         // On another wall the old row covers stay whole under the new ones, as the cover does,
         // where the same rows stand.
         else -> {
             val sameRows = kind == Change.WALL && prevQueue?.rows?.map { it.id } == curQueue?.rows?.map { it.id }
-            RowsMotion(false, { 1f }, rowsOut, rowsOutRise, rowsIn, rowsInRise, oldCover = if (sameRows) ({ 1f }) else rowsOut)
+            RowsMotion(
+                matched = false,
+                glide = { 1f },
+                oldAlpha = rowsOut,
+                oldRise = rowsOutRise,
+                newAlpha = rowsIn,
+                newRise = rowsInRise,
+                oldCoverAlpha = if (sameRows) ({ 1f }) else rowsOut,
+            )
         }
     }
 

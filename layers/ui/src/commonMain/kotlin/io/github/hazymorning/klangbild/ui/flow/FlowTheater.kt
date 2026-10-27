@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.ui.flow
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Easing
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -185,7 +186,7 @@ fun FlowTheater(
     // shows the stage as the change before left it, its lines where they stood.
     val seen = began
     val at: () -> Float = { if (began == seen) t.value else 1f }
-    fun p(startMs: Int, endMs: Int, easing: androidx.compose.animation.core.Easing = Motion.Dimmer) =
+    fun p(startMs: Int, endMs: Int, easing: Easing = Motion.Dimmer) =
         Motion.phaseMs(at(), startMs, endMs, total, easing)
 
     val curStage = current.stage

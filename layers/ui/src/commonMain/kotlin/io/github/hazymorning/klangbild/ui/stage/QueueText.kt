@@ -521,26 +521,26 @@ internal fun QueueText(
 }
 
 /**
- * How the rows move through a change: the rows of the list before ([old], rising by [oldRise]
- * dp) and of the new one ([new], [newRise]). With [matched], a row in both glides from its old
- * place to its new one as [glide] runs from 0 to 1, and only the others fade; without, each list
- * comes or goes as a whole. The row covers of the rows that go stand at [oldCover] (on another
- * wall they stay whole under the new ones, as the cover does), and a row cover made meanwhile
- * comes in on a row that glides at [cover].
+ * How the rows move through a change: the rows of the list before ([oldAlpha], rising by
+ * [oldRise] dp) and of the new one ([newAlpha], [newRise]). With [matched], a row in both glides
+ * from its old place to its new one as [glide] runs from 0 to 1, and only the others fade.
+ * Without, each list comes or goes as a whole. The row covers of the rows that go stand at
+ * [oldCoverAlpha] (on another background they stay whole under the new ones, as the cover does),
+ * and a row cover made meanwhile comes in on a row that glides at [lateCoverAlpha].
  */
 internal class RowsMotion(
     val matched: Boolean,
     val glide: () -> Float,
-    val old: () -> Float,
+    val oldAlpha: () -> Float,
     val oldRise: () -> Float,
-    val new: () -> Float,
+    val newAlpha: () -> Float,
     val newRise: () -> Float,
-    val oldCover: () -> Float = old,
-    val cover: () -> Float = new,
+    val oldCoverAlpha: () -> Float = oldAlpha,
+    val lateCoverAlpha: () -> Float = newAlpha,
 ) {
     companion object {
         /** A list at rest. */
-        val Still = RowsMotion(false, { 1f }, { 0f }, { 0f }, { 1f }, { 0f })
+        val Still = RowsMotion(matched = false, glide = { 1f }, oldAlpha = { 0f }, oldRise = { 0f }, newAlpha = { 1f }, newRise = { 0f })
     }
 }
 
@@ -561,10 +561,10 @@ internal fun QueueRowsLayer(
     if (cur == null && prev == null) return
     val density = LocalDensity.current.density
     val filters = remember { CoverFilters() }
-    val gliding = remember(prev, cur, motion.matched) {
+    val glidingRows = remember(prev, cur, motion.matched) {
         if (!motion.matched || prev == null || cur == null) return@remember emptyMap<String, PlannedRow>()
-        val glide = gliding(prev.rows.map { it.id }, cur.rows.map { it.id })
-        prev.rows.filter { it.id in glide }.associateBy { it.id }
+        val ids = glidingIds(prev.rows.map { it.id }, cur.rows.map { it.id })
+        prev.rows.filter { it.id in ids }.associateBy { it.id }
     }
     Canvas(Modifier.fillMaxSize()) {
         val textNow = textLevel().coerceIn(0f, 1f)
@@ -572,32 +572,32 @@ internal fun QueueRowsLayer(
         fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverNow, appearance)
         val g = motion.glide().coerceIn(0f, 1f)
         if (prev != null) {
-            val a = motion.old()
+            val a = motion.oldAlpha()
             val r = motion.oldRise() * density
             val y0 = prev.room.now + r
             // Index loops: nothing allocated per frame.
             for (i in prev.rows.indices) {
                 val row = prev.rows[i]
-                if (row.id in gliding) continue
+                if (row.id in glidingRows) continue
                 val shown = prev.shown(row)
-                drawRow(prev, row, row.top + y0, a * shown, textNow, filterFor(prev.appearance), coverAlpha = motion.oldCover() * shown)
+                drawRow(prev, row, row.top + y0, a * shown, textNow, filterFor(prev.appearance), coverAlpha = motion.oldCoverAlpha() * shown)
             }
         }
         if (cur != null) {
-            val a = motion.new()
+            val a = motion.newAlpha()
             val r = motion.newRise() * density
             for (i in cur.rows.indices) {
                 val row = cur.rows[i]
-                val before = gliding[row.id]
+                val before = glidingRows[row.id]
                 if (before != null && prev != null) {
                     // A row in both lists glides to its new place.
                     val from = before.top + prev.room.now
                     val y = from + (row.top + cur.room.now - from) * g
                     val shown = prev.shown(before) + (cur.shown(row) - prev.shown(before)) * g
                     // A row cover made meanwhile comes over the one before (or in its empty place).
-                    val newCover = before.bitmap !== row.bitmap
-                    if (newCover && before.cover != null) drawCover(prev, before, y, shown, filterFor(prev.appearance))
-                    drawRow(cur, row, y, shown, textNow, filterFor(cur.appearance), coverAlpha = shown * if (newCover) motion.cover() else 1f)
+                    val lateCover = before.bitmap !== row.bitmap
+                    if (lateCover && before.cover != null) drawCover(prev, before, y, shown, filterFor(prev.appearance))
+                    drawRow(cur, row, y, shown, textNow, filterFor(cur.appearance), coverAlpha = shown * if (lateCover) motion.lateCoverAlpha() else 1f)
                 } else {
                     drawRow(cur, row, row.top + cur.room.now + r, a * cur.shown(row), textNow, filterFor(cur.appearance))
                 }
@@ -611,9 +611,9 @@ internal fun QueueRowsLayer(
  * that keep their order, so none passes another on its way. A row put in, or one whose order
  * changed, goes and comes again instead.
  */
-internal fun gliding(before: List<String>, now: List<String>): Set<String> {
+internal fun glidingIds(before: List<String>, now: List<String>): Set<String> {
     val was = now.map { before.indexOf(it) }
-    // The longest run of rows whose places before rise as they do now.
+    // The longest increasing subsequence of the old indexes: the most rows that keep their order.
     val length = IntArray(was.size)
     val link = IntArray(was.size) { -1 }
     for (i in was.indices) {
