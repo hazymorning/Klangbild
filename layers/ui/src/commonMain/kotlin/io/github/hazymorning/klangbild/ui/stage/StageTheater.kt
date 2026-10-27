@@ -94,19 +94,10 @@ fun StageTheater(
             val newer: suspend () -> Unit = { snapshotFlow { latest.track.key }.first { it != song } }
             // Lines held by a skip that came to nothing rise the rest of the way first.
             if (song == old.track.key) text.release(newer)
-            if (target.scene === old.scene && target.lyrics === old.lyrics && target.queue == old.queue && drawnAlike(target.track, old.track)) {
-                // Only what the stage doesn't draw has changed (a new link to the same picture): nothing to watch.
+            val kind = changeOf(old, target)
+            if (kind == null) {
                 current = target
                 return@collect
-            }
-            val kind = when {
-                song == old.track.key && target.scene.appearance != old.scene.appearance -> Change.WALL
-                song == old.track.key && target.scene !== old.scene -> Change.SOFT
-                song == old.track.key && (target.lyrics !== old.lyrics || (target.queue == null) != (old.queue == null)) -> Change.COLUMN
-                song == old.track.key && target.queue != old.queue && drawnAlike(target.track, old.track) -> Change.ROWS
-                song == old.track.key -> Change.SOFT
-                samePicture(old.scene, target.scene) -> Change.TEXT
-                else -> Change.FULL
             }
             began++
             t.snapTo(0f)
@@ -288,6 +279,22 @@ fun StageTheater(
         } else {
             StatusLayer(curModel)
         }
+    }
+}
+
+/**
+ * How [new] differs from [old], the stage on screen; null when only what the stage doesn't draw
+ * has changed (a new link to the same picture), so there is nothing to watch.
+ */
+internal fun changeOf(old: StageData, new: StageData): Change? {
+    if (new.scene === old.scene && new.lyrics === old.lyrics && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
+    if (new.track.key != old.track.key) return if (samePicture(old.scene, new.scene)) Change.TEXT else Change.FULL
+    return when {
+        new.scene.appearance != old.scene.appearance -> Change.WALL
+        new.scene !== old.scene -> Change.SOFT
+        new.lyrics !== old.lyrics || (new.queue == null) != (old.queue == null) -> Change.COLUMN
+        new.queue != old.queue && drawnAlike(new.track, old.track) -> Change.ROWS
+        else -> Change.SOFT
     }
 }
 
