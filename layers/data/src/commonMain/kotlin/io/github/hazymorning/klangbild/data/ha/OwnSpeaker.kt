@@ -28,7 +28,7 @@ internal class OwnSpeaker(
     private val connection: HaConnection,
     private val ma: MaClient,
     private val speaker: StateFlow<SpeakerStatus>,
-    private val backoff: () -> Backoff = { Backoff(FIRST_RETRY_MS, LAST_RETRY_MS) },
+    private val backoff: () -> Backoff,
     /** Called when [entity] changes. */
     private val changed: () -> Unit,
 ) {
