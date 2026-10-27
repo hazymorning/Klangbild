@@ -89,16 +89,9 @@ class ArtworkLoader(
     fun clear() = synchronized(lock) { cache.clear() }
 
     private suspend fun fetch(url: String, timeoutMs: Long): ByteArray? {
-        val auth = haAuth()
-        val token: String?
-        val client = if (auth != null && HaUrls.isHaHost(auth.baseUrl, url)) {
-            token = orNull { auth.accessToken() }
-            tokenHttp
-        } else {
-            token = null
-            http
-        }
-        return client.fetch(
+        val auth = haAuth()?.takeIf { HaUrls.isHaHost(it.baseUrl, url) }
+        val token = auth?.let { orNull { it.accessToken() } }
+        return (if (auth != null) tokenHttp else http).fetch(
             timeoutMs,
             {
                 address(url)
