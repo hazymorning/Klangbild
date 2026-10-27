@@ -288,7 +288,10 @@ fun StageTheater(
  */
 internal fun changeOf(old: StageData, new: StageData): Change? {
     if (new.scene === old.scene && new.lyrics === old.lyrics && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
-    if (new.track.key != old.track.key) return if (samePicture(old.scene, new.scene)) Change.TEXT else Change.FULL
+    if (new.track.key != old.track.key) {
+        // Only the text changes for the next track of the same cover, unless the background changes with it.
+        return if (samePicture(old.scene, new.scene) && new.scene.appearance == old.scene.appearance) Change.TEXT else Change.FULL
+    }
     return when {
         new.scene.appearance != old.scene.appearance -> Change.WALL
         new.scene !== old.scene -> Change.SOFT

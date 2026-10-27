@@ -49,7 +49,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** How two consecutive strips differ, which decides the choreography. */
-private enum class FlowChange {
+internal enum class FlowChange {
     /** Another card came to the middle: the strip turns over. */
     MOVE,
 
@@ -296,12 +296,12 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
 
 /**
  * Whether the strip takes a new look from [old] to [new] in a change of [kind]: a better cover or
- * the other wall for the same song (unless the cards stay as they were), or the next song of the
- * same card whose cover differs after all.
+ * the other background for the same track (unless the cards stay as they were), or the next track
+ * of the same card whose cover or background differs.
  */
-private fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boolean = when (kind) {
+internal fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boolean = when (kind) {
     FlowChange.SOFT, FlowChange.WALL -> !sameCards(old, new)
-    FlowChange.TEXT -> !samePicture(old.middle.scene, new.middle.scene)
+    FlowChange.TEXT -> !samePicture(old.middle.scene, new.middle.scene) || old.middle.scene.appearance != new.middle.scene.appearance
     else -> false
 }
 
@@ -310,7 +310,7 @@ private fun sameCards(a: FlowData, b: FlowData): Boolean =
     a.current == b.current && a.cards.size == b.cards.size &&
         a.cards.indices.all { a.cards[it].id == b.cards[it].id && a.cards[it].scene === b.cards[it].scene }
 
-private fun changeOf(old: FlowData, new: FlowData): FlowChange {
+internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
     val a = old.middle
     val b = new.middle
     return when {
