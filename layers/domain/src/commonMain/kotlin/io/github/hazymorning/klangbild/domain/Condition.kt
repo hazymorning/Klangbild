@@ -11,8 +11,8 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 
 /**
- * When a button of one's own shows: an entity's state, or one of its attributes, compared with a
- * value, as in Home Assistant's own state conditions. Words compare without regard to case,
+ * When a custom button shows: an entity's state, or one of its attributes, compared with a
+ * value, as in Home Assistant's own state conditions. Text compares without regard to case,
  * numbers as numbers, and a list counts its entries ("group_members above 1": the speaker plays
  * in a group). An entity Home Assistant does not have never shows the button; for anything more,
  * a template helper in Home Assistant gives a state to compare.

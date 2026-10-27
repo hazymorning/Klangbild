@@ -9,7 +9,7 @@ kotlin {
             implementation(libs.kotlinx.atomicfu)
             implementation(projects.json)
             implementation(projects.text)
-            // The values and conditions of one's own read Home Assistant's JSON as it comes.
+            // JsonObject is part of the API: entity states, custom values and conditions keep Home Assistant's JSON.
             api(libs.kotlinx.serialization.json)
             api(libs.kotlinx.datetime)
             implementation(libs.normalize)

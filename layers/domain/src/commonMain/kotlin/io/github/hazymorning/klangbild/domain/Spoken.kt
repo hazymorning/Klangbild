@@ -31,12 +31,12 @@ enum class MediaKind {
     }
 }
 
-/** A chapter of a book or an episode, in the item's own time: from [startMs] to [endMs]. */
+/** A chapter of a book or an episode, in the track's own time: from [startMs] to [endMs]. */
 data class Chapter(val name: String?, val startMs: Long, val endMs: Long)
 
 /**
  * Where the listener is in a book or an episode with chapters, as the stage shows it: the
- * chapter's name, its stretch of the item's time (the progress bar's range) and what follows.
+ * chapter's name, its part of the track's time (the progress bar's range) and what follows.
  */
 data class ChapterPlace(val label: String, val startMs: Long, val endMs: Long, val next: String?) {
     companion object {
@@ -65,8 +65,8 @@ object Chapters {
 
     /**
      * Sorted by start, each ending where it says, else where the next one starts, else at the
-     * item's end ([durationMs]), as Music Assistant's own player does. Chapters that end before
-     * they start, or start after the item's end, are left out; a single chapter is no chapter.
+     * track's end ([durationMs]), as Music Assistant's own player does. Chapters that end before
+     * they start, or start after the track's end, are left out; a single chapter is no chapter.
      */
     fun of(raw: List<Raw>, durationMs: Long?): List<Chapter> {
         val sorted = raw.filter { it.start.isFinite() && it.start >= 0 }.sortedWith(compareBy({ it.start }, { it.position }))

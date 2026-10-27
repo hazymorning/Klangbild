@@ -8,10 +8,10 @@ enum class SleepChoice(val minutes: Int = 0) {
     MIN_45(45),
     MIN_60(60),
 
-    /** The end of the chapter that plays (a whole item without chapters is one chapter). */
+    /** The end of the chapter that plays (a whole track without chapters is one chapter). */
     CHAPTER_END,
 
-    /** The end of what plays: the song, the episode, the book. */
+    /** The end of the track that plays: a song, an episode, a book. */
     ITEM_END,
 }
 
@@ -32,7 +32,7 @@ class SleepTimer {
     var pausesAt: Long? = null
         private set
 
-    /** The item and the place in its time (ms) the timer waits for, and where playing was last seen. */
+    /** The track and the place in its time (ms) the timer waits for, and where playing was last seen. */
     private var waitKey: String? = null
     private var waitEndMs: Long? = null
     private var waitLeadMs = 0L
@@ -72,7 +72,7 @@ class SleepTimer {
     }
 
     /**
-     * Whether playing has reached the end the timer waits for, or a new item began right after
+     * Whether playing has reached the end the timer waits for, or a new track began right after
      * the old one ended (when the old one was over before the timer saw it).
      */
     private fun endReached(nowMs: Long, track: TrackInfo, positionMs: Long, speed: Float): Boolean {
@@ -84,11 +84,11 @@ class SleepTimer {
         return positionMs >= end - waitLeadMs && last < end && played
     }
 
-    /** Waits from here on for the end of the chapter or the item that plays, and says when it comes. */
+    /** Waits from here on for the end of the chapter or the track that plays, and says when it comes. */
     private fun waitForEnd(nowMs: Long, track: TrackInfo, positionMs: Long, speed: Float, playing: Boolean) {
         val chapters = track.chapters
         val chapter = if (choice == SleepChoice.CHAPTER_END) Chapters.at(chapters, positionMs)?.let { chapters[it] } else null
-        // The last chapter ends with the item.
+        // The last chapter ends with the track.
         val end = chapter?.takeIf { it != chapters.last() }?.endMs ?: track.durationMs
         waitKey = track.key
         waitEndMs = end
@@ -97,7 +97,7 @@ class SleepTimer {
         lastSpeed = speed
         lastLookMs = nowMs
         // Already past it (a position stuck beyond a too short length): there is no wake-up to
-        // wait for, and the next item tells that this one ran out.
+        // wait for, and the next track tells that this one ran out.
         val ahead = end?.let { it - waitLeadMs - positionMs }
         pausesAt = if (playing && ahead != null && ahead > 0) nowMs + (ahead / speed).toLong() else null
     }
@@ -115,7 +115,7 @@ class SleepTimer {
     }
 
     companion object {
-        /** What plays stops this long before its very end, so the queue never moves on to the next item first. */
+        /** What plays stops this long before its very end, so the queue never moves on to the next track first. */
         const val ITEM_LEAD_MS = 1_500L
 
         private const val MINUTE_MS = 60_000L
@@ -126,7 +126,7 @@ class SleepTimer {
         /** How far a reported position may run ahead of the time that passed (corrections, not jumps). */
         private const val PLAYED_SLACK_MS = 2_500L
 
-        /** A new item within this long of the old one's end means the old one ran out. */
+        /** A new track within this long of the old one's end means the old one ran out. */
         private const val NATURAL_END_MS = 6_000L
     }
 }

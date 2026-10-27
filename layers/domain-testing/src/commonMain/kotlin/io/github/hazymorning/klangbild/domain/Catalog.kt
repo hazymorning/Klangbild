@@ -3,12 +3,13 @@ package io.github.hazymorning.klangbild.domain
 import io.github.hazymorning.klangbild.art.SyntheticCover
 
 /**
- * Invented releases for the screenshot tests. They cover the hard cases: classical
+ * Invented releases for the picture tests. They cover the hard cases: classical
  * work titles, many performers, Japanese and Arabic script, emoji, radio without a cover, a
  * missing album, almost black and almost white covers. Covers are painted by
  * [io.github.hazymorning.klangbild.art.SyntheticCovers]; no real artwork lives in the repo.
  */
 object Catalog {
+    /** Artwork URLs with this prefix name a [SyntheticCover], which the tests' artwork loader paints. */
     const val SCHEME = "test://cover/"
 
     private fun cover(c: SyntheticCover) = SCHEME + c.name
@@ -42,7 +43,7 @@ object Catalog {
     val nextEpisode = TrackInfo("Folge 113: Der Mond", listOf("Zeit für Wissen"), kind = MediaKind.PODCAST)
 
     /**
-     * Invented words for the stills, as Music Assistant gives them (LRC). "Neonlicht über der
+     * Invented lyrics for the stills, as Music Assistant gives them (LRC). "Neonlicht über der
      * A40" has a break after its first verse (an empty line) and a long line that takes two rows.
      */
     val neonLyrics = """
@@ -73,8 +74,8 @@ object Catalog {
         [02:23.00]
     """.trimIndent()
 
-    /** Words for "Salzwasser", for a song change from words to words. */
-    val saltWords = """
+    /** Lyrics for "Salzwasser", for a change from one track's lyrics to another's. */
+    val saltLyrics = """
         [00:02.00]Das Meer nimmt alles mit
         [00:06.50]was wir am Ufer liegen ließen
         [00:11.00]Salzwasser auf der Haut
@@ -82,7 +83,7 @@ object Catalog {
         [00:20.00]Wir treiben, bis es dunkel wird
     """.trimIndent()
 
-    /** English words for the English stills (an invented song to the same cover). */
+    /** English lyrics for the English stills (an invented track to the same cover). */
     val nightLyrics = """
         [00:12.00]The city sleeps beneath the glass
         [00:16.40]and I drive without a plan
@@ -104,7 +105,7 @@ object Catalog {
         [01:34.00]
     """.trimIndent()
 
-    /** Japanese words, for the smaller size of their script. */
+    /** Japanese lyrics, for the smaller size of their script. */
     val nightJapaneseLyrics = """
         [00:10.00]夜の街を走る
         [00:14.00]光が消えるまで
@@ -113,7 +114,7 @@ object Catalog {
         [00:26.00]夜の街を走る
     """.trimIndent()
 
-    /** Arabic words, right to left. */
+    /** Arabic lyrics, right to left. */
     val arabicLyrics = """
         [00:10.00]الليل طويل
         [00:14.00]وأنا أنتظر حتى الصباح
@@ -129,7 +130,7 @@ object Catalog {
         [00:28.00]Und dann kam der Morgen
     """.trimIndent()
 
-    /** For the queue's list, in English: a song of an album, the album's next songs, then the next record. */
+    /** For the queue's list, in English: a track of an album, the album's next tracks, then the next album. */
     val desert = TrackInfo("Desert Song", listOf("Amal Haddad"), "Cairo Nights", 2016, 289_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "3")
     val cairoNights = listOf(
         TrackInfo("Old Town Rain", listOf("Amal Haddad"), "Cairo Nights", 2016, 252_000, artworkUrl = cover(SyntheticCover.TERRACOTTA), queueItemId = "4"),

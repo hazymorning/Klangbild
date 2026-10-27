@@ -8,8 +8,8 @@ import kotlin.time.Instant
 
 /**
  * The sun's elevation from the local clock, for when Home Assistant has no `sun.sun`: a smooth
- * day curve peaking at 13:00, up from about 7:40 to 18:20. Enough to turn the wall and to dim
- * the lights behind the TV.
+ * day curve peaking at 13:00, up from about 7:40 to 18:20. Enough to choose the light or dark
+ * background and to dim the lights behind the TV.
  */
 object SunClock {
     /** The elevation (°) at [hour]:[minute]. */

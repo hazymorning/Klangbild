@@ -33,7 +33,7 @@ object SpeakerLabel {
     }
 
     /**
-     * True if [queueName] names something else than the speaker called [ownName]: then the
+     * True if [queueName] names something other than the speaker called [ownName]: then the
      * speaker plays from another player's queue, a group's. Spellings of the same name
      * ("Living room" and "Living room speaker") count as the same.
      */

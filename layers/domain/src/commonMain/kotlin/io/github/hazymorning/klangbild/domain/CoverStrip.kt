@@ -1,22 +1,22 @@
 package io.github.hazymorning.klangbild.domain
 
-/** A card of the cover flow: one picture (an album, a station) and the track that stands for it. */
+/** A card in Cover Flow: one cover (an album, a station) and the track it shows. */
 data class StripCard(val id: Long, val track: TrackInfo) {
     val picture: String get() = track.pictureKey
 }
 
-/** The cover flow in play order: the card at [current] is in the middle. */
+/** Cover Flow's cards in play order: the card at [current] is in the middle. */
 data class Strip(val cards: List<StripCard>, val current: Int) {
     val middle: StripCard get() = cards[current]
 }
 
 /**
- * Keeps the cover flow's strip as the music moves on: the pictures played before, the one
- * playing, and those to come. The pictures are distinct, so the songs of one album are one card.
- * A card keeps its id from the moment it appears until it leaves the strip, so the UI can
- * animate between two strips card by card: the next picture arriving is the card that stood to
- * the right, a step back brings back the card from the left, anything else is a new card. A
- * song whose picture changes while it plays (a station's song getting its own) keeps its card.
+ * Keeps Cover Flow's strip as the music moves on: the covers played before, the one playing, and
+ * those to come. The covers are distinct, so the tracks of one album are one card. A card keeps
+ * its id from the moment it appears until it leaves the strip, so the UI can animate between two
+ * strips card by card: the next cover arriving is the card that was to the right, a step back
+ * brings back the card from the left, anything else is a new card. A track whose cover changes
+ * while it plays (a station's track getting its own) keeps its card.
  */
 class CoverStrip {
     private var lastId = 0L
@@ -86,7 +86,7 @@ class CoverStrip {
         while (history.size > KEEP) history.removeAt(0)
     }
 
-    /** [tracks] with consecutive repeats of a picture merged, the current picture left out. */
+    /** [tracks] with consecutive repeats of a cover merged, the current cover left out. */
     private fun distinct(tracks: List<TrackInfo>, currentPicture: String): List<TrackInfo> {
         val out = ArrayList<TrackInfo>()
         for (t in tracks) {
@@ -102,7 +102,7 @@ class CoverStrip {
         /** Cards shown on each side of the middle. */
         const val SIDE = 2
 
-        /** Pictures remembered behind the current one. */
+        /** Covers remembered behind the current one. */
         const val KEEP = 6
     }
 }

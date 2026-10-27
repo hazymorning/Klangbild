@@ -1,20 +1,20 @@
 package io.github.hazymorning.klangbild.domain
 
 /**
- * Some players report a skip in three steps: the new item at once, a moment later the old one
+ * Some players report a skip in three steps: the new track at once, a moment later the old one
  * again (the player's own state catching up with its queue), then the new one for good. Shown
  * as reported, the screen jumps forth, back and forth.
  *
- * A return to an item left only moments ago ([WINDOW_MS]) is therefore held back until it has
+ * A return to a track left only moments ago ([WINDOW_MS]) is therefore held back until it has
  * lasted [HOLD_MS]. The flicker never reaches the screen, and a real return still does, a moment
- * later. A new item always passes at once, and so does a return asked for with the remote
+ * later. A new track always passes at once, and so does a return asked for with the remote
  * ([expectReturn]). Nothing else is filtered, and nothing about any one player is assumed.
  */
 class FlipGuard {
-    /** The item last let through. */
+    /** The track last let through. */
     private var shown: String? = null
 
-    /** Items left recently, and when. */
+    /** Tracks left recently, and when. */
     private val left = ArrayDeque<Pair<String, Long>>()
 
     /** The return being held, and since when it has been reported. */
@@ -24,7 +24,7 @@ class FlipGuard {
     /** When a held return will pass (if it is still reported then); null while nothing is held. */
     val passesAt: Long? get() = held?.let { it.second + HOLD_MS }
 
-    /** "Previous" was sent: a return to an item just left is wanted, not a flicker. */
+    /** "Previous" was sent: a return to a track just left is wanted, not a flicker. */
     fun expectReturn(t: Long) {
         returnWantedUntil = t + WINDOW_MS
     }
@@ -54,7 +54,7 @@ class FlipGuard {
     }
 
     companion object {
-        /** A return within this long after leaving an item may be a player catching up. */
+        /** A return within this long after leaving a track may be a player catching up. */
         const val WINDOW_MS = 5_000L
 
         /** How long such a return has to last before it is shown. */

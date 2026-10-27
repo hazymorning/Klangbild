@@ -9,7 +9,6 @@ import kotlin.math.exp
  * Local progress interpolation. Home Assistant only reports the position when something
  * happens (play, pause, seek, track change), so the position is extrapolated from the last
  * report: `position + (now − reportedAt) × speed`, with the server/local clock skew removed.
- * A book at 1.5× runs through its own time half as fast again.
  */
 object Progress {
     /**
@@ -43,7 +42,7 @@ class SmoothedPosition : SynchronizedObject() {
 
     /** Call whenever a new snapshot arrives, with the raw position for "now". */
     fun onReport(trackKey: String?, rawNowMs: Long?, nowMs: Long): Unit = synchronized(this) {
-        // Another song: what was shown belonged to the one before, and its next report must not
+        // Another track: what was shown belonged to the one before, and its next report must not
         // glide from there.
         if (trackKey != lastKey) lastShown = null
         val shown = lastShown
@@ -59,7 +58,7 @@ class SmoothedPosition : SynchronizedObject() {
 
     /** Position to display now for [trackKey] (called from the draw phase). */
     fun display(trackKey: String?, rawNowMs: Long?, nowMs: Long): Long? = synchronized(this) {
-        // A song not reported last is shown as it is, and leaves the smoothing alone.
+        // A track not reported last is shown as it is, and leaves the smoothing alone.
         if (trackKey != lastKey) return rawNowMs
         if (rawNowMs == null) {
             lastShown = null

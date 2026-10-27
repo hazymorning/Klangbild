@@ -47,7 +47,7 @@ class LyricsMotionTest {
     private val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
     private val neonLyrics = Fixtures.lyrics(Catalog.neonLyrics)
     private val salt = Fixtures.track(SyntheticCover.SALT_WATER)
-    private val saltWords = Fixtures.lyrics(Catalog.saltWords)
+    private val saltWords = Fixtures.lyrics(Catalog.saltLyrics)
 
     /** Where the song is (ms), as the progress bar has it. */
     private var position by mutableLongStateOf(80_000L)

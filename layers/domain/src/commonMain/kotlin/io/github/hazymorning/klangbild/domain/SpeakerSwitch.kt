@@ -48,7 +48,7 @@ class SpeakerSwitch(private val backMs: Long = BACK_MS) {
     }
 
     companion object {
-        /** As between two songs, the stage stays a moment before the chosen speaker comes back. */
+        /** As between two tracks, the stage stays a moment before the chosen speaker comes back. */
         const val BACK_MS = 4_000L
     }
 }

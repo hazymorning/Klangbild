@@ -62,6 +62,5 @@ data class EntityState(
 
         /** A time of day written without its seconds, which the format above needs. */
         private val NO_SECONDS = Regex("^(\\d{4}-\\d\\d-\\d\\d[Tt]\\d\\d:\\d\\d)(?=[Zz+-])")
-
     }
 }

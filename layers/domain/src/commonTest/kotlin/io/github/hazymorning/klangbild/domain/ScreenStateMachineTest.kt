@@ -72,11 +72,11 @@ class ScreenStateMachineTest {
         // The player says for a moment that nothing plays, or plays without a title.
         assertThat(m.decide(src(PlayerStatus.IDLE, track = null), 500).screen).isEqualTo(Screen.Stage(song, PlayerStatus.PLAYING, null))
         assertThat(m.decide(src(PlayerStatus.PLAYING, track = null), 1_500).screen).isInstanceOf<Screen.Stage>()
-        val next = song.copy(title = "Next")
+        val next = TrackInfo("Next", listOf("A"), durationMs = 200_000)
         assertThat(m.decide(src(track = next), 2_000).screen).isEqualTo(Screen.Stage(next, PlayerStatus.PLAYING, null))
         // Stopped for good: the rest screen once the moment has passed.
         m.decide(src(PlayerStatus.IDLE, track = null), 3_000)
-        assertThat(m.decide(src(PlayerStatus.IDLE, track = null), 3_000 + timing.betweenSongsMs).screen).isEqualTo(Screen.Rest(RestReason.IDLE, "Wohnzimmer"))
+        assertThat(m.decide(src(PlayerStatus.IDLE, track = null), 3_000 + timing.betweenTracksMs).screen).isEqualTo(Screen.Rest(RestReason.IDLE, "Wohnzimmer"))
         // After a pause there is nothing to wait for.
         val p = ScreenStateMachine(timing)
         p.decide(src(PlayerStatus.PAUSED), 0)

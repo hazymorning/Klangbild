@@ -1,13 +1,12 @@
 package io.github.hazymorning.klangbild.domain
 
-
 /** Why nothing is on stage. Each reason has its own quiet line of text. */
 enum class RestReason {
     /** Nothing plays (idle, off, stopped). */
     IDLE,
     /** Paused for a while; the stage has made way for the rest screen. */
     PAUSED,
-    /** First connection attempt in progress. */
+    /** Connecting, or connected and waiting for the speaker's first state. */
     CONNECTING,
     /** Connection lost for longer than the grace period. */
     OFFLINE,
@@ -17,6 +16,7 @@ enum class RestReason {
     ENTITY_MISSING,
 }
 
+/** Why the setup screen shows: nothing is set up yet, Home Assistant refused the token, or it was asked for. */
 enum class SetupReason { FIRST_RUN, AUTH_FAILED, REQUESTED }
 
 /** What the screen shows. */
@@ -37,7 +37,7 @@ sealed interface Screen {
     data class Setup(val reason: SetupReason) : Screen
 }
 
-/** Settings the state machine needs (subset of the app settings). */
+/** The state machine's timeouts; only [sleepAfterMs] comes from the settings. */
 data class Timing(
     /** After this long without music the screen is released (or the app closes). */
     val sleepAfterMs: Long = 10 * 60_000L,
@@ -48,13 +48,14 @@ data class Timing(
     /** After this long without connection the rest screen explains what is going on. */
     val linkGiveUpMs: Long = 120_000L,
     /**
-     * Between two songs a player may say for a moment that nothing plays (or play without a
+     * Between two tracks a player may say for a moment that nothing plays (or play without a
      * title). The stage stays this long before it makes way for the rest screen, so a skip never
      * passes through it.
      */
-    val betweenSongsMs: Long = 4_000L,
+    val betweenTracksMs: Long = 4_000L,
 )
 
+/** What the screen shows now, and whether it may sleep. */
 data class ScreenDecision(
     val screen: Screen,
     /** Nothing has played for the sleep timeout: the screen may turn off, or the app close. */
@@ -62,14 +63,15 @@ data class ScreenDecision(
 )
 
 /**
- * Turns the source state plus time into what the screen shows. Pure apart from the one
- * piece of memory it needs: since when no music has been playing.
+ * Turns the source state and the time into what the screen shows. It remembers whether setup
+ * was asked for, since when nothing has played, and the last stage that played, which stays
+ * for [Timing.betweenTracksMs] between two tracks.
  */
 class ScreenStateMachine(val timing: Timing = Timing()) {
     private var notPlayingSince: Long? = null
     private var setupRequested = false
 
-    /** The last stage with music playing, and when it was last seen: what stays between two songs. */
+    /** The last stage with music playing, and when it was last seen: what stays between two tracks. */
     private var lastPlaying: Screen.Stage? = null
     private var lastPlayingAt = 0L
 
@@ -88,8 +90,8 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
                 lastPlayingAt = now
             }
             raw is Screen.Stage -> raw.also { lastPlaying = null }
-            // Nothing plays for a moment right after a song played: the stage stays.
-            raw is Screen.Rest && raw.reason == RestReason.IDLE && now - lastPlayingAt < timing.betweenSongsMs -> lastPlaying ?: raw
+            // Nothing plays for a moment right after a track played: the stage stays.
+            raw is Screen.Rest && raw.reason == RestReason.IDLE && now - lastPlayingAt < timing.betweenTracksMs -> lastPlaying ?: raw
             else -> raw.also { lastPlaying = null }
         }
         val playing = screen is Screen.Stage &&

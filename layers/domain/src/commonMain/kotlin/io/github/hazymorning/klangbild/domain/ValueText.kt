@@ -12,10 +12,10 @@ import kotlin.math.abs
 import kotlin.time.Clock
 
 /**
- * A value of one's own as the status line shows it ("Outside 12.5 °C"): the entity's state, or
+ * A custom value as the status line shows it ("Outside 12.5 °C"): the entity's state, or
  * one of its attributes, after the value's name. Numbers in the language's figures with Home
  * Assistant's decimals (its display precision, else as many as the state has) and their unit,
- * on and off in words, a time as a time of day. Anything else stands as Home Assistant says it.
+ * on and off in words, a time as a time of day. Anything else shows as Home Assistant says it.
  * What Home Assistant cannot tell (unavailable, unknown, nothing) shows nothing, so a template
  * helper can hide a value by having none.
  */
