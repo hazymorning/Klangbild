@@ -5,6 +5,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -321,6 +325,12 @@ internal fun Modifier.lineMotion(which: TextLine, alpha: (TextLine) -> Float, ri
     this.alpha = alpha(which).coerceIn(0f, 1f)
     translationY = (rise(which) * density).roundToInt().toFloat()
 }
+
+/** The first baseline of a text, or the bottom of anything else. */
+internal fun Placeable.firstBaselineOrHeight(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
+
+/** The last baseline of a text, or the bottom of anything else. */
+internal fun Placeable.lastBaselineOrHeight(): Int = this[LastBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
 
 /** The title's step, and the title laid out at it as it is set: at most the step's lines, the last one ellipsized. */
 internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)

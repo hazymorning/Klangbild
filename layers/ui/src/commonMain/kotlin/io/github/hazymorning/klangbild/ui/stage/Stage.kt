@@ -23,9 +23,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.layout.FirstBaseline
-import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
@@ -311,15 +308,14 @@ internal fun TextLayer(
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
-        val cBottom = Constraints(minWidth = colW, maxWidth = colW)
         val work = measurables[0].measure(c)
         // The title within the constraints it was set in.
         val title = measurables[1].measure(plan.titleConstraints)
         val version = measurables[2].measure(c)
         val artist = measurables[3].measure(c)
         val album = measurables[4].measure(c)
-        val bottom = measurables[5].measure(cBottom)
-        val nextLine = measurables[6].measure(c)
+        val slot = measurables[5].measure(Constraints(minWidth = colW, maxWidth = colW))
+        val footer = measurables[6].measure(c)
         fun px(dp: Float) = (dp * density).roundToInt()
         fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
 
@@ -329,9 +325,7 @@ internal fun TextLayer(
         val parts = ArrayList<Part>()
         fun addLine(p: Placeable, style: TextStyle, gap: Float, depth: Float = descent(style)) {
             if (p.height == 0) return
-            val first = p[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: p.height
-            val last = p[LastBaseline].takeIf { it != AlignmentLine.Unspecified } ?: p.height
-            parts += Part(p, first - capOf(style), last, depth, gap, px(opticalIndent(style.fontSize.value)))
+            parts += Part(p, p.firstBaselineOrHeight() - capOf(style), p.lastBaselineOrHeight(), depth, gap, px(opticalIndent(style.fontSize.value)))
         }
         val rhythm = plan.titleRhythm
         addLine(work, styles.work, 0f)
@@ -342,15 +336,15 @@ internal fun TextLayer(
         addLine(artist, plan.artistStyle, entryGap(rhythm, plan.artistStyle))
         // The album with the artist, or apart from the title without one.
         addLine(album, styles.album, if (artist.height > 0) innerGap(plan.artistStyle, styles.album) else entryGap(rhythm, styles.album))
-        if (bottom.height > 0) {
+        if (slot.height > 0) {
             // The bar block measures from the bar's top to the labels' baseline; a line of
             // text in its place is aligned by its own cap height.
             val isText = slotText != null
-            val first = if (isText) bottom[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: bottom.height else 0
+            val first = if (isText) slot.firstBaselineOrHeight() else 0
             parts += Part(
-                bottom,
+                slot,
                 capTop = if (isText) first - capOf(styles.label) else 0,
-                baseline = if (isText) first else bottom.height,
+                baseline = if (isText) first else slot.height,
                 descent = 0f,
                 gap = outerGap(rhythm, plan.artistStyle),
             )
@@ -368,20 +362,16 @@ internal fun TextLayer(
         }
         val blockH = parts.lastOrNull()?.let { capY.last() - it.capTop + it.baseline } ?: 0
         val top = (layout.textCenter * density).roundToInt() - blockH / 2
-        // The last line's descenders end where the column ends.
-        val footer = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        // The footer's descenders end where the column ends.
+        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
             parts.forEachIndexed { i, part -> part.p.place(x + part.dx, top + capY[i] - part.capTop) }
-            if (nextLine.height > 0) {
-                val b = nextLine[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: nextLine.height
-                nextLine.place(x, footer - b)
-            }
+            if (footer.height > 0) footer.place(x, footerBaseline - footer.firstBaselineOrHeight())
         }
     }
 }
-
 
 /**
  * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays
@@ -479,16 +469,15 @@ fun StatusLayer(
         val before = if (clock.width > 0) listOf(clock) + parts else parts
         val used = before.sumOf { it.width + space }
         val lead = measurables.last().measure(Constraints(maxWidth = (column - used).coerceAtLeast(0)))
-        fun Placeable.first(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
         // Cap height where the column begins.
         val baseline = (layout.statusTop * density).roundToInt() + (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             var x = ((layout.columnLeft + shift()) * density).roundToInt()
             for (p in before) {
-                p.place(x, baseline - p.first())
+                p.place(x, baseline - p.firstBaselineOrHeight())
                 x += p.width + space
             }
-            if (lead.height > 0) lead.place(x, baseline - lead.first())
+            if (lead.height > 0) lead.place(x, baseline - lead.firstBaselineOrHeight())
         }
     }
 }

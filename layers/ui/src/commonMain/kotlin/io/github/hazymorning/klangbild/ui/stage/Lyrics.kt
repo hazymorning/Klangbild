@@ -29,8 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
@@ -342,24 +340,18 @@ internal fun LyricsText(
             if (song != null) BasicText(AnnotatedString(isolateRightToLeft(song)), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
-        val words = measurables[0].measure(constraints)
-        val bottom = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
-        val song = measurables[2].measure(Constraints(maxWidth = colW))
-        // The song's descenders end where the column ends; the bar's labels (or a notice) stand above it.
-        val footer = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
-        val slotBaseline = footer - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
+        val lyricLines = measurables[0].measure(constraints)
+        val slot = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
+        val footer = measurables[2].measure(Constraints(maxWidth = colW))
+        // The footer's descenders end where the column ends, and the slot's baseline stands above it.
+        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val slotBaseline = footerBaseline - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
-            words.place(0, 0)
+            lyricLines.place(0, 0)
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
-            if (bottom.height > 0) {
-                val baseline = if (slotText != null) bottom[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: bottom.height else bottom.height
-                bottom.place(x, slotBaseline - baseline)
-            }
-            if (song.height > 0) {
-                val b = song[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: song.height
-                song.place(x, footer - b)
-            }
+            if (slot.height > 0) slot.place(x, slotBaseline - if (slotText != null) slot.firstBaselineOrHeight() else slot.height)
+            if (footer.height > 0) footer.place(x, footerBaseline - footer.firstBaselineOrHeight())
         }
     }
 }

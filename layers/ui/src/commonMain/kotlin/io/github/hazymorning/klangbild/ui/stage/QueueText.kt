@@ -25,8 +25,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
@@ -498,23 +496,22 @@ internal fun QueueText(
         val title = measurables[1].measure(plan.titleConstraints)
         val version = measurables[2].measure(c)
         val meta = measurables[3].measure(c)
-        val bottom = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))
-        fun Placeable.first(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
+        val slot = measurables[4].measure(Constraints(minWidth = colW, maxWidth = colW))
         fun capOf(style: TextStyle) = (style.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             val x = plan.columnLeft.roundToInt()
             // Each line by its cap height, where the plan has it.
             fun Placeable.at(top: Float?, style: TextStyle, dx: Int = 0) {
                 if (top == null || height == 0) return
-                place(x + dx, top.roundToInt() - (first() - capOf(style)))
+                place(x + dx, top.roundToInt() - (firstBaselineOrHeight() - capOf(style)))
             }
             work.at(plan.workTop, styles.work)
             title.at(plan.titleTop, plan.titleStyle, (opticalIndent(plan.titleStyle.fontSize.value) * density).roundToInt())
             version.at(plan.versionTop, plan.versionStyle)
             meta.at(plan.metaTop, plan.metaStyle)
             // The bar stays in its place while it fades; the rows make room for it as it comes.
-            if (bottom.height > 0) {
-                if (slotText != null) bottom.at(plan.slotTop, styles.label) else bottom.place(x, plan.slotTop.roundToInt())
+            if (slot.height > 0) {
+                if (slotText != null) slot.at(plan.slotTop, styles.label) else slot.place(x, plan.slotTop.roundToInt())
             }
         }
     }
