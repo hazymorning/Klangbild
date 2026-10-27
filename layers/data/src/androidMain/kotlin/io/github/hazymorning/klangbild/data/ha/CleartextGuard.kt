@@ -24,8 +24,8 @@ class CleartextGuard(
             val allowed = when {
                 route == null -> isLocalHost(url.host)
                 // Through a proxy the address reached is the proxy's: the name must be local, too.
-                route.proxy.type() != Proxy.Type.DIRECT -> isLocalHost(url.host) && isPrivateAddress(route.socketAddress.address)
-                else -> isPrivateAddress(route.socketAddress.address)
+                route.proxy.type() != Proxy.Type.DIRECT -> isLocalHost(url.host) && isPrivate(route.socketAddress.address)
+                else -> isPrivate(route.socketAddress.address)
             }
             if (!allowed) throw LocalNetwork.CleartextRefused(url.host)
         }
@@ -36,14 +36,12 @@ class CleartextGuard(
         if (LocalNetwork.looksLocal(host)) return true
         return try {
             val addrs = resolver(host)
-            addrs.isNotEmpty() && addrs.all { isPrivateAddress(it) }
+            addrs.isNotEmpty() && addrs.all { isPrivate(it) }
         } catch (_: Exception) {
             false
         }
     }
 
-    private fun isPrivateAddress(addr: InetAddress): Boolean =
-        addr.isLoopbackAddress || addr.isSiteLocalAddress || addr.isLinkLocalAddress ||
-            (addr.address.size == 4 && LocalNetwork.isPrivateIpv4(addr.address.map { it.toInt() and 0xFF })) ||
-            (addr.address.size == 16 && (addr.address[0].toInt() and 0xFE) == 0xFC) // fc00::/7
+    /** Whether [addr] is private. A SOCKS proxy resolves the name itself, so its route has no address, which isn't. */
+    private fun isPrivate(addr: InetAddress?): Boolean = addr != null && LocalNetwork.isPrivate(addr.address)
 }

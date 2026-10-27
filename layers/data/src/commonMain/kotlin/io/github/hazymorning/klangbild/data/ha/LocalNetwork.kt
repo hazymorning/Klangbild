@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.decodeIpAddress
 import kotlinx.io.IOException
 
 /**
@@ -19,28 +20,26 @@ object LocalNetwork {
         val h = host.trim().trimStart('[').trimEnd(']').lowercase()
         if (h.isEmpty()) return false
         if (h == "localhost") return true
-        parseIpv4(h)?.let { return isPrivateIpv4(it) }
-        if (h.contains(':')) return isPrivateIpv6(h)
+        h.decodeIpAddress()?.let { return isPrivate(it) }
+        if (h.contains(':')) return false
         if (!h.contains('.')) return true // single-label name like "homeassistant"
         return localSuffixes.any { h.endsWith(it) }
     }
 
-    private fun parseIpv4(h: String): List<Int>? {
-        val parts = h.split('.')
-        if (parts.size != 4) return null
-        val nums = parts.map { it.toIntOrNull() ?: return null }
-        return if (nums.all { it in 0..255 }) nums else null
+    /** Whether [address], 4 bytes for IPv4 or 16 for IPv6, is a loopback, private or link-local address. */
+    fun isPrivate(address: ByteArray): Boolean {
+        fun at(i: Int) = address[i].toInt() and 0xff
+        return when (address.size) {
+            4 -> at(0) == 10 ||
+                (at(0) == 172 && at(1) in 16..31) ||
+                (at(0) == 192 && at(1) == 168) ||
+                (at(0) == 169 && at(1) == 254) ||
+                at(0) == 127 ||
+                (at(0) == 100 && at(1) in 64..127) // CGNAT, e.g. a mesh VPN
+            16 -> ((0..14).all { at(it) == 0 } && at(15) == 1) || // ::1
+                (at(0) and 0xfe) == 0xfc || // fc00::/7, unique local
+                (at(0) == 0xfe && (at(1) and 0x80) == 0x80) // fe80::/10, link-local, and the old site-local fec0::/10
+            else -> false
+        }
     }
-
-    /** Whether the IPv4 address [p] (four numbers) is in the home network. */
-    internal fun isPrivateIpv4(p: List<Int>): Boolean =
-        p[0] == 10 ||
-            (p[0] == 172 && p[1] in 16..31) ||
-            (p[0] == 192 && p[1] == 168) ||
-            (p[0] == 169 && p[1] == 254) ||
-            p[0] == 127 ||
-            (p[0] == 100 && p[1] in 64..127) // CGNAT, e.g. a mesh VPN
-
-    private fun isPrivateIpv6(h: String): Boolean =
-        h == "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")
 }
