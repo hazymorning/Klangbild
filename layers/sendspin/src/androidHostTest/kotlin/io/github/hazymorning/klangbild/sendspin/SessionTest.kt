@@ -78,7 +78,7 @@ class SessionTest {
         var closed = false
         private var clientInit = ByteArray(0)
         private var channel: NoiseChannel? = null
-        private var handshake: KkPsk2Handshake? = null
+        private var handshake: KkPsk2Initiator? = null
         private var psk = Psk.SENTINEL
 
         val transport = object : Transport {
@@ -114,7 +114,7 @@ class SessionTest {
             }).encode()
             toClient += init
             this.psk = psk
-            val h = KkPsk2Handshake(true, clientInit + init.toByteArray(), serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
+            val h = KkPsk2Initiator(clientInit + init.toByteArray(), serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
             handshake = h
             val payload = buildJsonObject {
                 put("psk_id", Psk.id(idOf))
@@ -138,7 +138,7 @@ class SessionTest {
         /** Swaps the keys in band, naming [newPsk] as [category]. */
         fun rehandshake(newPsk: ByteArray, category: PskCategory) {
             val c = channel!!
-            val h = KkPsk2Handshake(true, c.handshakeHash, serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
+            val h = KkPsk2Initiator(c.handshakeHash, serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
             handshake = h
             psk = newPsk
             rehandshaking = true

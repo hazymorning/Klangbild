@@ -34,8 +34,8 @@ class NoiseTest {
         "457567656e2042f6686d20766f6e2042617765726b" to "ed22a0392c6afbfd6a6adea92b1faf13c4df24072f7060a20b1500609621c6957ac86d82f9",
     ).map { (p, c) -> hex(p) to hex(c) }
 
-    private fun initiator() = KkPsk2Handshake(true, prologue, initStatic, respStatic.publicKey) { initEphemeral }
-    private fun responder() = KkPsk2Handshake(false, prologue, respStatic, initStatic.publicKey) { respEphemeral }
+    private fun initiator() = KkPsk2Initiator(prologue, initStatic, respStatic.publicKey) { initEphemeral }
+    private fun responder() = KkPsk2Responder(prologue, respStatic, initStatic.publicKey) { respEphemeral }
 
     @Test
     fun `the responder reads and writes the vector's messages`() {
@@ -101,8 +101,8 @@ class NoiseTest {
         val random = CryptographyRandom.Default
         val server = KeyPair.generate(random)
         val client = KeyPair.generate(random)
-        val i = KkPsk2Handshake(true, prologue, server, client.publicKey) { KeyPair.generate(random) }
-        val r = KkPsk2Handshake(false, prologue, client, server.publicKey) { KeyPair.generate(random) }
+        val i = KkPsk2Initiator(prologue, server, client.publicKey) { KeyPair.generate(random) }
+        val r = KkPsk2Responder(prologue, client, server.publicKey) { KeyPair.generate(random) }
         assertThat(r.readFirst(i.writeFirst("hello".toByteArray()))).isEqualTo("hello".toByteArray())
         val (second, rc) = r.writeSecond(psk, "{}".toByteArray())
         val (payload, ic) = i.readSecond(psk, second)

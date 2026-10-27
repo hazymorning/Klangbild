@@ -207,53 +207,36 @@ internal class SymmetricState(protocolName: String) {
 /** The two directions of a channel once its handshake is done, and the handshake's hash. */
 class NoiseChannel(val send: CipherState, val receive: CipherState, val handshakeHash: ByteArray)
 
+/** The symmetric state a KKpsk2 handshake starts from: the [prologue], then both static keys as its pre-messages. */
+internal fun kkStart(prologue: ByteArray, initiatorKey: ByteArray, responderKey: ByteArray) = SymmetricState(Noise.PROTOCOL_NAME).apply {
+    mixHash(prologue)
+    mixHash(initiatorKey)
+    mixHash(responderKey)
+}
+
 /**
- * A KKpsk2 handshake: both static public keys are known beforehand, the initiator's first
- * message carries `e, es, ss`, the responder's answer `e, ee, se, psk`. The PSK is needed only
- * for the second message, so the responder reads the first message's payload (which names the
- * PSK) before choosing it.
- *
- * In Sendspin the server is always the initiator and Klangbild the responder; the initiator's
- * side is here for the tests, which play the server.
+ * The responder's side of a KKpsk2 handshake, Klangbild's (in Sendspin the server always
+ * initiates): both static public keys are known beforehand, the initiator's first message
+ * carries `e, es, ss`, the answer `e, ee, se, psk`. The PSK is needed only for the answer, so
+ * the first message's payload, which names it, is read before choosing it.
  */
-class KkPsk2Handshake(
-    private val initiator: Boolean,
+class KkPsk2Responder(
     prologue: ByteArray,
     private val static: KeyPair,
     private val remoteStatic: ByteArray,
     private val ephemeral: () -> KeyPair,
 ) {
-    private val ss = SymmetricState(Noise.PROTOCOL_NAME)
-    private var e: KeyPair? = null
+    private val ss = kkStart(prologue, remoteStatic, static.publicKey)
     private var re: ByteArray? = null
     private var step = 0
 
     init {
         require(remoteStatic.size == Noise.KEY_BYTES)
-        ss.mixHash(prologue)
-        // The pre-messages: the initiator's static key, then the responder's.
-        ss.mixHash(if (initiator) static.publicKey else remoteStatic)
-        ss.mixHash(if (initiator) remoteStatic else static.publicKey)
     }
 
-    /** The handshake's hash so far (after the second message, the channel's `h`). */
-    val handshakeHash: ByteArray get() = ss.h.copyOf()
-
-    /** Initiator: the first message, carrying [payload]. */
-    fun writeFirst(payload: ByteArray): ByteArray {
-        check(initiator && step == 0)
-        step = 1
-        val eph = ephemeral().also { e = it }
-        ss.mixHash(eph.publicKey)
-        ss.mixKey(eph.publicKey)
-        ss.mixKey(Noise.dh(eph, remoteStatic))
-        ss.mixKey(Noise.dh(static, remoteStatic))
-        return eph.publicKey + ss.encryptAndHash(payload)
-    }
-
-    /** Responder: the first message's payload. */
+    /** The first message's payload. */
     fun readFirst(message: ByteArray): ByteArray {
-        check(!initiator && step == 0)
+        check(step == 0)
         step = 1
         if (message.size < Noise.KEY_BYTES + Noise.TAG_BYTES || message.size > Noise.MAX_MESSAGE) throw NoiseException("first message of ${message.size} bytes")
         val remote = message.copyOfRange(0, Noise.KEY_BYTES).also { re = it }
@@ -264,13 +247,13 @@ class KkPsk2Handshake(
         return ss.decryptAndHash(message, Noise.KEY_BYTES)
     }
 
-    /** Responder: the answer with [psk] mixed in, carrying [payload], and the channel it opens. */
+    /** The answer with [psk] mixed in, carrying [payload], and the channel it opens. */
     fun writeSecond(psk: ByteArray, payload: ByteArray): Pair<ByteArray, NoiseChannel> {
-        check(!initiator && step == 1)
+        check(step == 1)
         step = 2
         require(psk.size == Noise.KEY_BYTES)
         val remote = checkNotNull(re)
-        val eph = ephemeral().also { e = it }
+        val eph = ephemeral()
         ss.mixHash(eph.publicKey)
         ss.mixKey(eph.publicKey)
         ss.mixKey(Noise.dh(eph, remote))
@@ -279,22 +262,5 @@ class KkPsk2Handshake(
         val message = eph.publicKey + ss.encryptAndHash(payload)
         val (c1, c2) = ss.split()
         return message to NoiseChannel(send = c2, receive = c1, handshakeHash = ss.h.copyOf())
-    }
-
-    /** Initiator: the answer's payload, read with [psk], and the channel it opens. */
-    fun readSecond(psk: ByteArray, message: ByteArray): Pair<ByteArray, NoiseChannel> {
-        check(initiator && step == 1)
-        step = 2
-        if (message.size < Noise.KEY_BYTES + Noise.TAG_BYTES || message.size > Noise.MAX_MESSAGE) throw NoiseException("second message of ${message.size} bytes")
-        val eph = checkNotNull(e)
-        val remote = message.copyOfRange(0, Noise.KEY_BYTES)
-        ss.mixHash(remote)
-        ss.mixKey(remote)
-        ss.mixKey(Noise.dh(eph, remote))
-        ss.mixKey(Noise.dh(static, remote))
-        ss.mixKeyAndHash(psk)
-        val payload = ss.decryptAndHash(message, Noise.KEY_BYTES)
-        val (c1, c2) = ss.split()
-        return payload to NoiseChannel(send = c1, receive = c2, handshakeHash = ss.h.copyOf())
     }
 }

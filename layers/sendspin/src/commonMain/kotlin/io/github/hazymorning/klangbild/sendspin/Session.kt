@@ -314,7 +314,7 @@ class Session(
      */
     private fun respond(m: Message, prologue: ByteArray, initial: Boolean): Triple<ByteArray, NoiseChannel, PskCategory> {
         val data = m.string("data")?.let(B64::decode) ?: throw ProtocolException("noise/handshake without data")
-        val handshake = KkPsk2Handshake(false, prologue, identity, checkNotNull(serverKey)) { KeyPair.generate(random) }
+        val handshake = KkPsk2Responder(prologue, identity, checkNotNull(serverKey)) { KeyPair.generate(random) }
         val payload = try {
             Json.parseToJsonElement(handshake.readFirst(data).decodeToString()) as? JsonObject
         } catch (e: NoiseException) {
