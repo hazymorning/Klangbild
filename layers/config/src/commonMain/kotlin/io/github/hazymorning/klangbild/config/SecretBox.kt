@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.config
 
 /** Seals the tokens Klangbild keeps (Home Assistant's and Music Assistant's) before they are stored. */
 interface SecretBox {
+    /** [plain] sealed. Throws an IOException when it can't be sealed. */
     fun seal(plain: String): String
 
     /** The secret in [stored]: a sealed one opened, one stored before sealing as it is; null when it cannot be opened. */
