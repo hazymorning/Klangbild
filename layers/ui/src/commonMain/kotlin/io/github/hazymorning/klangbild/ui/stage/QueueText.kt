@@ -62,29 +62,27 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /*
- * The queue as a list in the text column (the setting Queue: List), beside the cover, which does
- * not move. The song stands in the middle between the status line and the list, as far from the
- * one as from the other, its title a step smaller than on its own and its artist, album and year
- * on one line, then its bar as everywhere. The rows follow, every one alike and as tall as the
- * next: its row cover, its title over its artists, its length, all in the same inks. The spaces
- * grow from a row's two lines to two rows to the song's, so the bar plainly belongs to the song,
- * and only whole rows show, as far apart as it takes for the last to end on the column's foot, as
- * the cover does ([rowSpacing]). When the
- * bar comes or goes (a key brings it for a moment), the list makes room for it or closes up as it
- * fades, and a row that no longer fits goes before it would pass the column's foot.
+ * The queue as a list in the text column (Queue: List in the menu). The current track stands at
+ * the top, centered between the status line and the first row, with a smaller title and its
+ * artist, album and year on one line, then its slot. Every row has the same height: a row cover,
+ * the title over the artists, and the length, all in the same inks. Gaps grow from within a row
+ * to between rows to around the track, so the bar plainly belongs to the track. Only whole rows
+ * show, spaced so the last one ends at the column's foot ([rowSpacing]). When the slot comes or
+ * goes (a key brings the bar for a moment), the rows make room or close up as it fades, and a row
+ * that no longer fits fades out before it would pass the foot.
  */
 
-/** One song of the list as the column shows it. */
+/** One queue item as its row shows it. */
 @Immutable
 internal data class QueueRowModel(
-    /** Stays the same while the song moves up the queue, so a row can glide to its new place. */
+    /** Stays the same while the item moves up the queue, so its row can glide to its new place. */
     val id: String,
     val title: String,
     /** The artists, on a second line. */
     val artists: String?,
-    /** "5:12"; null without a length. */
+    /** The length ("5:12"), or null without one. */
     val length: String?,
-    /** The row cover; null while it is still being made. */
+    /** The row cover, or null while it is still being made. */
     val cover: ImageBitmap?,
 )
 
@@ -92,7 +90,7 @@ internal data class QueueRowModel(
 @Immutable
 internal data class QueueModel(val rows: List<QueueRowModel>) {
     companion object {
-        /** The list as the column shows [list], in the words of [t]. */
+        /** The list as the column shows [list], in the language of [t]. */
         fun of(list: QueueList, t: Texts): QueueModel {
             val others = t[Strings.artistsOthers]
             val rows = list.upNext.rows.map { row ->
@@ -110,24 +108,24 @@ internal data class QueueModel(val rows: List<QueueRowModel>) {
     }
 }
 
-/** One row as measured: where its cap height stands (px from the screen's top) and its texts. */
+/** One row as measured: where its cover's top stands (px from the screen's top) and its texts. */
 internal class PlannedRow(
     val id: String,
     val top: Float,
     val title: TextLayoutResult,
     val artists: TextLayoutResult?,
     val length: TextLayoutResult?,
-    /** The row cover as a brush for its rounded square, and its [bitmap]. */
+    /** The row cover as a brush for its rounded square. */
     val cover: ShaderBrush?,
+    /** The row cover's bitmap, which tells a cover made meanwhile from the one before. */
     val bitmap: ImageBitmap?,
 )
 
 /**
- * The column with the list, measured once per model: the song's lines, and where every part
- * stands (px from the screen's top: the cap heights of the work, the title, the version, the line
- * of artist, album and year, the bar's top or the cap height of a line in its place), then the
- * rows. The rows stand lower by the [room] the bar takes, and are set for the room it takes at
- * rest.
+ * The column with the list, measured once per model: the track's lines and where each stands (px
+ * from the screen's top: the cap heights of the work, the title, the version and the line of
+ * artist, album and year, then the bar's top or the slot text's cap height), then the rows. The
+ * rows stand lower by the [room] the slot takes, and are set for the room it takes at rest.
  */
 @Stable
 internal class QueuePlan(
@@ -146,13 +144,14 @@ internal class QueuePlan(
     val titleTop: Float,
     val versionTop: Float?,
     val metaTop: Float?,
-    /** Where the bar's top stands, or the cap height of a line in its place. */
+    /** Where the bar's top stands, or the slot text's cap height. */
     val slotTop: Float,
     val rows: List<PlannedRow>,
-    /** The room the bar takes above the rows, as it comes and goes. */
+    /** The room the slot takes above the rows, as it comes and goes. */
     val room: SlotRoom,
-    /** Where the column ends (px), and how far a row's artists hang below their baseline. */
+    /** Where the column ends (px). */
     val foot: Float,
+    /** How far a row's artists hang below their baseline (px). */
     val rowDescent: Float,
     val appearance: Appearance,
     val columnLeft: Float,
@@ -165,8 +164,8 @@ internal class QueuePlan(
 )
 
 /**
- * The column's list for [model], measured; null while no list shows. A theater passes its
- * [rooms], so a stage that leaves keeps the bar's room as it stood.
+ * The column's list for [model], measured, or null while no list shows. A theater passes its
+ * [rooms], so a stage that leaves keeps the slot's room as it stood.
  */
 @Composable
 internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): QueuePlan? {
@@ -176,7 +175,7 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
     val density = LocalDensity.current
     val styles = rememberStageStyles(model.scene.palette)
     val figures = rememberFigures(styles.time, Face.TITLE)
-    // The room the bar (or a line in its place) takes, gliding as it comes and goes.
+    // The room the slot takes, gliding as it comes and goes.
     val target = slotRoom(slotOf(model), styles, density)
     val room = remember(rooms, model.scene.key) { rooms?.of(model.scene.key, target) ?: SlotRoom(target) }
     LaunchedEffect(room, target) { room.to(target) }
@@ -188,7 +187,7 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
 }
 
 /**
- * The bar's room of each stage a theater shows, by its scene: a stage that leaves keeps the room
+ * The slot's room of each stage a theater shows, by its scene: a stage that leaves keeps the room
  * it stood with, even while it was gliding, so its lines leave from where they were.
  */
 internal class QueueRooms {
@@ -196,13 +195,13 @@ internal class QueueRooms {
 
     fun of(key: String, target: Float): SlotRoom = rooms.getOrPut(key) { SlotRoom(target) }
 
-    /** Lets go of the rooms of stages no longer shown. */
+    /** Drops the rooms of the scenes not in [keys]. */
     fun keep(keys: Set<String>) {
         rooms.keys.retainAll(keys)
     }
 }
 
-/** The room [slot] takes above the rows (px): the bar's block or a line's cap height, with the space above it. */
+/** The room [slot] takes above the rows (px): the bar's block or the slot text's cap height, with the gap above it. */
 private fun slotRoom(slot: Slot?, styles: StageStyles, density: Density): Float = when (slot) {
     null -> 0f
     is Slot.Bar -> barSpace(styles, density) + density.barBlock(styles.time)
@@ -210,36 +209,37 @@ private fun slotRoom(slot: Slot?, styles: StageStyles, density: Density): Float 
 }
 
 /**
- * From the song's last baseline to the bar (px): the descenders of its line of artist, album and
- * year (set as the album is), then the song's [Rhythm.outerGap] at the list's largest title, so the
- * bar's room is known before the title's size and stands a step beyond the title's at any size.
+ * From the track's last baseline to the bar (px): the descenders of its line of artist, album and
+ * year (set as the album is), then the [Rhythm.outerGap] at the list's largest title. So the bar's
+ * room is known before the title's size and stays a step beyond the title's gaps at any size.
  */
 private fun barSpace(styles: StageStyles, density: Density): Float =
     with(density) { descent(styles.album) + outerGap(styles.title(queueTitleLadder.first()), styles.album) }
 
 /**
- * The room the bar takes above the rows (px). When the bar or a line in its place comes or goes,
- * the room glides to its new size in [Motion.LINE_FADE_MS] as the bar fades.
+ * The room the slot takes above the rows (px). When the slot comes or goes, the room glides to
+ * its new size over [Motion.LINE_FADE_MS] as the slot fades.
  */
 @Stable
 internal class SlotRoom(initial: Float) {
     private val room = Animatable(initial)
     private var from by mutableFloatStateOf(initial)
 
-    /** The room now. */
     val now: Float get() = room.value
 
-    /** The room the glide started from, and the one it goes to. */
+    /** The room the glide started from. */
     val start: Float get() = from
+
+    /** The room the glide goes to. */
     val target: Float get() = room.targetValue
 
     /** How far the glide has come (0 to 1). */
     val progress: Float get() = if (target == from) 1f else ((room.value - from) / (target - from)).coerceIn(0f, 1f)
 
     /**
-     * How much of what stands in the bar's place may show: only while its room is mostly open, so
-     * it comes once the rows have made way and goes before the list closes up, never over it. A
-     * glide turned back halfway counts from where the room is wanted again.
+     * How much of what stands in the slot may show: only while its room is mostly open (from 60%),
+     * so it comes once the rows have made way and goes before the list closes up, never over it.
+     * A glide turned back halfway counts from where the room is wanted again.
      */
     private val open: Float get() {
         val need = if (target > 0f) target else from
@@ -247,18 +247,19 @@ internal class SlotRoom(initial: Float) {
         return Motion.phase(room.value / need, 0.6f, 1f, Motion.Dimmer)
     }
 
-    /** Whether the place comes or goes as a whole (to or from nothing), not one thing for another. */
+    /** Whether the slot comes or goes as a whole (to or from nothing), not one thing for another. */
     private val whole: Boolean get() = from <= 0f || target <= 0f
 
-    /** The bar's place as a whole, while it comes or goes. */
-    val line: Float get() = if (whole) open else 1f
+    /** The slot's alpha as a whole, while it comes or goes. */
+    val slotAlpha: Float get() = if (whole) open else 1f
 
     /**
-     * The bar alone, while it takes the place of a line of words (or comes back halfway through
-     * leaving): that line cross-fades as it would, and the bar comes once its room is open.
+     * The bar's own alpha, while it takes the place of the slot text (or comes back halfway
+     * through leaving): the text crossfades as it would, and the bar comes once its room is open.
      */
-    val bar: Float get() = if (whole) 1f else open
+    val barAlpha: Float get() = if (whole) 1f else open
 
+    /** Glides the room to [px]. */
     suspend fun to(px: Float) {
         if (px == room.targetValue) return
         from = room.value
@@ -285,15 +286,15 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
             TitleChoice(step, balancer.layout(fitLines(balancer, title, style, colW, step.lines), style, colW, step.lines, TextOverflow.Ellipsis))
         }
     val titleStyle = choice.layout.layoutInput.style
-    // The spaces around the title follow its step in Latin letters ([TextPlan.titleRhythm]).
+    // The gaps around the title follow its step in Latin letters ([TextPlan.titleRhythm]).
     val titleRhythm = styles.title(choice.step)
     val versionStyle = styles.version(choice.step.size)
     // The line of artist, album and year is set as the album is.
     val metaStyle = styles.album
     val meta = metaLine(t, model.chapter ?: t.album, model.year, styles, metaStyle, measurer, colW)
 
-    // From the song's first cap height down, each part's cap height after the one before, the
-    // gap above it ([Rhythm]) from the descenders of the line before; the song is set in its
+    // From the track's first cap height down, each line's cap height after the one before, the
+    // gap above it ([Rhythm]) from the descenders of the line before. The lines are set in their
     // place once the rows are known.
     var y = 0f
     var workTop: Float? = null
@@ -309,18 +310,18 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         versionTop = y + with(density) { descent(titleRhythm) + innerGap(titleRhythm, versionStyle) }
         y = versionTop + cap(versionStyle)
     }
-    // The title's group ends the title's descenders below its last line, the version's too.
+    // The title's entry ends a title's descent below its last line, also after a version.
     var metaTop: Float? = null
     if (meta != null) {
         metaTop = y + with(density) { descent(titleRhythm) + entryGap(titleRhythm, metaStyle) }
         y = metaTop + cap(metaStyle)
     }
-    // The bar (or a line in its place) under them.
+    // The slot under them.
     val slotTop = y + barSpace(styles, density)
 
-    // The rows under the song, lower by the room the bar takes: as many whole ones as fit with the
-    // room it takes at rest, every one as tall as its row cover, the last one ending on the
-    // column's foot. The song stands in the middle between the status line and the first row.
+    // The rows under the track, lower by the room the slot takes: as many whole ones as fit with
+    // the room it takes at rest, every one as tall as its row cover, the last one ending on the
+    // column's foot. The track stands in the middle between the status line and the first row.
     val statusBaseline = (layout.statusTop * d).roundToInt() + (with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
@@ -330,8 +331,8 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     val titleCap = cap(rowTitle)
     val descent = with(density) { rowArtists.fontSize.toPx() } * Fonts.DESCENT
     val spacing = rowSpacing(foot - statusBaseline - (y + rest), coverPx.toFloat(), d)
-    val songTop = statusBaseline + spacing.blockGap
-    val rowsTop = songTop + y + spacing.blockGap
+    val blockTop = statusBaseline + spacing.blockGap
+    val rowsTop = blockTop + y + spacing.blockGap
     val rows = ArrayList<PlannedRow>(spacing.count)
     var top = rowsTop
     val textWidth = colW - rowTextLeft.roundToInt()
@@ -360,11 +361,11 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         versionStyle = versionStyle,
         meta = meta,
         metaStyle = metaStyle,
-        workTop = workTop?.plus(songTop),
-        titleTop = songTop + titleTop,
-        versionTop = versionTop?.plus(songTop),
-        metaTop = metaTop?.plus(songTop),
-        slotTop = songTop + slotTop,
+        workTop = workTop?.plus(blockTop),
+        titleTop = blockTop + titleTop,
+        versionTop = versionTop?.plus(blockTop),
+        metaTop = metaTop?.plus(blockTop),
+        slotTop = blockTop + slotTop,
         rows = rows,
         room = room,
         foot = foot,
@@ -386,12 +387,12 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
 private class RowSpacing(val count: Int, val gap: Float, val blockGap: Float)
 
 /**
- * The rows for [room] px from the status line's baseline to the column's foot, less the song's own
- * height (the bar's room at rest counted), each row [row] px tall, its row cover's side: as many
- * whole rows as fit [ROW_GAP_MIN] apart with the song [BLOCK_GAP_SHARE] times as far
- * from the status line and from the first row, the spaces grown alike up to [ROW_GAP_MAX] between
- * rows, and what is left shared above and below the song. The count follows the room, not the
- * songs to come, so the song keeps its place as the queue runs short.
+ * The rows for [room] px from the status line's baseline to the column's foot, less the text
+ * block's own height (the slot's room at rest counted), each row [row] px tall, its row cover's
+ * side: as many whole rows as fit [ROW_GAP_MIN] apart with the text block [BLOCK_GAP_SHARE]
+ * times as far from the status line and from the first row, the gaps grown alike up to
+ * [ROW_GAP_MAX] between rows, and what is left shared above and below the text block. The count
+ * follows the room, not the queue, so the track keeps its place as the queue runs short.
  */
 private fun rowSpacing(room: Float, row: Float, density: Float): RowSpacing {
     val min = ROW_GAP_MIN * density
@@ -402,9 +403,9 @@ private fun rowSpacing(room: Float, row: Float, density: Float): RowSpacing {
 }
 
 /**
- * The song's one line under its title: the artists in the artist's ink and weight, then the
+ * The track's one line under its title: the artists in the artist's ink and weight, then the
  * album (or the chapter) and the year, quiet. The year leaves first, then the album, then the
- * artists take a shorter form ("and others"); the last one left is cut.
+ * artists take a shorter form ("and others"). The last form left is cut.
  */
 private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyles, style: TextStyle, measurer: TextMeasurer, width: Int): AnnotatedString? {
     val artists = t.artistOptions().ifEmpty { listOf(null) }
@@ -454,8 +455,8 @@ private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextS
 }
 
 /**
- * The column with the list ([TextLayer] while [StageModel.queue] is set): the song at the top
- * with its bar. The rows under it are a layer of their own ([QueueRowsLayer]), so they can move
+ * The column with the list ([TextLayer] while [StageModel.queue] is set): the track at the top
+ * with its slot. The rows under it are a layer of their own ([QueueRowsLayer]), so they can move
  * through a change. [alpha] and [rise] animate a change line by line as the text block's.
  */
 @Composable
@@ -483,9 +484,9 @@ internal fun QueueText(
             SlotContent(
                 model,
                 styles,
-                line(TextLine.SLOT).graphicsLayer { this.alpha = plan.room.line },
+                line(TextLine.SLOT).graphicsLayer { this.alpha = plan.room.slotAlpha },
                 label = "queue-slot",
-                barAlpha = { plan.room.bar },
+                barAlpha = { plan.room.barAlpha },
             )
         },
     ) { measurables, constraints ->
@@ -509,7 +510,7 @@ internal fun QueueText(
             title.at(plan.titleTop, plan.titleStyle, (opticalIndent(plan.titleStyle.fontSize.value) * density).roundToInt())
             version.at(plan.versionTop, plan.versionStyle)
             meta.at(plan.metaTop, plan.metaStyle)
-            // The bar stays in its place while it fades; the rows make room for it as it comes.
+            // The slot stays in its place while it fades, and the rows make room for it as it comes.
             if (slot.height > 0) {
                 if (slotText != null) slot.at(plan.slotTop, styles.label) else slot.place(x, plan.slotTop.roundToInt())
             }
@@ -542,10 +543,10 @@ internal class RowsMotion(
 }
 
 /**
- * The rows of the list [cur], and while a change runs those of the list before ([prev]), moving as
- * [motion] says. Their words are dimmed by [textLevel] (a pause), their row covers like the cover by
- * [coverLevel]. Rows that keep their order glide; one whose order changed goes and comes again at
- * its new place, so no two rows ever pass through each other.
+ * The rows of the list [cur], and while a change runs those of the list before ([prev]), moving
+ * as [motion] says. Their text is dimmed by [textLevel] (a pause), and their row covers by
+ * [coverLevel] as the cover is. Rows that keep their order glide, and one whose order changed
+ * goes and comes again at its new place, so no two rows ever pass through each other.
  */
 @Composable
 internal fun QueueRowsLayer(
@@ -633,9 +634,10 @@ internal fun glidingIds(before: List<String>, now: List<String>): Set<String> {
 }
 
 /**
- * How much of [row] shows as the bar's room glides: whole while it fits within the column. A row
- * that no longer fits goes in the first part of the glide, before it would pass the column's foot;
- * one that comes into room comes in the last part, once its place is there.
+ * How much of [row] shows as the slot's room glides: whole while it fits within the column (half
+ * a pixel over counts, for rounding). A row that no longer fits goes in the first 40% of the
+ * glide, before it would pass the column's foot, and one that comes into room comes in the
+ * second half, once its place is there.
  */
 private fun QueuePlan.shown(row: PlannedRow): Float {
     fun fits(room: Float) = row.top + room + rowCoverPx <= foot + 0.5f
@@ -650,20 +652,20 @@ private fun QueuePlan.shown(row: PlannedRow): Float {
 }
 
 /**
- * One row with its cap height at [y] (px from the screen's top), as strong as [alpha]: its words
- * dimmed by [textLevel], its row cover through [filter], as the cover is.
+ * One row with its cover's top at [y] (px from the screen's top), as strong as [alpha]: its text
+ * dimmed by [textLevel], and its cover drawn through [filter] at [coverAlpha], as the cover is.
  */
 private fun DrawScope.drawRow(plan: QueuePlan, row: PlannedRow, y: Float, alpha: Float, textLevel: Float, filter: ColorFilter, coverAlpha: Float = alpha) {
     drawCover(plan, row, y, coverAlpha, filter)
     if (alpha <= 0.003f) return
-    val words = alpha * textLevel
+    val textAlpha = alpha * textLevel
     val x = plan.columnLeft
     // The two lines stand within the row cover's straight edge, a corner radius in from its top and bottom.
     val inset = ROW_COVER_CORNER * density
     val baseline = y + inset + plan.rowCap
-    drawText(row.title, topLeft = Offset(x + plan.rowTextLeft, baseline - row.title.firstBaseline), alpha = words)
-    row.artists?.let { drawText(it, topLeft = Offset(x + plan.rowTextLeft, y + plan.rowCoverPx - inset - plan.rowDescent - it.firstBaseline), alpha = words) }
-    row.length?.let { drawText(it, topLeft = Offset(x + plan.columnWidth - it.size.width, baseline - it.firstBaseline), alpha = words) }
+    drawText(row.title, topLeft = Offset(x + plan.rowTextLeft, baseline - row.title.firstBaseline), alpha = textAlpha)
+    row.artists?.let { drawText(it, topLeft = Offset(x + plan.rowTextLeft, y + plan.rowCoverPx - inset - plan.rowDescent - it.firstBaseline), alpha = textAlpha) }
+    row.length?.let { drawText(it, topLeft = Offset(x + plan.columnWidth - it.size.width, baseline - it.firstBaseline), alpha = textAlpha) }
 }
 
 /** [row]'s cover with its top at [y], on whole pixels so it stays sharp. */
@@ -685,12 +687,12 @@ private val queueTitleLadder = listOf(
 )
 
 /**
- * Between two row covers (dp): at least this, so from one's artists' baseline to the next
- * one's cap height stands well over twice the room between a row's two lines...
+ * The smallest gap between two row covers (dp), so the gap from one row's artists to the next
+ * row's title stays well over twice the gap within a row.
  */
 private const val ROW_GAP_MIN = 12f
 
-/** ...and at most this, so the rows still read as one list. */
+/** The largest gap between two row covers (dp), so the rows still read as one list. */
 private const val ROW_GAP_MAX = 22f
 
 /**

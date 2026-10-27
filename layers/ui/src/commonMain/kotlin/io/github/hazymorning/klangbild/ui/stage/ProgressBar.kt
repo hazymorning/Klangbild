@@ -41,14 +41,14 @@ internal class ProgressColors(val groove: Color, val fill: Color, val label: Col
  * its right end ("1:35" and "4:11"). Only one number ticks, and its figures sit in fixed
  * cells, so nothing jitters.
  *
- * It glides. While playing, only the bar's own drawing is refreshed, about 30 times a second
- * and aligned to the display's frames. The fill grows by a fraction of a pixel each time,
- * anti-aliased, so it never steps. A seek glides to the new place in 350 ms instead of
- * jumping. The labels recompose once a second. Paused, the fill dims and the bar is redrawn
- * only twice a second (a seek while paused still shows).
+ * It glides. While playing, only the bar's own drawing is refreshed, on the stage's tick. The
+ * fill grows by a fraction of a pixel each time, anti-aliased, so it never steps. A seek glides
+ * to the new place over [GLIDE_MS] instead of jumping. The labels recompose once a second.
+ * Paused, the fill dims and the bar is redrawn only twice a second (a seek while paused still
+ * shows).
  *
- * The labels' cap height sits [BAR_LABEL_GAP] below the bar; the measured height ends at their
- * baseline, so a layout can align the block by it.
+ * The labels' cap height sits [BAR_LABEL_GAP] below the bar, and the measured height ends at
+ * their baseline, so a layout can align the block by it.
  *
  * In a book with chapters the bar spans the chapter: from [startMs] in the track's own time, for
  * [durationMs]. A new chapter starts a new bar, without gliding back, and so does another track

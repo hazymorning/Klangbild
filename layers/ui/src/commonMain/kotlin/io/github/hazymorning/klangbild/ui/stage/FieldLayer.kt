@@ -38,7 +38,7 @@ import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.random.Random
 
-/** The color field's clock as the stage reads it: its time ([now], seconds) and whether it runs. */
+/** The cover field's clock as the stage reads it: its time ([now], seconds) and whether it runs. */
 @Stable
 internal class FieldTime(val now: () -> Double, val moving: Boolean) {
     companion object {
@@ -46,20 +46,22 @@ internal class FieldTime(val now: () -> Double, val moving: Boolean) {
     }
 }
 
-/** The field's clock for everything below (the stage provides it; stills and tests get [FieldTime.Still]). */
+/** The field's clock for everything below: the stage provides it, and stills and tests get [FieldTime.Still]. */
 internal val LocalFieldTime = staticCompositionLocalOf { FieldTime.Still }
 
 /**
- * The cover's colors as the wall ([CoverField], [FieldMotion]), edge to edge and
- * [CoverField.OVERSCAN_DP] beyond, so the stage's drift never shows a border. The ground and
- * the soft pools are drawn into a layer a quarter of the screen's size and scaled up, since
- * they are nothing but soft shapes. Each pool is one quad with its own radial gradient, turned
- * and stretched where [FieldMotion] puts it, so a frame costs a dozen small quads and one scaled
+ * The cover colors background ([CoverField], [FieldMotion]), edge to edge and
+ * [CoverField.OVERSCAN_DP] beyond, so the drift never shows a border. Its base color and the soft
+ * pools are drawn into a layer a quarter of the screen's size and scaled up, since they are
+ * nothing but soft shapes. Each pool is one quad with its own radial gradient, turned and
+ * stretched where [FieldMotion] puts it, so a frame costs a dozen small quads and one scaled
  * copy. Over it, at full resolution, come a grain of a level or two (soft dark ramps would
- * otherwise show bands) and the veil: the shade under the text.
- * While the field moves, it is redrawn with the stage's tick (~30 times a second), nothing else.
+ * otherwise show bands) and the veil, the shade under the text. While the field moves, it is
+ * redrawn on the stage's tick (about 30 times a second), and otherwise not at all.
  *
- * [alpha] fades it during a change, [lightLevel] dims it (pause, a lost link).
+ * [alpha] fades it during a change. On the dark background [lightLevel] (a pause, a lost
+ * connection and the Intensity setting) darkens it, to black at 0, and never brightens it. On
+ * the light background it has no effect.
  */
 @Composable
 internal fun FieldLayer(
@@ -136,7 +138,7 @@ internal fun FieldLayer(
             val all = Size(fw.toFloat(), fh.toFloat())
             drawRect(grain, topLeft, all, alpha = a, blendMode = BlendMode.Plus)
             veil?.let { drawImage(it, dstOffset = IntOffset(-m, -m), dstSize = IntSize(fw, fh), alpha = a, filterQuality = FilterQuality.Low) }
-            // In the dark, a pause (or a lost link) dims the colors; paper stays paper, like the plain wall.
+            // On the dark background a lower light level darkens the colors. The light one stays as it is.
             val shade = if (dark) 1f - lightLevel().coerceIn(0f, 1f) else 0f
             if (shade > 0.002f) drawRect(Color.Black, topLeft, all, alpha = a * shade)
         }

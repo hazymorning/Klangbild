@@ -7,13 +7,13 @@ import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlin.test.Test
 
-/** A song that no longer plays keeps what its lines showed while it played. */
+/** A track that no longer plays keeps what its lines showed while it played. */
 class PlayedLinesTest {
     private val next = TrackInfo("Who Has Seen the Wind", listOf("Willow Static"))
     private val afterNext = TrackInfo("Cold Light", listOf("Willow Static"))
 
     @Test
-    fun aSongThatNoLongerPlaysKeepsItsOwnNext() {
+    fun aTrackThatNoLongerPlaysKeepsItsOwnNext() {
         val lines = PlayedLines()
         assertThat(lines.next("a", plays = true, now = next)).isEqualTo(next)
         // B plays now, and C comes after it: A, still on screen, keeps its own next.
@@ -22,7 +22,7 @@ class PlayedLinesTest {
     }
 
     @Test
-    fun aSongThatNoLongerPlaysKeepsWhereItStood() {
+    fun aTrackThatNoLongerPlaysKeepsWhereItStood() {
         val lines = PlayedLines()
         var now = 65_000L
         assertThat(lines.position("a", plays = true) { now }).isEqualTo(65_000L)
@@ -35,12 +35,12 @@ class PlayedLinesTest {
     fun aReadThatKnowsNothingKeepsTheLastPlace() {
         val lines = PlayedLines()
         assertThat(lines.position("a", plays = true) { 65_000L }).isEqualTo(65_000L)
-        // The player reports the next song already, or nothing between two songs.
+        // The player reports the next track already, or nothing between two tracks.
         assertThat(lines.position("a", plays = true) { null }).isEqualTo(65_000L)
     }
 
     @Test
-    fun aSongThatPlaysAgainStartsAfresh() {
+    fun aTrackThatPlaysAgainStartsAfresh() {
         val lines = PlayedLines()
         assertThat(lines.position("a", plays = true) { 120_000L }).isEqualTo(120_000L)
         assertThat(lines.position("a", plays = false) { null }).isEqualTo(120_000L)
@@ -51,7 +51,7 @@ class PlayedLinesTest {
     }
 
     @Test
-    fun aSongThatNoLongerPlaysKeepsItsChapter() {
+    fun aTrackThatNoLongerPlaysKeepsItsChapter() {
         val lines = PlayedLines()
         val seven = ChapterPlace("Chapter 7", 600_000L, 900_000L, "Chapter 8")
         assertThat(lines.chapter("book", plays = true, now = seven)).isEqualTo(seven)
@@ -59,14 +59,14 @@ class PlayedLinesTest {
     }
 
     @Test
-    fun aSongNeverSeenPlayingHasNothingOfItsOwn() {
+    fun aTrackNeverSeenPlayingHasNothingOfItsOwn() {
         val lines = PlayedLines()
         assertThat(lines.next("x", plays = false, now = afterNext)).isNull()
         assertThat(lines.position("x", plays = false) { 1_000L }).isNull()
     }
 
     @Test
-    fun onlyTheLastFewSongsAreKept() {
+    fun onlyTheLastFewTracksAreKept() {
         val lines = PlayedLines()
         for (k in 0 until 10) lines.next("s$k", plays = true, now = next)
         assertThat(lines.next("s0", plays = false, now = afterNext)).isNull()

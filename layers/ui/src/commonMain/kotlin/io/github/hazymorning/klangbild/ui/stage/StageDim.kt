@@ -10,10 +10,11 @@ import io.github.hazymorning.klangbild.ui.Motion
 import io.github.hazymorning.klangbild.ui.rememberBreath
 
 /**
- * How a pause, or a lost link, dims the stage (a single cover or Cover Flow): the wall's
- * [light], the [picture] (on paper a little less) and the [text], all gliding in
- * [Motion.PAUSE_MS]. While the speaker buffers, the light breathes, and when it plays again the
- * light glides back from where the breath was. Read the values in draw lambdas.
+ * How a pause, or a lost connection, dims the stage (a single cover or Cover Flow): the
+ * background's light ([lightLevel]), the cover ([coverLevel], a little less on the light
+ * background) and the text ([textLevel]), all gliding in [Motion.PAUSE_MS]. While the speaker
+ * buffers, the light breathes, and when it plays again the light glides back from where the
+ * breath was. Read the levels in draw lambdas.
  */
 internal class StageDim(
     private val light: State<Float>,

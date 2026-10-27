@@ -103,7 +103,7 @@ internal class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
      */
     fun before(line: TextLine): Float = leavingText?.level(line) ?: level(line)
 
-    /** A change brings new text that rises as [next] says; the text so far leaves from where it stands. */
+    /** A change brings new text that rises as [next] says, and the text so far leaves from where it stands. */
     fun begin(next: TextRise) {
         leavingText = LeavingText(rise, held ?: 1f)
         rise = next

@@ -50,10 +50,11 @@ import kotlin.math.roundToInt
  */
 
 /**
- * The stage's typography: sentence case; hierarchy from size, weight and three levels of
- * brightness. The title is in the title face, large and light (never below 24 sp). Everything
- * else is in the text face (never above 21 sp): the artist a little heavier, so the two balance
- * each other, and everything else quiet. Times take the title face's figures.
+ * The stage's typography: sentence case, with the hierarchy in size, weight and three inks. The
+ * title is in the title face, large and light (at least 24 sp, Chinese, Japanese and Korean
+ * titles 12% smaller). Everything else is in the text face (at most 21 sp): the artist a little
+ * heavier, so the two balance each other, and everything else quiet. Times take the title face's
+ * figures.
  */
 internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     val ink = palette.ink.asColor()
@@ -77,7 +78,7 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).leftAligned()
     val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
 
-    /** Status, station: small and calm, with a little air (light on black closes up). */
+    /** The status line and the station: 15 sp with slight tracking, since light text on dark looks tighter. */
     val label = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
@@ -87,8 +88,10 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     /** "Up next" differs from what follows by weight alone. */
     val footerLead = SpanStyle(fontWeight = FontWeight(560))
 
-    /** A row of the queue's list: its title, and its artists under it. */
+    /** A queue row's title. */
     val rowTitle = faces.textType(17f, 500, muted, lineHeight = 23f).leftToRight()
+
+    /** A queue row's artists, under its title. */
     val rowArtists = label.leftToRight()
 
     /** Left-aligned, in the direction of its own letters. */
@@ -126,13 +129,16 @@ internal fun rememberStageStyles(palette: ScenePalette): StageStyles {
     return remember(palette, faces) { StageStyles(palette, faces) }
 }
 
-/** One size of a title or of lyrics: [size] sp, at most [lines] lines (of one lyric line: rows), [tracking] em. */
+/**
+ * One size of a title or of lyrics: [size] sp in [weight], at most [lines] lines (for a lyric line:
+ * rows) [leading] times the size apart, and [tracking] em.
+ */
 internal class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: Float, val tracking: Float)
 
 /**
  * Title sizes from large to small: two lines at display size, then three lines a little
- * smaller and (slightly) heavier so they look as strong; four lines only as the last resort.
- * Large sizes close up a little (−1%); the line spacing leaves room for an umlaut under a
+ * smaller and slightly heavier so they look as strong, and four lines only as the last resort.
+ * Large sizes close up a little (−1%). The line spacing leaves room for an umlaut under a
  * descender.
  */
 internal val titleLadder = listOf(
@@ -147,10 +153,10 @@ internal val titleLadder = listOf(
 /**
  * The vertical rhythm of the track's lines. A gap is the space the eye sees between two lines:
  * from the upper line's descenders to the lower line's cap height, by the faces' own measures,
- * so it is the same for every song whether its letters reach down or not. There are three, each
- * [STEP] times the one inside it, so the gaps grow with what they separate at every size of
- * the title: the lines of one entry stand an [innerGap] apart, the title an [entryGap] from who
- * made it, and the bar an [outerGap] from the text block.
+ * so it is the same for every track whether its letters reach down or not. There are three, each
+ * [STEP] times the one inside it, so the gaps grow with what they separate at every size of the
+ * title: the lines of one entry stand an [innerGap] apart, the title an [entryGap] from the
+ * artist line, and the bar an [outerGap] from the text block.
  */
 internal object Rhythm {
     /** From one gap to the next larger: the golden ratio. */
@@ -168,7 +174,7 @@ internal object Rhythm {
      */
     fun Density.innerGap(upper: TextStyle, lower: TextStyle): Float = maxOf(leadingGap(upper), leadingGap(lower))
 
-    /** The gap from the title, with its work and version, to who made it ([credits]) (px). */
+    /** The gap from the title's entry (work, title and version) to the artist line ([credits]) (px). */
     fun Density.entryGap(title: TextStyle, credits: TextStyle): Float = STEP * innerGap(title, credits)
 
     /** The gap from the text block to the bar (px). */
@@ -176,9 +182,8 @@ internal object Rhythm {
 }
 
 /**
- * The text block may take at most this share of the artwork's height (from the first cap
- * height to the last baseline): the artwork is the heaviest element and stays clearly the
- * tallest.
+ * The text block may take at most this share of the cover's height (from the first cap height to
+ * the last baseline): the cover is the heaviest element and stays clearly the tallest.
  */
 internal const val BLOCK_SHARE = 0.62f
 
@@ -190,8 +195,8 @@ internal class TextPlan(
     val titleLines: Int,
     val titleConstraints: Constraints,
     /**
-     * The title's step in Latin letters, whose measures the spaces around the title follow: a
-     * title in Japanese, Chinese or Korean, set smaller with more leading, takes the same room.
+     * The title's step in Latin letters, whose measures the gaps around the title follow: a title
+     * in Japanese, Chinese or Korean, set smaller with more leading, takes the same room.
      */
     val titleRhythm: TextStyle,
     /** The styles of the block's lines. */
@@ -203,9 +208,9 @@ internal class TextPlan(
     val artistStyle: TextStyle,
     /** "Album · 2024", or only the album when both don't fit. */
     val album: String?,
-    /** The footer, what comes next: title and artist, or only the title when both don't fit. */
+    /** The footer's track: title and artist, or only the title when both don't fit. */
     val footer: String?,
-    /** The words before it ("Up next"). */
+    /** The footer's lead ("Up next"). */
     val footerLead: String,
 )
 
@@ -253,8 +258,8 @@ private fun planText(
         var rest = 0f
         val work = t.work
         if (work != null) rest += cap(styles.work) + linesHeight(work, styles.work, 2) + descent(styles.work) + innerGap(styles.work, title)
-        // Each space starts from the descenders of the line above it; the title's group ends the
-        // title's descenders below its last line, the version's too.
+        // Each gap starts from the descenders of the line above it. The title's entry ends a
+        // title's descent below its last line, also after a version.
         if (version != null) {
             val style = styles.version(step.size)
             rest += descent(title) + innerGap(title, style) + cap(style)
@@ -293,7 +298,7 @@ private fun planText(
         artists = options.last()
         artistStyle = styles.artistSmall
     }
-    // The album with its year; the year goes first when both don't fit.
+    // The album with its year. The year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
     val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(footerLead, s, styles) } }
@@ -357,7 +362,7 @@ internal fun pickTitleSize(
     fun height(r: TextLayoutResult): Float =
         r.layoutInput.style.fontSize.value * Fonts.CAP_HEIGHT * density + (r.getLineBaseline(r.lineCount - 1) - r.getLineBaseline(0))
     // [t] at [step] if it takes no more lines than the step has, breaks only where [allowed]
-    // says and fits the height; laid out only once the lines pass.
+    // says and fits the height. It is laid out only once the lines pass.
     fun fit(t: AnnotatedString, step: TitleStep, allowed: (IntArray) -> Boolean): TitleChoice? {
         val style = styleOf(step)
         val ends = balancer.lineEnds(t, style, maxW)
@@ -480,8 +485,8 @@ internal fun footerText(lead: String, text: String, styles: StageStyles): Annota
 }
 
 /**
- * Large type has more room before its first stem than small type; left as it is, a title
- * looks indented against the lines below it. Pulled left by the difference (dp).
+ * How far to pull a line of [size] sp left (dp, never right): large type has more room before its
+ * first stem than small type, so a title left as it is looks indented against the lines below.
  */
 internal fun opticalIndent(size: Float): Float = -(0.065f * (size - 15f)).coerceAtLeast(0f)
 

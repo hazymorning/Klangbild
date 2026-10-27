@@ -29,8 +29,8 @@ internal fun slotOf(model: StageModel): Slot? = when {
 }
 
 /**
- * The slot under the text block ([slotOf]): the progress bar, or a line of words. A change
- * cross-fades, and a bar that leaves keeps its own length; a new chapter only starts a new bar.
+ * The slot under the text block ([slotOf]): the progress bar, or a line of text. A change
+ * crossfades, and a bar that leaves keeps its own length. A new chapter only starts a new bar.
  * The bar itself shows as much as [barAlpha] says on top of that.
  */
 @OptIn(ExperimentalAnimationApi::class) // For Transition.Crossfade's contentKey, so a new chapter updates the bar in place.

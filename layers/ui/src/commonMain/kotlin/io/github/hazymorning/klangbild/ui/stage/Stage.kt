@@ -50,9 +50,9 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
- * The plain background under everything: black in the dark (on an OLED the pixels are off), the
- * light background's color by day. It reaches [BEYOND_EDGES_DP] past each screen edge, so the
- * screen's drift against burn-in never shows an edge.
+ * The plain background under everything: black for the dark background (on an OLED its pixels
+ * are off), or the light background's color. It reaches [BEYOND_EDGES_DP] past each screen edge,
+ * so the drift against burn-in never shows an edge.
  */
 @Composable
 internal fun BaseWall(color: Color, modifier: Modifier = Modifier) {
@@ -81,7 +81,10 @@ internal fun WallMargin(color: Color, alpha: () -> Float) {
     }
 }
 
-/** How far every full-screen layer reaches beyond the screen (dp): more than the drift (±6 dp) ever moves it. */
+/**
+ * How far [BaseWall] and the full-screen overlays reach past each screen edge (dp), more than the
+ * drift (±6 dp). The cover field has its own [io.github.hazymorning.klangbild.render.CoverField.OVERSCAN_DP].
+ */
 internal const val BEYOND_EDGES_DP = 24f
 
 /**
@@ -188,11 +191,11 @@ internal fun CoverLayer(
 }
 
 /**
- * Color matrix for the cover: the [Lamp]'s breath of warmth, [level] (a pause) and a gentle
- * highlight compression, so even a white cover never glares on black. White becomes a soft tone
- * around L* 88 instead of #FFFFFF, since a bright cover would also make the TV's brightness
- * limiter dim everything. On the light background a white cover stays a little whiter than the
- * background around it.
+ * The cover's color matrix: each channel scaled down slightly and warmed by the [Lamp], so a
+ * white cover shows as a warm off-white (about L* 92) instead of #FFFFFF. It never glares on
+ * black and is less likely to make the TV's brightness limiter dim the screen. [level] darkens it
+ * further in a pause. On the light background the scale is a little higher, so a white cover
+ * stays slightly whiter than the background.
  */
 internal fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(level, appearance)
@@ -230,13 +233,13 @@ internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Flo
 }
 
 /**
- * The text block beside the artwork, centered on it from the first line's cap height to the
- * last baseline: (work), title, (version), artist, album · year, then the progress bar (or the
- * station, or a notice). What comes next sits apart on the artwork's bottom edge. [alpha] and
- * [rise] animate a change line by line; [textLevel] darkens the text while paused; [shift] moves the
- * column to the right of its place in the grid (dp: a cover flow with cards missing). While the
- * song's words take the column ([StageModel.lyrics]), they stand there instead ([LyricsText]);
- * while the queue shows as a list ([StageModel.queue]), the song stands above it ([QueueText]).
+ * The text column. By default it holds the text block, centered on the cover from the first cap
+ * height to the last baseline: (work), title, (version), artist, album · year, then the slot
+ * (the progress bar, the station or a notice). The footer ends at the column's foot. With
+ * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), and with [StageModel.queue] the
+ * queue ([QueueText], whose plan a theater keeps through a change: [queuePlan]). [alpha] and
+ * [rise] animate a change line by line, [textLevel] dims the text in a pause, and [shift] moves
+ * the column from its place in the grid (dp: Cover Flow moves it left while cards are missing).
  */
 @Composable
 internal fun TextLayer(
@@ -301,9 +304,9 @@ internal fun TextLayer(
                 plan.album != null -> BasicText(plan.album, line(TextLine.ALBUM), style = styles.album, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 else -> Box(Modifier)
             }
-            // 5: progress bar, station or notice; changes cross-fade
+            // 5: the slot, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "slot")
-            // 6: what comes next, on the artwork's bottom edge
+            // 6: the footer, at the column's foot
             FooterLine(plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
         },
     ) { measurables, constraints ->
@@ -330,15 +333,15 @@ internal fun TextLayer(
         val rhythm = plan.titleRhythm
         addLine(work, styles.work, 0f)
         addLine(title, plan.titleStyle, innerGap(styles.work, rhythm), depth = descent(rhythm))
-        // The title's group ends the title's descenders below its last line, so who made it
-        // stands as far from it whether the version ends it or the title does.
+        // The title's entry ends a title's descent below its last line, so the artist line stands
+        // as far from it whether the version or the title ends it.
         addLine(version, plan.versionStyle, innerGap(rhythm, plan.versionStyle), depth = descent(rhythm))
         addLine(artist, plan.artistStyle, entryGap(rhythm, plan.artistStyle))
-        // The album with the artist, or apart from the title without one.
+        // The album joins the artist's entry, or stands an entry's gap from the title without one.
         addLine(album, styles.album, if (artist.height > 0) innerGap(plan.artistStyle, styles.album) else entryGap(rhythm, styles.album))
         if (slot.height > 0) {
-            // The bar block measures from the bar's top to the labels' baseline; a line of
-            // text in its place is aligned by its own cap height.
+            // The bar's block measures from the bar's top to the labels' baseline. A line of text in
+            // its place is aligned by its own cap height.
             val isText = slotText != null
             val first = if (isText) slot.firstBaselineOrHeight() else 0
             parts += Part(
@@ -374,13 +377,13 @@ internal fun TextLayer(
 }
 
 /**
- * What comes next after its [lead] ("Up next"); a new one (the next chapter, while a book plays
- * on, or the hint for the quick settings) cross-fades in place, and so does one that comes or
- * goes ([text] null: none).
+ * The footer: [text] after its [lead] ("Up next"), or nothing while [text] is null. A new one
+ * (the next chapter while a book plays on, or the hint for the quick settings) crossfades in
+ * place, and so does one that comes or goes.
  */
 @Composable
 internal fun FooterLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
-    Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "next") { line ->
+    Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { line ->
         if (line == null) {
             Box(Modifier)
         } else {
@@ -390,19 +393,20 @@ internal fun FooterLine(text: String?, lead: String, styles: StageStyles, modifi
 }
 
 /**
- * The status line at the top of the column: the time, the values of one's own, then where the
- * music plays and what it is doing ("Living room · Paused", or a passing volume). Its cap
- * height is on the artwork's top edge, and it starts on the column's left edge like everything
- * else. The place has its room first; values that do not fit beside it are left out, from the
- * last, never cut. The place cross-fades when it changes; the clock and the values just tick,
- * the clock's figures in fixed cells. [shift] moves it with the column (dp).
+ * The status line at the top of the column: the time, the custom values, then the lead, where
+ * the music plays and what it is doing ("Living room · Paused", or a passing volume). Its cap
+ * height hangs a corner radius below the cover's top edge (the grid's `statusTop`), and it
+ * starts at the column's left edge like everything else. The lead has its room first, and values
+ * that don't fit beside it are left out from the last, never cut. The lead crossfades when it
+ * changes, while the clock and the values just change, the clock's figures in fixed cells.
+ * [shift] moves it with the column (dp).
  */
 @Composable
 internal fun StatusLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
     shift: () -> Float = { 0f },
-    /** How strongly it shows: the status line of the other wall cross-fades with the stage. */
+    /** How strongly it shows: when the background changes, the two status lines crossfade with the stage. */
     alpha: (() -> Float)? = null,
 ) {
     val status = model.statusLine
@@ -416,7 +420,7 @@ internal fun StatusLayer(
     val separator = TimeText.SEPARATOR.trimStart()
     // A value after the clock, or after another value, follows a separator.
     fun valueText(i: Int, value: String) = if (clockText == null && i == 0) value else separator + value
-    // Which values fit beside the clock and the place, worked out on their measured widths.
+    // Which values fit beside the clock and the lead, worked out on their measured widths.
     val values = remember(status, styles, layout, localDensity) {
         fun width(text: AnnotatedString, style: TextStyle) = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
         val space = with(localDensity) { styles.label.fontSize.toPx() } * STATUS_SPACE_EM
@@ -465,7 +469,7 @@ internal fun StatusLayer(
         val column = (layout.columnWidth * density).roundToInt()
         val clock = measurables.first().measure(Constraints())
         val parts = measurables.subList(1, measurables.size - 1).map { it.measure(Constraints()) }
-        // Everything before the place, with the space after each part.
+        // Everything before the lead, with the space after each part.
         val before = if (clock.width > 0) listOf(clock) + parts else parts
         val used = before.sumOf { it.width + space }
         val lead = measurables.last().measure(Constraints(maxWidth = (column - used).coerceAtLeast(0)))
