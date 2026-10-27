@@ -108,7 +108,7 @@ data class QueueModel(val rows: List<QueueRowModel>) {
                     id = row.id,
                     title = text.version?.let { "${text.title} ($it)" } ?: text.title,
                     artists = text.shortArtists,
-                    time = row.track.durationMs?.let { TimeText.formatClock(it) },
+                    time = row.track.durationMs?.let { TimeText.duration(it) },
                     cover = list.covers[row.id],
                 )
             }

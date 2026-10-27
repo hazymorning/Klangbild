@@ -9,10 +9,10 @@ import kotlin.test.Test
 class TimeTextTest {
     @Test
     fun `times read like a clock`() {
-        assertThat(TimeText.formatClock(7_000)).isEqualTo("0:07")
-        assertThat(TimeText.formatClock(221_400)).isEqualTo("3:41")
-        assertThat(TimeText.formatClock(3_725_000)).isEqualTo("1:02:05")
-        assertThat(TimeText.formatClock(-500)).isEqualTo("0:00")
+        assertThat(TimeText.duration(7_000)).isEqualTo("0:07")
+        assertThat(TimeText.duration(221_400)).isEqualTo("3:41")
+        assertThat(TimeText.duration(3_725_000)).isEqualTo("1:02:05")
+        assertThat(TimeText.duration(-500)).isEqualTo("0:00")
     }
 
     @Test

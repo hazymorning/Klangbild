@@ -82,7 +82,7 @@ fun ProgressBar(
     }
     val label = labelStyle.copy(color = colors.label)
     val figures = rememberFigures(labelStyle, Face.TITLE)
-    val length = remember(figures, durationMs) { figures.of(TimeText.formatClock(durationMs)) }
+    val length = remember(figures, durationMs) { figures.of(TimeText.duration(durationMs)) }
     Layout(
         modifier = modifier.fillMaxWidth(),
         content = {
@@ -99,7 +99,7 @@ fun ProgressBar(
                     drawRoundRect(colors.fill.copy(alpha = colors.fill.alpha * fillLevel), Offset.Zero, Size(w, size.height), r)
                 }
             }
-            BasicText(figures.of(TimeText.formatClock(second * 1000L)), style = label, maxLines = 1)
+            BasicText(figures.of(TimeText.duration(second * 1000L)), style = label, maxLines = 1)
             BasicText(length, style = label, maxLines = 1)
         },
     ) { measurables, constraints ->
