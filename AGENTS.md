@@ -75,7 +75,9 @@ Push work to a branch named after a German word related to sound, never to a clo
 branch (`ccr-…`, `claude/…`). Use lowercase, and write ä, ö, ü as ae, oe, ue and ß as ss. Pick a
 word that isn't already a branch on GitHub and, if possible, fits the work, like `auftakt` for
 something new, `missklang` for a fix, `nachklang` for a follow-up or `stimmgabel` for tuning. This
-is standing permission to push to that branch and open pull requests from it.
+is standing permission to push to that branch and open a pull request from it. A session's work
+goes on one branch, with a commit for each change, and into one pull request, however many tasks
+it covers.
 
 ## Build and test
 
