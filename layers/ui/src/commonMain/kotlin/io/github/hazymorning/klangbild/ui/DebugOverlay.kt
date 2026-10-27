@@ -31,9 +31,8 @@ import io.github.hazymorning.klangbild.text.Strings
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * One second of frames on the real device (`--ez debug true`): how many were drawn, how long
- * the slowest took and how many missed a 60 Hz deadline. Nothing is drawn when nothing changes,
- * so a quiet screen shows 0 frames, as intended.
+ * Frame statistics for one second, for the debug overlay (`--ez debug true`): the frames drawn,
+ * the slowest one (ms) and those over the 60 Hz budget. A screen that doesn't change draws none.
  */
 data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int)
 

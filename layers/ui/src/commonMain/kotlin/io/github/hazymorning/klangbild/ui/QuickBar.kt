@@ -52,7 +52,7 @@ import kotlin.math.roundToInt
 
 /** Geometry of the quick settings (dp, on the 960 × 540 grid). */
 object QuickGrid {
-    /** The row starts where the stage's artwork starts, and ends where its text column ends. */
+    /** The bar starts where the single cover's artwork starts, and ends where its text column ends. */
     const val LEFT = 88f
     const val RIGHT = 872f
 
@@ -60,10 +60,10 @@ object QuickGrid {
     const val VALUE_BASELINE = 495f
     const val LABEL_BASELINE = 468f
 
-    /** The veil that lets the row read over whatever shows. It starts clear here. */
+    /** The veil that lets the bar read over whatever shows. It starts clear here. */
     const val VEIL_TOP = 372f
 
-    /** The veil reaches its full strength here and keeps it down to the edge, so nothing behind the row shows through. */
+    /** The veil reaches its full strength here and keeps it down to the edge, so nothing behind the bar shows through. */
     const val VEIL_FULL = 448f
 
     /** Room between two entries. */
@@ -77,16 +77,16 @@ object QuickGrid {
     const val GLOW_PAD = 8f
     const val GLOW_SIGMA_Y = 15f
 
-    /** How far the row rises when it comes. */
+    /** How far the bar rises when it comes. */
     const val RISE = 22f
 
     /**
-     * A row longer than the room glides, just far enough to show the chosen entry whole; the
+     * A bar longer than the room glides, just far enough to show the chosen entry whole; the
      * entries beyond the room's ends fade out over this stretch (dp).
      */
     const val EDGE_FADE = 96f
 
-    /** An entry's name over its value: size (sp) and weight. */
+    /** An entry's label over its value: size (sp) and weight. */
     const val LABEL_SP = 15f
     const val LABEL_WEIGHT = 460
     const val VALUE_SP = 20f
@@ -102,7 +102,7 @@ object QuickGrid {
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
-    // The last state stays while the row sinks away.
+    // The last state stays while the bar sinks away.
     val last = remember { arrayOfNulls<QuickState>(1) }
     if (quick != null) last[0] = quick
     val density = LocalDensity.current.density
@@ -113,7 +113,7 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
     if (quick == null && shown.value <= 0f) return
     val state = quick ?: last[0] ?: return
     // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's size,
-    // which would cut its ground off at the screen's edges while it moves.
+    // which would cut its veil off at the screen's edges while it moves.
     QuickBar(
         state,
         appearance,
@@ -128,8 +128,9 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
 }
 
 /**
- * The quick settings' colors: like the menu's, near-neutral, on black or on paper. Every ink
- * keeps 4.5:1 on the veil, and the chosen entry's inks on the veil lit by the band as well.
+ * The quick settings' colors: like the menu's, near-neutral, on black or on the light
+ * background. Every ink keeps 4.5:1 on the veil, and the chosen entry's inks on the veil lit by
+ * the band as well.
  */
 internal class QuickColors(
     val veil: Color,
@@ -140,17 +141,12 @@ internal class QuickColors(
     val valueFocus: Color,
 ) {
     /**
-     * A value that holds but has nothing to show now (the song's words on, for a song without
-     * them): as quiet as the names. No ink of its own: the screen keeps its few levels.
-     */
-    val valueMuted: Color get() = label
-
-    /**
-     * A value's ink: full while its entry is chosen. A [muted] one stays quiet, and chosen it is
-     * no brighter than another value at rest, as a dimmed line in the menu is.
+     * A value's ink: full while its entry is chosen. A [muted] value (lyrics on, but none for this
+     * track) has the labels' ink, and chosen it is no brighter than another value at rest, as a
+     * dimmed row in the menu is. It has no ink of its own, so the screen keeps its few levels.
      */
     fun valueInk(focused: Boolean, muted: Boolean): Color = when {
-        muted -> if (focused) value else valueMuted
+        muted -> if (focused) value else label
         else -> if (focused) valueFocus else value
     }
 
@@ -176,7 +172,7 @@ internal class QuickColors(
                 QuickColors(
                     veil = c(CoverPalette.PAPER, 0.006f),
                     band = Color(0xFF0D0C0B),
-                    // 0.50 keeps 4.5:1 on the paper.
+                    // 0.50 keeps 4.5:1 on the light background.
                     label = c(0.50f),
                     labelFocus = c(0.42f),
                     value = c(0.45f),
@@ -200,7 +196,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     val widths = remember(keys, labels, density, labelStyle, valueStyle) { quickWidths(quick, measurer, labelStyle, valueStyle, density) }
     val lefts = widths.runningFold(QuickGrid.LEFT) { x, w -> x + w + QuickGrid.GAP }.dropLast(1)
     val cursor = quick.cursor.coerceIn(0, keys.size - 1)
-    // A row longer than the room glides to show the chosen entry whole.
+    // A bar longer than the room glides to show the chosen entry whole.
     val glide = remember { Glide() }
     val shift by animateGlide(glide.toShow(lefts[cursor], widths[cursor]), ROW_GLIDE_MS)
     // The light glides to the chosen entry.
@@ -211,7 +207,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
             val d = density
-            // The veil reaches beyond the screen's sides and bottom (and below, where the row rises
+            // The veil reaches beyond the screen's sides and bottom (and below, where the bar rises
             // from), so it leaves no gap at the edges, whatever the drift against burn-in.
             val m = BEYOND_EDGES_DP * d
             drawRect(
@@ -226,8 +222,8 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 size = Size(size.width + 2 * m, size.height - QuickGrid.VEIL_TOP * d + m + QuickGrid.RISE * d),
             )
             val g = glow ?: return@Canvas
-            // The band of light, centered on the value's middle line; it adds to the veil. The
-            // blob holds ±3 σ.
+            // The band of light, centered on the value's middle; it adds to the veil. The blob
+            // holds ±3 σ.
             val cy = (QuickGrid.VALUE_BASELINE - QuickGrid.VALUE_SP * 0.35f) * d
             val hw = glowSigma * 3f * d
             val hh = QuickGrid.GLOW_SIGMA_Y * 3f * d
@@ -264,7 +260,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
 }
 
 /**
- * Where the quick settings' row stands (dp it has glided left): it moves only as far as needed
+ * Where the quick settings' bar stands (dp it has glided left): it moves only as far as needed
  * to show the chosen entry whole within the room from [QuickGrid.LEFT] to [QuickGrid.RIGHT], and
  * stays where it is while the chosen entry is in view.
  */
@@ -295,7 +291,7 @@ internal fun quickWidths(quick: QuickState, measurer: TextMeasurer, labelStyle: 
 
 /**
  * An entry: its label and its value on their baselines ([QuickGrid]), from [x] (read when it is
- * placed, so a gliding row is only placed anew).
+ * placed, so a gliding bar is only placed anew).
  */
 @Composable
 private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit) {
@@ -315,7 +311,7 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
 /** The band's brightest point (≈ L* 10 on black), like the menu's. */
 private const val GLOW_PEAK = 0.011f
 
-/** The row's glide to the chosen entry from rest (ms). */
+/** The bar's glide to the chosen entry from rest (ms). */
 private const val ROW_GLIDE_MS = 280
 
 private const val BLOB_W = 96

@@ -97,8 +97,8 @@ object RestTexts {
 }
 
 /**
- * The rest screen's light: a soft oval of warm light behind the clock, both exactly in the
- * screen's middle: a faint light, never off.
+ * The rest screen's light on the dark background: a soft oval of warm light behind the clock, in
+ * the screen's middle, as strong as the Intensity setting (none when it is off).
  */
 private object RestLight {
     const val MAP_W = 480
@@ -142,9 +142,10 @@ private object RestLight {
 }
 
 /**
- * Nothing is playing: a quiet clock on a dim, lamp-lit wall, the date, and one line that
- * says why (never an error code). The clock stands exactly in the screen's middle, measured
- * on what is seen (from the top of the figures to their baseline); the lines hang under it.
+ * Nothing is playing: a quiet clock, the date, and one line that says why (never an error code),
+ * in a lamp's light on the dark background. The clock stands exactly in the screen's middle,
+ * measured on what is seen (from the top of the figures to their baseline); the lines hang
+ * under it.
  */
 @Composable
 fun RestScreen(
@@ -161,7 +162,7 @@ fun RestScreen(
     val colors = remember(appearance) { QuietColors.of(appearance) }
     val t = texts()
     val lines = RestTexts.lines(reason, speaker, entityId, t)
-    // A lamp only lights a dark wall.
+    // A lamp only lights the dark background.
     val peak = (RestLight.PEAK * intensity).takeIf { it > 0f && appearance == Appearance.DARK }
     val tint = remember(peak) { peak?.let { LampLight.lightTint(LampLight.LAMP, it) } }
     val screen = ScreenSpec(960, 540, 1f)

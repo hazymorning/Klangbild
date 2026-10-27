@@ -26,14 +26,14 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 /**
- * The two typefaces (both SIL Open Font License, shipped unmodified, licenses in
- * assets/licenses):
+ * The two typefaces (both under the SIL Open Font License and shipped unmodified; the licenses
+ * are in androidApp/src/main/assets/licenses):
  *
- * - [TITLE]: Jost (Owen Earl), a geometric sans in the line of Paul Renner's Futura, for the
- *   titles, the large clock and the headings. Its round, even forms and small x-height keep
- *   large sizes calm.
+ * - [TITLE]: Jost (Owen Earl), a geometric sans in the line of Paul Renner's Futura, for titles
+ *   and lyrics, the headings, the clocks and times, and the setup code. Its round, even forms
+ *   and small x-height keep large sizes calm, and its digits are even.
  * - [TEXT]: DM Sans (Colophon Foundry), a geometric grotesque with optical sizes and a larger
- *   x-height, for everything read at 15 to 21 sp from the sofa: artists, albums, times, status,
+ *   x-height, for the smaller text read from the sofa at 15 to 22 sp: artists, albums, status,
  *   menus. Its optical-size axis is set to the size in sp, so small lines get the looser,
  *   sturdier cut.
  *
@@ -176,9 +176,9 @@ fun rememberFigures(style: TextStyle, face: Face): Figures {
 /**
  * The rest clock's figures as outlines, set by hand: by the font's own advances and kerning, the
  * colon raised to the middle of the figures (set on the baseline it sags below them; how far
- * depends on the weight, so it is measured on the outlines), and the one drawn in by most of its
- * side bearings, which at this size leave it standing apart from its neighbors. As outlines the
- * figures are known exactly where they are seen: [ink] is what centers them.
+ * depends on the weight, so it is measured on the outlines), and the digit 1 drawn in by most of
+ * its side bearings, which at this size would leave it standing apart from its neighbors. As
+ * outlines the figures are known exactly where they are seen: [ink] is what centers them.
  */
 class ClockFigures(time: String, pen: Glyphs.Pen, sizePx: Float, tracking: Float) {
     /** The figures' outlines, the baseline starting at the origin. */
@@ -204,8 +204,8 @@ class ClockFigures(time: String, pen: Glyphs.Pen, sizePx: Float, tracking: Float
 
     private companion object {
         /**
-         * How much of the one's side bearings is taken in (em), on its left and on its right: Jost
-         * gives it 0.08 and 0.13, the other figures 0.02 to 0.06.
+         * How much of the digit 1's side bearings is taken in (em), on its left and on its right:
+         * Jost gives it 0.08 and 0.13, the other figures 0.02 to 0.06.
          */
         const val ONE_LEFT = 0.03f
         const val ONE_RIGHT = 0.08f

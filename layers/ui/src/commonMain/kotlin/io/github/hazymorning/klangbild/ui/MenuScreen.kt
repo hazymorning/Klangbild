@@ -76,26 +76,26 @@ import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Geometry of the menu (dp): the line under the cursor always sits at the screen's middle. */
+/** Geometry of the menu (dp): the chosen row always stands in the middle of the screen. */
 object MenuGrid {
-    /** Pitch of the lines. */
+    /** Pitch of the rows. */
     const val ROW = 40f
 
-    /** Lines start to fade at this distance from the cursor's line. */
+    /** Rows start to fade this far from the chosen row. */
     const val FADE_FROM = 56f
 
-    /** Lines are gone at this distance, well before the black band along the screen's edges. */
+    /** Rows are gone this far away, well before the black band along the screen's edges. */
     const val FADE_TO = 226f
 
     /**
-     * The light behind the cursor's line: a soft, low band (Gaussian σ across and along the
-     * line, dp) that lights this line only, and its brightest point (≈ L* 10).
+     * The light behind the chosen row: a soft, low band (Gaussian σ along the row and across it,
+     * dp) that lights this row only, and its brightest point (≈ L* 10).
      */
     const val GLOW_SIGMA_X = 120f
     const val GLOW_SIGMA_Y = 12f
     const val GLOW_PEAK = 0.011f
 
-    /** A line's label and value: size (sp) and weight. */
+    /** A row's label and value: size (sp) and weight. */
     const val LABEL_SP = 21f
     const val LABEL_WEIGHT = 480
     const val VALUE_SP = 17f
@@ -105,10 +105,10 @@ object MenuGrid {
     const val SLIDER_WIDTH = 72f
     const val SLIDER_GAP = 14f
 
-    /** The least room between a line's label and its value (dp): a line needs no more than the column. */
+    /** The least room between a row's label and its value (dp), so every row fits the column (LanguageTest checks it). */
     const val LABEL_GAP = 16f
 
-    /** Opacity of a line at [distance] dp from the cursor's line. */
+    /** Opacity of a row at [distance] dp from the chosen row. */
     fun fade(distance: Float): Float = 1f - smoothstep(FADE_FROM, FADE_TO, abs(distance))
 }
 
@@ -129,8 +129,8 @@ fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = M
     }
     if (menu == null && shown.value <= 0f) return
     val state = menu ?: last[0] ?: return
-    // Faded draw by draw, not through a layer of the screen's size: the menu's ground reaches
-    // beyond the screen's edges, and a layer would cut it off there while it fades.
+    // Faded draw by draw, not through a layer of the screen's size: the menu's background
+    // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
     MenuScreen(
         state,
         modifier.graphicsLayer {
@@ -142,10 +142,10 @@ fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = M
     )
 }
 
-/** The menu's colors: near-neutral white on black or near-black on paper. */
+/** The menu's colors: near-neutral white on black, or near-black on the light background. */
 private class MenuColors(
     val wall: Color,
-    /** The light behind the chosen line, added to the wall. */
+    /** The light behind the chosen row, added to the background. */
     val band: Color,
     val heading: Color,
     val description: Color,
@@ -154,7 +154,7 @@ private class MenuColors(
     val labelFocus: Color,
     val value: Color,
     val valueFocus: Color,
-    /** A line that cannot work yet: quieter, and chosen no brighter than another line at rest. */
+    /** A row that cannot work yet: quieter, and chosen no brighter than another row at rest. */
     val dim: Color,
 ) {
     companion object {
@@ -174,7 +174,7 @@ private class MenuColors(
                     dim = c(0.57f),
                 )
             } else {
-                // On paper the chosen line lies in a band of slightly whiter light.
+                // On the light background the chosen row lies in a band of slightly whiter light.
                 MenuColors(
                     wall = c(CoverPalette.PAPER, 0.006f),
                     band = Color(0xFF0D0C0B),
@@ -193,12 +193,11 @@ private class MenuColors(
 }
 
 /**
- * The menu itself, on the stage's grid, in two levels: the groups, then the settings of the one
- * opened. The heading (the group's name inside one) and the chosen line's explanation hang where
- * the print would be; the lines stand in the text column. The line under the cursor stays in the
- * middle of the screen, lit by a lamp; the list glides through that light and fades with
- * distance (no frame, no scroll bar, no check box). Values are words. Going into a group or back
- * out, the level left fades and the new one comes up, already resting on its line.
+ * The menu on the stage's grid, in two levels: the groups, then the settings of the group
+ * opened. The heading and the chosen row's description stand where the artwork would be, and
+ * the rows stand in the text column. The chosen row stays in the middle of the screen in a band
+ * of light, and the list glides through it and fades with distance. Going into a group or back
+ * out, the level left fades out, then the new one fades in on its chosen row.
  */
 @Composable
 fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, pending: Boolean = false) {
@@ -209,7 +208,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
 
     BoxWithConstraints(
         modifier.fillMaxSize().drawBehind {
-            // The ground reaches beyond the screen: the drift against burn-in never shows what lies under it.
+            // The background reaches beyond the screen: the drift against burn-in never shows what lies under it.
             val m = BEYOND_EDGES_DP * density
             drawRect(colors.wall, Offset(-m, -m), Size(size.width + 2 * m, size.height + 2 * m))
         },
@@ -225,7 +224,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
             imageBitmapOf(px, GLOW_MAP_W, GLOW_MAP_H)
         }
         if (field != null) Canvas(Modifier.fillMaxSize()) {
-            // The band's light adds to the wall, on black and on paper alike.
+            // The band's light adds to the background, dark or light.
             drawImage(
                 field,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
@@ -248,25 +247,25 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
     }
 }
 
-/** One level of the menu: its heading, the chosen line's explanation and hint on the left, its lines on the right. */
+/** One level of the menu: its heading, the chosen row's description and the hint on the left, its rows on the right. */
 @Composable
 private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors: MenuColors, pending: Boolean) {
     val cursor = menu.cursor.coerceIn(0, menu.rows.size - 1)
-    val row = menu.rows[cursor]
+    val chosen = menu.rows[cursor]
     val t = texts()
-    // The list moves so that the chosen line comes to rest in the light; a held key runs it on evenly.
+    // The list moves so that the chosen row comes to rest in the light; a held key runs it on evenly.
     val offset = animateGlide(focusY - (cursor * MenuGrid.ROW + MenuGrid.ROW / 2f), GLIDE_MS)
 
-    // Left: the heading at the print's top edge, the explanation level with the chosen line.
+    // Left: the heading at the artwork's top edge, the description level with the chosen row.
     val faces = faces()
     val headingStyle = faces.titleType(36f, 420, colors.heading)
     BaselineAt(x = layout.margin, baseline = layout.artTop + 36f * Fonts.CAP_HEIGHT, width = layout.art) {
         BasicText(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], style = headingStyle)
     }
-    // While a key is held the list runs on under the light: the explanation goes, and comes
-    // back with the line the key is let go on.
+    // While a key is held the list runs on under the light: the description goes, and comes
+    // back with the row the key is let go on.
     Crossfade(
-        targetState = row.description.takeUnless { menu.held },
+        targetState = chosen.description.takeUnless { menu.held },
         animationSpec = tween(320, easing = Motion.Dimmer),
         label = "menu-description",
     ) { text ->
@@ -278,10 +277,10 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         BasicText(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
     }
 
-    // Right: the lines in the text column.
+    // Right: the rows in the text column.
     val labelStyle = faces.textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
     val valueStyle = faces.textType(MenuGrid.VALUE_SP, MenuGrid.VALUE_WEIGHT)
-    menu.rows.forEachIndexed { i, line ->
+    menu.rows.forEachIndexed { i, row ->
         Box(
             Modifier
                 .offset(x = layout.columnLeft.dp)
@@ -294,14 +293,14 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
                 },
             contentAlignment = Alignment.CenterStart,
         ) {
-            MenuItem(line, i == cursor, labelStyle, valueStyle, colors, pending)
+            MenuItem(row, i == cursor, labelStyle, valueStyle, colors, pending)
         }
     }
 }
 
 @Composable
 private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valueStyle: TextStyle, colors: MenuColors, pending: Boolean) {
-    // A line that cannot work yet stays quiet; chosen, it is only as bright as another line at rest.
+    // A row that cannot work yet stays quiet; chosen, it is only as bright as another row at rest.
     val label = when {
         row.dimmed -> if (focused) colors.label else colors.dim
         else -> if (focused) colors.labelFocus else colors.label
@@ -358,31 +357,30 @@ private fun BaselineAt(x: Float, baseline: Float, width: Float, content: @Compos
 }
 
 /**
- * The slider of a value on a scale: its size (dp), its gap to the number, how strongly its track shows, and how far
- * above the baseline its lower edge sits (its middle on the figures' middle).
+ * The slider before a value on a scale: its height (dp), how strongly its track shows, and how
+ * far its lower edge sits above the value's baseline (dp, its middle on the figures' middle).
  */
 private const val SLIDER_HEIGHT = 4f
 private const val SLIDER_TRACK = 0.28f
 private const val SLIDER_LIFT = 4f
 
-/** The list's glide by a line from rest (ms). */
+/** The list's glide by one row from rest (ms). */
 private const val GLIDE_MS = 340
 
 /** A group opening, or the menu going back to the groups: the level left fades, then the new one comes (ms). */
 private const val LEVEL_OUT_MS = 140
 private const val LEVEL_IN_MS = 220
 
-/** From a line's center to its label's baseline (21 sp in a 40 dp line). */
+/** From a row's center to its label's baseline (21 sp in a 40 dp row). */
 private const val LABEL_BASELINE_FROM_CENTER = 7f
 
 private const val GLOW_MAP_W = 480
 private const val GLOW_MAP_H = 270
 
 /**
- * The light behind the chosen line: a soft, low band around ([cx], [cy]) dp that lights
- * this line and not its neighbors (grayscale, dithered, tinted when drawn). It never moves;
- * the list moves through it. Like every light, it is gone before the band along the screen's
- * edges.
+ * The light behind the chosen row: a soft, low band around ([cx], [cy]) dp that lights this row
+ * and not its neighbors (grayscale, dithered, tinted when drawn). It never moves; the list moves
+ * through it. Like every light, it is gone before the band along the screen's edges.
  */
 private fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
     val img = LinearImage(GLOW_MAP_W, GLOW_MAP_H)

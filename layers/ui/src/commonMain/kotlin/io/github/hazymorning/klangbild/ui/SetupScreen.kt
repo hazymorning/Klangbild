@@ -90,10 +90,10 @@ object SetupArt {
 }
 
 /**
- * Setup: the QR code hangs on the wall where the artwork would, in the same light; beside
- * it two sentences say what to do. The six-digit code is set large for typing the address by
- * hand. Code and text stand as one group in the middle of the screen: as much room left of
- * the code as right of the longest line.
+ * Setup: the QR code stands where the artwork would, in the same light, and beside it two
+ * sentences say what to do. The six-digit code, which the setup page asks for when its address
+ * is typed by hand, is set large. Code and text stand as one group in the middle of the screen:
+ * as much room left of the code as right of the longest line.
  */
 @Composable
 fun SetupScreen(
@@ -108,6 +108,8 @@ fun SetupScreen(
     val label = faces.textType(15f, 500, p.inkQuiet.asColor(), tracking = 0.01f)
     val body = faces.textType(19f, 420, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak))
     val t = texts()
+    // The setup strings carry no-break spaces, so a short word that opens a sentence never ends
+    // a line and articles and adjectives stay with their noun.
     val lead = t[
         when (reason) {
             SetupReason.FIRST_RUN -> Strings.setupFirstRun
@@ -115,8 +117,6 @@ fun SetupScreen(
             SetupReason.REQUESTED -> Strings.setupChange
         },
     ]
-    // A short word that opens a sentence never ends a line, and articles and adjectives stay
-    // with their noun: the texts carry no-break spaces for that.
     val text = t[if (reason == SetupReason.AUTH_FAILED) Strings.setupTextRejected else Strings.setupText]
     val hint = if (reason == SetupReason.REQUESTED) t[Strings.setupBack] else null
     val address = info?.url?.let { url ->
