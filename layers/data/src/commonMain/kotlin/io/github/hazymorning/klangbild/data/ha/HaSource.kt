@@ -113,7 +113,9 @@ class HaSource(
     ) { publish(connection.status.value, connection.entities.value) }
 
     private var linkDownSince: Long? = null
-    private var lastSnapshot: PlayerSnapshot? = null
+
+    /** The player as Home Assistant last reported it, written while publishing and read by the commands. */
+    @Volatile private var lastSnapshot: PlayerSnapshot? = null
     private var receivedAt = 0L
     private var watched: Set<String> = emptySet()
 
