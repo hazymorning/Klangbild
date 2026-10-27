@@ -7,6 +7,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
@@ -129,6 +132,9 @@ fun Faces.type(
     color = color,
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
+
+/** Where this layout's first baseline lies (px from its top), or 0 for one without. */
+internal fun Placeable.firstBaseline(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
 
 /** A style in the title face (Jost). */
 fun Faces.titleType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.2f, tracking: Float = 0f) =

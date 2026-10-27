@@ -22,9 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -46,6 +46,7 @@ import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
+import io.github.hazymorning.klangbild.ui.theme.firstBaseline
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.exp
 import kotlin.math.max
@@ -300,11 +301,10 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
         val c = Constraints(maxWidth = ((width + 8f) * density).roundToInt())
         val label = measurables[0].measure(c)
         val value = measurables[1].measure(c)
-        fun androidx.compose.ui.layout.Placeable.first(): Int = this[FirstBaseline].takeIf { it != androidx.compose.ui.layout.AlignmentLine.Unspecified } ?: 0
         layout(constraints.maxWidth, constraints.maxHeight) {
             val left = (x() * density).roundToInt()
-            label.place(left, (QuickGrid.LABEL_BASELINE * density).roundToInt() - label.first())
-            value.place(left, (QuickGrid.VALUE_BASELINE * density).roundToInt() - value.first())
+            label.place(left, (QuickGrid.LABEL_BASELINE * density).roundToInt() - label.firstBaseline())
+            value.place(left, (QuickGrid.VALUE_BASELINE * density).roundToInt() - value.firstBaseline())
         }
     }
 }
@@ -319,7 +319,7 @@ private const val BLOB_W = 96
 private const val BLOB_H = 48
 
 /** A soft oval of light (a Gaussian, ±3 σ across the bitmap): grayscale, dithered, tinted when drawn. */
-private fun glowBlob(ditherLsb: Float): androidx.compose.ui.graphics.ImageBitmap {
+private fun glowBlob(ditherLsb: Float): ImageBitmap {
     val img = LinearImage(BLOB_W, BLOB_H)
     for (y in 0 until BLOB_H) for (x in 0 until BLOB_W) {
         val u = ((x + 0.5f) / BLOB_W * 2f - 1f) * 3f

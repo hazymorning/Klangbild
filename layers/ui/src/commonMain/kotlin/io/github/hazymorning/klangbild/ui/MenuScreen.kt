@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -46,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.CoverPalette
@@ -67,6 +67,7 @@ import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
+import io.github.hazymorning.klangbild.ui.theme.firstBaseline
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlin.math.abs
@@ -249,10 +250,12 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
     // The list moves so that the chosen row comes to rest in the light; a held key runs it on evenly.
     val offset = animateGlide(focusY - (cursor * MenuGrid.ROW + MenuGrid.ROW / 2f), GLIDE_MS)
 
-    // Left: the heading at the artwork's top edge, the description level with the chosen row.
+    // Left: the heading's cap height on the artwork's top edge, the description level with the
+    // chosen row.
     val faces = faces()
-    val headingStyle = faces.titleType(36f, 420, colors.heading)
-    BaselineAt(x = layout.margin, baseline = layout.artTop + 36f * Fonts.CAP_HEIGHT, width = layout.art) {
+    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
+    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
+    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
         BasicText(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], style = headingStyle)
     }
     // While a key is held the list runs on under the light: the description goes, and comes
@@ -342,9 +345,8 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
 private fun BaselineAt(x: Float, baseline: Float, width: Float, content: @Composable () -> Unit) {
     Layout(content = content, modifier = Modifier.fillMaxSize()) { measurables, constraints ->
         val p = measurables.first().measure(Constraints(maxWidth = (width * density).roundToInt()))
-        val b = p[FirstBaseline].takeIf { it != androidx.compose.ui.layout.AlignmentLine.Unspecified } ?: 0
         layout(constraints.maxWidth, constraints.maxHeight) {
-            p.place((x * density).roundToInt(), (baseline * density).roundToInt() - b)
+            p.place((x * density).roundToInt(), (baseline * density).roundToInt() - p.firstBaseline())
         }
     }
 }
@@ -356,6 +358,9 @@ private fun BaselineAt(x: Float, baseline: Float, width: Float, content: @Compos
 private const val SLIDER_HEIGHT = 4f
 private const val SLIDER_TRACK = 0.28f
 private const val SLIDER_LIFT = 4f
+
+/** The heading's size (sp). */
+private const val HEADING_SP = 36f
 
 /** The list's glide by one row from rest (ms). */
 private const val GLIDE_MS = 340

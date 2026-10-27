@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -25,6 +23,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.ArtworkScene
@@ -42,6 +41,7 @@ import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
+import io.github.hazymorning.klangbild.ui.theme.firstBaseline
 import io.github.hazymorning.klangbild.ui.theme.textType
 import io.github.hazymorning.klangbild.ui.theme.titleType
 import kotlin.math.roundToInt
@@ -101,24 +101,25 @@ fun SetupScreen(
     } ?: AnnotatedString(t[Strings.setupNoNetwork])
     // Until the code is drawn its line stays empty but keeps its height.
     val code = info?.code?.chunked(3)?.joinToString(" ") ?: "\u00A0"
-    val name = faces.titleType(44f, 420, p.ink.asColor(), tracking = -0.005f)
+    val name = faces.titleType(NAME_SP, 420, p.ink.asColor(), tracking = -0.005f)
     val leadStyle = faces.textType(21f, 520, p.inkMuted.asColor(), lineHeight = 27f).merge(TextStyle(lineBreak = sentenceLineBreak))
     val codeStyle = faces.titleType(44f, 400, p.ink.asColor(), tracking = 0.01f)
     val addressStyle = body.copy(color = p.inkQuiet.asColor())
     // How wide the text really is: its longest line, as it breaks in the column (the lead, the
     // text and the address on balanced lines).
     val measurer = rememberTextMeasurer()
-    val local = LocalDensity.current
-    val widest = remember(reason, info, layout, local, t, faces) {
-        val column = with(local) { layout.columnWidth.dp.roundToPx() }
-        val balancer = lineBalancer(measurer)
-        val plain = listOf(AnnotatedString("Klangbild") to name, AnnotatedString(code) to codeStyle)
-            .map { (t, style) -> measurer.measure(t, style, constraints = Constraints(maxWidth = column)) }
-        val balanced = listOf(AnnotatedString(lead) to leadStyle, AnnotatedString(text) to body, address to addressStyle)
-            .map { (t, style) -> balancer.layout(t, style, column) }
-        (plain + balanced)
-            .maxOf { r -> (0 until r.lineCount).maxOf { r.getLineRight(it) - r.getLineLeft(it) } }
-            .let { with(local) { it.toDp().value } }
+    val widest = with(LocalDensity.current) {
+        remember(reason, info, layout, this, t, faces) {
+            val column = layout.columnWidth.dp.roundToPx()
+            val balancer = lineBalancer(measurer)
+            val plain = listOf(AnnotatedString(APP_NAME) to name, AnnotatedString(code) to codeStyle)
+                .map { (s, style) -> measurer.measure(s, style, constraints = Constraints(maxWidth = column)) }
+            val balanced = listOf(AnnotatedString(lead) to leadStyle, AnnotatedString(text) to body, address to addressStyle)
+                .map { (s, style) -> balancer.layout(s, style, column) }
+            (plain + balanced)
+                .maxOf { r -> (0 until r.lineCount).maxOf { r.getLineRight(it) - r.getLineLeft(it) } }
+                .toDp().value
+        }
     }
     // The group moves right by half of what the column leaves empty.
     val shift = ((layout.columnWidth - widest) / 2f).coerceAtLeast(0f)
@@ -133,7 +134,7 @@ fun SetupScreen(
                 modifier = Modifier.fillMaxSize(),
                 content = {
                     Column(Modifier.width(layout.columnWidth.dp)) {
-                        BasicText("Klangbild", style = name)
+                        BasicText(APP_NAME, style = name)
                         Spacer(Modifier.height(4.dp))
                         BalancedText(AnnotatedString(lead), leadStyle)
                         Spacer(Modifier.height(20.dp))
@@ -148,10 +149,9 @@ fun SetupScreen(
                 },
             ) { measurables, constraints ->
                 val block = measurables.first().measure(Constraints())
-                val first = block[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
-                val baseline = (layout.artTop * density).roundToInt() + (44f * fontScale * density * Fonts.CAP_HEIGHT).roundToInt()
+                val baseline = (layout.artTop * density).roundToInt() + (Fonts.CAP_HEIGHT * NAME_SP.sp.toPx()).roundToInt()
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    block.place((layout.columnLeft * density).roundToInt(), baseline - first)
+                    block.place((layout.columnLeft * density).roundToInt(), baseline - block.firstBaseline())
                 }
             }
             if (hint != null) {
@@ -164,3 +164,8 @@ fun SetupScreen(
         }
     }
 }
+
+private const val APP_NAME = "Klangbild"
+
+/** The app's name over the text (sp): its cap height stands on the card's top edge. */
+private const val NAME_SP = 44f
