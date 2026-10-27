@@ -175,21 +175,21 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measure
 
 /**
  * The words of one song on the stage, kept while its text shows or leaves: how they are set, and
- * where the list stands. The theater keeps one per song ([LyricsViews]), so the words that leave
+ * where the list stands. The theater keeps one per song ([LyricsStates]), so the words that leave
  * at a change go from where they stood.
  */
 @Stable
-internal class LyricsView(val lyrics: Lyrics) {
+internal class LyricsState(val lyrics: Lyrics) {
     val cursor = LyricsCursor(lyrics)
 
     /** The words as set, for the column they were set for ([planKey]). */
     private var plan by mutableStateOf<LyricsPlan?>(null)
     private var planKey: Any? = null
 
-    /** Where the list stands under the middle (px, in the plan's terms), and how lit the line there is. */
+    /** Where the lyrics stand under the middle (px, in the plan's terms), and the highlight of the line there. */
     var scroll by mutableStateOf(Animatable(0f))
         private set
-    var lit by mutableStateOf(Animatable(0f))
+    var highlight by mutableStateOf(Animatable(0f))
         private set
 
     /**
@@ -218,7 +218,7 @@ internal class LyricsView(val lyrics: Lyrics) {
         plan = p
         shown = place
         scroll = Animatable(p.center(place))
-        lit = Animatable(if (place.lit) 1f else 0f)
+        highlight = Animatable(if (place.lit) 1f else 0f)
         return p
     }
 
@@ -226,7 +226,7 @@ internal class LyricsView(val lyrics: Lyrics) {
      * Moves the list to [place]: a glide by one line (one that comes while the last still runs
      * carries on from its pace), and for more a jump: the words go, then come at the new place.
      */
-    suspend fun go(place: LyricPlace, plan: LyricsPlan, scope: CoroutineScope) {
+    suspend fun moveTo(place: LyricPlace, plan: LyricsPlan, scope: CoroutineScope) {
         val last = shown ?: return
         shown = place
         val target = plan.center(place)
@@ -251,25 +251,25 @@ internal class LyricsView(val lyrics: Lyrics) {
                 scope.launch { jump.animateTo(1f, tween(JUMP_MS, easing = LinearEasing)) }
             }
         }
-        val l = lit
-        if (last.lit != place.lit) scope.launch { l.animateTo(if (place.lit) 1f else 0f, tween(LIT_MS, easing = Motion.Dimmer)) }
+        val h = highlight
+        if (last.lit != place.lit) scope.launch { h.animateTo(if (place.lit) 1f else 0f, tween(HIGHLIGHT_MS, easing = Motion.Dimmer)) }
     }
 }
 
 /** A theater's songs' words on the stage: the one shown and the one leaving keep their places. */
-internal class LyricsViews {
-    private val views = HashMap<Lyrics, LyricsView>()
+internal class LyricsStates {
+    private val states = HashMap<Lyrics, LyricsState>()
 
-    fun of(lyrics: Lyrics): LyricsView = views.getOrPut(lyrics) { LyricsView(lyrics) }
+    fun of(lyrics: Lyrics): LyricsState = states.getOrPut(lyrics) { LyricsState(lyrics) }
 
     /** Lets go of every song's words but [kept]. */
     fun keep(vararg kept: Lyrics?) {
-        views.keys.retainAll(kept.filterNotNull().toSet())
+        states.keys.retainAll(kept.filterNotNull().toSet())
     }
 }
 
 /** The theater's songs' words; without one (a still), each column keeps its own. */
-internal val LocalLyricsViews = staticCompositionLocalOf<LyricsViews?> { null }
+internal val LocalLyricsStates = staticCompositionLocalOf<LyricsStates?> { null }
 
 /**
  * The text column with the song's words ([TextLayer] while [StageModel.lyrics] is set): the words
@@ -291,19 +291,19 @@ internal fun LyricsText(
     val styles = rememberStageStyles(model.scene.palette)
     val room = remember(layout, styles) { LyricsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
-    val views = LocalLyricsViews.current
-    val view = views?.of(lyrics) ?: remember(lyrics) { LyricsView(lyrics) }
+    val states = LocalLyricsStates.current
+    val state = states?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
     // The list first stands where the song is.
-    val plan = rememberLyricsPlan(view, layout, room.around()) { view.cursor.at(position()) }
+    val plan = rememberLyricsPlan(state, layout, room.around()) { state.cursor.at(position()) }
     // The place follows the position on the stage's tick (in a still, once).
     val frames = rememberFrames(fast = model.playing)
     if (plan != null) {
-        LaunchedEffect(view, plan) {
+        LaunchedEffect(state, plan) {
             snapshotFlow {
                 frames.value
-                view.cursor.at(position())
-            }.distinctUntilChanged().collect { place -> view.go(place, plan, this) }
+                state.cursor.at(position())
+            }.distinctUntilChanged().collect { place -> state.moveTo(place, plan, this) }
         }
     }
 
@@ -327,13 +327,13 @@ internal fun LyricsText(
                 val x = (((layout.columnLeft + shift()) * density).roundToInt() + p.indent).toFloat()
                 val focus = layout.textCenter * density + (rise(TextLine.TITLE) * density).roundToInt()
                 val around = room.around(slotShown.value)
-                val glow = view.lit.value
+                val highlight = state.highlight.value
                 // A jump: the words that stood go first, then the new ones come (never both at once).
-                val j = view.jump.value
+                val j = state.jump.value
                 val gone = Motion.phase(j, 0f, JUMP_OUT, Motion.Dimmer)
                 val come = Motion.phase(j, JUMP_IN, 1f, Motion.Dimmer)
-                if (j < 1f) drawLyrics(p, view.from, x, focus, around, inks, glow, a * view.fromAlpha * (1f - gone))
-                drawLyrics(p, view.scroll.value, x, focus, around, inks, glow, a * come)
+                if (j < 1f) drawLyrics(p, state.from, x, focus, around, inks, highlight, a * state.fromAlpha * (1f - gone))
+                drawLyrics(p, state.scroll.value, x, focus, around, inks, highlight, a * come)
             }
             // 1: the progress bar or a notice, above the song; changes cross-fade
             SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
@@ -365,23 +365,23 @@ internal fun LyricsText(
 }
 
 /**
- * The words as set for [view]'s column with [room] around the middle ([planLyrics]), the list
+ * The words as set for [state]'s column with [room] around the middle ([planLyrics]), the list
  * standing at [place] once they are: at once in a still, else off the main thread (nothing until
  * then).
  */
 @Composable
-private fun rememberLyricsPlan(view: LyricsView, layout: StageGrid, room: Float, place: () -> LyricPlace): LyricsPlan? {
+private fun rememberLyricsPlan(state: LyricsState, layout: StageGrid, room: Float, place: () -> LyricPlace): LyricsPlan? {
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val faces = faces()
     val key = listOf(layout.columnWidth, room, density, faces)
-    fun plan() = planLyrics(view.lyrics, layout.columnWidth, room, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
-    if (LocalStill.current) return remember(view, key) { view.keep(key, plan(), place()) }
-    val ready = view.planFor(key)
+    fun plan() = planLyrics(state.lyrics, layout.columnWidth, room, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
+    if (LocalStill.current) return remember(state, key) { state.keep(key, plan(), place()) }
+    val ready = state.planFor(key)
     if (ready == null) {
-        LaunchedEffect(view, key) {
+        LaunchedEffect(state, key) {
             val p = withContext(Dispatchers.Default) { plan() }
-            view.keep(key, p, place())
+            state.keep(key, p, place())
         }
     }
     return ready
@@ -403,10 +403,10 @@ internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
 }
 
 /**
- * The rows of [plan] with the list standing at [scroll] (px) under the middle ([focus], px), from
- * [x]: each line fading as a whole with its distance from the middle ([lineAlpha]) within
- * [around] (dp) above and below it, the line in the middle lit by [glow] (its ink taken from
- * [inks], the quiet ink to the title's), [alpha] for all of them.
+ * The rows of [plan] with the lyrics standing at [scroll] (px) under the middle ([focus], px),
+ * from [x]: each line fading as a whole with its distance from the middle ([lineAlpha]) within
+ * [around] (dp) above and below it, the line in the middle highlighted by [highlight] (its ink
+ * taken from [inks], the quiet ink to the title's), [alpha] for all of them.
  */
 private fun DrawScope.drawLyrics(
     plan: LyricsPlan,
@@ -415,7 +415,7 @@ private fun DrawScope.drawLyrics(
     focus: Float,
     around: Float,
     inks: Array<Color>,
-    glow: Float,
+    highlight: Float,
     alpha: Float,
 ) {
     if (alpha <= 0.002f) return
@@ -432,7 +432,7 @@ private fun DrawScope.drawLyrics(
         if (row.line != line) {
             line = row.line
             f = lineAlpha((plan.tops[line] - scroll) / d, (plan.bottoms[line] - scroll) / d, around, plan.gap / d)
-            color = inks[(glowOf(plan, line, scroll) * glow * INK_STEPS).roundToInt().coerceIn(0, INK_STEPS)]
+            color = inks[(highlightOf(plan, line, scroll) * highlight * INK_STEPS).roundToInt().coerceIn(0, INK_STEPS)]
         }
         if (f <= 0.003f) continue
         val top = (focus + row.baseline - scroll - row.layout.firstBaseline).roundToInt().toFloat()
@@ -459,10 +459,10 @@ private fun lineAlpha(top: Float, bottom: Float, around: Float, gap: Float): Flo
 }
 
 /**
- * How lit [line] is with the list at [scroll]: fully in the middle, not at all one line away,
- * so the light goes along as the list glides.
+ * How far [line] is highlighted with the lyrics at [scroll]: fully in the middle, not at all one
+ * line away, so the highlight goes along as the lyrics glide.
  */
-private fun glowOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
+private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
     val c = plan.centers
     val off = c[line] - scroll
     val neighbor = if (off > 0f) c.getOrNull(line - 1) else c.getOrNull(line + 1)
@@ -519,7 +519,7 @@ private const val INK_STEPS = 48
 private const val LYRICS_GLIDE_MS = 500
 
 /** A line dims at a break, and lights after it, in this long (ms). */
-private const val LIT_MS = 600
+private const val HIGHLIGHT_MS = 600
 
 /** A jump takes this long (ms): the words that stood leave in its first part, the new ones come in its last. */
 private const val JUMP_MS = 600

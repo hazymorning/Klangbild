@@ -224,9 +224,9 @@ fun StageTheater(
     }
 
     // The words of the song shown and of the one leaving keep their places through a change.
-    val lyricsViews = remember { LyricsViews() }
+    val lyricsStates = remember { LyricsStates() }
     SideEffect {
-        lyricsViews.keep(cur.lyrics, prev?.lyrics)
+        lyricsStates.keep(cur.lyrics, prev?.lyrics)
         queueRooms.keep(setOfNotNull(cur.scene.key, prev?.scene?.key))
     }
 
@@ -247,7 +247,7 @@ fun StageTheater(
         val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
         if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, coverLevel = { dim.coverLevel })
         PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, coverLevel = { dim.coverLevel })
-        CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
+        CompositionLocalProvider(LocalLyricsStates provides lyricsStates) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
             if (prevModel != null && kind != Change.ROWS) {
                 TextLayer(prevModel, alpha = textOut, rise = textOutRise, textLevel = { dim.textLevel }, queuePlan = prevQueue)

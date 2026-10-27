@@ -29,8 +29,8 @@ import io.github.hazymorning.klangbild.ui.RisingText
 import io.github.hazymorning.klangbild.ui.TextRise
 import io.github.hazymorning.klangbild.ui.playChange
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
-import io.github.hazymorning.klangbild.ui.stage.LocalLyricsViews
-import io.github.hazymorning.klangbild.ui.stage.LyricsViews
+import io.github.hazymorning.klangbild.ui.stage.LocalLyricsStates
+import io.github.hazymorning.klangbild.ui.stage.LyricsStates
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StatusLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLayer
@@ -226,8 +226,8 @@ fun FlowTheater(
     val stood: (TextLine) -> Float = { row -> if (kind.isSoft) text.level(row) else text.leaving(row) }
 
     // The words of the song shown and of the one leaving keep their places through a change.
-    val lyricsViews = remember { LyricsViews() }
-    SideEffect { lyricsViews.keep(curStage.lyrics, prevStage?.lyrics) }
+    val lyricsStates = remember { LyricsStates() }
+    SideEffect { lyricsStates.keep(curStage.lyrics, prevStage?.lyrics) }
 
     Box(modifier.fillMaxSize()) {
         // As on the single stage: the old wall stays whole until the new one has come up over it.
@@ -258,7 +258,7 @@ fun FlowTheater(
             before = before,
             look = { if (restrip) p(0, total, Motion.Sine) else 1f },
         )
-        CompositionLocalProvider(LocalLyricsViews provides lyricsViews) {
+        CompositionLocalProvider(LocalLyricsStates provides lyricsStates) {
             if (prevModel != null && kind != FlowChange.SIDES) {
                 TextLayer(
                     prevModel,
