@@ -190,7 +190,7 @@ fun rememberTextPlan(model: StageModel): TextPlan {
     val nextLead = model.nextLead ?: texts()[Strings.stageNext]
     val faces = faces()
     return remember(
-        model.text, model.year, model.next, model.scene.layout, model.scene.palette, model.progress, model.line, model.durationMs == null,
+        model.text, model.year, model.next, model.nextTitle, model.scene.layout, model.scene.palette, model.progress, model.line, model.durationMs == null,
         model.chapter != null, localDensity, nextLead, faces,
     ) {
         planText(model, measurer, localDensity, nextLead, faces)
