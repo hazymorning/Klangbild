@@ -16,7 +16,7 @@ object FrameStats {
     private var frames = 0
     private var worst = 0f
     private var janky = 0
-    private var windowStart = 0L
+    private var secondStart = 0L
 
     /** One thread for the whole app, started the first time it is needed. */
     private val handler by lazy { Handler(HandlerThread("frame-stats").apply { start() }.looper) }
@@ -24,16 +24,16 @@ object FrameStats {
     private val listener = Window.OnFrameMetricsAvailableListener { _, metrics, _ ->
         val ms = metrics.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000f
         val now = System.nanoTime()
-        if (windowStart == 0L) windowStart = now
+        if (secondStart == 0L) secondStart = now
         frames++
         if (ms > worst) worst = ms
-        if (ms > 16.7f) janky++
-        if (now - windowStart >= 1_000_000_000L) {
+        if (ms > FRAME_BUDGET_MS) janky++
+        if (now - secondStart >= 1_000_000_000L) {
             _stats.value = FrameSecond(frames, worst, janky)
             frames = 0
             worst = 0f
             janky = 0
-            windowStart = now
+            secondStart = now
         }
     }
 
@@ -44,6 +44,13 @@ object FrameStats {
 
     /** Stops counting [window]'s frames; nothing keeps the window afterwards. */
     fun detach(window: Window) {
-        runCatching { window.removeOnFrameMetricsAvailableListener(listener) }
+        try {
+            window.removeOnFrameMetricsAvailableListener(listener)
+        } catch (e: IllegalArgumentException) {
+            // The window never held the listener: there is nothing to stop.
+        }
     }
+
+    /** A frame at 60 Hz has this long (ms). */
+    private const val FRAME_BUDGET_MS = 1000f / 60
 }
