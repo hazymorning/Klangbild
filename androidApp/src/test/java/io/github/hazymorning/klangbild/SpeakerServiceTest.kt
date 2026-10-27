@@ -92,8 +92,8 @@ class SpeakerServiceTest {
             until("the speaker") { app.graph.speakerHub.speaker != null }
             assertThat(shadow.lastForegroundNotification).isNotNull()
 
-            // Switched off (in the menu, or by an extra): the speaker goes and the service ends itself.
-            runBlocking { app.graph.settings.write(app.graph.settings.settings.first().copy(tvSpeaker = false)) }
+            // Switched off (here by an extra, as Home Assistant sends it): the speaker goes and the service ends itself.
+            activity.newIntent(Intent(app, MainActivity::class.java).putExtra("tv_speaker", "off"))
             until("the service's end") { shadow.isStoppedBySelf }
             assertThat(app.graph.speakerHub.speaker).isNull()
         } finally {
