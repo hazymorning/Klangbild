@@ -187,12 +187,13 @@ class SettingsStoreTest {
 
     @Test
     fun `tokens stored by an earlier version are sealed on the next start`(): Unit = runBlocking {
+        val values = settingsValues(context)
         // An earlier version wrote the token as it is.
-        SettingsStore(settingsValues(context), FakeBox(sealing = false))
+        SettingsStore(values, FakeBox(sealing = false))
             .write(Settings().withHa("http://192.168.1.5:8123", HaCredentials.LongLived("long-lived-secret")))
 
         val box = FakeBox()
-        val store = SettingsStore(settingsValues(context), box)
+        val store = SettingsStore(values, box)
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
         assertThat(box.stored).contains("long-lived-secret")
         store.migrate()

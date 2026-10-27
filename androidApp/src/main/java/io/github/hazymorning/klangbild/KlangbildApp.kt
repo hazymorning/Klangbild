@@ -37,7 +37,10 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** What the app needs from Android: OkHttp's connections, DataStore, the keystore and the rest. */
+/**
+ * What the app needs from Android: OkHttp's connections, DataStore, the keystore and the rest.
+ * [KlangbildApp] makes one per process, since each DataStore file may be opened only once.
+ */
 class AndroidPlatform(context: Context) : Platform {
     private val app = context.applicationContext
 
@@ -88,7 +91,9 @@ class AndroidPlatform(context: Context) : Platform {
 
     override val secrets = KeystoreSecretBox()
 
-    override fun speakerValues(): ValueStore = speakerValues(app)
+    private val speaker by lazy { speakerValues(app) }
+
+    override fun speakerValues(): ValueStore = speaker
 
     override val languages = PlatformLanguageStore(app)
 

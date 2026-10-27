@@ -11,6 +11,8 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.dream.KlangbildDream
+import kotlinx.coroutines.cancel
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -43,6 +45,9 @@ class KeyPressTest {
     private fun up(code: Int) = KeyEvent(KeyEvent.ACTION_UP, code)
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
+
+    @After
+    fun stopApp() = app.graph.scope.cancel()
 
     @Test
     fun `the app takes every media key whole, and a release on its own`() {

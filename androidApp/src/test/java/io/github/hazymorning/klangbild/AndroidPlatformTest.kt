@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
 class AndroidPlatformTest {
-    private val platform = AndroidPlatform(ApplicationProvider.getApplicationContext())
+    private val platform = ApplicationProvider.getApplicationContext<KlangbildApp>().platform
 
     @Test
     fun `a picture follows a redirect, a request with a token never does`() {
