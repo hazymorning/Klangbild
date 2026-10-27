@@ -4,7 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import kotlin.test.Test
 
-/** The language a tag names, and the formats that go with the words. */
+/** The language a tag names, and the formats that go with the strings. */
 class LanguageTagsTest {
     private fun tags(list: String) = list.split(',').map(Locale::forLanguageTag)
 
@@ -22,7 +22,7 @@ class LanguageTagsTest {
         assertThat(british.toLanguageTag()).isEqualTo("en-GB")
         val austrian = Texts.formatLocale(tags("de"), tags("de-AT"))
         assertThat(austrian.toLanguageTag()).isEqualTo("de-AT")
-        // A system language the app does not have: its words and formats are English.
+        // A system language the app does not have: its strings and formats are English.
         val french = Texts.formatLocale(tags("fr-FR"), tags("fr-FR"))
         assertThat(french.language).isEqualTo("en")
         val de = TestTexts.german

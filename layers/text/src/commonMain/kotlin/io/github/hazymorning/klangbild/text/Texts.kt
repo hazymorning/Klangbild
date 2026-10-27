@@ -6,15 +6,15 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
-/** One of the app's texts ([Strings]), by its place in strings.xml. */
+/** One of the app's strings ([Strings]), by its place in strings.xml. */
 @JvmInline
 value class StringId internal constructor(internal val index: Int)
 
-/** One of the app's texts with a form for one and one for more ([Plurals]). */
+/** One of the app's strings with a form for one and one for more ([Plurals]). */
 @JvmInline
 value class PluralId internal constructor(internal val index: Int)
 
-/** The words of one language, in the order of [Strings] and [Plurals]. */
+/** The strings of one language, in the order of [Strings] and [Plurals]. */
 internal class Words(
     val strings: Array<String>,
     /** Each plural's form for one, and for any other count. */
@@ -25,14 +25,14 @@ internal class Words(
 )
 
 /**
- * The app's words in the language it shows, and that language's formats: numbers, percent,
+ * The app's strings in the language it shows, and that language's formats: numbers, percent,
  * dates and the time of day (in 12 or 24 hours, as the system is set). Text made outside
  * Compose (the menus, the status line, the setup page) and inside it comes from here, so a new
  * language applies everywhere at once.
  */
 class Texts internal constructor(
     private val words: Words,
-    /** The language the words are in, with the system's region where it has one (formats follow it). */
+    /** The language of the strings, with the system's region where it has one (formats follow it). */
     val locale: Locale,
     /** Times of day in 24 hours (else 12 hours with AM and PM). */
     private val clock24: Boolean,
@@ -93,7 +93,7 @@ class Texts internal constructor(
 
     companion object {
         /**
-         * The words for [language] and the system's locales [system], with times as [clock24]
+         * The texts for [language] and the system's locales [system], with times as [clock24]
          * says. A language the app does not have falls back to English, as Android's own
          * resource lookup does.
          */
@@ -103,7 +103,7 @@ class Texts internal constructor(
         }
 
         /**
-         * The locale whose formats go with the words: the first of [wanted] in a language the
+         * The locale whose formats go with the strings: the first of [wanted] in a language the
          * app has, with the system's region where the system speaks that language too
          * (British English keeps its dates); English when none is.
          */
@@ -116,12 +116,12 @@ class Texts internal constructor(
         /** Whether [locale]'s region tells the time in 24 hours, where the system says nothing. */
         fun clock24Of(locale: Locale): Boolean = locale.region().clock24
 
-        /** The app's two faces have none of the narrow or thin spaces the platform's formats use: a no-break space instead. */
+        /** Replaces the narrow, thin and en spaces of number and date formats, which the app's two typefaces lack, with a no-break space. */
         fun fontSafe(s: String): String = s.replace('\u202F', '\u00A0').replace('\u2009', '\u00A0').replace('\u2002', '\u00A0')
 
         /**
          * [pattern] with [args] in place of its `%s` and `%d` (`%1$s` for the first argument, and
-         * so on), as Android's resources fill them in for the app's texts.
+         * so on), as Android's resources fill them in for the app's strings.
          */
         internal fun formatted(pattern: String, args: Array<out Any>): String {
             if ('%' !in pattern) return pattern

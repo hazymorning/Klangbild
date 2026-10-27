@@ -8,5 +8,5 @@ object TestTexts {
     /** English as in the United States, 12 hours unless asked otherwise. */
     fun english(clock24: Boolean = false): Texts = of(AppLanguage.ENGLISH, Locale("en", "US"), clock24)
 
-    fun of(language: AppLanguage, system: Locale, clock24: Boolean = true): Texts = Texts.of(language, listOf(system), clock24)
+    private fun of(language: AppLanguage, system: Locale, clock24: Boolean = true): Texts = Texts.of(language, listOf(system), clock24)
 }
