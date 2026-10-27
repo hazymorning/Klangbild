@@ -71,7 +71,7 @@ object MaQueue {
             current = tracks.getOrNull(at),
             coming = if (at < 0) emptyList() else tracks.drop(at + 1).filterNotNull(),
             speed = (items.getOrNull(at) as? JsonObject)?.let(::speed) ?: 1f,
-            currentSong = (items.getOrNull(at) as? JsonObject)?.takeIf { at >= 0 }?.let(::song),
+            currentSong = (items.getOrNull(at) as? JsonObject)?.let(::song),
             nextSong = (items.getOrNull(at + 1) as? JsonObject)?.takeIf { at >= 0 }?.let(::song),
         )
     }
@@ -165,8 +165,8 @@ object MaQueue {
             album = if (isRadio) playing?.string("album")?.takeIf { it.isNotBlank() && !it.equals(name, ignoreCase = true) } else album?.string("name")?.takeIf { it.isNotBlank() },
             year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
             durationMs = durationMs,
-            artworkUrl = songPicture ?: picture?.first,
-            artworkFallbackUrl = if (songPicture != null) picture?.first else picture?.second,
+            artworkUrl = songPicture ?: picture?.url,
+            artworkFallbackUrl = if (songPicture != null) picture?.url else picture?.fallback,
             source = if (isRadio) name else null,
             kind = kind,
             chapters = if (kind.spoken) chapters(media, durationMs) else emptyList(),
@@ -202,18 +202,21 @@ object MaQueue {
         return Chapters.of(raw, durationMs)
     }
 
+    /** An item's artwork: the URL to load and the one to try when that fails. */
+    private class Artwork(val url: String, val fallback: String?)
+
     /**
-     * A picture's address and its fallback: a public one (a streaming service's CDN) as it is,
-     * with Music Assistant's image proxy behind it; anything else through the proxy only.
+     * The artwork of an [image]: a public one (a streaming service's CDN) as it is, with Music
+     * Assistant's image proxy behind it; anything else through the proxy only.
      */
-    private fun image(image: JsonObject?, baseUrl: String): Pair<String, String>? {
+    private fun image(image: JsonObject?, baseUrl: String): Artwork? {
         val path = image?.string("path")?.takeIf { it.isNotBlank() } ?: return null
         val proxy = image.string("proxy_id")?.takeIf { it.isNotBlank() }?.let { "$baseUrl/imageproxy/$it?size=$PROXY_SIZE" }
         val remote = (image["remotely_accessible"] as? JsonPrimitive)?.booleanOrNull == true &&
             (path.startsWith("https://") || path.startsWith("http://"))
         return when {
-            remote -> path to (proxy ?: path)
-            proxy != null -> proxy to proxy
+            remote -> Artwork(path, proxy)
+            proxy != null -> Artwork(proxy, null)
             else -> null
         }
     }

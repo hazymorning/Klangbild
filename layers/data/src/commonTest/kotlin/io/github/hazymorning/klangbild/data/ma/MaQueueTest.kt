@@ -51,7 +51,7 @@ class MaQueueTest {
         assertThat(played.durationMs).isEqualTo(251_000L)
         // A local picture comes through Music Assistant's proxy.
         assertThat(played.artworkUrl).isEqualTo("$base/imageproxy/3f2a?size=512")
-        assertThat(played.artworkFallbackUrl).isEqualTo("$base/imageproxy/3f2a?size=512")
+        assertThat(played.artworkFallbackUrl).isNull()
         // Which item of the queue it is.
         assertThat(played.queueItemId).isEqualTo("a")
 

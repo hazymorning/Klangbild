@@ -31,6 +31,9 @@ import kotlinx.serialization.json.put
 /** Music Assistant rejected the token. */
 class MaAuthException : IOException("Music Assistant rejected the token")
 
+/** A track's lyrics as Music Assistant has them: [plain] text, and [lrc] with the times of its lines. */
+data class TrackLyrics(val plain: String?, val lrc: String?)
+
 /** Music Assistant does not know the command (a version from before it). */
 class MaUnknownCommandException(command: String) : IOException("Music Assistant does not know $command")
 
@@ -133,12 +136,12 @@ class MaClient(
      * the call has a timeout of its own ([lyricsTimeoutMs]). Throws [MaUnknownCommandException]
      * on a version without the command.
      */
-    suspend fun lyrics(track: JsonObject): Pair<String?, String?> {
+    suspend fun lyrics(track: JsonObject): TrackLyrics {
         val args = buildJsonObject { put("track", track) }
         return when (val answer = command(LYRICS_COMMAND, args, timeoutMs = lyricsTimeoutMs, readTimeoutMs = lyricsTimeoutMs)) {
-            is JsonArray -> answer.getOrNull(0).string() to answer.getOrNull(1).string()
-            is JsonObject -> answer["lyrics"].string() to answer["lrc_lyrics"].string()
-            else -> null to null
+            is JsonArray -> TrackLyrics(answer.getOrNull(0).string(), answer.getOrNull(1).string())
+            is JsonObject -> TrackLyrics(answer["lyrics"].string(), answer["lrc_lyrics"].string())
+            else -> TrackLyrics(null, null)
         }
     }
 
