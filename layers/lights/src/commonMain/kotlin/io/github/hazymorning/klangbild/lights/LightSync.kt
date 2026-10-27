@@ -168,7 +168,6 @@ class LightSync(
 
     /** The lights whose state Home Assistant holds in a snapshot scene of ours. */
     private var snapshots: Set<String> = emptySet()
-    private var savedAt = 0L
     private var shownSong: String? = null
     private var shownColors: LightColors? = null
     private var waitingSong: String? = null
@@ -324,7 +323,7 @@ class LightSync(
     /**
      * A wanted light whose state arrived only after the others were taken over (or that was
      * unavailable then), or with [Target.onlyOn] one that has been switched on: its state is
-     * saved (unless it was saved before in this session), then it joins in at once.
+     * saved (unless [saved] holds it from earlier in this takeover), then it joins in at once.
      */
     private suspend fun adopt(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
         for ((id, slot) in wanted) {
@@ -352,13 +351,9 @@ class LightSync(
      */
     private suspend fun activate(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
         val taken = wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != UNAVAILABLE && !(onlyOn && it.state == "off") }?.let { id to it } }.toMap()
-        // Taken back within a minute (the screen came back): the earlier snapshot still holds.
-        if (t - savedAt > REUSE_SNAPSHOT_MS || !taken.keys.all { it in saved }) {
-            saved = emptyMap()
-            snapshots = emptySet()
-            save(b, taken)
-            savedAt = t
-        }
+        saved = emptyMap()
+        snapshots = emptySet()
+        save(b, taken)
         lights.clear()
         givenBack.clear()
         activeFor = wanted.keys.toSet()
@@ -521,8 +516,6 @@ class LightSync(
         val notes = saved
         val scenes = snapshots
         val toRestore = lights.values.filter { !it.takenOver }
-        // A light someone else has is saved anew if it is taken over again: its note no longer holds.
-        saved = saved - lights.values.filter { it.takenOver }.map { it.id }.toSet()
         lights.values.removeAll { it.takenOver }
         givenBack.clear()
         shownSong = null
@@ -741,7 +734,6 @@ class LightSync(
         /** A light turned off for "Leave off" that Home Assistant still reports on is left alone this long. */
         const val GIVEN_BACK_MS = 10_000L
         const val IDLE_RELEASE_MS = 5 * 60_000L
-        const val REUSE_SNAPSHOT_MS = 60_000L
         const val SETTLE_REPORT_MS = 2_000L
 
         /** A pause dims to half; the night to this share of the day's level. */

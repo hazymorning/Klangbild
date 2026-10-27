@@ -729,22 +729,25 @@ class LightSyncTest {
     }
 
     @Test
-    fun `a light someone else had is saved anew when it is taken over again`() = runTest {
-        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+    fun `lights taken over again within a minute are saved again`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true)))
         val s = sync()
         s.attach(ha)
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
-        ha.byHand(left, "off")
-        testScheduler.advanceTimeBy(2_000)
+        // Switched off in the menu, the left light made brighter by hand, then switched on again.
         s.update(target("a", level = RoomLightBrightness.OFF))
         testScheduler.advanceTimeBy(5_000)
-        // Someone switches it on again, and the lights are switched on within the minute.
-        ha.byHand(left, "on")
+        ha.byHand(left, "on", buildJsonObject { put("brightness", 200) })
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
-        // What it is now is saved, so it goes back to that, not to what it was before the music.
-        assertThat(ha.named("scene.create").count { it.data.toString().contains("klangbild_tv_left") }).isEqualTo(2)
+        assertThat(ha.named("scene.create")).hasSize(4)
+        // Restored, the left light is as it was just before the second takeover.
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.named("scene.turn_on").map { it.id }.count { it == "scene.klangbild_tv_left" }).isEqualTo(2)
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(200.0)
+        assertThat(ha.scenes).isEmpty()
     }
 
     @Test
