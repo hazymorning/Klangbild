@@ -48,14 +48,15 @@ class RootTransitionTest {
         compose.mainClock.advanceTimeBy(2_500) // entrance fade
         compose.onRoot().captureRoboImage("build/screenshots/root/00_a.png")
         ui = stageUi(b)
-        for (i in 1..4) {
-            compose.mainClock.advanceTimeBy(900)
-            compose.onRoot().captureRoboImage("build/screenshots/root/0${i}_change.png")
+        // The change takes a second.
+        for (i in 1..8) {
+            compose.mainClock.advanceTimeBy(125)
+            compose.onRoot().captureRoboImage("build/screenshots/root/%02d_change.png".format(i))
         }
         ui = ui.copy(screen = Screen.Rest(RestReason.IDLE, "Wohnzimmer"))
-        for (i in 5..8) {
+        for (i in 9..12) {
             compose.mainClock.advanceTimeBy(600)
-            compose.onRoot().captureRoboImage("build/screenshots/root/0${i}_rest.png")
+            compose.onRoot().captureRoboImage("build/screenshots/root/%02d_rest.png".format(i))
         }
     }
 }
