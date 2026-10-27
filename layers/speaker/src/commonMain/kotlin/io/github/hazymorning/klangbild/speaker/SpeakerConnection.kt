@@ -111,6 +111,8 @@ class SpeakerConnection(
                     backoff.nextDelayMs()
                 }
             }
+            // Only a wake-up during the pause counts, not one from while the session ran.
+            wakeUp.tryReceive()
             select<Unit> {
                 wakeUp.onReceive { }
                 onTimeout(waitMs) { }
