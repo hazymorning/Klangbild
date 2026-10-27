@@ -1,12 +1,8 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -67,26 +63,24 @@ class OwnLinesTest {
         compose.mainClock.autoAdvance = false
         compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { key -> position.takeIf { key == reported } }, now = { 0L }, glyphs = AndroidGlyphs)) }
         compose.mainClock.advanceTimeBy(3_000)
-        val before = capture()
+        val before = compose.pixels()
         reported = b.key
         position = 2_000L
         compose.mainClock.advanceTimeBy(100)
         // Drawn meanwhile, as every frame is on the TV.
-        capture()
+        compose.pixels()
         ui = ui.copy(screen = Screen.Stage(b, PlayerStatus.PLAYING, c))
         compose.mainClock.advanceTimeBy(1_000)
-        val after = capture()
+        val after = compose.pixels()
         assertThat(changed(before, after)).isEqualTo(0)
     }
 
-    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-
-    /** How many pixels two frames show visibly apart (the column stands elsewhere with one card). */
-    private fun changed(p: Bitmap, q: Bitmap): Int {
+    /** How many pixels of two frames differ visibly. */
+    private fun changed(p: Pixels, q: Pixels): Int {
         var n = 0
         for (y in 0 until p.height) for (x in 0 until p.width) {
-            val u = p.getPixel(x, y)
-            val v = q.getPixel(x, y)
+            val u = p[x, y]
+            val v = q[x, y]
             val d = abs((u shr 16 and 0xFF) - (v shr 16 and 0xFF)) + abs((u shr 8 and 0xFF) - (v shr 8 and 0xFF)) + abs((u and 0xFF) - (v and 0xFF))
             if (d > VISIBLE) n++
         }

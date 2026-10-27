@@ -1,12 +1,8 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isCloseTo
@@ -42,29 +38,21 @@ class FlowStepBackTest {
         compose.mainClock.autoAdvance = false
         compose.setContent { Fixtures.FlowTheaterOf(flow) }
         compose.mainClock.advanceTimeBy(3_000)
-        val before = sideCard(capture())
+        val before = sideCard(compose.pixels())
         // The strip turns to the light card beside the dark one; three frames later the turn is
         // drawn, though the cards have hardly moved.
         flow = Fixtures.flow(s, listOf(0, 1, 2, 3), 2)
         compose.mainClock.advanceTimeBy(48)
-        val first = sideCard(capture())
+        val first = sideCard(compose.pixels())
         assertThat(first).isCloseTo(before, before * 0.1f)
         // Once the turn has landed, the light card stands in the middle at its full brightness.
         compose.mainClock.advanceTimeBy(3_000)
-        assertThat(middleCard(capture())).isGreaterThan(before * 1.5f)
+        assertThat(middleCard(compose.pixels())).isGreaterThan(before * 1.5f)
     }
-
-    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 
     /** The mean of each pixel's brightest channel inside the first card right of the middle one. */
-    private fun sideCard(b: Bitmap) = mean(b, 465, 180, 515, 360)
+    private fun sideCard(px: Pixels) = px.mean(465, 180, 515, 360)
 
     /** The same inside the middle card. */
-    private fun middleCard(b: Bitmap) = mean(b, 220, 180, 380, 360)
-
-    private fun mean(b: Bitmap, x0: Int, y0: Int, x1: Int, y1: Int): Float {
-        val w = x1 - x0
-        val px = IntArray(w * (y1 - y0)).also { b.getPixels(it, 0, w, x0, y0, w, y1 - y0) }
-        return px.map { maxOf(it shr 16 and 0xFF, it shr 8 and 0xFF, it and 0xFF) }.average().toFloat()
-    }
+    private fun middleCard(px: Pixels) = px.mean(220, 180, 380, 360)
 }

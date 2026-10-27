@@ -1,6 +1,8 @@
 package io.github.hazymorning.klangbild.ui
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,10 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isGreaterThanOrEqualTo
@@ -23,12 +22,14 @@ import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.flow.FlowLook
 import io.github.hazymorning.klangbild.ui.flow.FlowStrip
+import io.github.hazymorning.klangbild.ui.flow.balanceOf
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -37,6 +38,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 import kotlin.test.Test
 
 /**
@@ -71,7 +73,7 @@ class FlowMirrorTest {
         val sideScenes = sides.map { Fixtures.scene(it, mdpi, Appearance.DARK, flow = true) }
         val before = Fixtures.track(SyntheticCover.BAUHAUS)
         val after = Fixtures.track(SyntheticCover.NOCTURNE)
-        fun strip(middle: io.github.hazymorning.klangbild.domain.TrackInfo) = FlowData(
+        fun strip(middle: TrackInfo) = FlowData(
             listOf(
                 FlowEntry(1, sides[0], sideScenes[0]),
                 FlowEntry(2, middle, Fixtures.scene(middle, mdpi, Appearance.DARK, flow = true)),
@@ -85,12 +87,13 @@ class FlowMirrorTest {
         compose.setContent { Fixtures.FlowTheaterOf(flow) }
         compose.mainClock.advanceTimeBy(3_000)
         val geometry = FlowGeometry(sideScenes[0].layout)
-        val shift = io.github.hazymorning.klangbild.ui.flow.balanceOf(flow, geometry).cards
+        val shift = balanceOf(flow, geometry).cards
         flow = strip(after)
         val side = ArrayList<Float>()
         val middle = ArrayList<Float>()
-        for (frame in 0..100) {
-            val picture = capture()
+        // Through the change, and a frame or two at rest after it.
+        for (frame in 0..Motion.TEXT_CHANGE_MS / 16 + 3) {
+            val picture = compose.pixels()
             side += mirror(picture, geometry, 1f, shift)
             middle += mirror(picture, geometry, 0f, shift)
             compose.mainClock.advanceTimeBy(16)
@@ -110,8 +113,8 @@ class FlowMirrorTest {
         val geometry = FlowGeometry(scene.layout)
         val cover = scene.card!!
         val side = cover.sidePx
-        val logo = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888)
-        android.graphics.Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
+        val logo = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        Canvas(logo).drawCircle(side / 2f, side / 2f, side / 5f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A2A4A.toInt() })
         val was = FlowCards.build(logo.asImageBitmap(), cornerPx = scene.layout.radius, geometry = geometry, density = 1f, appearance = Appearance.LIGHT)
         val paper = scene.palette.wall.asColor()
         val cards = listOf(CardMotion(cover, 0f, 0f, was = was))
@@ -125,7 +128,7 @@ class FlowMirrorTest {
         for (step in 0..40) {
             look = step / 40f
             compose.waitForIdle()
-            seen += print(capture(), geometry, 0f)
+            seen += print(compose.pixels(), geometry, 0f)
         }
         assertThat(seen.min()).isGreaterThanOrEqualTo(min(seen.first(), seen.last()) - 2f)
         for (i in 1 until seen.size) assertThat(abs(seen[i] - seen[i - 1])).isLessThan(6f)
@@ -151,7 +154,7 @@ class FlowMirrorTest {
             time = ms / Motion.FLOW_TURN_MS.toFloat()
             compose.waitForIdle()
             val p = from + (to - from) * Motion.Turn.transform(time)
-            val picture = capture()
+            val picture = compose.pixels()
             val mirror = mirror(picture, geometry, p, 0f)
             val print = print(picture, geometry, p)
             // A card fading out loses its print quickly, but evenly.
@@ -164,22 +167,20 @@ class FlowMirrorTest {
         }
     }
 
-    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-
     /** The mean brightness inside the mirror image of the card at [position], [shift] dp to the right. */
-    private fun mirror(b: Bitmap, g: FlowGeometry, position: Float, shift: Float): Float {
+    private fun mirror(b: Pixels, g: FlowGeometry, position: Float, shift: Float): Float {
         val half = g.side / 2f
         return mean(b, g, position, shift, -half, half + g.gap, half, half + g.gap + g.reflection)
     }
 
     /** The mean brightness inside the print of the card at [position]. */
-    private fun print(b: Bitmap, g: FlowGeometry, position: Float): Float {
+    private fun print(b: Pixels, g: FlowGeometry, position: Float): Float {
         val half = g.side / 2f
         return mean(b, g, position, 0f, -half, -half, half, half)
     }
 
     /** The mean of each pixel's brightest channel inside a rectangle in the plane of the card at [position]. */
-    private fun mean(b: Bitmap, g: FlowGeometry, position: Float, shift: Float, left: Float, top: Float, right: Float, bottom: Float): Float {
+    private fun mean(b: Pixels, g: FlowGeometry, position: Float, shift: Float, left: Float, top: Float, right: Float, bottom: Float): Float {
         val q = FloatArray(8)
         g.cornersOf(position, left, top, right, bottom, q)
         for (i in 0 until 8 step 2) q[i] += shift
@@ -192,8 +193,7 @@ class FlowMirrorTest {
         var count = 0
         for (y in y0..y1) for (x in x0..x1) {
             if (!inside(q, x + 0.5f, y + 0.5f, inset = 1.5f)) continue
-            val c = b.getPixel(x, y)
-            sum += maxOf(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF)
+            sum += b.level(x, y)
             count++
         }
         return if (count == 0) 0f else sum.toFloat() / count
@@ -208,7 +208,7 @@ class FlowMirrorTest {
             val by = q[(2 * i + 3) % 8]
             val ex = bx - ax
             val ey = by - ay
-            val length = kotlin.math.sqrt(ex * ex + ey * ey)
+            val length = sqrt(ex * ex + ey * ey)
             if (length == 0f) return false
             // Clockwise on a screen whose y points down: inside lies to the right of each edge.
             if ((ex * (y - ay) - ey * (x - ax)) / length < inset) return false
