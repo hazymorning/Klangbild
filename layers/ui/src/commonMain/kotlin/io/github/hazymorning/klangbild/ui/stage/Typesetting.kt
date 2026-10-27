@@ -222,8 +222,8 @@ fun rememberTextPlan(model: StageModel): TextPlan {
 
 private fun planText(
     model: StageModel,
-    measurer: androidx.compose.ui.text.TextMeasurer,
-    density: androidx.compose.ui.unit.Density,
+    measurer: TextMeasurer,
+    density: Density,
     footerLead: String,
     faces: Faces,
 ): TextPlan {
@@ -235,7 +235,7 @@ private fun planText(
     val cjk = isMostlyCjk(t.title)
     val version = t.version
 
-    val title = EmojiText.annotate(t.title, dimTo = styles.ink.copy(alpha = 0.62f))
+    val title = EmojiText.annotate(t.title, styles.ink)
 
     // Everything but the title, from the title's last baseline down (or the work line above
     // it), to know how much height the title may take.

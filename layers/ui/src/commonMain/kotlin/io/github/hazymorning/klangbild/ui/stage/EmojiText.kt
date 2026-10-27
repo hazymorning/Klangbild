@@ -17,6 +17,9 @@ object EmojiText {
     /** Emoji are set this much smaller than the text around them. */
     private const val SCALE = 0.74f
 
+    /** Emoji are drawn at this alpha of the text's ink. */
+    private const val ALPHA = 0.62f
+
     /** Splits [text] into runs of (isEmoji, run). */
     private fun runs(text: String): List<Pair<Boolean, String>> {
         val out = ArrayList<Pair<Boolean, String>>()
@@ -40,24 +43,25 @@ object EmojiText {
     }
 
     /**
-     * @param dimTo if set, emoji are drawn in this color's alpha (color glyphs keep their
-     *              colors but become translucent on the dark wall, so they look dimmer).
+     * [text] with its emoji set smaller and glued to their neighbors. With an [ink], the emoji are
+     * drawn at [ALPHA] of it: color glyphs keep their colors but turn translucent, so they look
+     * dimmer.
      */
-    fun annotate(text: String, dimTo: Color? = null): AnnotatedString {
+    fun annotate(text: String, ink: Color? = null): AnnotatedString {
         if (!Emoji.containsEmoji(text)) return AnnotatedString(text)
         val parts = runs(text)
         return buildAnnotatedString {
             parts.forEachIndexed { index, (emoji, run) ->
                 var r = run
                 if (!emoji) {
-                    // glue emoji to the words around them (a lone ✨ on its own line looks lost)
+                    // Glue emoji to the neighboring words, so none stands alone on a line.
                     if (index > 0 && parts[index - 1].first && r.startsWith(' ')) r = NBSP + r.drop(1)
                     if (index < parts.lastIndex && parts[index + 1].first && r.endsWith(' ')) r = r.dropLast(1) + NBSP
                     append(r)
                 } else {
                     val start = length
                     append(r)
-                    addStyle(SpanStyle(fontSize = SCALE.em, color = dimTo ?: Color.Unspecified), start, length)
+                    addStyle(SpanStyle(fontSize = SCALE.em, color = ink?.copy(alpha = ALPHA) ?: Color.Unspecified), start, length)
                 }
             }
         }

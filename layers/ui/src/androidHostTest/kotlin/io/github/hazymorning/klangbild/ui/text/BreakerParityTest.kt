@@ -114,7 +114,7 @@ class BreakerParityTest {
 
     /** The text as the stage sets a title: at every step, glued between dashes too, in its column and in Cover Flow's. */
     private fun titleCases(text: String, density: Float): List<Case> {
-        val title = glueShortWords(glueParentheses(EmojiText.annotate(text, dimTo = Color.White.copy(alpha = 0.62f))))
+        val title = glueShortWords(glueParentheses(EmojiText.annotate(text, Color.White)))
         val cjk = isMostlyCjk(text)
         val versions = listOfNotNull(title, glueBetweenDashes(title))
         return titleLadder.flatMap { step ->

@@ -279,7 +279,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
 
     val t = model.text
     val cjk = isMostlyCjk(t.title)
-    val title = EmojiText.annotate(t.title, dimTo = styles.ink.copy(alpha = 0.62f))
+    val title = EmojiText.annotate(t.title, styles.ink)
     val balancer = lineBalancer(measurer)
     val choice = pickTitleSize(title, { step -> styles.title(step, cjk) }, balancer, colW, { Float.MAX_VALUE }, d, queueTitleLadder)
         ?: queueTitleLadder.last().let { step ->
