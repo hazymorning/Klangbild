@@ -79,7 +79,8 @@ object SetupArt {
     fun scene(info: SetupInfo?, screen: ScreenSpec, appearance: Appearance = Appearance.DARK): ArtworkScene {
         // The code hangs where the artwork would.
         val layout = StageGrid(screen)
-        val px = (layout.art * screen.density).toInt()
+        // Rounded as the scene sizes its cover, so the card is never resampled.
+        val px = (layout.art * screen.density).roundToInt()
         val card = card(info?.qr, px, appearance)
         return SceneBuilder.build("setup|${info?.url}|${info?.code}", card, null, null, screen, appearance)
     }
@@ -151,7 +152,8 @@ fun SetupScreen(
     val shift = ((layout.columnWidth - widest) / 2f).coerceAtLeast(0f)
     Box(modifier.fillMaxSize()) {
         BaseWall(p.wall.asColor())
-        Box(Modifier.fillMaxSize().graphicsLayer { translationX = shift.dp.toPx() }) {
+        // By whole pixels, so the card's modules stay sharp.
+        Box(Modifier.fillMaxSize().graphicsLayer { translationX = shift.dp.roundToPx().toFloat() }) {
             WallLayer(scene)
             CoverLayer(scene)
             // The block hangs from the card's top edge: the name's cap height on it.
