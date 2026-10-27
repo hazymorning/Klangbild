@@ -29,6 +29,24 @@ internal class Seeking(private val host: ControllerHost) {
     /** Where a hold began: the item's key and its place then. */
     private var holdFrom: Pair<String, Long>? = null
 
+    /** Left and right jump within what plays (a book, an episode) instead of changing it, where it [canSeek]. */
+    val spokenKeys: Boolean
+        get() {
+            val s = host.settings
+            return s.remoteControl && s.spokenSkip && (host.ui.screen as? Screen.Stage)?.track?.kind?.spoken == true && canSeek
+        }
+
+    /**
+     * Left and right change a song once let go, and held, seek through it: with a length to seek
+     * in, on a player that can.
+     */
+    val holdKeys: Boolean
+        get() = host.settings.remoteControl && !spokenKeys && canSeek
+
+    /** The track on stage has a known duration, and the player can seek. */
+    private val canSeek: Boolean
+        get() = (host.ui.screen as? Screen.Stage)?.track?.durationMs != null && host.ui.source.player?.abilities?.seek == true
+
     /**
      * Jumps back ([direction] -1, [BACK_MS]) or ahead (+1, [AHEAD_MS]); presses in quick
      * succession add up to one jump.

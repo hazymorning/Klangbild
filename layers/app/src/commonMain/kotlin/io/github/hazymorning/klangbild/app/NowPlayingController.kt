@@ -173,7 +173,7 @@ class NowPlayingController(
             }
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
-        override fun openMenu(): Unit = this@NowPlayingController.openMenu()
+        override fun openMenu(): Unit = menu.open()
         override fun applySettings(updated: Settings) {
             save(updated)
         }
@@ -181,9 +181,9 @@ class NowPlayingController(
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
     }
     private val sleep = SleepControl(host)
-    private val menu = MenuControl(host, sleep)
-    private val quick = QuickControl(host)
-    private val seeking = Seeking(host)
+    internal val menu: MenuControl = MenuControl(host, sleep)
+    internal val quick: QuickControl = QuickControl(host)
+    internal val seeking: Seeking = Seeking(host)
 
     /** The queue's way just chosen, until the screen shows it. */
     private val queueSwitch = QueueSwitch()
@@ -349,6 +349,9 @@ class NowPlayingController(
         (source as? HaSource)?.networkAvailable()
     }
 
+    /** Up and down change the speaker's volume. */
+    val volumeKeys: Boolean get() = settings.value.volumeKeys
+
     fun send(command: RemoteCommand) {
         val volume = command == RemoteCommand.VOLUME_UP || command == RemoteCommand.VOLUME_DOWN
         val allowed = if (volume) settings.value.volumeKeys else settings.value.remoteControl
@@ -362,38 +365,6 @@ class NowPlayingController(
         }
         scope.launch { source?.send(command) }
     }
-
-    // --- spoken word: jumps and chapters ---------------------------------------------------
-
-    /** Left and right jump within what plays (a book, an episode) instead of changing it, where it [canSeek]. */
-    val spokenKeys: Boolean
-        get() {
-            val s = settings.value
-            return s.remoteControl && s.spokenSkip && (_ui.value.screen as? Screen.Stage)?.track?.kind?.spoken == true && canSeek
-        }
-
-    /** The track on stage has a known duration, and the player can seek. */
-    private val canSeek: Boolean
-        get() = (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && _ui.value.source.player?.abilities?.seek == true
-
-    /** Jumps back ([direction] -1) or ahead (+1) within what plays. */
-    fun skip(direction: Int) = seeking.skip(direction)
-
-    /** Held left or right: by chapters, else to the item before or after. */
-    fun jump(direction: Int) = seeking.jump(direction)
-
-    /**
-     * Left and right change a song once let go, and held, seek through it: with a length to seek
-     * in, on a player that can.
-     */
-    val holdKeys: Boolean
-        get() = settings.value.remoteControl && !spokenKeys && canSeek
-
-    /** Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1), the farther the longer. */
-    fun hold(direction: Int, heldMs: Long) = seeking.hold(direction, heldMs)
-
-    /** The key held is let go: the place it reached is sent. */
-    fun letGo() = seeking.letGo()
 
     // --- settings ------------------------------------------------------------------------
 
@@ -451,48 +422,6 @@ class NowPlayingController(
         }
         written?.join()
     }
-
-    // --- settings menu -------------------------------------------------------------------
-
-    val menuOpen: Boolean get() = menu.isOpen
-
-    /** Up and down change the speaker's volume. */
-    val volumeKeys: Boolean get() = settings.value.volumeKeys
-
-    fun openMenu(): Unit = menu.open()
-
-    fun closeMenu() = menu.close()
-
-    /** Back in the menu: up a level, or out of it from the groups. Whether it is still open. */
-    fun menuBack(): Boolean = menu.back()
-
-    /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
-    fun menuMove(delta: Int, held: Boolean = false) = menu.move(delta, held)
-
-    /** The key held to run through the menu is let go. */
-    fun menuRelease() = menu.release()
-
-    /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]); [repeat]: the key is held. */
-    fun menuChange(direction: Int, wrap: Boolean, repeat: Boolean = false) = menu.change(direction, wrap, repeat)
-
-    // --- quick settings ------------------------------------------------------------------
-
-    val quickOpen: Boolean get() = quick.isOpen
-
-    /** Opens the quick settings (down on the remote), on how the queue shows. */
-    fun openQuick() = quick.open(menu.isOpen)
-
-    /** Closes the quick settings (up, back, after a while alone); a queue's choice still waiting is taken now. */
-    fun closeQuick() = quick.close()
-
-    /** A key in the quick settings that changes nothing: they stay open a while longer. */
-    fun touchQuick() = quick.touch()
-
-    /** Left (-1) or right (+1) along the quick settings; it stops at their ends. */
-    fun quickMove(delta: Int) = quick.move(delta)
-
-    /** OK on the entry under the cursor: its next value, or what it says. */
-    fun quickChange() = quick.change()
 
     private fun onSettings(s: Settings): Unit = synchronized(lock) {
         val flow = s.queue == QueueDisplay.FLOW

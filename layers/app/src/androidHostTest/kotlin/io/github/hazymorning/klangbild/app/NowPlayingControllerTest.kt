@@ -64,7 +64,7 @@ class NowPlayingControllerTest {
         val controller = controller(slow)
         controller.attach(screen)
         // Opening the quick settings marks them as seen, which changes the settings.
-        controller.openQuick()
+        controller.quick.open()
         opened.complete(Unit)
         withTimeout(5_000) { controller.ui.first { it.queue == QueueDisplay.LIST } }
         assertThat(stored.data.value).isEqualTo(kept)
