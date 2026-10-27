@@ -44,7 +44,8 @@ class PlayerParserTest {
         assertThat(t.title).isEqualTo("Bohemian Rhapsody (Remastered 2011)")
         assertThat(t.artists).containsExactly("Queen", "David Bowie")
         assertThat(t.durationMs).isEqualTo(355_000)
-        assertThat(t.artworkUrl).isEqualTo("http://192.168.1.6:8095/imageproxy/ab?size=1024&fmt=jpg")
+        // As given: the loader tries a larger size first.
+        assertThat(t.artworkUrl).isEqualTo("http://192.168.1.6:8095/imageproxy/ab?size=512&fmt=jpg")
         assertThat(t.artworkFallbackUrl).isEqualTo("http://192.168.1.5:8123/api/media_player_proxy/media_player.wz?token=t&cache=c")
         assertThat(p.positionMs).isEqualTo(73_000)
         assertThat(p.positionAtEpochMs).isEqualTo(1791483667512L)
@@ -126,7 +127,7 @@ class PlayerParserTest {
         val q = PlayerParser.queue(response, "media_player.wz", base)!!
         assertThat(q.current!!.title).isEqualTo("Bohemian Rhapsody (Remastered 2011)")
         assertThat(q.current!!.artists).containsExactlyInAnyOrder("Queen")
-        assertThat(q.current!!.artworkUrl).isEqualTo("https://i.scdn.co/image/ab67616d0000b273cafe")
+        assertThat(q.current!!.artworkUrl).isEqualTo("https://i.scdn.co/image/ab67616d00001e02cafe")
         assertThat(q.next!!.title).isEqualTo("Mozart – Klaviersonate Nr. 11")
         assertThat(q.next!!.source).isEqualTo("SWR2")
         assertThat(q.next!!.artworkUrl).isEqualTo("http://192.168.1.5:8123/api/x.png")

@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.formEncode
-import io.github.hazymorning.klangbild.data.ha.ArtworkUrls
 import io.github.hazymorning.klangbild.domain.Chapter
 import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.MediaKind
@@ -166,8 +165,8 @@ object MaQueue {
             album = if (isRadio) playing?.string("album")?.takeIf { it.isNotBlank() && !it.equals(name, ignoreCase = true) } else album?.string("name")?.takeIf { it.isNotBlank() },
             year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
             durationMs = durationMs,
-            artworkUrl = (songPicture ?: picture?.first)?.let { ArtworkUrls.upgrade(it) },
-            artworkFallbackUrl = if (songPicture != null) picture?.first ?: songPicture else picture?.second,
+            artworkUrl = songPicture ?: picture?.first,
+            artworkFallbackUrl = if (songPicture != null) picture?.first else picture?.second,
             source = if (isRadio) name else null,
             kind = kind,
             chapters = if (kind.spoken) chapters(media, durationMs) else emptyList(),
@@ -219,7 +218,7 @@ object MaQueue {
         }
     }
 
-    /** Size asked of the proxy; [ArtworkUrls.upgrade] asks for more first. */
+    /** Size asked of the proxy; the artwork loader tries a larger one first. */
     private const val PROXY_SIZE = 512
 
     /** Music Assistant plays spoken word from half to three times as fast. */

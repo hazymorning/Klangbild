@@ -62,8 +62,8 @@ object PlayerParser {
                 artists = artists,
                 album = album,
                 durationMs = entity.number("media_duration")?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
-                artworkUrl = picture?.let { ArtworkUrls.upgrade(it) },
-                artworkFallbackUrl = localPicture ?: picture,
+                artworkUrl = picture,
+                artworkFallbackUrl = localPicture,
                 source = source,
                 kind = kind,
             )
@@ -196,8 +196,7 @@ object PlayerParser {
             album = album?.string("name")?.takeIf { it.isNotBlank() },
             year = year,
             durationMs = (item["duration"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
-            artworkUrl = resolved?.let { ArtworkUrls.upgrade(it) },
-            artworkFallbackUrl = resolved,
+            artworkUrl = resolved,
             source = if (isRadio) name else null,
             kind = kind,
         )
