@@ -26,67 +26,28 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import okhttp3.OkHttpClient
-import org.junit.Assume.assumeTrue
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.random.asKotlinRandom
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
- * The speaker's connection against the reference implementation Music Assistant runs: aiosendspin
- * 10.2.0 as ci/sendspin_server.py starts it, on this machine. It runs only when given a Python
- * with that package (`-Pklangbild.sendspin=/path/to/venv/bin/python`), as CI does.
+ * The speaker's connection against the reference implementation Music Assistant runs:
+ * aiosendspin 10.2.0 ([SendspinServer]). It runs only when given a Python with that package
+ * (`-Pklangbild.sendspin=/path/to/venv/bin/python`), as CI does.
  */
 class SendspinEndToEndTest {
-    private val python: String? = System.getProperty("klangbild.sendspin")
-
-    /** The script that starts the reference server, ci/sendspin_server.py, as the build names it. */
-    private val server: String? = System.getProperty("klangbild.sendspinServer")
-
     @BeforeTest
-    fun needsTheServer() = assumeTrue("needs -Pklangbild.sendspin=<python with aiosendspin 10.2.0>", python != null)
+    fun needsTheServer() = SendspinServer.assumeAvailable()
 
-    /** The server, its events line by line as they come. */
-    private inner class Server(vararg args: String) : AutoCloseable {
-        private val process = ProcessBuilder(listOf(python!!, "-I", server!!) + args)
-            .redirectError(ProcessBuilder.Redirect.INHERIT)
-            .start()
-        private val lines = LinkedBlockingQueue<String>()
-        val all = CopyOnWriteArrayList<String>()
-
-        init {
-            Thread {
-                process.inputStream.bufferedReader().forEachLine { lines += it }
-            }.apply { isDaemon = true }.start()
-        }
-
-        /** The next event named [name], waiting at most [seconds]; earlier ones are kept in [all]. */
-        fun await(name: String, seconds: Long = 30): String {
-            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds)
-            while (true) {
-                val left = deadline - System.nanoTime()
-                val line = lines.poll(left.coerceAtLeast(0), TimeUnit.NANOSECONDS)
-                    ?: throw AssertionError("no $name within $seconds s; events: $all")
-                all += line
-                if (line.startsWith("ERROR")) throw AssertionError("server: $line")
-                if (line.split(' ').first() == name) return line
-            }
-        }
-
-        override fun close() {
-            process.destroy()
-            process.waitFor(5, TimeUnit.SECONDS)
-        }
-    }
-
-    private fun field(line: String, key: String): String = line.split(' ').first { it.startsWith("$key=") }.substringAfter('=')
+    @AfterTest
+    fun stopConnections() = scope.cancel()
 
     /** What the speaker was told, from the connection's thread. */
-    private inner class Speaker : Session.Listener {
+    private class Recorder : Session.Listener {
         var volume = 100
         var muted = false
         var delay = 0
@@ -150,9 +111,8 @@ class SendspinEndToEndTest {
     private val hello = Hello("Klangbild test", "Test box", "Klangbild", "test", bufferCapacity = 2_000_000, beats = false, beatBufferCapacity = 0)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private fun connect(server: Server, speaker: Speaker): SpeakerConnection {
-        val port = field(server.await("READY"), "port")
-        val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
+    private fun connect(server: SendspinServer, speaker: Recorder): SpeakerConnection {
+        val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, server.url(), { transport, ended ->
             speaker.end = ended
             Session(transport, identity, pairingPsk, { speaker.records }, hello, speaker, { System.nanoTime() / 1_000 }, random)
         })
@@ -162,8 +122,8 @@ class SendspinEndToEndTest {
 
     @Test
     fun `it plays a stream from the reference server, sample by sample, in time`() {
-        val speaker = Speaker()
-        Server("--play-seconds", "3", "--volume-command", "30", "--mute-command", "--output-delay-command", "20", "--clear-after", "2", "--end", "--linger", "2").use { server ->
+        val speaker = Recorder()
+        SendspinServer("--play-seconds", "3", "--volume-command", "30", "--mute-command", "--output-delay-command", "20", "--clear-after", "2", "--end", "--linger", "2").use { server ->
             val connection = connect(server, speaker)
             try {
                 server.await("PLAYER_READY")
@@ -174,8 +134,8 @@ class SendspinEndToEndTest {
                 val sent = server.await("SENT_CHUNKS")
                 // The last chunks arrive after the server has counted them.
                 val deadline = System.nanoTime() + 5_000_000_000L
-                while (speaker.chunks.size < field(sent, "n").toInt() && System.nanoTime() < deadline) Thread.sleep(20)
-                assertThat(speaker.chunks).hasSize(field(sent, "n").toInt())
+                while (speaker.chunks.size < SendspinServer.field(sent, "n").toInt() && System.nanoTime() < deadline) Thread.sleep(20)
+                assertThat(speaker.chunks).hasSize(SendspinServer.field(sent, "n").toInt())
                 assertThat(speaker.chunks.filterNot { it.steady }, name = "chunks with a sample out of place").isEmpty()
 
                 // Before and after the clear, each chunk follows the one before: in its samples and its time.
@@ -200,14 +160,14 @@ class SendspinEndToEndTest {
             } finally {
                 connection.stop("shutdown")
             }
-            assertThat(field(server.await("CLIENT_DISCONNECTED"), "goodbye_reason")).isEqualTo("shutdown")
+            assertThat(SendspinServer.field(server.await("CLIENT_DISCONNECTED"), "goodbye_reason")).isEqualTo("shutdown")
             assertThat(server.await("DONE")).contains("exit_code=0")
         }
     }
 
     @Test
     fun `its playback leaves the device when the synced clock says`() {
-        val speaker = Speaker()
+        val speaker = Recorder()
         val sink = RealTimeSink()
         val playback = Playback(sink, ChunkQueue(48_000 * 12)) { System.nanoTime() / 1_000 }
         playback.outputDelayUs = 50_000
@@ -230,9 +190,8 @@ class SendspinEndToEndTest {
         val writer = Thread {
             while (!Thread.currentThread().isInterrupted) playback.step()
         }.apply { start() }
-        Server("--play-seconds", "4", "--clear-after", "2", "--end", "--linger", "2").use { server ->
-            val port = field(server.await("READY"), "port")
-            val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, "ws://127.0.0.1:$port/sendspin", { transport, ended ->
+        SendspinServer("--play-seconds", "4", "--clear-after", "2", "--end", "--linger", "2").use { server ->
+            val connection = SpeakerConnection(speakerClient(OkHttpClient()), scope, server.url(), { transport, ended ->
                 speaker.end = ended
                 Session(transport, identity, pairingPsk, { speaker.records }, hello, feeding, { System.nanoTime() / 1_000 }, random)
             })
@@ -262,11 +221,11 @@ class SendspinEndToEndTest {
 
     @Test
     fun `it pairs with its token and goes on with the long-term PSK`() {
-        val speaker = Speaker()
-        Server("--pair-token", PairingToken.of(identity.publicKey, pairingPsk), "--linger", "2").use { server ->
+        val speaker = Recorder()
+        SendspinServer("--pair-token", PairingToken.of(identity.publicKey, pairingPsk), "--linger", "2").use { server ->
             val connection = connect(server, speaker)
             try {
-                val serverId = field(server.all.first { it.startsWith("READY") }, "server_id")
+                val serverId = SendspinServer.field(server.all.first { it.startsWith("READY") }, "server_id")
                 server.await("PAIRED")
                 server.await("PLAYER_READY")
                 assertThat(speaker.records.map { it.serverId }).containsExactlyInAnyOrder(serverId)
@@ -277,7 +236,6 @@ class SendspinEndToEndTest {
             }
             assertThat(server.await("DONE")).contains("exit_code=0")
         }
-        scope.cancel()
     }
 
     /** The [expected] items come in this order, with any others between them. */
