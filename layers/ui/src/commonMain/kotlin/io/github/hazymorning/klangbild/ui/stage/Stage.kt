@@ -48,7 +48,6 @@ import io.github.hazymorning.klangbild.ui.stage.Rhythm.frame
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.together
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
-import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -396,8 +395,7 @@ fun StatusLayer(
     val status = model.statusLine
     if (status == null || status.isEmpty) return
     val layout = model.scene.layout
-    val faces = faces()
-    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
+    val styles = rememberStageStyles(model.scene.palette)
     val figures = rememberFigures(styles.time, Face.TITLE)
     val clockText = status.clock
     val measurer = rememberTextMeasurer()

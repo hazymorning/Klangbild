@@ -299,8 +299,7 @@ internal fun LyricsText(
     shift: () -> Float,
 ) {
     val layout = model.scene.layout
-    val faces = faces()
-    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
+    val styles = rememberStageStyles(model.scene.palette)
     val room = remember(layout, styles) { LyricsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
     val views = LocalLyricsViews.current

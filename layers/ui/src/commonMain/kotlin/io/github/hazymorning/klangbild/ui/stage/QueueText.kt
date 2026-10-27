@@ -61,7 +61,6 @@ import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Figures
 import io.github.hazymorning.klangbild.ui.theme.Fonts
-import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
 import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlin.math.floor
@@ -178,8 +177,7 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
     if (model.lyrics != null) return null
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val density = LocalDensity.current
-    val faces = faces()
-    val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
+    val styles = rememberStageStyles(model.scene.palette)
     val figures = rememberFigures(styles.time, Face.TITLE)
     // The room the bar (or a line in its place) takes, gliding as it comes and goes.
     val target = slotRoom(slotOf(model), styles, density)

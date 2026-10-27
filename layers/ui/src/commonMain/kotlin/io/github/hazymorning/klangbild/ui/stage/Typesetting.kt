@@ -99,6 +99,13 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
     }
 }
 
+/** The stage's styles for [palette], in the composition's faces. */
+@Composable
+internal fun rememberStageStyles(palette: ScenePalette): StageStyles {
+    val faces = faces()
+    return remember(palette, faces) { StageStyles(palette, faces) }
+}
+
 /** One size of the title: [size] sp, at most [lines] lines, [tracking] em. */
 class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: Float, val tracking: Float)
 
