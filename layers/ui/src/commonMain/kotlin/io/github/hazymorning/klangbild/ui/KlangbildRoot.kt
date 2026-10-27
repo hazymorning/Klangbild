@@ -91,7 +91,7 @@ class RootHooks(
  * few pixels for OLED care.
  */
 @Composable
-fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: Modifier = Modifier) {
+internal fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: Modifier = Modifier) {
     val wall = rememberWallClock(hooks.now)
     val entrance = remember { Animatable(0f) }
     LaunchedEffect(Unit) { entrance.animateTo(1f, tween(ENTRANCE_MS, easing = Motion.Dimmer)) }

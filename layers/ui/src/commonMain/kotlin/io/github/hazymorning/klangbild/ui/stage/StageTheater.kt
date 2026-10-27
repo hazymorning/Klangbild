@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 
 /** How two consecutive stages differ, which decides the choreography. */
-enum class Change {
+internal enum class Change {
     /** New track with a new picture: the new artwork settles over the old one. */
     FULL,
 
@@ -67,7 +67,7 @@ enum class Change {
  * @param intensity the light's strength from the settings (1 = as designed, 0 = off).
  */
 @Composable
-fun StageTheater(
+internal fun StageTheater(
     stage: StageData,
     status: PlayerStatus,
     modelFor: (StageData) -> StageModel,

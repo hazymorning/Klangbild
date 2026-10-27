@@ -55,7 +55,7 @@ import kotlin.math.roundToInt
  * else is in the text face (never above 21 sp): the artist a little heavier, so the two balance
  * each other, and everything else quiet. Times take the title face's figures.
  */
-class StageStyles(palette: ScenePalette, val faces: Faces) {
+internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     val ink = palette.ink.asColor()
     val muted = palette.inkMuted.asColor()
     val quiet = palette.inkQuiet.asColor()
@@ -127,7 +127,7 @@ internal fun rememberStageStyles(palette: ScenePalette): StageStyles {
 }
 
 /** One size of a title or of lyrics: [size] sp, at most [lines] lines (of one lyric line: rows), [tracking] em. */
-class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: Float, val tracking: Float)
+internal class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: Float, val tracking: Float)
 
 /**
  * Title sizes from large to small: two lines at display size, then three lines a little
@@ -135,7 +135,7 @@ class TitleStep(val size: Float, val lines: Int, val weight: Int, val leading: F
  * Large sizes close up a little (−1%); the line spacing leaves room for an umlaut under a
  * descender.
  */
-val titleLadder = listOf(
+internal val titleLadder = listOf(
     TitleStep(44f, 2, 400, 1.13f, -0.01f),
     TitleStep(40f, 2, 400, 1.13f, -0.01f),
     TitleStep(34f, 3, 420, 1.14f, -0.005f),
@@ -180,10 +180,10 @@ internal object Rhythm {
  * height to the last baseline): the artwork is the heaviest element and stays clearly the
  * tallest.
  */
-const val BLOCK_SHARE = 0.62f
+internal const val BLOCK_SHARE = 0.62f
 
 /** The measured decisions for the text block: title step and breaks, the artists fitted onto one line, and more. */
-class TextPlan(
+internal class TextPlan(
     /** The title as it is set on its balanced lines: in [titleStyle], within [titleConstraints]. */
     val title: AnnotatedString,
     val titleStyle: TextStyle,
@@ -211,7 +211,7 @@ class TextPlan(
 
 /** Measures the block once per model. */
 @Composable
-fun rememberTextPlan(model: StageModel): TextPlan {
+internal fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
     val footerLead = model.footerLead ?: texts()[Strings.stageNext]
@@ -318,7 +318,7 @@ private fun planText(
  * The lines of the text column, for transitions that treat them one by one: new lines rise one
  * after another, each [staggerMs] after the first.
  */
-enum class TextLine(val staggerMs: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), SLOT(200), FOOTER(260) }
+internal enum class TextLine(val staggerMs: Int) { WORK(0), TITLE(0), VERSION(50), ARTIST(80), ALBUM(140), SLOT(200), FOOTER(260) }
 
 /** A line of the column as a change moves it: its [alpha] and how far it still has to rise (dp, on whole pixels). */
 internal fun Modifier.lineMotion(which: TextLine, alpha: (TextLine) -> Float, rise: (TextLine) -> Float): Modifier = graphicsLayer {
@@ -452,7 +452,7 @@ private fun breaksInsideWord(text: String, ends: IntArray): Boolean {
 }
 
 /** True if at least half the letters of [text] are Chinese, Japanese or Korean. */
-fun isMostlyCjk(text: String): Boolean {
+internal fun isMostlyCjk(text: String): Boolean {
     var cjk = 0
     var letters = 0
     for (ch in text) {

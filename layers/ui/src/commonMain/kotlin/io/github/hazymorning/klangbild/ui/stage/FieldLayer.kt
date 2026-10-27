@@ -40,14 +40,14 @@ import kotlin.random.Random
 
 /** The color field's clock as the stage reads it: its time ([now], seconds) and whether it runs. */
 @Stable
-class FieldTime(val now: () -> Double, val moving: Boolean) {
+internal class FieldTime(val now: () -> Double, val moving: Boolean) {
     companion object {
         val Still = FieldTime({ 0.0 }, false)
     }
 }
 
 /** The field's clock for everything below (the stage provides it; stills and tests get [FieldTime.Still]). */
-val LocalFieldTime = staticCompositionLocalOf { FieldTime.Still }
+internal val LocalFieldTime = staticCompositionLocalOf { FieldTime.Still }
 
 /**
  * The cover's colors as the wall ([CoverField], [FieldMotion]), edge to edge and
@@ -62,7 +62,7 @@ val LocalFieldTime = staticCompositionLocalOf { FieldTime.Still }
  * [alpha] fades it during a change, [lightLevel] dims it (pause, a lost link).
  */
 @Composable
-fun FieldLayer(
+internal fun FieldLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },

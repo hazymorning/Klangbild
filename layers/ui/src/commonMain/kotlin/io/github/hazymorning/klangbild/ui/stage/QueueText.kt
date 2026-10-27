@@ -76,7 +76,7 @@ import kotlin.math.roundToInt
 
 /** One song of the list as the column shows it. */
 @Immutable
-data class QueueRowModel(
+internal data class QueueRowModel(
     /** Stays the same while the song moves up the queue, so a row can glide to its new place. */
     val id: String,
     val title: String,
@@ -90,7 +90,7 @@ data class QueueRowModel(
 
 /** The list beside the cover, its rows in order. */
 @Immutable
-data class QueueModel(val rows: List<QueueRowModel>) {
+internal data class QueueModel(val rows: List<QueueRowModel>) {
     companion object {
         /** The list as the column shows [list], in the words of [t]. */
         fun of(list: QueueList, t: Texts): QueueModel {

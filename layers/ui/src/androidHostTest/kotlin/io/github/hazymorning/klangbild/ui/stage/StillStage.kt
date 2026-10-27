@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
  * composes the same layers with its transitions and pause dimming.
  */
 @Composable
-fun Stage(model: StageModel, modifier: Modifier = Modifier) {
+internal fun Stage(model: StageModel, modifier: Modifier = Modifier) {
     val queue = rememberQueuePlan(model)
     Box(modifier.fillMaxSize()) {
         BaseWall(model.scene.palette.wall.asColor())

@@ -32,7 +32,7 @@ import kotlin.math.roundToInt
 
 /** A stretch of a change, as shares of its time (0..1). */
 @Immutable
-class Window(val start: Float, val end: Float) {
+internal class Window(val start: Float, val end: Float) {
     /** How far [t] has come through this stretch (0..1). */
     fun of(t: Float): Float = progress(t, start, end)
 
@@ -49,7 +49,7 @@ class Window(val start: Float, val end: Float) {
  * texture before, [was], gives way to [card].
  */
 @Immutable
-class CardMotion(
+internal class CardMotion(
     val card: FlowCard,
     val from: Float,
     val to: Float,
@@ -70,7 +70,7 @@ class CardMotion(
  * before the screen's edges, and the sign in the middle card's place.
  */
 @Immutable
-class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, val sign: FlowCard?)
+internal class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, val sign: FlowCard?)
 
 /**
  * The cards of the cover flow, drawn in one perspective. Every frame, each card's position
@@ -97,7 +97,7 @@ class FlowLook(val appearance: Appearance, val wall: Color, val edges: Boolean, 
  *   (0..1): each card goes from its texture before ([CardMotion.was]) to its new one.
  */
 @Composable
-fun FlowStrip(
+internal fun FlowStrip(
     cards: List<CardMotion>,
     geometry: FlowGeometry,
     appearance: Appearance,

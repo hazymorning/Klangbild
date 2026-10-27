@@ -34,7 +34,7 @@ import kotlin.math.roundToInt
  * A party's code as the stage shows it: its cards, one for each appearance on stage, and how far
  * it has come up ([shown], 0 to 1).
  */
-class PartyCode<T : Any>(private val cards: Map<Appearance, T>, val shown: () -> Float) {
+internal class PartyCode<T : Any>(private val cards: Map<Appearance, T>, val shown: () -> Float) {
     /** The card for [wall], or the other appearance's until that one is made. */
     fun on(wall: Appearance): T? = cards[wall] ?: cards.values.firstOrNull()
 }
@@ -46,7 +46,7 @@ class PartyCode<T : Any>(private val cards: Map<Appearance, T>, val shown: () ->
  * and goes in a quiet crossfade. Until the card of a new URL is made, the last one stays.
  */
 @Composable
-fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, key: Any, make: (String, Appearance) -> T?): PartyCode<T> {
+internal fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, key: Any, make: (String, Appearance) -> T?): PartyCode<T> {
     if (LocalStill.current) {
         // A still has the code at once.
         val cards = remember(url, walls, key) {
@@ -82,7 +82,7 @@ fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, key: Any, 
  * The QR code of [url] as a card [sizePx] square, like the setup's: dark modules on whole pixels
  * on ivory (whiter on the light background). Null for a URL no QR code can hold.
  */
-fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
+internal fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
     val matrix = try {
         QrCode.matrix(url)
     } catch (_: IllegalArgumentException) {
@@ -98,7 +98,7 @@ fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
  * lights' colors stay the track's.
  */
 @Composable
-fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, coverLevel: () -> Float) {
+internal fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, coverLevel: () -> Float) {
     if (card == null) return
     val brush = remember(card) { ShaderBrush(ImageShader(card, TileMode.Clamp, TileMode.Clamp)) }
     val filters = remember { CoverFilters() }

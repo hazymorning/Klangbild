@@ -13,7 +13,7 @@ import io.github.hazymorning.klangbild.domain.Emoji
  * title are set smaller and dimmed, and glued to their neighbors with no-break spaces, so
  * an emoji never ends up alone on its own line.
  */
-object EmojiText {
+internal object EmojiText {
     /** Emoji are set this much smaller than the text around them. */
     private const val SCALE = 0.74f
 

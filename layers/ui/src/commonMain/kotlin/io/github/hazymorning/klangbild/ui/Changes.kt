@@ -23,7 +23,7 @@ import kotlin.math.roundToInt
  * next one follows at once. Anything else that comes meanwhile (a card that joins the strip, a
  * better cover) waits for the change to land.
  */
-suspend fun playChange(
+internal suspend fun playChange(
     t: Animatable<Float, AnimationVector1D>,
     totalMs: Int,
     newer: suspend () -> Unit,
@@ -50,7 +50,7 @@ suspend fun playChange(
  * How the lines of a change's new text rise in a change of [totalMs]: each in
  * [Motion.TEXT_LINE_MS], from [startMs] plus its stagger.
  */
-class TextRise(private val startMs: Int, val totalMs: Int) {
+internal class TextRise(private val startMs: Int, val totalMs: Int) {
     /** When the first line sets off (0 to 1 of the change). */
     val begins: Float get() = startMs.toFloat() / totalMs
 
@@ -72,7 +72,7 @@ class TextRise(private val startMs: Int, val totalMs: Int) {
  * stood ([leaving]), so nothing jumps.
  */
 @Stable
-class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
+internal class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
     /** The text that leaves, its lines where [rise] had them at [at] when the change began. */
     private class LeavingText(val rise: TextRise?, val at: Float) {
         fun level(line: TextLine): Float = rise?.level(at, line) ?: 1f

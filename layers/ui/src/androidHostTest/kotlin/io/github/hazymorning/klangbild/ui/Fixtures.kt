@@ -33,10 +33,10 @@ import io.github.hazymorning.klangbild.ui.theme.faces
  */
 object Fixtures : AppFixtures() {
     /** The cards of [scenes] at rest, the one at [current] in the middle. */
-    fun restingCards(scenes: List<ArtworkScene>, current: Int) =
+    internal fun restingCards(scenes: List<ArtworkScene>, current: Int) =
         scenes.mapIndexed { i, sc -> CardMotion(sc.card!!, (i - current).toFloat(), (i - current).toFloat()) }
 
-    fun model(
+    internal fun model(
         track: TrackInfo,
         next: TrackInfo? = null,
         status: PlayerStatus = PlayerStatus.PLAYING,
@@ -73,7 +73,7 @@ object Fixtures : AppFixtures() {
      * A book or an episode at [position] (ms in its own time): the chapter in the album's place,
      * the bar over the chapter, the next chapter (or [next]) after it; [pace] in the status line.
      */
-    fun spokenModel(
+    internal fun spokenModel(
         track: TrackInfo,
         position: Long,
         pace: String?,
@@ -106,7 +106,7 @@ object Fixtures : AppFixtures() {
      * The stage with the song's [lyrics] at [position] (ms), as the root builds it: the song itself
      * where "Up next" stands, the progress bar only for a moment after a key ([peek]).
      */
-    fun lyricsModel(
+    internal fun lyricsModel(
         track: TrackInfo,
         lyrics: io.github.hazymorning.klangbild.domain.Lyrics,
         position: () -> Long? = { 84_000L },
@@ -140,7 +140,7 @@ object Fixtures : AppFixtures() {
     }
 
     /** The stage with the queue as a list ([list]), as the root builds it: the song at the top, the rows under it. */
-    fun queueModel(
+    internal fun queueModel(
         track: TrackInfo,
         list: QueueList,
         status: PlayerStatus = PlayerStatus.PLAYING,

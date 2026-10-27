@@ -55,7 +55,7 @@ import kotlin.math.roundToInt
  * screen's drift against burn-in never shows an edge.
  */
 @Composable
-fun BaseWall(color: Color, modifier: Modifier = Modifier) {
+internal fun BaseWall(color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier.fillMaxSize()) {
         val m = BEYOND_EDGES_DP * density
         drawRect(color, Offset(-m, -m), Size(size.width + 2 * m, size.height + 2 * m))
@@ -67,7 +67,7 @@ fun BaseWall(color: Color, modifier: Modifier = Modifier) {
  * color coming up with its light during a change, over the old background.
  */
 @Composable
-fun WallMargin(color: Color, alpha: () -> Float) {
+internal fun WallMargin(color: Color, alpha: () -> Float) {
     Canvas(Modifier.fillMaxSize()) {
         val a = alpha().coerceIn(0f, 1f)
         if (a <= 0.002f) return@Canvas
@@ -82,7 +82,7 @@ fun WallMargin(color: Color, alpha: () -> Float) {
 }
 
 /** How far every full-screen layer reaches beyond the screen (dp): more than the drift (±6 dp) ever moves it. */
-const val BEYOND_EDGES_DP = 24f
+internal const val BEYOND_EDGES_DP = 24f
 
 /**
  * The background around the cover, one static bitmap scaled softly to the screen. On the dark
@@ -94,7 +94,7 @@ const val BEYOND_EDGES_DP = 24f
  * column, wherever it stands ([column]: its shift from the grid, dp).
  */
 @Composable
-fun WallLayer(
+internal fun WallLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
@@ -162,7 +162,7 @@ private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
  * through transparency. Nothing is drawn around it: no frame, no line, no shadow.
  */
 @Composable
-fun CoverLayer(
+internal fun CoverLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
@@ -194,7 +194,7 @@ fun CoverLayer(
  * limiter dim everything. On the light background a white cover stays a little whiter than the
  * background around it.
  */
-fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
+internal fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(level, appearance)
     return ColorFilter.colorMatrix(
         ColorMatrix(
@@ -223,7 +223,7 @@ internal class CoverFilters {
 }
 
 /** The per-channel scale of [coverFilter] (red, green, blue). */
-fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float> {
+internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float> {
     val k = level * if (appearance == Appearance.LIGHT) 1.06f else 1f
     val w = Lamp.WARMTH
     return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
@@ -398,7 +398,7 @@ internal fun FooterLine(text: String?, lead: String, styles: StageStyles, modifi
  * the clock's figures in fixed cells. [shift] moves it with the column (dp).
  */
 @Composable
-fun StatusLayer(
+internal fun StatusLayer(
     model: StageModel,
     modifier: Modifier = Modifier,
     shift: () -> Float = { 0f },

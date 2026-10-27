@@ -24,7 +24,7 @@ import kotlin.math.sin
  * True while rendering a still (screenshots): nothing runs a loop of its own, so the
  * composition can come to rest.
  */
-val LocalStill = staticCompositionLocalOf { false }
+internal val LocalStill = staticCompositionLocalOf { false }
 
 /**
  * One tick for what moves by itself on the stage (the progress bar, the cover field and the
@@ -74,7 +74,7 @@ internal fun progress(t: Float, start: Float, end: Float): Float =
  * pace, without a bounce, instead of starting over from a standstill.
  */
 @Composable
-fun animateGlide(target: Float, durationMs: Int): State<Float> {
+internal fun animateGlide(target: Float, durationMs: Int): State<Float> {
     val glide = remember { Animatable(target) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(target) {
@@ -91,7 +91,7 @@ fun animateGlide(target: Float, durationMs: Int): State<Float> {
  * bounces, nothing slides, nothing jumps. A track change takes about a second: long enough
  * to be seen, short enough that nobody waits for it.
  */
-object Motion {
+internal object Motion {
     /** Soft in-out, like a dimmer turned by hand. */
     val Dimmer = CubicBezierEasing(0.45f, 0f, 0.25f, 1f)
 

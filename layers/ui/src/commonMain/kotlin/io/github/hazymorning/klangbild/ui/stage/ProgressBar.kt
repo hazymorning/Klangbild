@@ -33,7 +33,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** The progress bar's [groove], the [fill] of its played part, and its times' [label] color. */
-class ProgressColors(val groove: Color, val fill: Color, val label: Color)
+internal class ProgressColors(val groove: Color, val fill: Color, val label: Color)
 
 /**
  * A classic progress bar: a thin bar with round ends, the played part filled (no knob, since
@@ -55,7 +55,7 @@ class ProgressColors(val groove: Color, val fill: Color, val label: Color)
  * ([trackKey]).
  */
 @Composable
-fun ProgressBar(
+internal fun ProgressBar(
     durationMs: Long,
     positionMs: () -> Long?,
     playing: Boolean,
@@ -158,8 +158,8 @@ internal fun Density.barBlock(labelStyle: TextStyle): Int =
     BAR_THICKNESS.dp.roundToPx() + BAR_LABEL_GAP.dp.roundToPx() + (labelStyle.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
 
 /** The bar's thickness, and the room from it down to its labels' cap height (dp). */
-const val BAR_THICKNESS = 4f
-const val BAR_LABEL_GAP = 10f
+internal const val BAR_THICKNESS = 4f
+internal const val BAR_LABEL_GAP = 10f
 
 /** Paused, the played part keeps this much of its ink, so the bar shows the pause too. */
 private const val PAUSED_FILL = 0.6f

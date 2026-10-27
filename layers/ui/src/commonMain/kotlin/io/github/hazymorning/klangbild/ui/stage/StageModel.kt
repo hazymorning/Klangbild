@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  * ticking them never recomposes the stage.
  */
 @Immutable
-class StageModel(
+internal class StageModel(
     val scene: ArtworkScene,
     val text: TrackText,
     val status: PlayerStatus,
@@ -68,12 +68,12 @@ class StageModel(
  * beside it are left out, from the last.
  */
 @Immutable
-data class StatusLine(val lead: String?, val clock: String?, val values: List<String> = emptyList()) {
+internal data class StatusLine(val lead: String?, val clock: String?, val values: List<String> = emptyList()) {
     val isEmpty get() = lead == null && clock == null && values.isEmpty()
 }
 
 /** The stage's words for states and what comes next. */
-object StageTexts {
+internal object StageTexts {
     /**
      * The status line's lead: a passing volume change wins, then mute and pause (after the
      * place: "Living room · Paused"), otherwise the place, how it plays ([pace]: "Pauses at
@@ -123,4 +123,4 @@ object StageTexts {
     }
 }
 
-fun Int.asColor() = Color(this)
+internal fun Int.asColor() = Color(this)

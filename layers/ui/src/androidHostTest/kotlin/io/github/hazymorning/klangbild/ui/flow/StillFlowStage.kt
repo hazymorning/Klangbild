@@ -19,7 +19,7 @@ import io.github.hazymorning.klangbild.ui.stage.asColor
  * there are. The app's stage ([FlowTheater]) composes the same layers with its transitions.
  */
 @Composable
-fun FlowStage(model: StageModel, cards: List<CardMotion>, modifier: Modifier = Modifier) {
+internal fun FlowStage(model: StageModel, cards: List<CardMotion>, modifier: Modifier = Modifier) {
     val scene = model.scene
     val geometry = remember(scene.layout) { FlowGeometry(scene.layout) }
     val balance = remember(cards, geometry) { geometry.balance(left = cards.count { it.to < 0f }, right = cards.count { it.to > 0f }) }
