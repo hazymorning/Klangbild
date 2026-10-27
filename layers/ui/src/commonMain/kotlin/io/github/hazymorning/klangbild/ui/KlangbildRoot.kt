@@ -34,7 +34,9 @@ import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
@@ -58,13 +60,13 @@ import io.github.hazymorning.klangbild.ui.theme.faces
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
 
-/** A wall clock that ticks every [periodMs] (the UI needs minutes, the drift whole pixels). */
+/** The time as [now] tells it, read every [CLOCK_TICK_MS]. */
 @Composable
-fun rememberWallClock(periodMs: Long = 5_000, now: () -> Long = { Clock.System.now().toEpochMilliseconds() }): State<Long> =
+private fun rememberWallClock(now: () -> Long): State<Long> =
     produceState(initialValue = now()) {
         while (true) {
             value = now()
-            delay(periodMs)
+            delay(CLOCK_TICK_MS)
         }
     }
 
@@ -88,9 +90,9 @@ class RootHooks(
  */
 @Composable
 fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: Modifier = Modifier) {
-    val wall = rememberWallClock(now = hooks.now)
+    val wall = rememberWallClock(hooks.now)
     val entrance = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(1_800, easing = Motion.Dimmer)) }
+    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(ENTRANCE_MS, easing = Motion.Dimmer)) }
 
     // The first seconds after a start stay dark instead of flashing "Connecting":
     // usually the music is there before anyone could read that line.
@@ -98,7 +100,7 @@ fun KlangbildRoot(ui: UiState, screen: ScreenSpec, hooks: RootHooks, modifier: M
         delay(QUIET_START_MS)
         value = false
     }
-    val content = contentKey(ui, quiet)
+    val content = contentOf(ui, quiet)
     CompositionLocalProvider(LocalTexts provides (ui.texts ?: texts()), LocalFaces provides faces(), LocalGlyphs provides hooks.glyphs) {
         Root(ui, screen, hooks, wall, entrance, content, modifier)
     }
@@ -132,8 +134,8 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
         AnimatedContent(
             targetState = content.key,
             transitionSpec = {
-                fadeIn(tween(1_300, delayMillis = 900, easing = Motion.Dimmer)) togetherWith
-                    fadeOut(tween(900, easing = Motion.Dimmer))
+                fadeIn(tween(SCREEN_IN_MS, delayMillis = SCREEN_OUT_MS, easing = Motion.Dimmer)) togetherWith
+                    fadeOut(tween(SCREEN_OUT_MS, easing = Motion.Dimmer))
             },
             label = "screen",
         ) { k ->
@@ -182,12 +184,12 @@ private sealed interface Content {
         override val key = "flow"
     }
 
-    data class RestContent(val reason: io.github.hazymorning.klangbild.domain.RestReason, val speaker: String?, val appearance: Appearance) : Content {
+    data class RestContent(val reason: RestReason, val speaker: String?, val appearance: Appearance) : Content {
         // A new wall fades through the dark like a new screen.
         override val key = "rest:$reason:$appearance"
     }
 
-    data class SetupContent(val reason: io.github.hazymorning.klangbild.domain.SetupReason, val appearance: Appearance, val info: SetupInfo?) : Content {
+    data class SetupContent(val reason: SetupReason, val appearance: Appearance, val info: SetupInfo?) : Content {
         // While the page fades out it keeps its code and address, though the server has stopped.
         override val key = "setup:$reason:$appearance"
     }
@@ -209,10 +211,22 @@ private const val HINT_MS = 12_000L
  */
 private const val DRIFT_DP = 6f
 
-/** A switch of screens is over after this long (900 ms out, then 1.3 s in after 900 ms), with room to spare. */
+/** The screen fades in from black at start over this long (ms). */
+private const val ENTRANCE_MS = 1_800
+
+/** A switch of screens: how long the old screen takes to fade out (ms). The new one fades in after it. */
+private const val SCREEN_OUT_MS = 900
+
+/** A switch of screens: how long the new screen takes to fade in (ms), once the old one is out. */
+private const val SCREEN_IN_MS = 1_300
+
+/** A switch of screens is over after this long: both fades, with room to spare. */
 private const val SCREEN_SWITCH_MS = 3_000L
 
-private fun contentKey(ui: UiState, quietStart: Boolean): Content = when (val s = ui.screen) {
+/** How often the time is read (ms): the status line needs minutes, the drift whole pixels. */
+private const val CLOCK_TICK_MS = 5_000L
+
+private fun contentOf(ui: UiState, quietStart: Boolean): Content = when (val s = ui.screen) {
     is Screen.Stage -> {
         // Cover Flow or the single cover, as the queue shows, once its first scene is made;
         // until then what showed before stays.
@@ -221,7 +235,7 @@ private fun contentKey(ui: UiState, quietStart: Boolean): Content = when (val s 
         (if (ui.queue == QueueDisplay.FLOW) flow ?: single else single ?: flow) ?: Content.Dark
     }
     is Screen.Rest ->
-        if (quietStart && s.reason == io.github.hazymorning.klangbild.domain.RestReason.CONNECTING) Content.Dark
+        if (quietStart && s.reason == RestReason.CONNECTING) Content.Dark
         else Content.RestContent(s.reason, s.speaker, ui.appearance)
     is Screen.Setup -> Content.SetupContent(s.reason, ui.appearance, ui.setup)
 }
