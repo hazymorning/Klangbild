@@ -15,7 +15,7 @@ fun Stage(model: StageModel, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize()) {
         BaseWall(model.scene.palette.wall.asColor())
         WallLayer(model.scene)
-        ArtworkLayer(model.scene)
+        CoverLayer(model.scene)
         TextLayer(model, queuePlan = queue)
         QueueRowsLayer(queue, null, RowsMotion.Still)
         StatusLayer(model)

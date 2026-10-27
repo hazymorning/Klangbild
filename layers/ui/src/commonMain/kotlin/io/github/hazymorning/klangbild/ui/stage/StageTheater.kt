@@ -104,7 +104,7 @@ fun StageTheater(
             t.snapTo(0f)
             when (kind) {
                 Change.FULL -> text.begin(TextRise(Motion.TEXT_IN_MS, durationOf(kind)))
-                Change.TEXT, Change.COLUMN -> text.begin(TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, durationOf(kind)))
+                Change.TEXT, Change.COLUMN -> text.begin(TextRise(Motion.TEXT_IN_SAME_COVER_MS, durationOf(kind)))
                 else -> Unit
             }
             change = kind
@@ -139,15 +139,15 @@ fun StageTheater(
     val prevQueue = prevModel?.let { rememberQueuePlan(it, queueRooms) }
 
     val lightLevel: () -> Float = { dim.lightLevel * intensity() }
-    val pictureChanges = prev != null && kind != Change.TEXT && kind != Change.COLUMN && kind != Change.ROWS
+    val coverChanges = prev != null && kind != Change.TEXT && kind != Change.COLUMN && kind != Change.ROWS
     // A new picture comes up over the old one; the old goes once it is covered (a station's logo,
     // clear around its mark, lets the old one fade with it there).
-    val oldPicture: () -> Float = {
+    val oldCover: () -> Float = {
         if (kind == Change.FULL) 1f - p(Motion.ART_OUT_START_MS, Motion.ART_OUT_END_MS, Motion.Sine) else 1f
     }
-    val newPicture: () -> Float = {
+    val newCover: () -> Float = {
         when {
-            !pictureChanges -> 1f
+            !coverChanges -> 1f
             kind == Change.FULL -> p(0, Motion.ART_IN_END_MS, Motion.Sine)
             else -> p(0, total, Motion.Sine)
         }
@@ -155,7 +155,7 @@ fun StageTheater(
     // The light on the wall turns from the old colors to the new over the whole change.
     val newGlow: () -> Float = {
         when {
-            !pictureChanges -> 1f
+            !coverChanges -> 1f
             kind == Change.FULL -> p(0, Motion.GLOW_MS, Motion.Sine)
             else -> p(0, total, Motion.Sine)
         }
@@ -242,20 +242,20 @@ fun StageTheater(
     Box(modifier.fillMaxSize()) {
         // The old wall stays whole until the new one (its light and its color beyond the screen's
         // edges) has come up over it, so a new wall never shows the old one in a strip at the side.
-        val oldWall = prev?.scene?.takeIf { pictureChanges }
+        val oldWall = prev?.scene?.takeIf { coverChanges }
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
             WallLayer(oldWall, lightLevel = lightLevel)
             WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
         }
         WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel)
-        if (prev != null && pictureChanges) ArtworkLayer(prev.scene, alpha = oldPicture, coverLevel = { dim.coverLevel })
-        ArtworkLayer(cur.scene, alpha = newPicture, coverLevel = { dim.coverLevel })
+        if (prev != null && coverChanges) CoverLayer(prev.scene, alpha = oldCover, coverLevel = { dim.coverLevel })
+        CoverLayer(cur.scene, alpha = newCover, coverLevel = { dim.coverLevel })
         // A party's code covers the picture and stays while the songs change beneath it; with the
         // wall it changes its paper.
         val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
         if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, coverLevel = { dim.coverLevel })
-        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newPicture() else 1f }, coverLevel = { dim.coverLevel })
+        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newCover() else 1f }, coverLevel = { dim.coverLevel })
         CompositionLocalProvider(LocalLyricsStates provides lyricsStates) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
             if (prevModel != null && kind != Change.ROWS) {
@@ -276,14 +276,14 @@ fun StageTheater(
 }
 
 /**
- * How [new] differs from [old], the stage on screen; null when only what the stage doesn't draw
- * has changed (a new link to the same picture), so there is nothing to watch.
+ * How [new] differs from [old], the stage on screen. Null when only what the stage doesn't draw
+ * has changed (another artwork URL for the same cover), so there is nothing to watch.
  */
 internal fun changeOf(old: StageData, new: StageData): Change? {
     if (new.scene === old.scene && new.lyrics === old.lyrics && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
     if (new.track.key != old.track.key) {
         // Only the text changes for the next track of the same cover, unless the background changes with it.
-        return if (samePicture(old.scene, new.scene) && new.scene.appearance == old.scene.appearance) Change.TEXT else Change.FULL
+        return if (sameCover(old.scene, new.scene) && new.scene.appearance == old.scene.appearance) Change.TEXT else Change.FULL
     }
     return when {
         new.scene.appearance != old.scene.appearance -> Change.WALL
@@ -314,12 +314,12 @@ private const val ROWS_SETTLED_MS = 750
 private const val ROWS_COME_MS = 650
 
 /**
- * Whether the stage draws [a] and [b] alike: the picture comes with the scene, so a new link to
- * it, or what only the quick settings and the queue read, changes nothing on screen.
+ * Whether the stage draws [a] and [b] alike: the cover comes with the scene, so another artwork
+ * URL, or what only the quick settings and the queue read, changes nothing on screen.
  */
 internal fun drawnAlike(a: TrackInfo, b: TrackInfo): Boolean =
     a == b.copy(artworkUrl = a.artworkUrl, artworkFallbackUrl = a.artworkFallbackUrl, favorite = a.favorite, songPicture = a.songPicture, queueItemId = a.queueItemId)
 
-/** Same picture: consecutive songs of one album. */
-internal fun samePicture(a: ArtworkScene, b: ArtworkScene): Boolean =
+/** Whether [a] and [b] show the same cover (same shape and thumbnail), as consecutive tracks of one album do. */
+internal fun sameCover(a: ArtworkScene, b: ArtworkScene): Boolean =
     a.shape == b.shape && a.coverGenerated == b.coverGenerated && a.thumb.contentEquals(b.thumb)

@@ -35,7 +35,7 @@ import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.ui.stage.ArtworkLayer
+import io.github.hazymorning.klangbild.ui.stage.CoverLayer
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.asColor
@@ -153,7 +153,7 @@ fun SetupScreen(
         BaseWall(p.wall.asColor())
         Box(Modifier.fillMaxSize().graphicsLayer { translationX = shift.dp.toPx() }) {
             WallLayer(scene)
-            ArtworkLayer(scene)
+            CoverLayer(scene)
             // The block hangs from the card's top edge: the name's cap height on it.
             Layout(
                 modifier = Modifier.fillMaxSize(),

@@ -43,7 +43,7 @@ import io.github.hazymorning.klangbild.ui.stage.drawnAlike
 import io.github.hazymorning.klangbild.ui.stage.partyCard
 import io.github.hazymorning.klangbild.ui.stage.rememberPartyCode
 import io.github.hazymorning.klangbild.ui.stage.rememberStageDim
-import io.github.hazymorning.klangbild.ui.stage.samePicture
+import io.github.hazymorning.klangbild.ui.stage.sameCover
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
@@ -299,7 +299,7 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
  */
 internal fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boolean = when (kind) {
     FlowChange.SOFT, FlowChange.WALL -> !sameCards(old, new)
-    FlowChange.TEXT -> !samePicture(old.middle.scene, new.middle.scene) || old.middle.scene.appearance != new.middle.scene.appearance
+    FlowChange.TEXT -> !sameCover(old.middle.scene, new.middle.scene) || old.middle.scene.appearance != new.middle.scene.appearance
     else -> false
 }
 
@@ -403,7 +403,7 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
     // New text rises as the new cover turns to face the room, or sooner when only the text changes.
     val riseMs = when (kind) {
         FlowChange.MOVE -> clearMs + Motion.FLOW_TEXT_IN_MS
-        FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_IN_SAME_PICTURE_MS
+        FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_IN_SAME_COVER_MS
         else -> null
     }
     val totalMs = max(clearMs + turnMs, riseMs?.let { TextRise.endMs(it) } ?: 0)

@@ -137,7 +137,7 @@ object Motion {
 
     /** Only the text changes: the next track of the same cover, or lyrics coming or going. */
     const val TEXT_CHANGE_MS = 950
-    const val TEXT_IN_SAME_PICTURE_MS = 250
+    const val TEXT_IN_SAME_COVER_MS = 250
 
     /**
      * Cover Flow: when another picture comes to the middle, the strip turns over in 1.3 s

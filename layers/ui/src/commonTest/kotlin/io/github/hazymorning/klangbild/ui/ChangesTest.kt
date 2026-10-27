@@ -139,7 +139,7 @@ class ChangesTest {
     @Test
     fun everyLineIsInPlaceWhenItsChangeEnds() {
         // A change that is not hurried hands over to text standing still: no line may still be on its way.
-        val rises = listOf(TextRise(Motion.TEXT_IN_MS, Motion.TRACK_CHANGE_MS), TextRise(Motion.TEXT_IN_SAME_PICTURE_MS, Motion.TEXT_CHANGE_MS))
+        val rises = listOf(TextRise(Motion.TEXT_IN_MS, Motion.TRACK_CHANGE_MS), TextRise(Motion.TEXT_IN_SAME_COVER_MS, Motion.TEXT_CHANGE_MS))
         for (r in rises) TextLine.entries.forEach { assertThat(r.level(1f, it)).isEqualTo(1f) }
     }
 }

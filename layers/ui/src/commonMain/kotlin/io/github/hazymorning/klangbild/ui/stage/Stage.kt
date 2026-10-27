@@ -84,17 +84,17 @@ fun WallMargin(color: Color, alpha: () -> Float) {
     }
 }
 
-/** How far every full-screen ground reaches beyond the screen (dp): more than the drift (±6 dp) ever moves it. */
+/** How far every full-screen layer reaches beyond the screen (dp): more than the drift (±6 dp) ever moves it. */
 const val BEYOND_EDGES_DP = 24f
 
 /**
- * The wall around the artwork, one static bitmap scaled softly to the screen. In the dark it is
- * the artwork's light ([io.github.hazymorning.klangbild.render.WallGlow]), and [lightLevel] is its
- * brightness in linear light (pause, the Intensity setting: 0 = off, 1 = as designed,
- * 1.45 = strong). In the light it is plain paper. [alpha] fades the layer
- * during a change; [shift] moves the light with the cover flow's cards (dp), the cover's colors
- * stay where they are. In Cover Flow's dark the light fades out before the text column, wherever
- * it stands ([column]: its shift from the grid, dp).
+ * The background around the cover, one static bitmap scaled softly to the screen. On the dark
+ * background it is the cover's light ([io.github.hazymorning.klangbild.render.WallGlow]), and
+ * [lightLevel] is its brightness in linear light (a pause and the Intensity setting: 0 = off,
+ * 1 = as designed, 1.45 = strong). The light background is plain. [alpha] fades the layer during
+ * a change, and [shift] moves the light with Cover Flow's cards (dp) while the cover colors stay
+ * where they are. In Cover Flow on the dark background the light fades out before the text
+ * column, wherever it stands ([column]: its shift from the grid, dp).
  */
 @Composable
 fun WallLayer(
@@ -109,17 +109,18 @@ fun WallLayer(
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, lightLevel)
     val image = scene.wall
     val filters = remember { HashMap<Int, ColorFilter>() }
-    val lit = scene.appearance == Appearance.DARK
-    val beside = lit && scene.layout.flow
+    val dark = scene.appearance == Appearance.DARK
+    val shadeColumn = dark && scene.layout.flow
     val density = LocalDensity.current.density
     val shade = remember(density) { columnShade(density) }
     Canvas(modifier.fillMaxSize()) {
         val a = alpha().coerceIn(0f, 1f)
-        val l = if (lit) lightLevel().coerceIn(0f, 2f) else 1f
+        // At most twice as bright: well beyond the strongest Intensity.
+        val l = if (dark) lightLevel().coerceIn(0f, 2f) else 1f
         if (a <= 0.002f || l <= 0.002f) return@Canvas
         // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
-        val step = (l.pow(1f / 2.2f) * 40f).roundToInt()
-        val filter = if (step == 40) null else filters.getOrPut(step) { scaleFilter(step / 40f) }
+        val step = (l.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
+        val filter = if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
         drawImage(
             image,
             dstOffset = IntOffset((shift() * density).roundToInt(), 0),
@@ -128,7 +129,7 @@ fun WallLayer(
             colorFilter = filter,
             filterQuality = FilterQuality.Low,
         )
-        if (!beside) return@Canvas
+        if (!shadeColumn) return@Canvas
         // Black laid over the light from where it starts to fade before the column to beyond the edge.
         val start = (scene.layout.columnLeft + column() - FlowLight.WHOLE_BEFORE_COLUMN) * density
         val m = BEYOND_EDGES_DP * density
@@ -151,17 +152,20 @@ private fun columnShade(density: Float): Brush {
 /** Steps of the shade's ramp: a smooth curve, closely enough. */
 private const val SHADE_STOPS = 24
 
+/** The background's light in steps of this many to full brightness, each step's filter made once. */
+private const val LIGHT_STEPS = 40
+
 private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
     ColorMatrix(floatArrayOf(k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, 1f, 0f)),
 )
 
 /**
- * The artwork, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display
- * size) with softly rounded corners. [coverLevel] (a pause) darkens it through the color matrix, not
+ * The cover, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display size)
+ * with softly rounded corners. [coverLevel] (a pause) darkens it through the color matrix, not
  * through transparency. Nothing is drawn around it: no frame, no line, no shadow.
  */
 @Composable
-fun ArtworkLayer(
+fun CoverLayer(
     scene: ArtworkScene,
     modifier: Modifier = Modifier,
     alpha: () -> Float = { 1f },
@@ -187,11 +191,11 @@ fun ArtworkLayer(
 }
 
 /**
- * Color matrix for the artwork: the [Lamp]'s breath of warmth, [level] (a pause) and a gentle
- * highlight compression, so even a white cover never glares on black. White becomes a soft paper
- * tone around L* 88 instead of #FFFFFF; a full-screen-bright print would also make the TV's
- * brightness limiter dim everything. On the light wall a white cover stays a little whiter
- * than the paper around it.
+ * Color matrix for the cover: the [Lamp]'s breath of warmth, [level] (a pause) and a gentle
+ * highlight compression, so even a white cover never glares on black. White becomes a soft tone
+ * around L* 88 instead of #FFFFFF, since a bright cover would also make the TV's brightness
+ * limiter dim everything. On the light background a white cover stays a little whiter than the
+ * background around it.
  */
 fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(level, appearance)
@@ -227,7 +231,6 @@ fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float
     val w = Lamp.WARMTH
     return Triple(k * 0.92f * (1f + 0.0375f * w), k * 0.905f * (1f - 0.0066f * w), k * 0.876f * (1f - 0.045f * w))
 }
-
 
 /**
  * The text block beside the artwork, centered on it from the first line's cap height to the
