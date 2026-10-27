@@ -45,7 +45,7 @@ internal class SleepControl(private val host: ControllerHost) {
      */
     fun evaluate(t: Long, track: TrackInfo?, position: Long?, speed: Float, playing: Boolean) {
         if (timer.evaluate(t, track, position, speed, playing)) host.scope.launch { host.source?.send(RemoteCommand.PAUSE) }
-        schedule(timer.wakeAt)
+        schedule(timer.pausesAt)
     }
 
     /**

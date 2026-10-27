@@ -44,9 +44,9 @@ class SleepTimerTest {
         timer.set(SleepChoice.CHAPTER_END, nowMs = 0)
         assertThat(timer.evaluate(0, book, 1_990_000, 1f, playing = true)).isFalse()
         // It expects the end in ten seconds, or in five at 2×.
-        assertThat(timer.wakeAt).isEqualTo(10_000L)
+        assertThat(timer.pausesAt).isEqualTo(10_000L)
         assertThat(timer.evaluate(1_000, book, 1_992_000, 2f, playing = true)).isFalse()
-        assertThat(timer.wakeAt).isEqualTo(1_000L + 4_000L)
+        assertThat(timer.pausesAt).isEqualTo(1_000L + 4_000L)
         assertThat(timer.evaluate(5_000, book, 2_000_010, 2f, playing = true)).isTrue()
         assertThat(timer.choice).isEqualTo(SleepChoice.OFF)
     }
@@ -60,7 +60,7 @@ class SleepTimerTest {
         assertThat(timer.evaluate(500, book, 2_020_500, 1f, playing = true)).isFalse()
         assertThat(timer.choice).isEqualTo(SleepChoice.CHAPTER_END)
         // C is the last chapter: it ends with the book, a moment before the very end.
-        assertThat(timer.wakeAt).isEqualTo(500L + (3_000_000L - SleepTimer.ITEM_LEAD_MS - 2_020_500L))
+        assertThat(timer.pausesAt).isEqualTo(500L + (3_000_000L - SleepTimer.ITEM_LEAD_MS - 2_020_500L))
         assertThat(timer.evaluate(978_000, book, 2_998_100, 1f, playing = true)).isFalse()
         assertThat(timer.evaluate(978_600, book, 2_998_600, 1f, playing = true)).isTrue()
     }
@@ -70,7 +70,7 @@ class SleepTimerTest {
         val timer = SleepTimer()
         timer.set(SleepChoice.CHAPTER_END, nowMs = 0)
         timer.evaluate(0, book, 1_999_000, 1f, playing = false)
-        assertThat(timer.wakeAt).isNull()
+        assertThat(timer.pausesAt).isNull()
         assertThat(timer.evaluate(60_000, book, 1_999_000, 1f, playing = false)).isFalse()
         // Playing again, it goes on waiting for the same end.
         assertThat(timer.evaluate(61_000, book, 1_999_500, 1f, playing = true)).isFalse()
@@ -82,7 +82,7 @@ class SleepTimerTest {
         val timer = SleepTimer()
         timer.set(SleepChoice.ITEM_END, nowMs = 0)
         timer.evaluate(0, song, 190_000, 1f, playing = true)
-        assertThat(timer.wakeAt).isEqualTo(10_000L - SleepTimer.ITEM_LEAD_MS)
+        assertThat(timer.pausesAt).isEqualTo(10_000L - SleepTimer.ITEM_LEAD_MS)
         assertThat(timer.evaluate(8_600, song, 198_600, 1f, playing = true)).isTrue()
 
         // Missed: the next song has begun right after the end of the last one.
