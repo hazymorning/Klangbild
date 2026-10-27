@@ -51,6 +51,9 @@ class Texts internal constructor(
     /** "35%", "35 %": a whole percent as the language writes it. */
     fun percent(percent: Int): String = fontSafe(region.integer(percent.toLong()) + region.percentSuffix)
 
+    /** What follows a percentage: "%", or "%" after a no-break space. */
+    val percentSuffix: String get() = fontSafe(region.percentSuffix)
+
     /** [value] with at most [maxFractionDigits] decimals: "1.5", "1,25". */
     fun decimal(value: Double, maxFractionDigits: Int): String = fontSafe(region.decimal(value, 0, maxFractionDigits, halfUp = false))
 
