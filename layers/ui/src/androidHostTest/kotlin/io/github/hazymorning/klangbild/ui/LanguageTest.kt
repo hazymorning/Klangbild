@@ -222,7 +222,7 @@ class LanguageTest {
             SpeakerGroup(null, (1..14).map { "Room $it" }),
             SpeakerGroup("Living room", listOf("Kitchen"), everywhere = true),
         ).map { SpeakerLabel.group(it, en) }
-        val volumes = listOf(SpeakerLabel.volume(0.35f, false, en), SpeakerLabel.volume(0.35f, true, en), null)
+        val volumes = listOf(SpeakerLabel.volume(0.35f, en), null)
         for (status in PlayerStatus.entries) for (muted in listOf(true, false)) for (flash in listOf(true, false)) {
             for (volume in volumes) for (group in groups + null) for (always in listOf(true, false)) {
                 for (pace in listOf(null, TimeText.speed(1.5f, en), StageTexts.sleep(Fixtures.at(23, 10), en, Fixtures.zone))) {
@@ -231,8 +231,8 @@ class LanguageTest {
             }
         }
         val next = TrackInfo("Spiegel im Spiegel", listOf("Tasmin Little", "Martin Roscoe", "Paul Weber"))
-        assertEnglish("up next", StageTexts.next(next, en)?.removePrefix("Spiegel im Spiegel"))
-        assertEnglish("lost link", StageTexts.line(true, next, en))
+        assertEnglish("up next", StageTexts.footer(next, en)?.removePrefix("Spiegel im Spiegel"))
+        assertEnglish("lost link", StageTexts.slotText(true, next, en))
         assertEnglish("chapter", en.format(Strings.chapterNumber, 7))
         for (reason in RestReason.entries) {
             val lines = io.github.hazymorning.klangbild.ui.RestTexts.lines(reason, "Living room", "media_player.living_room", en)
@@ -357,13 +357,12 @@ class LanguageTest {
         val label = faces.textType(QuickGrid.LABEL_SP, QuickGrid.LABEL_WEIGHT)
         val value = faces.textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)
         for (t in listOf(en, de)) {
-            val states = allQuick(t, buttons = true).distinctBy { q -> q.rows.map { it.item to it.value } }
+            // An entry is as wide as its label or its widest value, whatever stands beside it.
+            val rows = allQuick(t, buttons = true).flatMap { it.rows }.distinctBy { Triple(it.label, it.value, it.values) }
             compose.runOnIdle {
-                for (quick in states) {
-                    val widths = quickWidths(quick, measurer, label, value, density, widest = true)
-                    quick.rows.forEachIndexed { k, row ->
-                        assertThat(QuickGrid.LEFT + widths[k], name = "${row.label}: ${row.values} (${t.locale})").isLessThanOrEqualTo(right)
-                    }
+                for (row in rows) {
+                    val width = quickWidths(QuickState(listOf(row), 0), measurer, label, value, density).single()
+                    assertThat(QuickGrid.LEFT + width, name = "${row.label}: ${row.values} (${t.locale})").isLessThanOrEqualTo(right)
                 }
             }
         }

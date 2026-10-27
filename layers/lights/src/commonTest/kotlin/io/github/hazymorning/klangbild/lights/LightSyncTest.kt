@@ -224,7 +224,6 @@ class LightSyncTest {
             put("supported_features", features)
         },
         0.0,
-        0.0,
         "before",
     )
 
@@ -232,9 +231,9 @@ class LightSyncTest {
         LightSync(backgroundScope, { testScheduler.currentTime }, StandardTestDispatcher(testScheduler))
 
     /** The lights' colors for a field, made once (as the controller does): the same field never fades the lights anew. */
-    private val made = HashMap<Pair<FieldScene, Boolean>, CoverLightColors>()
+    private val made = HashMap<Pair<FieldScene, Boolean>, LightColors>()
 
-    private fun coverColors(f: FieldScene, moving: Boolean) = made.getOrPut(f to moving) { CoverLightColors(f, moving) }
+    private fun coverColors(f: FieldScene, moving: Boolean) = made.getOrPut(f to moving) { LightColors(f, moving) }
 
     private fun target(
         song: String,
@@ -243,7 +242,7 @@ class LightSyncTest {
         motion: Float = 0f,
         f: FieldScene = field,
         lights: RoomLights = pair,
-    ) = LightSync.Target(lights, level, coverColors(f, motion > 0f), song, playing, night = 0f, warmth = 0.06f, motion = motion, fieldTime = { 0.0 })
+    ) = LightSync.Target(lights, level, coverColors(f, motion > 0f), song, playing, night = 0f, motion = motion, fieldTime = { 0.0 })
 
     private val field = field()
 
@@ -274,6 +273,41 @@ class LightSyncTest {
         // The scenes are deleted when done.
         assertThat(ha.named("scene.delete").map { it.id }).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_right")
         assertThat(ha.scenes).isEmpty()
+    }
+
+    @Test
+    fun `lights moved to other places take the colors of their new places`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val red = ha.to(left).last().data!!["xy_color"]
+        val blue = ha.to(right).last().data!!["xy_color"]
+        // Swapped on the setup page while the track plays.
+        s.update(target("a", lights = RoomLights(left = right, right = left)))
+        testScheduler.advanceTimeBy(3_000)
+        assertThat(ha.to(left).last().data!!["xy_color"]).isEqualTo(blue)
+        assertThat(ha.to(right).last().data!!["xy_color"]).isEqualTo(red)
+    }
+
+    @Test
+    fun `with a light added, the lights are taken over anew with their states from before the music`() = runTest {
+        val center = "light.tv_center"
+        val ha = FakeHa(this, mapOf(left to light(left, on = false), center to light(center, on = true), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        s.update(target("a", lights = RoomLights(left = left, center = center, right = right)))
+        testScheduler.advanceTimeBy(15_000)
+        assertThat(ha.scenes.keys).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_center", "scene.klangbild_tv_right")
+        // Home Assistant restarted: restored from what was noted, each light is as before the music.
+        ha.scenesLost = true
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(10_000)
+        assertThat(ha.states.value.getValue(left).state).isEqualTo("off")
+        assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
     }
 
     @Test
@@ -451,9 +485,11 @@ class LightSyncTest {
         s.update(target("a"))
         testScheduler.advanceTimeBy(3_000)
         assertThat(ha.followed).containsExactlyInAnyOrder(left, right)
-        // The light that was on goes straight to its color ...
+        // The light that was on goes straight to its color, at once ...
         val l = ha.to(left).single()
         assertThat(l.service).isEqualTo("turn_on")
+        assertThat(l.at).isEqualTo(0L)
+        assertThat(l.transition).isEqualTo(LightSync.FIRST_TRANSITION_MS / 1000.0)
         assertThat(l.brightness).isEqualTo(51)
         assertThat(l.data!!["xy_color"]!!.jsonArray).hasSize(2)
         // ... the one that was off first comes on at the very least, in its new color, then rises.
@@ -545,12 +581,12 @@ class LightSyncTest {
         val s = sync()
         s.attach(ha)
         val colors = coverColors(fourColors(), moving = true)
-        s.update(LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 0f, { 0.0 }))
+        s.update(LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0f, { 0.0 }))
         testScheduler.advanceTimeBy(60_000)
         assertThat(ha.to(left)).hasSize(1)
 
         var t = 0.0
-        val moving = LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 0.06f, 1f, { t })
+        val moving = LightSync.Target(pair, RoomLightBrightness.P20, colors, "a", true, 0f, 1f, { t })
         s.update(moving)
         // Five minutes: the colors move on from light to light slowly, and only visible steps are sent.
         repeat(600) {
@@ -641,6 +677,22 @@ class LightSyncTest {
     }
 
     @Test
+    fun `a light still busy when the music ends dims once it is free`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // A slow answer: the next track's call is still under way when the lights dim.
+        ha.answerMs = 4_000
+        s.update(target("b"))
+        testScheduler.advanceTimeBy(3_000)
+        s.update(null)
+        testScheduler.advanceTimeBy(10_000)
+        assertThat(ha.to(left).last().brightness).isEqualTo(26)
+    }
+
+    @Test
     fun `lights no longer chosen go back at once, with nothing on stage too`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
         val s = sync()
@@ -728,22 +780,49 @@ class LightSyncTest {
     }
 
     @Test
-    fun `a light someone else had is saved anew when it is taken over again`() = runTest {
-        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+    fun `lights taken over again within a minute are saved again`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true)))
         val s = sync()
         s.attach(ha)
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
-        ha.byHand(left, "off")
-        testScheduler.advanceTimeBy(2_000)
+        // Switched off in the menu, the left light made brighter by hand, then switched on again.
         s.update(target("a", level = RoomLightBrightness.OFF))
         testScheduler.advanceTimeBy(5_000)
-        // Someone switches it on again, and the lights are switched on within the minute.
-        ha.byHand(left, "on")
+        ha.byHand(left, "on", buildJsonObject { put("brightness", 200) })
         s.update(target("a"))
         testScheduler.advanceTimeBy(5_000)
-        // What it is now is saved, so it goes back to that, not to what it was before the music.
-        assertThat(ha.named("scene.create").count { it.data.toString().contains("klangbild_tv_left") }).isEqualTo(2)
+        assertThat(ha.named("scene.create")).hasSize(4)
+        // Restored, the left light is as it was just before the second takeover.
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.named("scene.turn_on").map { it.id }.count { it == "scene.klangbild_tv_left" }).isEqualTo(2)
+        assertThat(ha.states.value.getValue(left).number("brightness")).isEqualTo(200.0)
+        assertThat(ha.scenes).isEmpty()
+    }
+
+    @Test
+    fun `lights taken over right after a restore are saved once its fade is over`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // The app hands over to the screensaver: the lights are restored and taken over again at
+        // once. These lights report the restore's fade only once it is over.
+        ha.holding = true
+        s.release()
+        s.attach(null)
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(LightSync.RESTORE_TRANSITION_MS)
+        ha.deliver()
+        ha.holding = false
+        testScheduler.advanceTimeBy(5_000)
+        // Saved as they were before the music, not in Klangbild's colors.
+        assertThat(ha.named("scene.create")).hasSize(4)
+        assertThat(ha.scenes.getValue("scene.klangbild_tv_left").number("brightness")).isEqualTo(120.0)
+        assertThat(ha.scenes.getValue("scene.klangbild_tv_right").number("brightness")).isEqualTo(60.0)
     }
 
     @Test
@@ -812,17 +891,17 @@ class LightSyncTest {
     @Test
     fun `colors for the lights are their hue at its purest, grays a neutral white`() {
         val day = LightColor.whiteXy(LightColor.WHITE_DAY_K)
-        val gray = LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), warmth = 0f)
+        val gray = LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), night = 0f)
         assertThat(gray.distance(day)).isLessThan(0.002f)
         // Never the amber of a 2700 K bulb by day; at night a warmer white.
         assertThat(gray.distance(LightColor.whiteXy(2700f))).isGreaterThan(0.05f)
-        assertThat(LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), warmth = 1f).x).isGreaterThan(day.x)
+        assertThat(LightColor.of(floatArrayOf(0.2f, 0.2f, 0.2f), night = 1f).x).isGreaterThan(day.x)
         // A pale sky blue is a clear blue light, far from white.
-        val sky = LightColor.of(io.github.hazymorning.klangbild.color.Oklab.toLinear(io.github.hazymorning.klangbild.color.Lch(0.82f, 0.05f, 245f).toLab()), warmth = 0f)
+        val sky = LightColor.of(io.github.hazymorning.klangbild.color.Oklab.toLinear(io.github.hazymorning.klangbild.color.Lch(0.82f, 0.05f, 245f).toLab()), night = 0f)
         assertThat(sky.distance(day)).isGreaterThan(0.12f)
         assertThat(sky.y).isLessThan(day.y - 0.05f)
         // A pure green stays a real color: Home Assistant fits it to what the light can show.
-        val green = LightColor.of(floatArrayOf(0f, 1f, 0f), warmth = 0f)
+        val green = LightColor.of(floatArrayOf(0f, 1f, 0f), night = 0f)
         assertThat(green.x + green.y).isLessThanOrEqualTo(1f)
         assertThat(green.y).isGreaterThan(0.5f)
         // Never below the floor while on.

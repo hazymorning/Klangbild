@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 
 /** [Glyphs] from Android's text engine, in the typeface Compose's text is set in. */
 object AndroidGlyphs : Glyphs {
-    override fun drawing(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float): Glyphs.Pen {
+    override fun pen(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float): Glyphs.Pen {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.typeface = resolver.resolve(style.fontFamily, style.fontWeight ?: FontWeight.Normal).value as? Typeface ?: Typeface.DEFAULT
         paint.textSize = sizePx

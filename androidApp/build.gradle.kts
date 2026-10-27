@@ -22,8 +22,8 @@ val headCommitShortSha: String = providers.exec {
 }.standardOutput.asText.get().trim().ifEmpty { "local" }
 val versionEpochSeconds = 1767225600L // 2026-01-01T00:00:00Z
 val autoVersionCode = ((headCommitEpochSeconds - versionEpochSeconds) / 60L).coerceAtLeast(1L).toInt()
-// A release build from a tag gets the tag's name ("1.0.0", passed by CI); every other build
-// is named after its commit date and hash.
+// A release gets its version from CI ("2026.11.0" for v2026.11.0); every other build is named
+// after its commit's date and hash.
 val autoVersionName: String = providers.gradleProperty("klangbild.versionName").orNull?.takeIf { it.isNotBlank() }
     ?: (
         DateTimeFormatter.ofPattern("yyyy.MM.dd")

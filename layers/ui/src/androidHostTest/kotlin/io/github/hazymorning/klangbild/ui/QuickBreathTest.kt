@@ -38,9 +38,9 @@ import kotlin.math.abs
 import kotlin.test.Test
 
 /**
- * The quick settings' Queue value breathes while the queue's way just chosen is on its way: the
- * whole word sinks into a muted value's ink and comes back as slowly, for as long as the wait goes
- * on, and once the wait is over it glides back to exactly the pixels it had.
+ * While the queue display just chosen is pending, the Queue value in the quick settings breathes.
+ * The word fades into a muted value's ink and back at the same pace for as long as the wait
+ * lasts, and when the wait ends it returns to exactly the pixels it had.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -49,7 +49,7 @@ class QuickBreathTest {
     @get:Rule
     val compose = composeRule()
 
-    private var preparing by mutableStateOf(false)
+    private var pending by mutableStateOf(false)
     private var appearance by mutableStateOf(Appearance.DARK)
 
     /** The queue's entry is muted, as a value with nothing to show: the ink the breath sinks into. */
@@ -96,7 +96,7 @@ class QuickBreathTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val shown = if (muted) rows.mapIndexed { i, r -> if (i == queue) r.copy(muted = true) else r } else rows
-            QuickBar(QuickState(shown, queue), appearance, preparing = preparing)
+            QuickBar(QuickState(shown, queue), appearance, pending = pending)
         }
         for (wall in Appearance.entries) {
             appearance = wall
@@ -106,7 +106,7 @@ class QuickBreathTest {
             muted = false
             settle()
             val before = capture()
-            preparing = true
+            pending = true
             // At the bottom of the breath the word stands in a muted value's ink, well apart from its own.
             pass(Motion.BREATH_MS + 50)
             val bottom = capture()
@@ -118,7 +118,7 @@ class QuickBreathTest {
             pass(Motion.BREATH_MS / 2)
             assertThat(apart(capture(), before), name = "$wall sinking again").isGreaterThan(10)
             // The wait over halfway down, the word glides back to exactly the pixels it had.
-            preparing = false
+            pending = false
             pass(Motion.PAUSE_MS + 100)
             assertThat(apart(capture(), before), name = "$wall after the wait").isEqualTo(0)
         }
@@ -143,9 +143,9 @@ class QuickBreathTest {
                     // The stage stands still; only the quick settings or the menu breathe.
                     CompositionLocalProvider(LocalStill provides false) {
                         if (menu) {
-                            MenuScreen(Fixtures.menu(MenuEntry.QUEUE, Settings(queue = QueueDisplay.FLOW)), preparing = preparing)
+                            MenuScreen(Fixtures.menu(MenuEntry.QUEUE, Settings(queue = QueueDisplay.FLOW)), pending = pending)
                         } else {
-                            QuickBar(QuickState(rows, cursor), appearance, preparing = preparing)
+                            QuickBar(QuickState(rows, cursor), appearance, pending = pending)
                         }
                     }
                 }
@@ -157,12 +157,12 @@ class QuickBreathTest {
             Shot("rest", Appearance.DARK, false, queue + 1),
             Shot("menu", Appearance.DARK, true, queue),
         )) {
-            preparing = false
+            pending = false
             appearance = wall
             menu = inMenu
             cursor = at
             settle()
-            preparing = true
+            pending = true
             pass(Motion.BREATH_MS + 50)
             compose.onRoot().captureRoboImage("build/screenshots/quick_breath/$shot.png")
         }

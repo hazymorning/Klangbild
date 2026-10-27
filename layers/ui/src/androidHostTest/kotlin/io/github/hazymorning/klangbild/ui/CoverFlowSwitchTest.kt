@@ -75,8 +75,5 @@ class CoverFlowSwitchTest {
 
     private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 
-    private fun brightest(bmp: Bitmap): Int {
-        val px = IntArray(bmp.width * bmp.height).also { bmp.getPixels(it, 0, bmp.width, 0, 0, bmp.width, bmp.height) }
-        return px.maxOf { maxOf((it shr 16) and 0xFF, (it shr 8) and 0xFF, it and 0xFF) }
-    }
+    private fun brightest(bmp: Bitmap): Int = Pixels(bmp).brightest()
 }

@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
@@ -25,40 +24,40 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.SetupArt
+import io.github.hazymorning.klangbild.ui.QrCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
- * A party's code as the stage shows it: its pictures, one for each wall on stage, and how far
- * the code has come up (0 to 1).
+ * A party's code as the stage shows it: its cards, one for each appearance on stage, and how far
+ * it has come up ([shown], 0 to 1).
  */
-class PartyCode<T : Any>(private val cards: Map<Appearance, T>, val shown: () -> Float) {
-    /** The picture for [wall], or the other wall's until that one is made. */
+internal class PartyCode<T : Any>(private val cards: Map<Appearance, T>, val shown: () -> Float) {
+    /** The card for [wall], or the other appearance's until that one is made. */
     fun on(wall: Appearance): T? = cards[wall] ?: cards.values.firstOrNull()
 }
 
 /**
- * The code of the party playing here ([url], null: none shows). [make] draws it off the main
- * thread for each wall on stage ([walls]; a cross-fade to the other wall has the code on both
- * sides) at a [size]. It comes up once its picture is there and goes in a quiet cross-fade;
- * until the picture of a new link is made, the last one stays.
+ * The code of the party playing here ([url], null: none shows). [make] draws its card off the
+ * main thread for each appearance on stage ([walls]: a crossfade to the other background has the
+ * code on both sides), and anew when [key] (its size) changes. It comes up once its card is there
+ * and goes in a quiet crossfade. Until the card of a new URL is made, the last one stays.
  */
 @Composable
-fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, size: Any, make: (String, Appearance) -> T?): PartyCode<T> {
+internal fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, key: Any, make: (String, Appearance) -> T?): PartyCode<T> {
     if (LocalStill.current) {
         // A still has the code at once.
-        val cards = remember(url, walls, size) {
+        val cards = remember(url, walls, key) {
             if (url == null) emptyMap() else walls.mapNotNull { w -> make(url, w)?.let { w to it } }.toMap()
         }
         return PartyCode(cards) { if (cards.isEmpty()) 0f else 1f }
     }
-    var made by remember(size) { mutableStateOf(emptyMap<Appearance, Pair<String, T>>()) }
-    LaunchedEffect(url, walls, size) {
+    var made by remember(key) { mutableStateOf(emptyMap<Appearance, Pair<String, T>>()) }
+    LaunchedEffect(url, walls, key) {
         if (url == null) {
-            // Let go once it has faded out.
+            // Let go once it has faded out, with a little time to spare.
             delay(Motion.SOFT_SWAP_MS + 200L)
             made = emptyMap()
             return@LaunchedEffect
@@ -80,31 +79,36 @@ fun <T : Any> rememberPartyCode(url: String?, walls: Set<Appearance>, size: Any,
 }
 
 /**
- * The QR code of [url] as a printed card [sizePx] square, like the setup's: dark modules on whole
- * pixels on ivory (a whiter paper on the light wall). Null for a link no QR code can hold.
+ * The QR code of [url] as a card [sizePx] square, like the setup's: dark modules on whole pixels
+ * on ivory (whiter on the light background). Null for a URL no QR code can hold.
  */
-fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? =
-    runCatching { QrCode.matrix(url) }.getOrNull()?.let { SetupArt.card(it, sizePx, wall) }
+internal fun partyCard(url: String, sizePx: Int, wall: Appearance): ImageBitmap? {
+    val matrix = try {
+        QrCode.matrix(url)
+    } catch (_: IllegalArgumentException) {
+        return null
+    }
+    return QrCard.of(matrix, sizePx, wall)
+}
 
 /**
- * The party's code ([card]) where the cover of [scene] stands, drawn 1:1 on whole pixels with the
- * cover's corners and its light, dimmed with it in a pause ([dim]): guests scan it from the
- * couch to add songs. The song's lines stay beside it; the wall's light and the lights' colors
- * stay the song's.
+ * The party's code ([card]) where the cover of [scene] stands, so guests can scan it from the
+ * couch to add tracks: drawn 1:1 on whole pixels with the cover's corners and filter, and dimmed
+ * with it ([coverLevel]). The track's lines stay beside it, and the background's light and the
+ * lights' colors stay the track's.
  */
 @Composable
-fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, dim: () -> Float) {
+internal fun PartyCodeLayer(card: ImageBitmap?, scene: ArtworkScene, alpha: () -> Float, coverLevel: () -> Float) {
     if (card == null) return
     val brush = remember(card) { ShaderBrush(ImageShader(card, TileMode.Clamp, TileMode.Clamp)) }
-    val filters = remember(scene.appearance) { HashMap<Int, ColorFilter>() }
+    val filters = remember { CoverFilters() }
     val rect = scene.layout.artRect
     Canvas(Modifier.fillMaxSize()) {
         // The fade goes with the draw call: no layer of the screen's size.
         val a = alpha().coerceIn(0f, 1f)
         if (a <= 0f) return@Canvas
-        val step = (dim().coerceIn(0f, 1f) * 50f).roundToInt()
-        val filter = filters.getOrPut(step) { coverFilter(step / 50f, scene.appearance) }
-        val corner = CornerRadius(scene.layout.radius * density)
+        val filter = filters.at(coverLevel(), scene.appearance)
+        val corner = CornerRadius(scene.corner * density)
         // The card's pixels start at its corner, which stands on a whole pixel.
         translate((rect.left * density).roundToInt().toFloat(), (rect.top * density).roundToInt().toFloat()) {
             drawRoundRect(brush, Offset.Zero, Size(card.width.toFloat(), card.height.toFloat()), corner, alpha = a, colorFilter = filter)

@@ -57,10 +57,12 @@ class MaLyricsTest {
         start()
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val client = MaClient(httpClient(OkHttp.create()), server.url("/").toString().trimEnd('/'), "ma-token")
+    private val base = server.url("/").toString().trimEnd('/')
     private var clock = 1_000_000L
     private val changes = AtomicInteger()
-    private val lyrics = MaLyrics(client, scope, now = { clock }) { changes.incrementAndGet() }
+    private val lyrics = lyrics(MaClient(httpClient(OkHttp.create()), base, "ma-token"))
+
+    private fun lyrics(client: MaClient) = MaLyrics(client, scope, now = { clock }) { changes.incrementAndGet() }
 
     @AfterTest
     fun stop() {
@@ -89,7 +91,7 @@ class MaLyricsTest {
         assertThat(lyrics.known("library://track/1")!!.lyrics!!.lines).hasSize(2)
         // Plain words are no synced words.
         assertThat(lyrics.known("library://track/2")!!.lyrics).isNull()
-        delay(200)
+        delay(100)
         assertThat(asked).isEmpty()
     }
 
@@ -100,7 +102,7 @@ class MaLyricsTest {
         answers["library://track/2"] = { answer(lrc, null) }
         lyrics.want(listOf(song(1), song(2)))
         until { asked.size == 1 }
-        delay(300)
+        delay(100)
         assertThat(asked).containsExactlyInAnyOrder("library://track/1")
         hold.countDown()
         until { lyrics.known("library://track/2") != null }
@@ -110,7 +112,7 @@ class MaLyricsTest {
         assertThat(lyrics.known("library://track/2")!!.lyrics).isNotNull()
         // Kept by the song's URI: asked once.
         lyrics.want(listOf(song(2), song(1)))
-        delay(300)
+        delay(100)
         assertThat(asked).hasSize(2)
     }
 
@@ -126,18 +128,20 @@ class MaLyricsTest {
         until { lyrics.known("library://track/3") != null }
         hold.countDown()
         until { asked.size >= 3 }
-        delay(300)
+        delay(100)
         assertThat(asked.take(3)).containsExactly("library://track/1", "library://track/3", "library://track/4")
         assertThat(lyrics.known("library://track/1")).isNull()
     }
 
     @Test
     fun `an answer may take longer than any other call`() = runBlocking {
-        // Longer than a queue read may take (and than the client's own read timeout).
-        answers["library://track/1"] = { MockResponse.Builder().headersDelay(MaClient.CALL_TIMEOUT_MS + 1_000, TimeUnit.MILLISECONDS).body("[null,${quoted(lrc)}]").build() }
-        lyrics.want(listOf(song(1)))
-        withTimeout(MaClient.CALL_TIMEOUT_MS + 6_000) { while (lyrics.known("library://track/1") == null) delay(50) }
-        assertThat(lyrics.known("library://track/1")!!.lyrics).isNotNull()
+        // Longer than any other command may take, and than the client waits for the next bytes.
+        val http = httpClient(OkHttp.create { config { readTimeout(200, TimeUnit.MILLISECONDS) } })
+        val patient = lyrics(MaClient(http, base, "ma-token", callTimeoutMs = 200, lyricsTimeoutMs = 3_000))
+        answers["library://track/1"] = { MockResponse.Builder().headersDelay(600, TimeUnit.MILLISECONDS).body("[null,${quoted(lrc)}]").build() }
+        patient.want(listOf(song(1)))
+        until { patient.known("library://track/1") != null }
+        assertThat(patient.known("library://track/1")!!.lyrics).isNotNull()
         assertThat(changes.get()).isGreaterThanOrEqualTo(1)
     }
 
@@ -149,7 +153,7 @@ class MaLyricsTest {
         assertThat(lyrics.known("library://track/1")!!.lyrics).isNull()
         assertThat(lyrics.known("library://track/2")!!.lyrics).isNull()
         lyrics.want(listOf(song(3, lrc = lrc), song(4)))
-        delay(300)
+        delay(100)
         assertThat(asked).containsExactlyInAnyOrder("library://track/1")
         assertThat(lyrics.known("library://track/3")!!.lyrics).isNotNull()
         assertThat(lyrics.known("library://track/4")!!.lyrics).isNull()
@@ -162,7 +166,7 @@ class MaLyricsTest {
         until { lyrics.known("library://track/1") != null }
         assertThat(lyrics.known("library://track/1")!!.lyrics).isNull()
         lyrics.want(listOf(song(1)))
-        delay(300)
+        delay(100)
         assertThat(asked).hasSize(1)
         clock += MaLyrics.RETRY_MS
         answers["library://track/1"] = { answer(null, lrc) }

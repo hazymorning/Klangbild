@@ -4,6 +4,7 @@ import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.domain.ActionKind
@@ -22,13 +23,14 @@ import io.github.hazymorning.klangbild.domain.SpeakerSwitch
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -50,24 +52,17 @@ import kotlin.time.Clock
 class HaSource(
     http: HttpClient,
     private val scope: CoroutineScope,
-    private val config: HaConfig,
+    private val auth: HaAuth,
     /** The speaker chosen: an entity, or [EntityId.THIS_TV] for this TV's own. */
     private val playerEntity: String,
     private val sunEntity: String = "sun.sun",
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val ma: MaClient? = null,
-    /** How often the queue is read again while music plays (shorter in tests). */
-    queueRefreshMs: Long = QueueReader.QUEUE_REFRESH_MS,
+    queueTiming: QueueTiming = QueueTiming(),
     /** How often Music Assistant is asked whether a party runs (shorter in tests). */
     private val partyMs: Long = PARTY_MS,
     /** How long a button's call may go unanswered before it counts as still running (shorter in tests). */
     private val actionAnswerMs: Long = ACTION_ANSWER_MS,
-    /** How long a new song may wait for Music Assistant's queue to describe it (shorter in tests). */
-    detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
-    /** How long after a new song's first queue read the queue is read once more (shorter in tests). */
-    queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
-    /** How often Music Assistant itself is asked what comes next while a song plays (shorter in tests). */
-    maQueueMs: Long = QueueReader.MA_QUEUE_MS,
     /** This TV as a speaker, as far as it plays (with Music Assistant set up). */
     speaker: StateFlow<SpeakerStatus>? = null,
     /** How long the first wait is before Music Assistant and Home Assistant are asked again for this TV's own speaker (shorter in tests). */
@@ -93,7 +88,7 @@ class HaSource(
 
     /** This TV's own speaker, once it plays and Home Assistant has it. */
     private val own: OwnSpeaker? = if (ma != null && speaker != null) {
-        OwnSpeaker(scope, connection, ma, speaker, { Backoff(ownRetryMs, OwnSpeaker.LAST_RETRY_MS) }) { publish(connection.status.value, connection.entities.value) }
+        OwnSpeaker(scope, connection, ma, speaker, { Backoff(ownRetryMs, OwnSpeaker.LAST_RETRY_MS) }) { publish() }
     } else {
         null
     }
@@ -107,15 +102,17 @@ class HaSource(
     private var backAt: Long? = null
 
     private val queue = QueueReader(
-        scope, connection, { speakerShown }, config.baseUrl, ma, now,
-        latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock,
-        queueRefreshMs = queueRefreshMs, detailsWaitMs = detailsWaitMs, queueSettleMs = queueSettleMs, maQueueMs = maQueueMs,
-    ) { publish(connection.status.value, connection.entities.value) }
+        scope, connection, { speakerShown }, auth.baseUrl, ma, now,
+        latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock, timing = queueTiming,
+    ) { publish() }
 
     private var linkDownSince: Long? = null
-    private var lastSnapshot: PlayerSnapshot? = null
+
+    /** The player as Home Assistant last reported it, written while publishing and read by the commands. */
+    @Volatile private var lastSnapshot: PlayerSnapshot? = null
     private var receivedAt = 0L
-    private var watched: Set<String> = emptySet()
+    /** What the connection was asked to follow besides the chosen speaker and the sun. */
+    private var alsoFollowed: Set<String> = emptySet()
 
     /** The lights that join in, followed for `LightSync` alongside the group's speakers. */
     @Volatile private var lightIds: Set<String> = emptySet()
@@ -125,7 +122,7 @@ class HaSource(
     override fun follow(ids: Set<String>) {
         if (ids == lightIds) return
         lightIds = ids
-        publish(connection.status.value, connection.entities.value)
+        publish()
     }
 
     /** The entities of one's own: what the quick settings' buttons work and look at, and the values in the status line. */
@@ -134,7 +131,7 @@ class HaSource(
     override fun followEntities(ids: Set<String>) {
         if (ids == ownIds) return
         ownIds = ids
-        publish(connection.status.value, connection.entities.value)
+        publish()
     }
 
     /**
@@ -162,7 +159,7 @@ class HaSource(
         return try {
             connection.callService(domain, service, action.entity, data = data, timeoutMs = actionAnswerMs)
             true
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (_: HaNoAnswerException) {
             true
@@ -171,21 +168,15 @@ class HaSource(
         }
     }
 
-    override suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String? = try {
-        connection.callServiceForContext(domain, service, entityId, data)
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    override suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String? =
+        orNull { connection.callServiceForContext(domain, service, entityId, data) }
 
     override fun start() {
-        connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
+        connection.start(auth, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
         collector = scope.launch {
-            combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
-                .collect { (st, ents) -> publish(st, ents) }
+            merge(connection.status, connection.entities, connection.registry, connection.temperatureUnit, connection.missing).collect { publish() }
         }
-        partyPoller = ma?.let { client -> scope.launch { followParty(client) } }
+        partyPoller = ma?.let { client -> scope.launch { pollParty(client) } }
         queue.start()
         own?.start()
     }
@@ -204,12 +195,12 @@ class HaSource(
      * then. An answer that fails twice in a row counts as no party; a server without the plugin
      * is not asked again.
      */
-    private suspend fun followParty(client: MaClient) {
+    private suspend fun pollParty(client: MaClient) {
         var failed = 0
         while (true) {
             val queue = try {
                 client.partyPlayer().also { failed = 0 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (_: MaUnknownCommandException) {
                 return
@@ -218,19 +209,13 @@ class HaSource(
             }
             if (queue != partyQueue) {
                 partyQueue = queue
-                publish(connection.status.value, connection.entities.value)
+                publish()
             }
             delay(partyMs)
         }
     }
 
-    override suspend fun partyUrl(): String? = try {
-        ma?.partyUrl()
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    override suspend fun partyUrl(): String? = orNull { ma?.partyUrl() }
 
     /** The network came back: do not wait for the backoff timer. */
     fun networkAvailable() = connection.retryNow()
@@ -257,13 +242,13 @@ class HaSource(
     }
 
     /** Runs [block]; whether it worked. Only a cancellation passes. */
-    private suspend fun attempt(block: suspend () -> Unit): Boolean = tried(block).isSuccess
+    private suspend fun attempt(block: suspend () -> Unit): Boolean = orNull { block() } != null
 
     /** Runs [block]; what went wrong, if anything. Only a cancellation passes. */
     private suspend fun tried(block: suspend () -> Unit): Result<Unit> = try {
         block()
         Result.success(Unit)
-    } catch (e: kotlinx.coroutines.CancellationException) {
+    } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Result.failure(e)
@@ -297,19 +282,21 @@ class HaSource(
         attempt { connection.callService("media_player", "media_seek", entity, data = data) }
     }
 
-    /** Called from the status/entity collector and after queue refreshes, serialized. */
-    private fun publish(status: HaStatus, entities: Map<String, EntityState>): Unit = synchronized(lock) {
+    /** Builds the source state from the connection's current state and publishes it, whenever an input changes. */
+    private fun publish(): Unit = synchronized(lock) {
+        val status = connection.status.value
+        val entities = connection.entities.value
         val t = now()
         val link = when (status) {
             HaStatus.Connected -> LinkState.CONNECTED
-            is HaStatus.AuthFailed -> LinkState.AUTH_FAILED
-            is HaStatus.Connecting -> if (lastSnapshot == null && linkDownSince == null) LinkState.CONNECTING else LinkState.RECONNECTING
-            is HaStatus.Waiting -> LinkState.RECONNECTING
+            HaStatus.AuthFailed -> LinkState.AUTH_FAILED
+            HaStatus.Connecting -> if (lastSnapshot == null && linkDownSince == null) LinkState.CONNECTING else LinkState.RECONNECTING
+            HaStatus.Waiting -> LinkState.RECONNECTING
             HaStatus.Stopped -> LinkState.CONNECTING
         }
         linkDownSince = if (link == LinkState.CONNECTED) null else (linkDownSince ?: t)
 
-        var player = follow(entities, t)
+        var player = chooseSpeaker(entities, t)
         val entity = speakerShown?.let { entities[it] }
         if (player != null && player != lastSnapshot) {
             receivedAt = t
@@ -317,8 +304,8 @@ class HaSource(
         }
         player = player ?: lastSnapshot.takeIf { link != LinkState.CONNECTED }
 
-        val key = player?.track?.let { TrackMatch.key(it) }
-        if (key != null) queue.follow(key, player)
+        val key = player?.track?.let { TrackMatch.looseKey(it) }
+        if (key != null) queue.onTrack(key, player)
 
         // One estimate of Home Assistant's clock for the whole state: the position is published on it.
         val skew = connection.clockSkew.offsetMs
@@ -327,10 +314,10 @@ class HaSource(
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
         val others = player?.groupMembers.orEmpty()
-        val follow = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
-        if (follow != watched) {
-            watched = follow
-            connection.watch(watched)
+        val followed = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
+        if (followed != alsoFollowed) {
+            alsoFollowed = followed
+            connection.followAlso(followed)
         }
         val lightStates = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
         if (lightStates != _lights.value) _lights.value = lightStates
@@ -355,7 +342,7 @@ class HaSource(
             favorites = player?.isMusicAssistant == true && (favoriteButton() != null || (ma != null && player.activeQueue != null)),
             entities = ownIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap(),
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
-            temperatureUnit = temperatureUnitOf(connection.config.value) ?: _state.value.temperatureUnit,
+            temperatureUnit = connection.temperatureUnit.value,
             lyrics = enriched?.track?.let { queue.lyricsOf(it, entity, currentWindow) },
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
             speaker = speakerShown,
@@ -370,12 +357,12 @@ class HaSource(
      * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue. Returns what
      * the speaker shown plays.
      */
-    private fun follow(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
+    private fun chooseSpeaker(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
         val ownId = own?.entity
         val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
         val here = ownId?.takeIf { it != chosen }
-        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
-        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, config.baseUrl) }
+        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
+        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
         val showsOwn = if (here == null) {
             switch.reset()
             false
@@ -390,7 +377,7 @@ class HaSource(
             backJob = back?.let { at ->
                 scope.launch {
                     delay((at - now()).coerceAtLeast(0))
-                    publish(connection.status.value, connection.entities.value)
+                    publish()
                 }
             }
         }
@@ -416,10 +403,6 @@ class HaSource(
         favorites = shown.favorites,
         lyrics = shown.lyrics,
     )
-
-    /** Home Assistant's unit for temperatures ("°C", "°F") from its configuration. */
-    private fun temperatureUnitOf(cfg: JsonObject?): String? =
-        ((cfg?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
 
     /**
      * Who plays along: a sync group lists its members in `group_members` (on the leader and

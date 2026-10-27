@@ -62,8 +62,8 @@ object PlayerParser {
                 artists = artists,
                 album = album,
                 durationMs = entity.number("media_duration")?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
-                artworkUrl = picture?.let { ArtworkUrls.upgrade(it) },
-                artworkFallbackUrl = localPicture ?: picture,
+                artworkUrl = picture,
+                artworkFallbackUrl = localPicture,
                 source = source,
                 kind = kind,
             )
@@ -156,11 +156,10 @@ object PlayerParser {
      * entity id: `{"media_player.x": {"current_item": {...}, "next_item": {...}}}`.
      */
     fun queue(response: JsonObject, entityId: String, baseUrl: String): QueueInfo? {
-        val q = (response[entityId] as? JsonObject) ?: (response.values.firstOrNull() as? JsonObject) ?: return null
+        val q = response[entityId] as? JsonObject ?: return null
         val current = q["current_item"] as? JsonObject
         val next = q["next_item"] as? JsonObject
         return QueueInfo(
-            currentTitle = current?.let { (it["media_item"] as? JsonObject)?.string("name") ?: it.string("name") },
             current = current?.let { queueItem(it, baseUrl) },
             next = next?.let { queueItem(it, baseUrl) },
             name = q.string("name")?.trim()?.takeIf { it.isNotEmpty() },
@@ -197,8 +196,7 @@ object PlayerParser {
             album = album?.string("name")?.takeIf { it.isNotBlank() },
             year = year,
             durationMs = (item["duration"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
-            artworkUrl = resolved?.let { ArtworkUrls.upgrade(it) },
-            artworkFallbackUrl = resolved,
+            artworkUrl = resolved,
             source = if (isRadio) name else null,
             kind = kind,
         )

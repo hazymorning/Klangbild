@@ -10,12 +10,16 @@ import io.github.hazymorning.klangbild.KlangbildApp
 import io.github.hazymorning.klangbild.MainActivity
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.Screen
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
 /**
  * The very first start, with the connection in its extras (as Home Assistant or the CI sends
@@ -25,47 +29,45 @@ import org.robolectric.annotation.GraphicsMode
  * supports and on a recent one.
  */
 @RunWith(AndroidJUnit4::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [28, 34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class FirstLaunchTest {
+    private val app = ApplicationProvider.getApplicationContext<KlangbildApp>()
+
+    @After
+    fun stopApp() = app.graph.scope.cancel()
+
     @Test
     fun theFirstStartTakesTheConnectionFromItsExtrasAndKeepsIt() {
         val ha = System.getProperty("klangbild.fakeHa")
-        val app = ApplicationProvider.getApplicationContext<KlangbildApp>()
         val intent = Intent(app, MainActivity::class.java)
             .putExtra("ha_url", ha ?: "http://127.0.0.1:9")
             .putExtra("token", "smoke")
             .putExtra("entity", "media_player.living_room")
         val activity = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
         try {
-            watch(app, ha)
+            runBlocking { withTimeout(30_000) { app.graph.settings.settings.first { it.isConfigured } } }
+            watch(seconds = if (ha != null) 200 else 0)
         } finally {
-            // Closed at the end, so nothing of it keeps running into the next test.
             activity.pause().stop().destroy()
         }
     }
 
-    private fun watch(app: KlangbildApp, ha: String?) {
+    /** Follows the connection for [seconds] and prints each change; it never falls back to the setup page. */
+    private fun watch(seconds: Int) {
         val controller = app.graph.controller
-        val seconds = if (ha != null) 200 else 10
-        val start = System.currentTimeMillis()
-        var connected = false
+        val start = System.nanoTime()
         var last: String? = null
-        while (System.currentTimeMillis() - start < seconds * 1_000L) {
+        do {
             shadowOf(Looper.getMainLooper()).idle()
             val ui = controller.ui.value
+            val at = "${(System.nanoTime() - start) / 1_000_000 / 1000.0} s"
             val now = "${ui.source.link} ${ui.screen::class.simpleName}${(ui.screen as? Screen.Setup)?.reason ?: ""}"
             if (now != last) {
-                println("FirstLaunch ${(System.currentTimeMillis() - start) / 1000.0} s: $now")
+                println("FirstLaunch $at: $now")
                 last = now
             }
-            if (ui.source.link != LinkState.UNCONFIGURED && ui.source.link != LinkState.CONNECTING) connected = true
-            if (connected || ha == null) {
-                assertThat(ui.source.link, name = "link after ${(System.currentTimeMillis() - start) / 1000} s").isNotEqualTo(LinkState.UNCONFIGURED)
-            }
-            if (ha == null && ui.source.link != LinkState.UNCONFIGURED) return
+            assertThat(ui.source.link, name = "link after $at").isNotEqualTo(LinkState.UNCONFIGURED)
             Thread.sleep(50)
-        }
-        if (ha == null) assertThat(controller.ui.value.source.link, name = "link after the first start").isNotEqualTo(LinkState.UNCONFIGURED)
+        } while (System.nanoTime() - start < seconds * 1_000_000_000L)
     }
 }

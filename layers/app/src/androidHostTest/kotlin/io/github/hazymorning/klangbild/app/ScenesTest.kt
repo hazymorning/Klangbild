@@ -58,7 +58,7 @@ class ScenesTest {
     fun `a switch back never waits for a scene made for the frame left`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
-            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder))
+            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder), QuietLog)
             val screen = ScreenSpec(960, 540, 1f)
             val track = TrackInfo("Song", listOf("A"), artworkUrl = "http://192.168.1.5:8095/cover.jpg")
             val look = Look(Appearance.DARK, 1f)
@@ -90,7 +90,7 @@ class ScenesTest {
     fun `the song on stage finds its scene again on the way straight back`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
-            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder))
+            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder), QuietLog)
             val single = scenes.frame
             // Without a cover: the generated one, made without asking for anything.
             val track = TrackInfo("Song", listOf("A"))

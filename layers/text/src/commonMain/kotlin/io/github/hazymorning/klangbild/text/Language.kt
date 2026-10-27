@@ -11,7 +11,7 @@ enum class AppLanguage(val tag: String?) {
     GERMAN("de"),
     ;
 
-    /** The locales whose language the words are in: the one chosen, else the system's. */
+    /** The locales whose language the strings are in: the one chosen, else the system's. */
     internal fun wanted(system: List<Locale>): List<Locale> = tag?.let { listOf(Locale.forLanguageTag(it)) } ?: system
 
     companion object {
@@ -39,7 +39,7 @@ class Locale(val language: String, val country: String = "") {
     override fun toString(): String = toLanguageTag()
 
     companion object {
-        /** The language and region of a BCP 47 tag ("de-AT", "en-Latn-GB-u-mu-celsius"); its script and extensions don't change the words or their formats. */
+        /** The language and region of a BCP 47 tag ("de-AT", "en-Latn-GB-u-mu-celsius"); its script and extensions don't change the strings or their formats. */
         fun forLanguageTag(tag: String): Locale {
             val parts = tag.split('-', '_')
             val country = parts.drop(1).takeWhile { it.length > 1 }

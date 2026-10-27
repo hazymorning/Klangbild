@@ -132,6 +132,8 @@ data class Settings(
     /** The refresh token of a sign-in through Home Assistant's login page, and the client id it was made for. */
     val haRefreshToken: String? = null,
     val haClientId: String? = null,
+    /** Home Assistant refused its credentials, so they were dropped ([refused]); the setup screen says so until new ones are set. */
+    val haRefused: Boolean = false,
     val entityId: String? = null,
     /** The last speaker followed other than "This TV": the menu's Speaker goes back to it. */
     val otherSpeaker: String? = null,
@@ -155,7 +157,7 @@ data class Settings(
     val queue: QueueDisplay = QueueDisplay.OFF,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
-    /** Music Assistant itself (optional): for the whole queue in Cover Flow. */
+    /** Music Assistant's URL and token, optional. Lyrics, the queue list, favorites, the party code and Play here need them. */
     val maUrl: String? = null,
     val maToken: String? = null,
     /** This TV plays music from Music Assistant, as one of its speakers (needs Music Assistant). */
@@ -215,8 +217,15 @@ data class Settings(
             haToken = (keep as? HaCredentials.LongLived)?.token,
             haRefreshToken = (keep as? HaCredentials.SignedIn)?.refreshToken,
             haClientId = (keep as? HaCredentials.SignedIn)?.clientId,
+            haRefused = haRefused && credentials == null && url == haUrl,
         )
     }
+
+    /**
+     * Without the Home Assistant credentials, which it refused. They are never sent again, since
+     * Home Assistant counts every attempt as a failed login.
+     */
+    fun refused(): Settings = copy(haToken = null, haRefreshToken = null, haClientId = null, haRefused = true)
 
     /** The same for Music Assistant; no address clears both. */
     fun withMa(url: String?, token: String?): Settings =

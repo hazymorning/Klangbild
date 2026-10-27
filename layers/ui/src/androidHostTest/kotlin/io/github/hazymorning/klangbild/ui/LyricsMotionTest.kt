@@ -47,7 +47,7 @@ class LyricsMotionTest {
     private val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
     private val neonLyrics = Fixtures.lyrics(Catalog.neonLyrics)
     private val salt = Fixtures.track(SyntheticCover.SALT_WATER)
-    private val saltWords = Fixtures.lyrics(Catalog.saltWords)
+    private val saltWords = Fixtures.lyrics(Catalog.saltLyrics)
 
     /** Where the song is (ms), as the progress bar has it. */
     private var position by mutableLongStateOf(80_000L)
@@ -63,7 +63,7 @@ class LyricsMotionTest {
             val m = Fixtures.model(s.track, next = Fixtures.spiegel, scene = s.scene, lead = lead)
             StageModel(
                 scene = m.scene, text = m.text, status = m.status, durationMs = m.durationMs, positionMs = playing, year = m.year,
-                progress = m.progress, line = m.line, next = m.next, nextTitle = m.nextTitle, statusLine = m.statusLine,
+                barShown = m.barShown, slotText = m.slotText, footer = m.footer, footerTitle = m.footerTitle, statusLine = m.statusLine,
             )
         }
     }

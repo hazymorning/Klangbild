@@ -37,7 +37,10 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** What the app needs from Android: OkHttp's connections, DataStore, the keystore and the rest. */
+/**
+ * What the app needs from Android: OkHttp's connections, DataStore, the keystore and the rest.
+ * [KlangbildApp] makes one per process, since each DataStore file may be opened only once.
+ */
 class AndroidPlatform(context: Context) : Platform {
     private val app = context.applicationContext
 
@@ -47,7 +50,8 @@ class AndroidPlatform(context: Context) : Platform {
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
-        // WebSocket keep-alive is handled by HA pings; OkHttp answers server pings itself.
+        // No ping interval: Home Assistant's own pings keep its WebSocket alive, and OkHttp
+        // answers a server's pings itself.
         .addInterceptor(CleartextGuard())
         // The guard checks every redirect hop, too: a picture link must not lead to plain HTTP outside the home.
         .addNetworkInterceptor(CleartextGuard())
@@ -88,7 +92,9 @@ class AndroidPlatform(context: Context) : Platform {
 
     override val secrets = KeystoreSecretBox()
 
-    override fun speakerValues(): ValueStore = speakerValues(app)
+    private val speaker by lazy { speakerValues(app) }
+
+    override fun speakerValues(): ValueStore = speaker
 
     override val languages = PlatformLanguageStore(app)
 

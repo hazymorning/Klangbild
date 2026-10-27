@@ -7,6 +7,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
@@ -26,14 +29,14 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 /**
- * The two typefaces (both SIL Open Font License, shipped unmodified, licenses in
- * assets/licenses):
+ * The two typefaces (both under the SIL Open Font License and shipped unmodified; the licenses
+ * are in androidApp/src/main/assets/licenses):
  *
- * - [TITLE]: Jost (Owen Earl), a geometric sans in the line of Paul Renner's Futura, for the
- *   titles, the large clock and the headings. Its round, even forms and small x-height keep
- *   large sizes calm.
+ * - [TITLE]: Jost (Owen Earl), a geometric sans in the line of Paul Renner's Futura, for titles
+ *   and lyrics, the headings, the clocks and times, and the setup code. Its round, even forms
+ *   and small x-height keep large sizes calm, and its digits are even.
  * - [TEXT]: DM Sans (Colophon Foundry), a geometric grotesque with optical sizes and a larger
- *   x-height, for everything read at 15 to 21 sp from the sofa: artists, albums, times, status,
+ *   x-height, for the smaller text read from the sofa at 15 to 22 sp: artists, albums, status,
  *   menus. Its optical-size axis is set to the size in sp, so small lines get the looser,
  *   sturdier cut.
  *
@@ -51,7 +54,7 @@ enum class Face(
     internal val colonRaise: Float,
 ) {
     TITLE(intArrayOf(320, 400, 420, 430, 440), null, 0.123f),
-    TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560, 600), 9f..40f, 0.10f),
+    TEXT(intArrayOf(400, 420, 440, 460, 480, 500, 520, 560), 9f..40f, 0.10f),
 }
 
 object Fonts {
@@ -113,14 +116,7 @@ internal inline fun faceFonts(font: (Face, FontWeight, FontVariation.Settings) -
  * A text style in [face] at [size] sp: line height [lineHeight] sp, tracking [tracking] em.
  * Layouts align the result by its baselines and [Fonts.CAP_HEIGHT], never by the boxes.
  */
-fun Faces.type(
-    face: Face,
-    size: Float,
-    weight: Int,
-    color: Color = Color.Unspecified,
-    lineHeight: Float = size * 1.25f,
-    tracking: Float = 0f,
-): TextStyle = TextStyle(
+private fun Faces.type(face: Face, size: Float, weight: Int, color: Color, lineHeight: Float, tracking: Float): TextStyle = TextStyle(
     fontFamily = family(face, size),
     fontWeight = FontWeight(weight),
     fontSize = size.sp,
@@ -137,6 +133,9 @@ fun Faces.titleType(size: Float, weight: Int, color: Color = Color.Unspecified, 
 /** A style in the text face (DM Sans). */
 fun Faces.textType(size: Float, weight: Int, color: Color = Color.Unspecified, lineHeight: Float = size * 1.3f, tracking: Float = 0f) =
     type(Face.TEXT, size, weight, color, lineHeight, tracking)
+
+/** Where this layout's first baseline lies (px from its top), or 0 for one without. */
+internal fun Placeable.firstBaseline(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
 
 /**
  * Times set like a clock face. Every digit stands in a cell as wide as the widest digit and
@@ -165,9 +164,10 @@ class Figures internal constructor(
 @Composable
 fun rememberFigures(style: TextStyle, face: Face): Figures {
     val measurer = rememberTextMeasurer(cacheSize = 12)
-    return remember(style, face) {
+    val density = LocalDensity.current
+    return remember(style, face, measurer) {
         val plain = style.copy(letterSpacing = 0.em)
-        val sizePx = measurer.measure("0", plain).let { r -> r.layoutInput.density.run { plain.fontSize.toPx() } }
+        val sizePx = with(density) { plain.fontSize.toPx() }
         val advance = FloatArray(10) { d -> measurer.measure(d.toString(), plain, softWrap = false).getLineRight(0) / sizePx }
         Figures(advance.max(), advance, if (style.letterSpacing.isEm) style.letterSpacing.value else 0f, face.colonRaise)
     }
@@ -176,9 +176,9 @@ fun rememberFigures(style: TextStyle, face: Face): Figures {
 /**
  * The rest clock's figures as outlines, set by hand: by the font's own advances and kerning, the
  * colon raised to the middle of the figures (set on the baseline it sags below them; how far
- * depends on the weight, so it is measured on the outlines), and the one drawn in by most of its
- * side bearings, which at this size leave it standing apart from its neighbors. As outlines the
- * figures are known exactly where they are seen: [ink] is what centers them.
+ * depends on the weight, so it is measured on the outlines), and the digit 1 drawn in by most of
+ * its side bearings, which at this size would leave it standing apart from its neighbors. As
+ * outlines the figures are known exactly where they are seen: [ink] is what centers them.
  */
 class ClockFigures(time: String, pen: Glyphs.Pen, sizePx: Float, tracking: Float) {
     /** The figures' outlines, the baseline starting at the origin. */
@@ -204,8 +204,8 @@ class ClockFigures(time: String, pen: Glyphs.Pen, sizePx: Float, tracking: Float
 
     private companion object {
         /**
-         * How much of the one's side bearings is taken in (em), on its left and on its right: Jost
-         * gives it 0.08 and 0.13, the other figures 0.02 to 0.06.
+         * How much of the digit 1's side bearings is taken in (em), on its left and on its right:
+         * Jost gives it 0.08 and 0.13, the other figures 0.02 to 0.06.
          */
         const val ONE_LEFT = 0.03f
         const val ONE_RIGHT = 0.08f
@@ -221,6 +221,6 @@ fun rememberClockFigures(time: String, style: TextStyle): ClockFigures {
     return remember(time, style, glyphs, resolver, density) {
         val sizePx = with(density) { style.fontSize.toPx() }
         val tracking = if (style.letterSpacing.isEm) style.letterSpacing.value else 0f
-        ClockFigures(time, glyphs.drawing(style, resolver, sizePx), sizePx, tracking)
+        ClockFigures(time, glyphs.pen(style, resolver, sizePx), sizePx, tracking)
     }
 }

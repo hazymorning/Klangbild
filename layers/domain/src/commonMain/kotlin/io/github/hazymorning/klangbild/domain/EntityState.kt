@@ -18,7 +18,6 @@ data class EntityState(
     val entityId: String,
     val state: String,
     val attributes: JsonObject,
-    val lastChanged: Double,
     val lastUpdated: Double,
     val context: String? = null,
     val contextParent: String? = null,
@@ -36,14 +35,12 @@ data class EntityState(
         fun of(o: JsonObject?): EntityState? {
             o ?: return null
             val id = o.string("entity_id") ?: return null
-            val changed = seconds(o.string("last_changed")) ?: 0.0
             val context = o["context"] as? JsonObject
             return EntityState(
                 entityId = id,
                 state = o.string("state") ?: "unknown",
                 attributes = o["attributes"] as? JsonObject ?: JsonObject(emptyMap()),
-                lastChanged = changed,
-                lastUpdated = seconds(o.string("last_updated")) ?: changed,
+                lastUpdated = seconds(o.string("last_updated")) ?: seconds(o.string("last_changed")) ?: 0.0,
                 context = context?.string("id"),
                 contextParent = context?.string("parent_id"),
                 contextUser = context?.string("user_id"),
@@ -51,7 +48,7 @@ data class EntityState(
         }
 
         /** An ISO 8601 time as epoch seconds. */
-        fun seconds(iso: String?): Double? = iso?.let(::instant)?.let { it.epochSeconds + it.nanosecondsOfSecond / 1e9 }
+        private fun seconds(iso: String?): Double? = iso?.let(::instant)?.let { it.epochSeconds + it.nanosecondsOfSecond / 1e9 }
 
         /**
          * An ISO 8601 time with its offset ("2026-10-20T19:30:00.5+02:00", or without the seconds);
@@ -65,6 +62,5 @@ data class EntityState(
 
         /** A time of day written without its seconds, which the format above needs. */
         private val NO_SECONDS = Regex("^(\\d{4}-\\d\\d-\\d\\d[Tt]\\d\\d:\\d\\d)(?=[Zz+-])")
-
     }
 }

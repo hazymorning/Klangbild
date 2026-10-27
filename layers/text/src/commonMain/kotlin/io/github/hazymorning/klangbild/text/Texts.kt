@@ -1,19 +1,20 @@
 package io.github.hazymorning.klangbild.text
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
-/** One of the app's texts ([Strings]), by its place in strings.xml. */
+/** One of the app's strings ([Strings]), by its place in strings.xml. */
 @JvmInline
 value class StringId internal constructor(internal val index: Int)
 
-/** One of the app's texts with a form for one and one for more ([Plurals]). */
+/** One of the app's strings with a form for one and one for more ([Plurals]). */
 @JvmInline
 value class PluralId internal constructor(internal val index: Int)
 
-/** The words of one language, in the order of [Strings] and [Plurals]. */
+/** The strings of one language, in the order of [Strings] and [Plurals]. */
 internal class Words(
     val strings: Array<String>,
     /** Each plural's form for one, and for any other count. */
@@ -24,17 +25,17 @@ internal class Words(
 )
 
 /**
- * The app's words in the language it shows, and that language's formats: numbers, percent,
+ * The app's strings in the language it shows, and that language's formats: numbers, percent,
  * dates and the time of day (in 12 or 24 hours, as the system is set). Text made outside
  * Compose (the menus, the status line, the setup page) and inside it comes from here, so a new
  * language applies everywhere at once.
  */
 class Texts internal constructor(
     private val words: Words,
-    /** The language the words are in, with the system's region where it has one (formats follow it). */
+    /** The language of the strings, with the system's region where it has one (formats follow it). */
     val locale: Locale,
     /** Times of day in 24 hours (else 12 hours with AM and PM). */
-    val clock24: Boolean,
+    private val clock24: Boolean,
 ) {
     private val region = locale.region()
 
@@ -42,21 +43,17 @@ class Texts internal constructor(
 
     fun format(id: StringId, vararg args: Any): String = fontSafe(formatted(words.strings[id.index], args))
 
-    /** The plural form of [id] for [count], with [count] as its first argument. */
-    fun plural(id: PluralId, count: Int): String = plural(id, count, count)
-
-    /** The plural form of [id] for [count], with [args] as its arguments. */
-    fun plural(id: PluralId, count: Int, vararg args: Any): String =
-        fontSafe(formatted((if (count == 1) words.one else words.other)[id.index], args))
-
-    /**
-     * [count] in words where the language has a word for it ("Three" in English, its German word
-     * in German), else in figures.
-     */
-    fun countWord(count: Int): String = words.countWords.getOrNull(count) ?: region.integer(count.toLong())
+    /** The plural form of [id] for [count], with [count] in words where the language has one ("Three speakers"), else in figures. */
+    fun plural(id: PluralId, count: Int): String {
+        val number = words.countWords.getOrNull(count) ?: region.integer(count.toLong())
+        return fontSafe(formatted((if (count == 1) words.one else words.other)[id.index], arrayOf(number)))
+    }
 
     /** "35%", "35 %": a whole percent as the language writes it. */
     fun percent(percent: Int): String = fontSafe(region.integer(percent.toLong()) + region.percentSuffix)
+
+    /** What follows a percentage: "%", or "%" after a no-break space. */
+    val percentSuffix: String get() = fontSafe(region.percentSuffix)
 
     /** [value] with at most [maxFractionDigits] decimals: "1.5", "1,25". */
     fun decimal(value: Double, maxFractionDigits: Int): String = fontSafe(region.decimal(value, 0, maxFractionDigits, halfUp = false))
@@ -73,33 +70,30 @@ class Texts internal constructor(
      * PM). No leading zero, as a clock on a wall shows it.
      */
     fun clock(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String {
-        val time = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
-        return fontSafe(if (clock24) clock24(time.hour, time.minute) else clock12(time.hour, time.minute) + "\u00A0" + region.dayPeriod(time.hour))
+        val time = timeAt(epochMs, zone)
+        return if (clock24) figures(time) else fontSafe(figures(time) + "\u00A0" + region.dayPeriod(time.hour))
     }
 
     /** The figures of the time of day alone, for the large rest clock: "21:47", or "9:47" in 12 hours. */
-    fun clockFigures(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String {
-        val time = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
-        return if (clock24) clock24(time.hour, time.minute) else clock12(time.hour, time.minute)
-    }
+    fun clockFigures(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String = figures(timeAt(epochMs, zone))
 
     /**
      * The date at [epochMs] with the weekday, as the language writes it: "Saturday, October 10"
      * in English, day before month in German.
      */
     fun date(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String =
-        fontSafe(region.date(Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone).date))
+        fontSafe(region.date(timeAt(epochMs, zone).date))
 
-    private fun clock24(hour: Int, minute: Int) = "$hour:${minute.toString().padStart(2, '0')}"
+    private fun timeAt(epochMs: Long, zone: TimeZone): LocalDateTime = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
 
-    private fun clock12(hour: Int, minute: Int) = "${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
+    private fun figures(time: LocalDateTime): String {
+        val hour = if (clock24) time.hour else (time.hour + 11) % 12 + 1
+        return "$hour:${time.minute.toString().padStart(2, '0')}"
+    }
 
     companion object {
-        /** The languages the app's words exist in; English is the default. */
-        val LANGUAGES = setOf("en", "de")
-
         /**
-         * The words for [language] and the system's locales [system], with times as [clock24]
+         * The texts for [language] and the system's locales [system], with times as [clock24]
          * says. A language the app does not have falls back to English, as Android's own
          * resource lookup does.
          */
@@ -109,12 +103,12 @@ class Texts internal constructor(
         }
 
         /**
-         * The locale whose formats go with the words: the first of [wanted] in a language the
+         * The locale whose formats go with the strings: the first of [wanted] in a language the
          * app has, with the system's region where the system speaks that language too
          * (British English keeps its dates); English when none is.
          */
         fun formatLocale(wanted: List<Locale>, system: List<Locale>): Locale {
-            val language = wanted.firstOrNull { it.language in LANGUAGES }?.language ?: "en"
+            val language = wanted.firstOrNull { it.language in WORDS }?.language ?: "en"
             val fromSystem = system.firstOrNull { it.language == language && it.country.isNotEmpty() }
             return fromSystem ?: wanted.firstOrNull { it.language == language } ?: Locale(language)
         }
@@ -122,12 +116,12 @@ class Texts internal constructor(
         /** Whether [locale]'s region tells the time in 24 hours, where the system says nothing. */
         fun clock24Of(locale: Locale): Boolean = locale.region().clock24
 
-        /** The app's two faces have none of the narrow or thin spaces the platform's formats use: a no-break space instead. */
+        /** Replaces the narrow, thin and en spaces of number and date formats, which the app's two typefaces lack, with a no-break space. */
         fun fontSafe(s: String): String = s.replace('\u202F', '\u00A0').replace('\u2009', '\u00A0').replace('\u2002', '\u00A0')
 
         /**
          * [pattern] with [args] in place of its `%s` and `%d` (`%1$s` for the first argument, and
-         * so on), as Android's resources fill them in for the app's texts.
+         * so on), as Android's resources fill them in for the app's strings.
          */
         internal fun formatted(pattern: String, args: Array<out Any>): String {
             if ('%' !in pattern) return pattern

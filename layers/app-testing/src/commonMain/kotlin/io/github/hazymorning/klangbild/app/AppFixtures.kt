@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.app
 
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.art.SyntheticCovers
 import io.github.hazymorning.klangbild.color.Appearance
@@ -51,6 +52,11 @@ abstract class AppFixtures {
     /** Synced words from LRC. */
     fun lyrics(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
 
+    /** Each synthetic cover as painted once: the larger ones take up to half a second. */
+    private val painted = HashMap<SyntheticCover, ImageBitmap>()
+
+    private fun painted(cover: SyntheticCover): ImageBitmap = painted.getOrPut(cover) { SyntheticCovers.render(cover) }
+
     fun scene(
         track: TrackInfo,
         screen: ScreenSpec = ScreenSpec.TV_1080,
@@ -59,8 +65,7 @@ abstract class AppFixtures {
         coverField: Boolean = false,
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
-        val bmp = cover?.let { SyntheticCovers.render(it) }
-        return SceneBuilder.build(track.key, bmp, track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField)
+        return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */
@@ -81,7 +86,7 @@ abstract class AppFixtures {
         val px = kotlin.math.round(StageGrid(screen).rowCover * screen.density).toInt()
         val made = if (!covers) emptyMap() else upNext.rows.associate { row ->
             val cover = row.track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { name -> SyntheticCover.entries.firstOrNull { it.name == name } }
-            row.id to SceneBuilder.rowCover(cover?.let { SyntheticCovers.render(it) }, row.track.artFoil, row.track.artView, px)
+            row.id to SceneBuilder.rowCover(cover?.let(::painted), row.track.artFoil, row.track.artView, px)
         }
         return QueueList(upNext, made)
     }

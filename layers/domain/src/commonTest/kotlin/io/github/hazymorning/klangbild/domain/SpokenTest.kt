@@ -10,13 +10,11 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
-import io.github.hazymorning.klangbild.text.testZone
 import kotlin.test.Test
 
 /** Podcasts and audiobooks: what kind plays, its chapters and where in them the listener is. */
 class SpokenTest {
     private val de = TestTexts.german
-    private val en = TestTexts.english()
     private val numbered: (Int) -> String = { n -> de.format(Strings.chapterNumber, n) }
     private fun raw(position: Int, name: String?, start: Double, end: Double? = null) = Chapters.Raw(position, name, start, end)
 
@@ -101,27 +99,5 @@ class SpokenTest {
         // Ahead: to the next one, none after the last.
         assertThat(Chapters.jump(ch, 1_500_000L, +1)).isEqualTo(2_000_000L)
         assertThat(Chapters.jump(ch, 2_500_000L, +1)).isNull()
-    }
-
-    @Test
-    fun `speed and times in words`() {
-        assertThat(TimeText.speed(1f, de)).isNull()
-        assertThat(TimeText.speed(1.004f, de)).isNull()
-        assertThat(TimeText.speed(1.5f, de)).isEqualTo("Tempo\u00A01,5×")
-        assertThat(TimeText.speed(1.25f, de)).isEqualTo("Tempo\u00A01,25×")
-        assertThat(TimeText.speed(2f, de)).isEqualTo("Tempo\u00A02×")
-        assertThat(TimeText.speed(0.75f, de)).isEqualTo("Tempo\u00A00,75×")
-        assertThat(de.clock(1_791_483_667_000L, testZone("Europe/Berlin"))).isEqualTo("20:21")
-        // In English: a decimal point, and the time in 12 hours as the system is set.
-        assertThat(TimeText.speed(1.5f, en)).isEqualTo("Speed\u00A01.5×")
-        assertThat(en.clock(1_791_483_667_000L, testZone("Europe/Berlin"))).isEqualTo("8:21\u00A0PM")
-        assertThat(TestTexts.english(clock24 = true).clock(1_791_483_667_000L, testZone("Europe/Berlin"))).isEqualTo("20:21")
-    }
-
-    @Test
-    fun `a book at one and a half times runs through its time faster`() {
-        val p = PlayerSnapshot(PlayerStatus.PLAYING, book, positionMs = 10_000, positionAtEpochMs = 1_000_000, speed = 1.5f)
-        assertThat(Progress.positionAt(p, nowMs = 1_004_000, skewMs = 0, receivedAtMs = 0)).isEqualTo(16_000)
-        assertThat(Progress.positionAt(p.copy(status = PlayerStatus.PAUSED), nowMs = 1_004_000, skewMs = 0, receivedAtMs = 0)).isEqualTo(10_000)
     }
 }

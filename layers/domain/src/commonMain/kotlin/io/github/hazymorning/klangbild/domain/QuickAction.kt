@@ -3,8 +3,8 @@ package io.github.hazymorning.klangbild.domain
 import kotlinx.serialization.json.JsonObject
 
 /**
- * A button of one's own in the quick settings, set up on the phone: its [name] and the Home
- * Assistant entity it works. What it does follows from the entity's kind ([ActionKind]): a
+ * A custom button in the quick settings, set up on the phone: its [name] and the Home
+ * Assistant entity it controls. What it does follows from the entity's kind ([ActionKind]): a
  * script runs (with [variables], and learns which speaker the TV follows), a scene is activated,
  * an automation runs its actions, a button is pressed, a switch is turned on or off. With a
  * [condition] it shows only while that holds.

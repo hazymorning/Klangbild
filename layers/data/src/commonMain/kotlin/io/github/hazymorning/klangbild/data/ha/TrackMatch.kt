@@ -10,8 +10,8 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
  * differently (accents, a version in brackets), so titles are matched loosely.
  */
 object TrackMatch {
-    /** One song, however its title and artists are spelled. */
-    fun key(t: TrackInfo) = norm(t.title) + "|" + norm(t.artists.joinToString())
+    /** Identifies a track however its title and artists are spelled, where [TrackInfo.key] is exact. */
+    fun looseKey(t: TrackInfo) = norm(t.title) + "|" + norm(t.artists.joinToString())
 
     fun norm(s: String): String =
         s.lowercase().normalize(Form.NFKD).filter { it.isLetterOrDigit() }

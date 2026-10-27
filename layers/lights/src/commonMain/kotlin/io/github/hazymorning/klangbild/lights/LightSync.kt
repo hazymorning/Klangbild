@@ -8,7 +8,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -59,25 +58,22 @@ import kotlin.time.Clock
  *
  * All its state lives on one thread; [update] and [release] only hand over.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class LightSync(
     private val scope: CoroutineScope,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val context: CoroutineContext = Dispatchers.Default.limitedParallelism(1),
 ) {
-    /** What the lights are to show now, set on every tick; null while nothing is on stage. */
+    /** What the lights show now; null while nothing is on stage. */
     data class Target(
         val lights: RoomLights,
         val level: RoomLightBrightness,
-        /** The colors for each light; a new one is faded to. */
+        /** The colors for each light. Compared by identity: a new instance fades the lights to it. */
         val colors: LightColors,
         /** The song: a new one changes the lights once it has played a moment. */
         val song: String,
         val playing: Boolean,
-        /** 0 by day to 1 at night (by the sun): the lights dim with the evening. */
+        /** 0 by day to 1 at night (by the sun): the lights dim, and grays become a warmer white. */
         val night: Float,
-        /** Grays become a warmer white toward the night (0 to 1). */
-        val warmth: Float,
         /** How fast the field moves (0: it stands still). */
         val motion: Float,
         /** The field's time (seconds), shared with the screen. */
@@ -102,22 +98,33 @@ class LightSync(
 
     /** What a light was last asked to show. */
     private sealed interface Shown {
-        data class Color(val xy: Xy, val brightness: Int) : Shown
-        data class White(val kelvin: Int, val brightness: Int) : Shown
-        data class Level(val brightness: Int) : Shown
-        data object On : Shown
+        /** Home Assistant's brightness (1 to 255); null for a light that is only switched on. */
+        val brightness: Int?
+
+        data class Color(val xy: Xy, override val brightness: Int) : Shown
+        data class White(val kelvin: Int, override val brightness: Int) : Shown
+        data class Level(override val brightness: Int) : Shown
+        data object On : Shown {
+            override val brightness: Int? = null
+        }
     }
 
     /** A light's state when it was taken over: on or off, and enough to restore it if the snapshot is gone. */
     private class Saved(val on: Boolean, val brightness: Int?, val mode: String?, val xy: List<Float>?, val hs: List<Float>?, val kelvin: Int?)
 
-    private class Light(val id: String, val slot: LightSlot) {
+    private class Light(val id: String, var slot: LightSlot) {
         var shown: Shown? = null
-        var sentAt = 0L
+
+        /** When the last call to it went out; null before the first. */
+        var sentAt: Long? = null
         var transitionMs = 0L
         var inFlight = false
-        var retryAt = 0L
-        var takenOver = false
+
+        /** When a call that had to wait is due; null: none. */
+        var retryAt: Long? = null
+
+        /** Someone else changed it: it is left alone until the next takeover. */
+        var theirs = false
 
         /** Calls that failed in a row: one is tried again, then the light waits for the next change. */
         var failures = 0
@@ -164,7 +171,9 @@ class LightSync(
 
     /** The lights whose state Home Assistant holds in a snapshot scene of ours. */
     private var snapshots: Set<String> = emptySet()
-    private var savedAt = 0L
+
+    /** When the last restore's calls were out: the lights fade back for [RESTORE_TRANSITION_MS]. */
+    private var restoredAt: Long? = null
     private var shownSong: String? = null
     private var shownColors: LightColors? = null
     private var waitingSong: String? = null
@@ -172,7 +181,9 @@ class LightSync(
     private var idleSince: Long? = null
     private var pausedSince: Long? = null
     private var shownPaused = false
-    private var lastStepAt = 0L
+
+    /** When [send] last ran: the colors drift on [DRIFT_MS] after it. */
+    private var lastSentAt: Long? = null
     private var shownShare = 0f
     private val rgb = FloatArray(3)
 
@@ -203,12 +214,9 @@ class LightSync(
         if (target != null) lastTarget = target
         if (old?.lights != target?.lights || (old?.level == RoomLightBrightness.OFF) != (target?.level == RoomLightBrightness.OFF)) follow()
         // Nothing to do without lights, unless lights taken over are still to be given back.
-        if (target != null || activeLights) ensureLoop()
-        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old == null || target == null) wake.trySend(Unit)
+        if (target != null || activeFor != null) ensureLoop()
+        if (old?.song != target?.song || old?.playing != target?.playing || old?.level != target?.level || old?.onlyOn != target?.onlyOn || old?.lights != target?.lights || old == null || target == null) wake.trySend(Unit)
     }
-
-    /** Whether lights are taken over (read off the loop's thread; a stale answer only delays the loop by a tick). */
-    @Volatile private var activeLights = false
 
     /** The lights chosen and switched on, as the last [update] said; null: as the target says. */
     @Volatile private var chosen: Set<String>? = null
@@ -217,17 +225,15 @@ class LightSync(
      * Gives the lights back as they were, through the link they were taken over with (the app
      * closes, or another server is set up); the returned job ends when the calls are out.
      */
-    fun release(): Job {
+    fun release(): Job = synchronized(lock) {
         val b = bridge
         target = null
-        val old = synchronized(lock) { loop.also { loop = null } }
+        val old = loop.also { loop = null }
         old?.cancel()
-        val job = scope.launch(context) {
+        scope.launch(context) {
             old?.join()
             restore(b)
-        }
-        releasing = job
-        return job
+        }.also { releasing = it }
     }
 
     private fun ensureLoop(): Unit = synchronized(lock) {
@@ -239,10 +245,8 @@ class LightSync(
             while (isActive) {
                 step(now())
                 // Nothing taken over and nothing to show: the loop rests until it is needed again.
-                if (activeFor == null && target == null) {
-                    synchronized(lock) { loop = null }
-                    break
-                }
+                val rests = synchronized(lock) { (activeFor == null && target == null).also { if (it) loop = null } }
+                if (rests) break
                 withTimeoutOrNull(TICK_MS) { wake.receive() }
             }
         }
@@ -262,16 +266,21 @@ class LightSync(
             if (lastTarget?.onlyOn == true) letGoSwitchedOff(states)
             val since = idleSince ?: t.also { idleSince = it }
             if (t - since >= IDLE_RELEASE_MS) return restore(b)
-            if (!shownPaused && t - since >= PAUSE_DELAY_MS) lastTarget?.let { send(b, it, t, PAUSE_TRANSITION_MS, force = true, paused = true) }
-            return
+            val last = lastTarget ?: return
+            if (!shownPaused && t - since >= PAUSE_DELAY_MS) send(b, last, t, PAUSE_TRANSITION_MS, force = true, paused = true)
+            return retryDue(b, last, t)
         }
         idleSince = null
         val wanted = slots(tg.lights)
-        // Lights no longer wanted are given back; new ones are saved first, once their states
-        // have arrived (they are followed only now), or after a while with what is there.
         if (wanted.keys != activeFor) {
+            // Other lights chosen: the lights are restored, and taken over anew on a later step
+            // with the states they have then.
+            if (activeFor != null) return restore(b)
+            // Saved once the last restore's fade is over (some lights report each step of a fade,
+            // and would be saved between Klangbild's color and their own), and once their states
+            // have arrived (they are followed only now), or after a while with what is there.
+            if (restoredAt.let { it != null && t - it < RESTORE_TRANSITION_MS + SETTLE_REPORT_MS }) return
             if (wanted.keys.any { it !in states } && t - followedAt < STATES_WAIT_MS) return
-            if (activeFor != null) restore(b)
             activate(b, wanted, states, t, tg.onlyOn)
         }
         // "Leave off" chosen while they glow: the lights switched on for the music go back off
@@ -281,6 +290,15 @@ class LightSync(
             return giveBackSwitchedOn(b)
         }
         takenOnlyOn = tg.onlyOn
+        // A light moved to another place on the setup page takes that place's color.
+        var moved = false
+        for (light in lights.values) {
+            val slot = wanted[light.id] ?: continue
+            if (slot != light.slot) {
+                light.slot = slot
+                moved = true
+            }
+        }
         adopt(b, wanted, states, t, tg.onlyOn)
         watchForOthers(states, t)
         if (tg.onlyOn) letGoSwitchedOff(states)
@@ -293,31 +311,36 @@ class LightSync(
                     waitingSince = t
                 }
                 // The first song after taking over is shown at once.
-                if (shownSong == null || t - waitingSince >= SETTLE_MS) {
+                val first = shownSong == null
+                if (first || t - waitingSince >= SETTLE_MS) {
                     shownSong = tg.song
                     shownColors = tg.colors
-                    send(b, tg, t, if (lastStepAt == 0L) FIRST_TRANSITION_MS else TRACK_TRANSITION_MS, force = true, paused = paused)
+                    send(b, tg, t, if (first) FIRST_TRANSITION_MS else TRACK_TRANSITION_MS, force = true, paused = paused)
                 }
             }
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
             !paused && shownPaused -> send(b, tg, t, RESUME_TRANSITION_MS, force = true, paused = false)
-            tg.colors !== shownColors -> {
+            moved || tg.colors !== shownColors -> {
                 shownColors = tg.colors
                 send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             }
             // A new level or a later hour (a pause is dimmed above, after its delay).
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
-            !paused && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
+            !paused && tg.motion > 0f && lastSentAt.let { it == null || t - it >= DRIFT_MS } -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
-        // Calls that had to wait (a light still busy, a failure to try again): those lights only.
-        val due = lights.values.filter { !it.takenOver && !it.inFlight && it.retryAt in 1..t }.mapTo(HashSet()) { it.id }
+        retryDue(b, tg, t)
+    }
+
+    /** Sends the calls that had to wait (a light still busy, a failure to try again), to those lights only. */
+    private fun retryDue(b: LightBridge, tg: Target, t: Long) {
+        val due = lights.values.filter { light -> !light.theirs && !light.inFlight && light.retryAt.let { it != null && it <= t } }.mapTo(HashSet()) { it.id }
         if (due.isNotEmpty()) send(b, tg, t, SOFT_TRANSITION_MS, force = true, paused = shownPaused, only = due)
     }
 
     /**
      * A wanted light whose state arrived only after the others were taken over (or that was
      * unavailable then), or with [Target.onlyOn] one that has been switched on: its state is
-     * saved (unless it was saved before in this session), then it joins in at once.
+     * saved (unless [saved] holds it from earlier in this takeover), then it joins in at once.
      */
     private suspend fun adopt(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
         for ((id, slot) in wanted) {
@@ -345,25 +368,19 @@ class LightSync(
      */
     private suspend fun activate(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
         val taken = wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != UNAVAILABLE && !(onlyOn && it.state == "off") }?.let { id to it } }.toMap()
-        // Taken back within a minute (the screen came back): the earlier snapshot still holds.
-        if (t - savedAt > REUSE_SNAPSHOT_MS || !taken.keys.all { it in saved }) {
-            saved = emptyMap()
-            snapshots = emptySet()
-            save(b, taken)
-            savedAt = t
-        }
+        saved = emptyMap()
+        snapshots = emptySet()
+        save(b, taken)
         lights.clear()
         givenBack.clear()
         activeFor = wanted.keys.toSet()
         // Followed from now on until they are given back, whatever the target does meanwhile.
         follow()
         takenOnlyOn = onlyOn
-        activeLights = true
         for ((id, s) in taken) lights[id] = Light(id, wanted.getValue(id)).also { it.checkedUpdate = s.lastUpdated }
         shownSong = null
         waitingSong = null
         shownPaused = false
-        lastStepAt = 0L
     }
 
     /** Saves [states] in snapshot scenes of Home Assistant's own (one per light), and notes them as a fallback. */
@@ -387,15 +404,15 @@ class LightSync(
         val ft = target.fieldTime() + transitionMs / 1000.0 * target.motion
         val share = share(target, paused)
         for (light in lights.values) {
-            if (light.takenOver || (only != null && light.id !in only)) continue
+            if (light.theirs || (only != null && light.id !in only)) continue
             val state = b.lights.value[light.id]
             if (state == null || state.state == UNAVAILABLE) continue
             val caps = capsOf(state)
             target.colors.color(light.slot, ft, rgb)
             val brightness = LightColor.brightness(share * LightColor.dimFor(rgb))
             val shown = when {
-                caps.color -> Shown.Color(LightColor.of(rgb, target.warmth), brightness)
-                caps.temperature -> Shown.White(LightColor.kelvin(rgb, target.warmth, caps.minKelvin, caps.maxKelvin), brightness)
+                caps.color -> Shown.Color(LightColor.of(rgb, target.night), brightness)
+                caps.temperature -> Shown.White(LightColor.kelvin(rgb, target.night, caps.minKelvin, caps.maxKelvin), brightness)
                 caps.dimmable -> Shown.Level(brightness)
                 else -> Shown.On
             }
@@ -403,13 +420,14 @@ class LightSync(
             // "Leave off": a light that is off stays off.
             if (wasOff && target.onlyOn) continue
             if (shown == Shown.On && !wasOff) continue
-            if (small(light.shown, shown) && !force && light.retryAt == 0L) continue
-            if (light.inFlight || t - light.sentAt < MIN_GAP_MS) {
-                light.retryAt = maxOf(t + 1, light.sentAt + MIN_GAP_MS)
+            if (small(light.shown, shown) && !force && light.retryAt == null) continue
+            val last = light.sentAt
+            if (last != null && (light.inFlight || t - last < MIN_GAP_MS)) {
+                light.retryAt = maxOf(t + 1, last + MIN_GAP_MS)
                 continue
             }
             light.inFlight = true
-            light.retryAt = 0L
+            light.retryAt = null
             light.sentAt = t
             light.shown = shown
             val preOn = wasOff && caps.dimmable
@@ -429,12 +447,12 @@ class LightSync(
                     when {
                         ctx != null -> light.failures = 0
                         // Tried once more; after that the light waits for the next change.
-                        ++light.failures <= MAX_RETRIES && !light.takenOver -> light.retryAt = now() + RETRY_MS
+                        ++light.failures <= MAX_RETRIES && !light.theirs -> light.retryAt = now() + RETRY_MS
                     }
                 }
             }
         }
-        lastStepAt = t
+        lastSentAt = t
         shownPaused = paused
         shownShare = share
     }
@@ -465,7 +483,7 @@ class LightSync(
      */
     private fun watchForOthers(states: Map<String, EntityState>, t: Long) {
         for (light in lights.values) {
-            if (light.takenOver) continue
+            if (light.theirs) continue
             val s = states[light.id] ?: continue
             // Only what changed since the light was taken over (or last judged) counts.
             if (s.lastUpdated <= light.checkedUpdate || s.state == UNAVAILABLE) continue
@@ -480,54 +498,48 @@ class LightSync(
             // Klangbild never switches a light off, nor a color light to white: whoever did, it is theirs.
             val shown = light.shown
             if (s.state == "off" || (shown is Shown.Color && s.string("color_mode") == "color_temp")) {
-                light.takenOver = true
+                light.theirs = true
                 continue
             }
             // Brightness and color are judged once the light has settled (a fade reports steps on
             // the way); what a person or an automation did counts at once.
             val byPerson = s.contextUser != null || s.contextParent != null
-            if (!byPerson && t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS) continue
+            val sent = light.sentAt
+            if (!byPerson && sent != null && t - sent < light.transitionMs + SETTLE_REPORT_MS) continue
             light.checkedUpdate = s.lastUpdated
             val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
-            val sentBri = when (shown) {
-                is Shown.Color -> shown.brightness
-                is Shown.White -> shown.brightness
-                is Shown.Level -> shown.brightness
-                else -> null
-            }
+            val sentBri = shown?.brightness
             val changed = (bri != null && sentBri != null && abs(bri - sentBri) > OTHERS_BRI_STEP) ||
                 when (shown) {
                     is Shown.Color -> xyOf(s)?.let { it.distance(shown.xy) > (if (byPerson) OTHERS_XY_PERSON else OTHERS_XY) } == true
                     is Shown.White -> (s.attr("color_temp_kelvin") as? JsonPrimitive)?.intOrNull?.let { abs(it - shown.kelvin) > OTHERS_KELVIN } == true
                     else -> false
                 }
-            if (changed) light.takenOver = true
+            if (changed) light.theirs = true
         }
     }
 
-    /** Gives every light not taken over back as it was ([putBack]), and deletes the snapshot scenes. */
+    /** Restores every light that isn't theirs ([putBack]) and deletes the snapshot scenes. */
     private suspend fun restore(b: LightBridge?) {
         // A light someone else has changed meanwhile is theirs, also when the app closes.
         if (b != null) watchForOthers(b.lights.value, now())
         // What was saved, as it is now: a new takeover must not change it under the calls.
         val notes = saved
         val scenes = snapshots
-        val toRestore = lights.values.filter { !it.takenOver }
-        // A light someone else has is saved anew if it is taken over again: its note no longer holds.
-        saved = saved - lights.values.filter { it.takenOver }.map { it.id }.toSet()
-        lights.values.removeAll { it.takenOver }
+        val toRestore = lights.values.filter { !it.theirs }
+        lights.values.removeAll { it.theirs }
         givenBack.clear()
         shownSong = null
         idleSince = null
         if (b != null) {
             putBack(b, toRestore, notes, scenes)
-            for (id in scenes) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+            restoredAt = now()
+            for (id in scenes) b.call("scene", "delete", sceneEntity(id), null)
             snapshots = emptySet()
         } else {
             lights.clear()
         }
         activeFor = null
-        activeLights = lights.isNotEmpty()
         // Given back: the lights are followed now only while they are to join in.
         follow()
     }
@@ -537,12 +549,12 @@ class LightSync(
      * off; the others keep their colors.
      */
     private suspend fun giveBackSwitchedOn(b: LightBridge) {
-        val wereOff = lights.values.filter { !it.takenOver && saved[it.id]?.on == false }
+        val wereOff = lights.values.filter { !it.theirs && saved[it.id]?.on == false }
         if (wereOff.isEmpty()) return
         val ids = wereOff.map { it.id }.toSet()
         val scenes = snapshots
         putBack(b, wereOff, saved, scenes)
-        for (id in ids.filter { it in scenes }) b.call("scene", "delete", "scene.${sceneId(id)}", null)
+        for (id in ids.filter { it in scenes }) b.call("scene", "delete", sceneEntity(id), null)
         snapshots = snapshots - ids
         saved = saved - ids
         val off = now()
@@ -573,7 +585,7 @@ class LightSync(
             when {
                 was == null -> lights.remove(light.id)
                 was.on -> {
-                    if (light.id !in scenes || !activateScene(b, light.id, caps?.transition == true, RESTORE_TRANSITION_MS)) {
+                    if (light.id !in scenes || !activateScene(b, light.id, RESTORE_TRANSITION_MS.takeIf { caps?.transition == true })) {
                         b.call("light", "turn_on", light.id, restoreOn(was, caps))
                     }
                     lights.remove(light.id)
@@ -592,16 +604,16 @@ class LightSync(
         if (offs.isNotEmpty()) {
             delay(OFF_FADE_MS + OFF_SETTLE_MS)
             for (light in offs) {
-                if (light.id !in scenes || !activateScene(b, light.id, false, 0L)) b.call("light", "turn_off", light.id, null)
+                if (light.id !in scenes || !activateScene(b, light.id, null)) b.call("light", "turn_off", light.id, null)
                 lights.remove(light.id)
             }
         }
     }
 
-    /** Restores [id] from its snapshot scene; whether Home Assistant took the call. */
-    private suspend fun activateScene(b: LightBridge, id: String, fade: Boolean, transitionMs: Long): Boolean {
-        val data = if (fade) buildJsonObject { put("transition", transitionMs / 1000.0) } else null
-        return b.call("scene", "turn_on", "scene.${sceneId(id)}", data) != null
+    /** Restores [id] from its snapshot scene, in a fade of [transitionMs] if given; whether Home Assistant took the call. */
+    private suspend fun activateScene(b: LightBridge, id: String, transitionMs: Long?): Boolean {
+        val data = transitionMs?.let { ms -> buildJsonObject { put("transition", ms / 1000.0) } }
+        return b.call("scene", "turn_on", sceneEntity(id), data) != null
     }
 
     private fun capsOf(s: EntityState): Caps {
@@ -652,7 +664,7 @@ class LightSync(
     private fun fourDecimals(v: Float): Double = (if (v.isNaN()) 0 else (v * 10_000).roundToInt()) / 10_000.0
 
     /** `light.turn_on` data for [shown] on a light with [caps]; [brightness] overrides the shown one. */
-    private fun turnOn(shown: Shown, caps: Caps, brightness: Int?, transitionMs: Long?) = buildJsonObject {
+    private fun turnOn(shown: Shown, caps: Caps, brightness: Int?, transitionMs: Long) = buildJsonObject {
         when (shown) {
             is Shown.Color -> putJsonArray("xy_color") {
                 add(fourDecimals(shown.xy.x))
@@ -661,14 +673,9 @@ class LightSync(
             is Shown.White -> put("color_temp_kelvin", shown.kelvin)
             else -> Unit
         }
-        val level = brightness ?: when (shown) {
-            is Shown.Color -> shown.brightness
-            is Shown.White -> shown.brightness
-            is Shown.Level -> shown.brightness
-            Shown.On -> null
-        }
+        val level = brightness ?: shown.brightness
         if (caps.dimmable && level != null) put("brightness", level)
-        if (caps.transition && transitionMs != null) put("transition", transitionMs / 1000.0)
+        if (caps.transition) put("transition", transitionMs / 1000.0)
     }
 
     /**
@@ -687,7 +694,10 @@ class LightSync(
         }
 
         /** The snapshot scene's id for light [lightId] (a slug, as `scene.create` wants it). */
-        fun sceneId(lightId: String): String = "klangbild_" + lightId.substringAfter('.')
+        private fun sceneId(lightId: String): String = "klangbild_" + lightId.substringAfter('.')
+
+        /** The snapshot scene of light [lightId] as an entity. */
+        private fun sceneEntity(lightId: String): String = "scene." + sceneId(lightId)
 
         /** The color modes that take a color (https://developers.home-assistant.io/docs/core/entity/light). */
         val COLOR_MODES = setOf("hs", "xy", "rgb", "rgbw", "rgbww")
@@ -733,7 +743,6 @@ class LightSync(
         /** A light turned off for "Leave off" that Home Assistant still reports on is left alone this long. */
         const val GIVEN_BACK_MS = 10_000L
         const val IDLE_RELEASE_MS = 5 * 60_000L
-        const val REUSE_SNAPSHOT_MS = 60_000L
         const val SETTLE_REPORT_MS = 2_000L
 
         /** A pause dims to half; the night to this share of the day's level. */

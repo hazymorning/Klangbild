@@ -26,14 +26,14 @@ object SpeakerLabel {
         val self = group.self?.let(::roomName)
         val single = others.singleOrNull()?.let(::roomName)
         return when {
-            self == null -> (others.size + 1).let { n -> t.plural(Plurals.groupSpeakers, n, t.countWord(n)) }
+            self == null -> t.plural(Plurals.groupSpeakers, others.size + 1)
             single != null && single != self -> "$self\u00A0+ $single"
             else -> "$self\u00A0+\u00A0${others.size}"
         }
     }
 
     /**
-     * True if [queueName] names something else than the speaker called [ownName]: then the
+     * True if [queueName] names something other than the speaker called [ownName]: then the
      * speaker plays from another player's queue, a group's. Spellings of the same name
      * ("Living room" and "Living room speaker") count as the same.
      */
@@ -48,12 +48,8 @@ object SpeakerLabel {
     private fun key(s: String): String =
         s.lowercase().normalize(Form.NFKD).filter { it.isLetterOrDigit() }
 
-    /** "35%" (or "35 %", as the language writes it), or "muted". */
-    fun volume(level: Float?, muted: Boolean, t: Texts): String? = when {
-        muted -> t[Strings.volumeMuted]
-        level == null -> null
-        else -> t.percent((level * 100f).roundToInt().coerceIn(0, 100))
-    }
+    /** "35%", or "35 %" as the language writes it; null when the player reports no volume. */
+    fun volume(level: Float?, t: Texts): String? = level?.let { t.percent((it * 100f).roundToInt().coerceIn(0, 100)) }
 
     /**
      * Words that name the device rather than the room ("Living room speaker" is "Living room"),

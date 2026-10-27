@@ -18,11 +18,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
 import kotlin.time.Clock
 
 /** What the app needs from the platform it runs on. [AppGraph] makes the rest of it from these. */
 interface Platform {
-    /** For pictures from anywhere: requests carry no credentials but to Home Assistant's own host. */
+    /** For requests without a token: covers from other hosts and GitHub's releases. */
     val http: HttpClient
 
     /**
@@ -93,6 +94,12 @@ class AppGraph(private val platform: Platform) {
 
     init {
         // What an earlier version stored is brought up to date now rather than on the next change.
-        scope.launch { settings.migrate() }
+        scope.launch {
+            try {
+                settings.migrate()
+            } catch (e: IOException) {
+                platform.log.warn("Settings: not brought up to date (${e::class.simpleName})")
+            }
+        }
     }
 }

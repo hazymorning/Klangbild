@@ -1,24 +1,24 @@
 package io.github.hazymorning.klangbild.domain
 
-/** A card of the cover flow: one picture (an album, a station) and the track that stands for it. */
+/** A card in Cover Flow: one cover (an album, a station) and the track it shows. */
 data class StripCard(val id: Long, val track: TrackInfo) {
     val picture: String get() = track.pictureKey
 }
 
-/** The cover flow in play order: the card at [current] is in the middle. */
+/** Cover Flow's cards in play order: the card at [current] is in the middle. */
 data class Strip(val cards: List<StripCard>, val current: Int) {
     val middle: StripCard get() = cards[current]
 }
 
 /**
- * Keeps the cover flow's strip as the music moves on: the pictures played before, the one
- * playing, and those to come. The pictures are distinct, so the songs of one album are one card.
- * A card keeps its id from the moment it appears until it leaves the strip, so the UI can
- * animate between two strips card by card: the next picture arriving is the card that stood to
- * the right, a step back brings back the card from the left, anything else is a new card. A
- * song whose picture changes while it plays (a station's song getting its own) keeps its card.
+ * Keeps Cover Flow's strip as the music moves on: the covers played before, the one playing, and
+ * those to come. The covers are distinct, so the tracks of one album are one card. A card keeps
+ * its id from the moment it appears until it leaves the strip, so the UI can animate between two
+ * strips card by card: the next cover arriving is the card that was to the right, a step back
+ * brings back the card from the left, anything else is a new card. A track whose cover changes
+ * while it plays (a station's track getting its own) keeps its card.
  */
-class CoverStrip(private val side: Int = SIDE) {
+class CoverStrip {
     private var lastId = 0L
     private val history = ArrayList<StripCard>()
     private var current: StripCard? = null
@@ -26,15 +26,15 @@ class CoverStrip(private val side: Int = SIDE) {
 
     /**
      * [track] plays now, [coming] is what follows in the queue (null while not known yet: then
-     * what stood behind a card that came to the middle stays), [before] what the queue played
+     * what stood behind a card that came to the middle stays), [played] what the queue played
      * before it (most recent last; empty when unknown, and then the strip remembers on its own).
      */
-    fun update(track: TrackInfo, coming: List<TrackInfo>? = null, before: List<TrackInfo> = emptyList()): Strip {
+    fun update(track: TrackInfo, coming: List<TrackInfo>? = null, played: List<TrackInfo> = emptyList()): Strip {
         val picture = track.pictureKey
         val cur = current
         var spare: StripCard? = null
         var stays: List<StripCard> = emptyList()
-        current = when {
+        val now = when {
             cur == null -> card(track)
             cur.picture == picture || cur.track.key == track.key -> {
                 stays = upcoming
@@ -55,20 +55,20 @@ class CoverStrip(private val side: Int = SIDE) {
                 card(track)
             }
         }
-        val now = current!!
-        if (before.isNotEmpty()) {
+        current = now
+        if (played.isNotEmpty()) {
             val known = (history + listOfNotNull(spare)).associateBy { it.picture }
-            val played = distinct(before.asReversed(), now.picture).take(KEEP).map { t -> known[t.pictureKey]?.copy(track = t) ?: card(t) }
+            val cards = distinct(played.asReversed(), now.picture).take(KEEP).map { t -> known[t.pictureKey]?.copy(track = t) ?: card(t) }
             history.clear()
-            history.addAll(played.asReversed())
+            history.addAll(cards.asReversed())
         }
         val reuse = (upcoming + listOfNotNull(spare)).associateBy { it.picture }
         upcoming = if (coming == null) {
-            stays.take(side)
+            stays.take(SIDE)
         } else {
-            distinct(coming, now.picture).take(side).map { t -> reuse[t.pictureKey]?.copy(track = t) ?: card(t) }
+            distinct(coming, now.picture).take(SIDE).map { t -> reuse[t.pictureKey]?.copy(track = t) ?: card(t) }
         }
-        val shown = history.takeLast(side)
+        val shown = history.takeLast(SIDE)
         return Strip(shown + now + upcoming, shown.size)
     }
 
@@ -86,7 +86,7 @@ class CoverStrip(private val side: Int = SIDE) {
         while (history.size > KEEP) history.removeAt(0)
     }
 
-    /** [tracks] with consecutive repeats of a picture merged, the current picture left out. */
+    /** [tracks] with consecutive repeats of a cover merged, the current cover left out. */
     private fun distinct(tracks: List<TrackInfo>, currentPicture: String): List<TrackInfo> {
         val out = ArrayList<TrackInfo>()
         for (t in tracks) {
@@ -102,7 +102,7 @@ class CoverStrip(private val side: Int = SIDE) {
         /** Cards shown on each side of the middle. */
         const val SIDE = 2
 
-        /** Pictures remembered behind the current one. */
+        /** Covers remembered behind the current one. */
         const val KEEP = 6
     }
 }

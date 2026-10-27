@@ -28,28 +28,26 @@ class QueueStageTest {
     private fun shot(name: String, model: StageModel, t: Texts = Fixtures.texts) =
         captureRoboImage("build/screenshots/queue/$name.png") { Fixtures.Still(t) { Stage(model) } }
 
-    /** A playlist: every song from another album, the catalog's hard cases among them. */
     private val playing = Fixtures.tracks[0]
-    private val playlist = Fixtures.tracks.drop(1).filter { it.durationMs != null }
 
     @Test
-    fun playlistDark() = shot("playlist_dark", Fixtures.queueModel(playing, Fixtures.queueList(playlist)))
+    fun playlistDark() = shot("playlist_dark", Fixtures.queueModel(playing, playlistQueue))
 
     @Test
-    fun playlistLight() = shot("playlist_light", Fixtures.queueModel(playing, Fixtures.queueList(playlist), appearance = Appearance.LIGHT))
+    fun playlistLight() = shot("playlist_light", Fixtures.queueModel(playing, playlistQueue, appearance = Appearance.LIGHT))
 
     @Test
-    fun playlistOnCoverColors() = shot("playlist_cover_colors", Fixtures.queueModel(playing, Fixtures.queueList(playlist), coverField = true))
+    fun playlistOnCoverColors() = shot("playlist_cover_colors", Fixtures.queueModel(playing, playlistQueue, coverField = true))
 
     @Test
     fun playlistOnPaleCoverColors() =
-        shot("playlist_cover_colors_light", Fixtures.queueModel(playing, Fixtures.queueList(playlist), appearance = Appearance.LIGHT, coverField = true))
+        shot("playlist_cover_colors_light", Fixtures.queueModel(playing, playlistQueue, appearance = Appearance.LIGHT, coverField = true))
 
     /** Paused, through the theater: the words, the cover and the rows' small covers dimmed. */
     @Test
     fun paused() {
-        val stage = StageData(playing, Fixtures.scene(playing), queue = Fixtures.queueList(playlist))
-        captureRoboImage("build/screenshots/queue/paused.png") { Fixtures.Still(en) { Fixtures.QueueTheater(stage, PlayerStatus.PAUSED, t = en) } }
+        val stage = StageData(playing, Fixtures.scene(playing), queue = playlistQueue)
+        captureRoboImage("build/screenshots/queue/paused.png") { Fixtures.Still(en) { Fixtures.QueueTheater(stage, PlayerStatus.PAUSED, t = en, group = "Living room") } }
     }
 
     /** An album: its songs by number, then the next record with its cover and artist. */
@@ -72,13 +70,16 @@ class QueueStageTest {
 
     /** No bar (hidden by setting): the rows move up. */
     @Test
-    fun withoutBar() = shot("no_bar", Fixtures.queueModel(playing, Fixtures.queueList(playlist), progress = false))
+    fun withoutBar() = shot("no_bar", Fixtures.queueModel(playing, playlistQueue, progress = false))
 
     /** The small covers still on their way: the rows show without them. */
     @Test
     fun coversOnTheirWay() = shot("covers_on_their_way", Fixtures.queueModel(playing, Fixtures.queueList(playlist, covers = false)))
 
     private companion object {
+        /** A playlist: every song from another album, the catalog's hard cases among them. */
+        val playlist = Fixtures.tracks.drop(1).filter { it.durationMs != null }
+        val playlistQueue = Fixtures.queueList(playlist)
         val desert = Catalog.desert
         val albumSongs = Catalog.cairoNights
         val nextRecord = Catalog.northernHours

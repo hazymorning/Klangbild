@@ -103,7 +103,7 @@ interface SetupServer {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: HaAuthRejectedException) {
-                DiscoverResult.Failed(t[Strings.discoverRejected])
+                DiscoverResult.Failed(t[Strings.discoverRejected], refused = true)
             } catch (e: IOException) {
                 when (e) {
                     is HttpStatusException -> DiscoverResult.Failed(t.format(Strings.discoverUnexpected, e.code))

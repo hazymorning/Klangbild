@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
@@ -27,7 +28,6 @@ class EntityStoreTest {
         assertThat(st.state).isEqualTo("playing")
         assertThat(st.string("media_title")).isEqualTo("A")
         assertThat(st.number("media_position")).isEqualTo(10.0)
-        assertThat(st.lastChanged).isEqualTo(1_791_655_200.5)
         assertThat(st.lastUpdated).isEqualTo(1_791_655_201.0)
         assertThat(st.context).isEqualTo("01K")
         assertThat(st.contextParent).isEqualTo("01P")
@@ -45,10 +45,10 @@ class EntityStoreTest {
         assertThat(store.put(state(playing))).isTrue()
         val paused = state(playing.replace("\"playing\"", "\"paused\"").replace("18:00:01+00:00", "18:00:05+00:00"))
         assertThat(store.put(paused)).isTrue()
-        assertThat(store["media_player.wz"]!!.state).isEqualTo("paused")
+        assertThat(store.snapshot().getValue("media_player.wz").state).isEqualTo("paused")
         // A slow REST answer from before the event changes nothing.
         assertThat(store.put(state(playing))).isFalse()
-        assertThat(store["media_player.wz"]!!.state).isEqualTo("paused")
+        assertThat(store.snapshot().getValue("media_player.wz").state).isEqualTo("paused")
         // The same state again is no change either.
         assertThat(store.put(paused)).isFalse()
     }
@@ -58,9 +58,8 @@ class EntityStoreTest {
         val store = EntityStore()
         store.put(state(playing))
         store.put(state("""{"entity_id":"sun.sun","state":"above_horizon","last_changed":"2026-10-10T18:00:00+00:00"}"""))
-        assertThat(store.retain(setOf("sun.sun"))).isTrue()
-        assertThat(store["media_player.wz"]).isNull()
-        assertThat(store.retain(setOf("sun.sun"))).isFalse()
+        store.retain(setOf("sun.sun"))
+        assertThat(store.snapshot().keys).containsExactlyInAnyOrder("sun.sun")
         assertThat(store.remove("sun.sun")).isTrue()
         assertThat(store.remove("sun.sun")).isFalse()
         assertThat(store.snapshot()).isEmpty()

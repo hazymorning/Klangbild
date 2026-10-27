@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.config
 
-import io.github.hazymorning.klangbild.domain.Condition
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.OwnValue
 import io.github.hazymorning.klangbild.json.string
@@ -42,7 +41,7 @@ object OwnValues {
         fun str(key: String) = o.string(key)?.trim()
         val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
         val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
-        if (attribute != null && !Condition.ATTRIBUTE.matches(attribute)) return null
+        if (attribute != null && !EntityId.isAttribute(attribute)) return null
         val name = str("name").orEmpty().replace(Regex("\\s+"), " ").take(MAX_NAME).trimEnd()
         return OwnValue(name, entity, attribute)
     }

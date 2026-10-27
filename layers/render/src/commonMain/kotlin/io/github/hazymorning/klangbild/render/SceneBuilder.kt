@@ -138,7 +138,7 @@ object SceneBuilder {
         coverField: Boolean,
         card: FlowCard? = null,
     ): ArtworkScene {
-        val palette = CoverPalette.derive(analysis, appearance, wallTint, cover = coverField)
+        val palette = CoverPalette.derive(analysis, appearance, wallTint, coverField)
         val flow = layout.flow
         // The cover's colors: the wall itself with "cover colors", otherwise only for the lights.
         val field = CoverField.build(

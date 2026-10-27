@@ -61,17 +61,16 @@ class StageTextsTest {
     @Test
     fun `what comes next, and its title alone`() {
         val next = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
-        assertThat(StageTexts.next(next, de)).isEqualTo("Spiegel im Spiegel · Arvo Pärt")
-        assertThat(StageTexts.nextTitle(next, de)).isEqualTo("Spiegel im Spiegel")
-        assertThat(StageTexts.next(null, de)).isNull()
+        assertThat(StageTexts.footer(next, de)).isEqualTo("Spiegel im Spiegel · Arvo Pärt")
+        assertThat(StageTexts.footerTitle(next, de)).isEqualTo("Spiegel im Spiegel")
+        assertThat(StageTexts.footer(null, de)).isNull()
     }
 
     @Test
     fun `a radio shows its station, a lost link says so`() {
         val radio = TrackInfo("Morgenmusik", source = "Radio Morgenlicht")
-        assertThat(StageTexts.line(false, radio, de)).isEqualTo("Radio Morgenlicht")
-        assertThat(StageTexts.line(true, radio, de)).isEqualTo(de[Strings.stageLinkDown])
-        assertThat(StageTexts.line(true, radio, de)).isEqualTo("Verbindung wird wiederhergestellt\u00A0…")
-        assertThat(StageTexts.line(false, radio.copy(durationMs = 1000), de)).isNull()
+        assertThat(StageTexts.slotText(false, radio, de)).isEqualTo("Radio Morgenlicht")
+        assertThat(StageTexts.slotText(true, radio, de)).isEqualTo(de[Strings.stageLinkDown])
+        assertThat(StageTexts.slotText(false, radio.copy(durationMs = 1000), de)).isNull()
     }
 }

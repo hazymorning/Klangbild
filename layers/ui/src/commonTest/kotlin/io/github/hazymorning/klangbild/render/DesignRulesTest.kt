@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.render
 import assertk.assertThat
 import assertk.assertions.isBetween
 import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
@@ -26,18 +27,14 @@ class DesignRulesTest {
     private val layout = StageGrid(screen)
     private val shape = PrintShape(layout.artRect, corner = layout.radius)
 
-    /** A 48 × 48 thumbnail: the top [split] of the rows in [top], the rest in [bottom]. */
-    private fun thumb(top: Int, bottom: Int = top, split: Float = 0.5f): IntArray =
-        IntArray(48 * 48) { i -> if (i / 48 < (48 * split).toInt()) top else bottom }
+    /** A 48 × 48 thumbnail: the top half of the rows in [top], the rest in [bottom]. */
+    private fun thumb(top: Int, bottom: Int = top): IntArray = IntArray(48 * 48) { i -> if (i / 48 < 24) top else bottom }
 
-    private fun glow(thumb: IntArray) = WallGlow.field(thumb, 48, shape, screen)
+    /** The glow of a cover made of [top] over [bottom] ([thumb]), worked out once for all tests. */
+    private fun glow(top: Int, bottom: Int = top): IntArray = glows.getOrPut(top to bottom) { WallGlow.field(thumb(top, bottom), 48, shape, screen) }
 
     /** The glow at (x, y) dp on the 960 × 540 map. */
     private fun IntArray.at(xDp: Float, yDp: Float): Int = this[yDp.toInt() * WallGlow.MAP_W + xDp.toInt()]
-
-    private fun luminance(argb: Int) = relativeLuminance(argb)
-
-    private fun contrast(a: Int, b: Int) = contrastRatio(a, b)
 
     private val covers = listOf(
         0xFFF2EEE6.toInt(), // white paper
@@ -53,19 +50,21 @@ class DesignRulesTest {
     @Test
     fun `no light at all near the screen edges`() {
         for (c in covers) {
-            val field = glow(thumb(c))
+            val field = glow(c)
+            val lit = ArrayList<String>()
             for (y in 0 until WallGlow.MAP_H) for (x in 0 until WallGlow.MAP_W) {
                 val edge = minOf(x + 0.5f, WallGlow.MAP_W - x - 0.5f, y + 0.5f, WallGlow.MAP_H - y - 0.5f)
-                if (edge < WallGlow.EDGE_BLACK_DP - 1f) assertThat(field[y * WallGlow.MAP_W + x] and 0xFFFFFF, name = "($x, $y)").isEqualTo(0)
+                if (edge < WallGlow.EDGE_BLACK_DP - 1f && field[y * WallGlow.MAP_W + x] and 0xFFFFFF != 0) lit += "($x, $y)"
             }
+            assertThat(lit, name = "cover " + c.toUInt().toString(16)).isEmpty()
         }
     }
 
     @Test
     fun `a tight halo, the same on every side, gone before the text column`() {
-        val field = glow(thumb(0xFFF2EEE6.toInt()))
+        val field = glow(0xFFF2EEE6.toInt())
         val r = layout.artRect
-        val near = luminance(field.at(r.right + 2f, r.centerY))
+        val near = relativeLuminance(field.at(r.right + 2f, r.centerY))
         assertThat(near).isBetween(WallGlow.EDGE_LUMINANCE * 0.8f, WallGlow.EDGE_LUMINANCE * 1.1f)
         // the same at 12 dp on all four sides (no side cut short by the screen's edge)
         val sides = listOf(
@@ -73,20 +72,20 @@ class DesignRulesTest {
             field.at(r.left - 12f, r.centerY),
             field.at(r.centerX, r.top - 12f),
             field.at(r.centerX, r.bottom + 12f),
-        ).map { luminance(it) }
+        ).map { relativeLuminance(it) }
         for (s in sides) assertThat(s).isCloseTo(sides.first(), near * 0.12f)
         assertThat(sides.first()).isLessThan(near)
         // the text column stands on black
         assertThat(field.at(layout.columnLeft + 1f, r.centerY) and 0xFFFFFF).isEqualTo(0)
         // dark behind the artwork, lit just under its edge (no dark rim around it)
         assertThat(field.at(r.centerX, r.centerY) and 0xFFFFFF).isEqualTo(0)
-        assertThat(luminance(field.at(r.right - 1f, r.centerY))).isGreaterThan(near * 0.2f)
+        assertThat(relativeLuminance(field.at(r.right - 1f, r.centerY))).isGreaterThan(near * 0.2f)
     }
 
     @Test
     fun `the glow takes the color of the nearest edge`() {
         // violet above, teal below
-        val field = glow(thumb(0xFF6A2BC2.toInt(), 0xFF0E8A86.toInt()))
+        val field = glow(0xFF6A2BC2.toInt(), 0xFF0E8A86.toInt())
         val above = Oklab.fromArgb(field.at(layout.artRect.centerX, layout.artRect.top - 6f))
         val below = Oklab.fromArgb(field.at(layout.artRect.centerX, layout.artRect.bottom + 6f))
         assertThat(above.hue).isBetween(270f, 320f)
@@ -95,12 +94,12 @@ class DesignRulesTest {
 
     @Test
     fun `dark edges glow little, and no glow is a neon sign`() {
-        val bright = luminance(glow(thumb(0xFFE0457B.toInt())).at(layout.artRect.right + 2f, layout.artRect.centerY))
-        val dark = luminance(glow(thumb(0xFF101010.toInt())).at(layout.artRect.right + 2f, layout.artRect.centerY))
+        val bright = relativeLuminance(glow(0xFFE0457B.toInt()).at(layout.artRect.right + 2f, layout.artRect.centerY))
+        val dark = relativeLuminance(glow(0xFF101010.toInt()).at(layout.artRect.right + 2f, layout.artRect.centerY))
         // a picture lights the wall at most as much as it is bright itself
         assertThat(dark).isLessThan(bright * 0.2f)
         for (c in covers) {
-            val lab = Oklab.fromArgb(glow(thumb(c)).at(layout.artRect.right + 2f, layout.artRect.centerY))
+            val lab = Oklab.fromArgb(glow(c).at(layout.artRect.right + 2f, layout.artRect.centerY))
             // chroma at the glow's own (low) lightness stays modest
             assertThat(lab.chroma).isLessThanOrEqualTo(WallGlow.MAX_CHROMA)
         }
@@ -109,12 +108,12 @@ class DesignRulesTest {
     @Test
     fun `the quietest text stays readable on the glow`() {
         for (c in covers) {
-            val field = glow(thumb(c))
+            val field = glow(c)
             val palette = CoverPalette.derive(CoverPalette.analyze(thumb(c)))
             // the brightest wall under the text column: its left edge, level with the artwork's center
             val wall = field.at(layout.columnLeft + 1f, layout.textCenter)
-            assertThat(contrast(palette.inkQuiet, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(4.5f)
-            assertThat(contrast(palette.ink, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(10f)
+            assertThat(contrastRatio(palette.inkQuiet, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(4.5f)
+            assertThat(contrastRatio(palette.ink, wall), name = "cover " + c.toUInt().toString(16)).isGreaterThanOrEqualTo(10f)
         }
     }
 
@@ -142,7 +141,7 @@ class DesignRulesTest {
             // each level clearly apart from the one before it, away from the wall
             val l = tiers.map { Oklab.fromArgb(it).l }
             for (i in 1 until l.size) assertThat(abs(l[i - 1] - l[i]), name = "$appearance").isGreaterThanOrEqualTo(0.095f)
-            for (ink in tiers) assertThat(contrast(ink, p.wall), name = "$appearance").isGreaterThanOrEqualTo(4.5f)
+            for (ink in tiers) assertThat(contrastRatio(ink, p.wall), name = "$appearance").isGreaterThanOrEqualTo(4.5f)
         }
     }
 
@@ -175,5 +174,10 @@ class DesignRulesTest {
         // … the middle of an edge is not
         assertThat(shape.contains(rect.centerX, rect.top + 0.5f)).isTrue()
         assertThat(shape.distance(rect.left - 10f, rect.centerY)).isCloseTo(10f, 0.01f)
+    }
+
+    private companion object {
+        /** The glows the tests ask for, by the colors of their covers' top and bottom. */
+        val glows = HashMap<Pair<Int, Int>, IntArray>()
     }
 }

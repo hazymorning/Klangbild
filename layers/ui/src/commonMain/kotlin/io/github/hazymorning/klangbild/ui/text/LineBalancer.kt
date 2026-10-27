@@ -10,10 +10,10 @@ import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 
 /**
- * Sets text on balanced lines, of nearly equal length, as its style's [LineBreak] asks for them:
- * [LineBreak.Heading] for titles and the words of songs, [sentenceLineBreak] for sentences.
- * Android sets them with its own line breaker. Where Compose draws with Skia (the JVM and the
- * browser), which has none, [BalancedBreaker] sets them as Android does.
+ * Sets text on balanced lines of nearly equal length. On Android the style's [LineBreak] asks for
+ * them, [LineBreak.Heading] for titles and lyrics and [sentenceLineBreak] for sentences, and
+ * Android's own line breaker sets them. Where Compose draws with Skia (the JVM and the browser),
+ * which has none, [BalancedBreaker] balances every text as Android does.
  */
 interface LineBalancer {
     /** Where each line of [text] in [style] ends within [maxWidth] px: the offsets `getLineEnd` gives, the last one the text's length. */
@@ -21,7 +21,7 @@ interface LineBalancer {
 
     /**
      * [text] in [style] laid out within [maxWidth] px, at most [maxLines] lines with [overflow].
-     * Its layoutInput holds what sets it so again: the text, the style and the constraints.
+     * Its layoutInput (the text, the style and the constraints) lays it out the same way again.
      */
     fun layout(text: AnnotatedString, style: TextStyle, maxWidth: Int, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip): TextLayoutResult
 }

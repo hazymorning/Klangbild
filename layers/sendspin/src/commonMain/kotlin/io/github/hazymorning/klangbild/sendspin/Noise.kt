@@ -37,10 +37,10 @@ class KeyPair(val privateKey: ByteArray, val publicKey: ByteArray) {
 /**
  * The Noise Protocol Framework (revision 34, https://noiseprotocol.org/noise.html) as Sendspin
  * uses it: the KKpsk2 pattern over Curve25519, ChaCha20-Poly1305 and SHA-256. The state machine
- * is written out here; the primitives under it are cryptography-kotlin's (X25519,
- * ChaCha20-Poly1305, SHA-256, HMAC), on Android and the JVM by way of BouncyCastle. They are
- * used as the session is, one call after the other; a browser's WebCrypto has no
- * ChaCha20-Poly1305 and answers only asynchronously, so there the session can't open.
+ * is written out here. The primitives are cryptography-kotlin's (X25519, ChaCha20-Poly1305,
+ * SHA-256, HMAC), backed by BouncyCastle on Android and the JVM and called through its blocking
+ * API. A browser's WebCrypto has no ChaCha20-Poly1305 and only asynchronous calls, so the
+ * session can't run there.
  */
 object Noise {
     /** The suite Klangbild picks in `client/init`: the one that needs no AES hardware. */
@@ -105,6 +105,7 @@ object Noise {
  * Each message is ChaCha20-Poly1305 with the count as its nonce (32 zero bits, then 64 bits
  * little-endian), so a message replayed, dropped or put out of order fails to open.
  */
+@OptIn(DelicateCryptographyApi::class)
 class CipherState internal constructor(key: ByteArray? = null) {
     private var key: ChaCha20Poly1305.Key? = key?.let(::decode)
     private var nonce = 0L
@@ -116,24 +117,32 @@ class CipherState internal constructor(key: ByteArray? = null) {
     }
 
     /** [plaintext] sealed with [ad] as associated data (as it is, while there is no key). */
-    fun encrypt(ad: ByteArray, plaintext: ByteArray, offset: Int = 0, length: Int = plaintext.size - offset): ByteArray {
-        val k = key ?: return plaintext.copyOfRange(offset, offset + length)
-        val out = seal(k, true, ad, plaintext.part(offset, length))
-        check(out.size == length + Noise.TAG_BYTES)
+    fun encrypt(ad: ByteArray, plaintext: ByteArray): ByteArray {
+        val k = key ?: return plaintext.copyOf()
+        val out = k.cipher().encryptWithIvBlocking(nextNonce(), plaintext, ad)
+        check(out.size == plaintext.size + Noise.TAG_BYTES)
+        nonce++
         return out
     }
 
     /** [ciphertext] opened with [ad] as associated data; throws [NoiseException] when it does not open. */
-    fun decrypt(ad: ByteArray, ciphertext: ByteArray, offset: Int = 0, length: Int = ciphertext.size - offset): ByteArray {
-        val k = key ?: return ciphertext.copyOfRange(offset, offset + length)
-        if (length < Noise.TAG_BYTES) throw NoiseException("message shorter than its tag")
-        val out = seal(k, false, ad, ciphertext.part(offset, length))
-        check(out.size == length - Noise.TAG_BYTES)
+    fun decrypt(ad: ByteArray, ciphertext: ByteArray): ByteArray {
+        val k = key ?: return ciphertext.copyOf()
+        if (ciphertext.size < Noise.TAG_BYTES) throw NoiseException("message shorter than its tag")
+        val iv = nextNonce()
+        val out = try {
+            k.cipher().decryptWithIvBlocking(iv, ciphertext, ad)
+        } catch (_: Exception) {
+            // A tag mismatch; each platform throws its own exception type.
+            throw NoiseException("message does not open")
+        }
+        check(out.size == ciphertext.size - Noise.TAG_BYTES)
+        nonce++
         return out
     }
 
-    @OptIn(DelicateCryptographyApi::class)
-    private fun seal(k: ChaCha20Poly1305.Key, encrypt: Boolean, ad: ByteArray, input: ByteArray): ByteArray {
+    /** The nonce of the next message; the count moves on only once the message is sealed or opened. */
+    private fun nextNonce(): ByteArray {
         // The last nonce (2^64 - 1) is reserved; no connection lives long enough to reach it.
         if (nonce == -1L) throw NoiseException("nonces used up")
         var n = nonce
@@ -141,37 +150,21 @@ class CipherState internal constructor(key: ByteArray? = null) {
             nonceBytes[i] = n.toByte()
             n = n ushr 8
         }
-        val cipher = k.cipher()
-        val out = if (encrypt) {
-            cipher.encryptWithIvBlocking(nonceBytes, input, ad)
-        } else {
-            try {
-                cipher.decryptWithIvBlocking(nonceBytes, input, ad)
-            } catch (_: Exception) {
-                // The tag doesn't match: the platform's own exception, whatever it is called.
-                throw NoiseException("message does not open")
-            }
-        }
-        nonce++
-        return out
+        return nonceBytes
     }
 
     private fun decode(k: ByteArray): ChaCha20Poly1305.Key = Noise.cipherKeys.decodeFromByteArrayBlocking(ChaCha20Poly1305.Key.Format.RAW, k)
-
-    /** The bytes from [offset], [length] of them: the array itself when that is all of it. */
-    private fun ByteArray.part(offset: Int, length: Int): ByteArray = if (offset == 0 && length == size) this else copyOfRange(offset, offset + length)
 }
 
 /** Noise's symmetric state during a handshake: the chaining key, the hash of everything so far, and the cipher. */
-internal class SymmetricState(protocolName: String) {
-    var ck: ByteArray
-        private set
+internal class SymmetricState {
+    private var ck: ByteArray
     var h: ByteArray
         private set
     val cipher = CipherState()
 
     init {
-        val name = protocolName.encodeToByteArray()
+        val name = Noise.PROTOCOL_NAME.encodeToByteArray()
         h = if (name.size <= Noise.HASH_BYTES) name.copyOf(Noise.HASH_BYTES) else Noise.sha256(name)
         ck = h.copyOf()
     }
@@ -195,8 +188,7 @@ internal class SymmetricState(protocolName: String) {
 
     fun encryptAndHash(plaintext: ByteArray): ByteArray = cipher.encrypt(h, plaintext).also { mixHash(it) }
 
-    fun decryptAndHash(ciphertext: ByteArray, offset: Int): ByteArray =
-        cipher.decrypt(h, ciphertext, offset).also { mixHash(ciphertext.copyOfRange(offset, ciphertext.size)) }
+    fun decryptAndHash(ciphertext: ByteArray): ByteArray = cipher.decrypt(h, ciphertext).also { mixHash(ciphertext) }
 
     fun split(): Pair<CipherState, CipherState> {
         val (k1, k2) = Noise.hkdf(ck, ByteArray(0), 2)
@@ -207,53 +199,36 @@ internal class SymmetricState(protocolName: String) {
 /** The two directions of a channel once its handshake is done, and the handshake's hash. */
 class NoiseChannel(val send: CipherState, val receive: CipherState, val handshakeHash: ByteArray)
 
+/** The symmetric state a KKpsk2 handshake starts from: the [prologue], then both static keys as its pre-messages. */
+internal fun kkStart(prologue: ByteArray, initiatorKey: ByteArray, responderKey: ByteArray) = SymmetricState().apply {
+    mixHash(prologue)
+    mixHash(initiatorKey)
+    mixHash(responderKey)
+}
+
 /**
- * A KKpsk2 handshake: both static public keys are known beforehand, the initiator's first
- * message carries `e, es, ss`, the responder's answer `e, ee, se, psk`. The PSK is needed only
- * for the second message, so the responder reads the first message's payload (which names the
- * PSK) before choosing it.
- *
- * In Sendspin the server is always the initiator and Klangbild the responder; the initiator's
- * side is here for the tests, which play the server.
+ * The responder's side of a KKpsk2 handshake, Klangbild's (in Sendspin the server always
+ * initiates): both static public keys are known beforehand, the initiator's first message
+ * carries `e, es, ss`, the answer `e, ee, se, psk`. The PSK is needed only for the answer, so
+ * the first message's payload, which names it, is read before choosing it.
  */
-class KkPsk2Handshake(
-    private val initiator: Boolean,
+class KkPsk2Responder(
     prologue: ByteArray,
     private val static: KeyPair,
     private val remoteStatic: ByteArray,
     private val ephemeral: () -> KeyPair,
 ) {
-    private val ss = SymmetricState(Noise.PROTOCOL_NAME)
-    private var e: KeyPair? = null
+    private val ss = kkStart(prologue, remoteStatic, static.publicKey)
     private var re: ByteArray? = null
     private var step = 0
 
     init {
         require(remoteStatic.size == Noise.KEY_BYTES)
-        ss.mixHash(prologue)
-        // The pre-messages: the initiator's static key, then the responder's.
-        ss.mixHash(if (initiator) static.publicKey else remoteStatic)
-        ss.mixHash(if (initiator) remoteStatic else static.publicKey)
     }
 
-    /** The handshake's hash so far (after the second message, the channel's `h`). */
-    val handshakeHash: ByteArray get() = ss.h.copyOf()
-
-    /** Initiator: the first message, carrying [payload]. */
-    fun writeFirst(payload: ByteArray): ByteArray {
-        check(initiator && step == 0)
-        step = 1
-        val eph = ephemeral().also { e = it }
-        ss.mixHash(eph.publicKey)
-        ss.mixKey(eph.publicKey)
-        ss.mixKey(Noise.dh(eph, remoteStatic))
-        ss.mixKey(Noise.dh(static, remoteStatic))
-        return eph.publicKey + ss.encryptAndHash(payload)
-    }
-
-    /** Responder: the first message's payload. */
+    /** The first message's payload. */
     fun readFirst(message: ByteArray): ByteArray {
-        check(!initiator && step == 0)
+        check(step == 0)
         step = 1
         if (message.size < Noise.KEY_BYTES + Noise.TAG_BYTES || message.size > Noise.MAX_MESSAGE) throw NoiseException("first message of ${message.size} bytes")
         val remote = message.copyOfRange(0, Noise.KEY_BYTES).also { re = it }
@@ -261,16 +236,16 @@ class KkPsk2Handshake(
         ss.mixKey(remote)
         ss.mixKey(Noise.dh(static, remote))
         ss.mixKey(Noise.dh(static, remoteStatic))
-        return ss.decryptAndHash(message, Noise.KEY_BYTES)
+        return ss.decryptAndHash(message.copyOfRange(Noise.KEY_BYTES, message.size))
     }
 
-    /** Responder: the answer with [psk] mixed in, carrying [payload], and the channel it opens. */
+    /** The answer with [psk] mixed in, carrying [payload], and the channel it opens. */
     fun writeSecond(psk: ByteArray, payload: ByteArray): Pair<ByteArray, NoiseChannel> {
-        check(!initiator && step == 1)
+        check(step == 1)
         step = 2
         require(psk.size == Noise.KEY_BYTES)
         val remote = checkNotNull(re)
-        val eph = ephemeral().also { e = it }
+        val eph = ephemeral()
         ss.mixHash(eph.publicKey)
         ss.mixKey(eph.publicKey)
         ss.mixKey(Noise.dh(eph, remote))
@@ -279,22 +254,5 @@ class KkPsk2Handshake(
         val message = eph.publicKey + ss.encryptAndHash(payload)
         val (c1, c2) = ss.split()
         return message to NoiseChannel(send = c2, receive = c1, handshakeHash = ss.h.copyOf())
-    }
-
-    /** Initiator: the answer's payload, read with [psk], and the channel it opens. */
-    fun readSecond(psk: ByteArray, message: ByteArray): Pair<ByteArray, NoiseChannel> {
-        check(initiator && step == 1)
-        step = 2
-        if (message.size < Noise.KEY_BYTES + Noise.TAG_BYTES || message.size > Noise.MAX_MESSAGE) throw NoiseException("second message of ${message.size} bytes")
-        val eph = checkNotNull(e)
-        val remote = message.copyOfRange(0, Noise.KEY_BYTES)
-        ss.mixHash(remote)
-        ss.mixKey(remote)
-        ss.mixKey(Noise.dh(eph, remote))
-        ss.mixKey(Noise.dh(static, remote))
-        ss.mixKeyAndHash(psk)
-        val payload = ss.decryptAndHash(message, Noise.KEY_BYTES)
-        val (c1, c2) = ss.split()
-        return payload to NoiseChannel(send = c1, receive = c2, handshakeHash = ss.h.copyOf())
     }
 }

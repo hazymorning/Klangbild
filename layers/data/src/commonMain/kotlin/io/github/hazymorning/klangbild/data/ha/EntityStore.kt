@@ -10,10 +10,6 @@ import io.github.hazymorning.klangbild.domain.EntityState
 class EntityStore {
     private val states = LinkedHashMap<String, EntityState>()
 
-    fun clear() = states.clear()
-
-    operator fun get(entityId: String): EntityState? = states[entityId]
-
     fun snapshot(): Map<String, EntityState> = LinkedHashMap(states)
 
     /** Takes [state] unless a newer one is known; whether it changed anything. */
@@ -28,6 +24,8 @@ class EntityStore {
     /** Forgets [entityId] (it was removed from Home Assistant, or is no longer followed). */
     fun remove(entityId: String): Boolean = states.remove(entityId) != null
 
-    /** Keeps only the entities in [ids]; whether any left. */
-    fun retain(ids: Set<String>): Boolean = states.keys.retainAll(ids)
+    /** Keeps only the entities in [ids]. */
+    fun retain(ids: Set<String>) {
+        states.keys.retainAll(ids)
+    }
 }

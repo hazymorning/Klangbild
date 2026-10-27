@@ -49,17 +49,17 @@ class MaQueueTest {
         assertThat(played.album).isEqualTo("Nachtfahrt")
         assertThat(played.year).isEqualTo(2024)
         assertThat(played.durationMs).isEqualTo(251_000L)
-        // A local picture comes through Music Assistant's proxy, the larger size first.
-        assertThat(played.artworkUrl).isEqualTo("$base/imageproxy/3f2a?size=1024")
-        assertThat(played.artworkFallbackUrl).isEqualTo("$base/imageproxy/3f2a?size=512")
+        // A local picture comes through Music Assistant's proxy.
+        assertThat(played.artworkUrl).isEqualTo("$base/imageproxy/3f2a?size=512")
+        assertThat(played.artworkFallbackUrl).isNull()
         // Which item of the queue it is.
         assertThat(played.queueItemId).isEqualTo("a")
 
         val current = w.current!!
         assertThat(current.title).isEqualTo("Spiegel im Spiegel (Live)")
         assertThat(current.durationMs).isEqualTo(180_500L)
-        // A public picture is fetched where it is (the largest rendition), the proxy behind it.
-        assertThat(current.artworkUrl).isEqualTo("https://i.scdn.co/image/ab67616d0000b273abc")
+        // A public picture is fetched where it is, the proxy behind it.
+        assertThat(current.artworkUrl).isEqualTo("https://i.scdn.co/image/ab67616d00001e02abc")
         assertThat(current.artworkFallbackUrl).isEqualTo("$base/imageproxy/77aa?size=512")
 
         val (radio, plain) = w.coming
@@ -75,16 +75,16 @@ class MaQueueTest {
     fun `the queue as it stands says where it is and what comes next, or that nothing does`() {
         fun item(id: String, title: String) =
             """{"queue_item_id":"$id","name":"$title","media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}]}}"""
-        val now = MaQueue.now(
+        val state = MaQueue.state(
             Json.parseToJsonElement("""{"queue_id":"q1","current_index":3,"items":9,"current_item":${item("a", "Eins")},"next_item":${item("b", "Zwei")}}""").jsonObject,
             "http://192.168.1.5:8095",
         )
-        assertThat(now.index).isEqualTo(3)
-        assertThat(now.items).isEqualTo(9)
-        assertThat(now.current!!.title).isEqualTo("Eins")
-        assertThat(now.next!!.title).isEqualTo("Zwei")
-        assertThat(now.nextId).isEqualTo("b")
-        val last = MaQueue.now(Json.parseToJsonElement("""{"current_index":8,"current_item":${item("z", "Neun")},"next_item":null}""").jsonObject, "http://h")
+        assertThat(state.index).isEqualTo(3)
+        assertThat(state.items).isEqualTo(9)
+        assertThat(state.current!!.title).isEqualTo("Eins")
+        assertThat(state.next!!.title).isEqualTo("Zwei")
+        assertThat(state.nextId).isEqualTo("b")
+        val last = MaQueue.state(Json.parseToJsonElement("""{"current_index":8,"current_item":${item("z", "Neun")},"next_item":null}""").jsonObject, "http://h")
         assertThat(last.next).isNull()
         assertThat(last.nextId).isNull()
     }

@@ -12,8 +12,8 @@ import kotlin.random.Random
 
 /** How a connection carries messages; the session never sees the WebSocket itself. */
 interface Transport {
-    fun sendText(text: String): Boolean
-    fun sendBinary(bytes: ByteArray): Boolean
+    fun sendText(text: String)
+    fun sendBinary(bytes: ByteArray)
 
     /** Closes the connection without another word. */
     fun close()
@@ -81,17 +81,17 @@ class Session(
         /** The server's clock as the time filter has it after each burst; null while it has not settled. */
         fun clock(map: ClockMap?)
 
-        /** The player role is active ([playing]: its stream may start), or not any more. */
-        fun playerActive(active: Boolean)
-
         /** A player stream starts (or its format is set again). */
         fun streamStart()
 
-        /** [length] bytes of PCM at [offset] in [bytes], to be played from server time [timestampUs]; [arrivalUs] when it came. */
+        /**
+         * [length] bytes of PCM at [offset] in [bytes] to play at server time [timestampUs], sent
+         * [sendAheadUs] before that and received at local time [arrivalUs].
+         */
         fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long)
 
-        /** The player's queued audio goes (a seek, another song). */
-        fun clear()
+        /** The player's queued audio goes (a seek, another track). */
+        fun streamClear()
 
         /** The player's stream ended. */
         fun streamEnd()
@@ -100,8 +100,8 @@ class Session(
         fun mute(muted: Boolean)
         fun outputDelay(ms: Int)
 
-        /** The group plays or not. */
-        fun group(playing: Boolean, groupId: String, name: String)
+        /** Whether the speaker's group is playing (`group/update`). */
+        fun group(playing: Boolean)
 
         /** A beat heard at server time [timestampUs], [downbeat] when it begins a bar. */
         fun beat(timestampUs: Long, downbeat: Boolean)
@@ -112,7 +112,7 @@ class Session(
         /** Pairing finished: keep [record]. */
         fun paired(record: PairingRecord)
 
-        /** A long-term PSK was used to connect. */
+        /** The long-term PSK of [serverId] was used to connect. */
         fun used(serverId: String)
 
         /** The server ended the pairing with [serverId]: forget its record. */
@@ -138,6 +138,7 @@ class Session(
     private var pendingRecord: PairingRecord? = null
 
     private var roles = emptySet<String>()
+    private var everActivated = false
     private var pairingIndex = 0
     private var playerStream = false
     private var beatStream = false
@@ -150,11 +151,8 @@ class Session(
     private var burstBestAt = 0L
     private var bursts = 0
 
-    /** Whether the server has activated the player role. */
-    val playerRole: Boolean get() = synchronized(this) { Roles.PLAYER in roles }
-
-    /** Whether the server's first activation has come: the connection is set up, roles or not. */
-    val activated: Boolean get() = synchronized(this) { step == Step.ACTIVE }
+    /** Whether the server has activated the session at least once: the connection is set up, roles or not. */
+    val activated: Boolean get() = synchronized(this) { everActivated }
 
     /** Whether the time filter has settled enough to schedule playback. */
     val synced: Boolean get() = synchronized(this) { bursts >= SYNC_BURSTS && filter.errorUs < SYNC_ERROR_US }
@@ -253,7 +251,7 @@ class Session(
         burst()
     }
 
-    /** The player's state changed here (volume by the TV, the output delay): the server hears of it. */
+    /** Sends `client/state` again after the player's state changed here (a new minimum buffer). */
     fun stateChanged(): Unit = synchronized(this) {
         if (step == Step.ACTIVE && stateSent) sendState()
     }
@@ -319,7 +317,7 @@ class Session(
      */
     private fun respond(m: Message, prologue: ByteArray, initial: Boolean): Triple<ByteArray, NoiseChannel, PskCategory> {
         val data = m.string("data")?.let(B64::decode) ?: throw ProtocolException("noise/handshake without data")
-        val handshake = KkPsk2Handshake(false, prologue, identity, checkNotNull(serverKey)) { KeyPair.generate(random) }
+        val handshake = KkPsk2Responder(prologue, identity, checkNotNull(serverKey)) { KeyPair.generate(random) }
         val payload = try {
             Json.parseToJsonElement(handshake.readFirst(data).decodeToString()) as? JsonObject
         } catch (e: NoiseException) {
@@ -374,7 +372,7 @@ class Session(
             "stream/start" -> streamStart(m)
             "stream/clear" -> streamClear(m)
             "stream/end" -> streamEnd(m)
-            "group/update" -> group(m)
+            "group/update" -> listener.group(m.string("playback_state") == "playing")
             "server/unpair" -> unpair()
             "noise/handshake" -> rehandshake(m)
             "server/pair-finalize" -> pairFinalized()
@@ -384,15 +382,10 @@ class Session(
 
     private fun activate(m: Message) {
         val acts = m.strings("activities")?.toSet() ?: emptySet()
-        val requested = if (m.payload.containsKey("active_roles")) m.strings("active_roles")?.toSet() ?: emptySet() else roles
-        val allowed = when (matched) {
-            PskCategory.LONG_TERM -> setOf(emptySet(), setOf(PLAYBACK))
-            // Unpaired access is on: playback may come over the Sentinel or the pairing PSK too.
-            PskCategory.PAIRING, PskCategory.SENTINEL -> setOf(emptySet(), setOf(PAIRING), setOf(PLAYBACK), setOf(PLAYBACK, PAIRING))
-        }
-        if (acts !in allowed) return refuse()
-        val capable = (acts + PLAYBACK) in allowed
-        val newRoles = if (capable) requested else if (m.payload.containsKey("active_roles") && requested.isNotEmpty()) return refuse() else emptySet()
+        // Unpaired access is on: playback may come over the Sentinel or the pairing PSK too.
+        val permitted = if (matched == PskCategory.LONG_TERM) setOf(PLAYBACK) else setOf(PLAYBACK, PAIRING)
+        if (!permitted.containsAll(acts)) return refuse()
+        val newRoles = if (m.payload.containsKey("active_roles")) m.strings("active_roles")?.toSet() ?: emptySet() else roles
         if (PAIRING in acts) {
             pairingIndex++
             val method = m.obj("pairing")?.get("method")?.let { (it as? JsonPrimitive)?.content }
@@ -409,16 +402,9 @@ class Session(
         val old = roles
         roles = newRoles
         // A role taken away stops at once, whatever it still had queued.
-        if (Roles.PLAYER in old - newRoles) {
-            if (playerStream) listener.streamEnd()
-            playerStream = false
-        }
-        if (Roles.VISUALIZER in old - newRoles) {
-            beatStream = false
-            listener.beatsCleared()
-        }
+        endStreams(player = Roles.PLAYER in old - newRoles, beats = Roles.VISUALIZER in old - newRoles)
         step = Step.ACTIVE
-        listener.playerActive(Roles.PLAYER in roles)
+        everActivated = true
         // A role added needs its state: sent now, or once the clock has settled. The clock is
         // set going with the first role (a connection only for pairing needs none).
         if ((newRoles - old).isNotEmpty()) stateSent = false
@@ -497,24 +483,25 @@ class Session(
 
     private fun streamClear(m: Message) {
         val targets = m.strings("roles")
-        if (playerStream && (targets == null || "player" in targets)) listener.clear()
+        if (playerStream && (targets == null || "player" in targets)) listener.streamClear()
         if (beatStream && (targets == null || "visualizer" in targets)) listener.beatsCleared()
     }
 
     private fun streamEnd(m: Message) {
         val targets = m.strings("roles")
-        if (playerStream && (targets == null || "player" in targets)) {
+        endStreams(player = targets == null || "player" in targets, beats = targets == null || "visualizer" in targets)
+    }
+
+    /** Ends the player's stream if [player], and the visualizer's if [beats], each only while it runs. */
+    private fun endStreams(player: Boolean, beats: Boolean) {
+        if (player && playerStream) {
             playerStream = false
             listener.streamEnd()
         }
-        if (beatStream && (targets == null || "visualizer" in targets)) {
+        if (beats && beatStream) {
             beatStream = false
             listener.beatsCleared()
         }
-    }
-
-    private fun group(m: Message) {
-        listener.group(m.string("playback_state") == "playing", m.string("group_id") ?: "", m.string("group_name") ?: "")
     }
 
     private fun unpair() {
@@ -562,7 +549,7 @@ class Session(
 
     private fun send(m: Message) {
         val c = channel ?: return
-        val body = utf8(m.encode())
+        val body = m.encode().encodeToByteArray()
         if (body.size + 1 > Noise.MAX_MESSAGE - Noise.TAG_BYTES) throw ProtocolException("message too long to send")
         val plain = ByteArray(body.size + 1)
         body.copyInto(plain, 1)
@@ -572,8 +559,7 @@ class Session(
     private fun end(end: SessionEnd, detail: String) {
         if (step == Step.OVER) return
         step = Step.OVER
-        if (playerStream) listener.streamEnd()
-        playerStream = false
+        endStreams(player = true, beats = true)
         transport.close()
         listener.ended(end, detail)
     }

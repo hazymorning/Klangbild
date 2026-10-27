@@ -6,7 +6,7 @@ plugins {
     id("klangbild.robolectric")
 }
 
-// The words of strings/values*/strings.xml and their languages' formats, as Kotlin.
+// Turns strings/values*/strings.xml and CLDR's formats into Kotlin.
 val generateTexts = tasks.register<GenerateTexts>("generateTexts") {
     strings = layout.projectDirectory.dir("strings")
     output = layout.buildDirectory.dir("generated/texts")

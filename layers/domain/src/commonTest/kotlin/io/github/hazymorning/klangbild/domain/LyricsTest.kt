@@ -9,7 +9,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import kotlin.test.Test
 
-/** Synced words: LRC read tolerantly (tidied or raw), and where the words stand as the song plays. */
+/** Synced lyrics: LRC read tolerantly (tidied or raw), and where the lyrics are as the track plays. */
 class LyricsTest {
     private fun times(l: Lyrics) = l.lines.map { it.startMs }
     private fun texts(l: Lyrics) = l.lines.map { it.text }
@@ -45,7 +45,7 @@ class LyricsTest {
     }
 
     @Test
-    fun `words still sung after the song ends belong to a longer recording`() {
+    fun `lyrics still sung after the track ends belong to a longer recording`() {
         val l = Lrc.parse("[00:10.00]Erste Zeile\n[03:58.00]Letzte Zeile")!!
         assertThat(l.fit(240_000)).isTrue()
         // A length a few seconds short, as another copy of the recording may have it.
@@ -55,18 +55,18 @@ class LyricsTest {
     }
 
     @Test
-    fun `an offset brings the words sooner or later`() {
+    fun `an offset brings the lyrics sooner or later`() {
         val text = "[offset:+500]\n[00:10.00]Eins\n[00:20.00]Zwei"
         assertThat(times(Lrc.parse(text)!!)).containsExactly(9_500L, 19_500L)
         assertThat(times(Lrc.parse(text.replace("+500", "-250"))!!)).containsExactly(10_250L, 20_250L)
     }
 
     @Test
-    fun `plain words are none, and so are words with one time for all`() {
+    fun `plain lyrics are none, and so are lyrics with one time for all`() {
         assertThat(Lrc.parse(null)).isNull()
         assertThat(Lrc.parse("  \n ")).isNull()
         assertThat(Lrc.parse("Die Straße glänzt im Regen\nund alle Ampeln stehen still\nIch fahre ohne Ziel")).isNull()
-        // A time here and there in plain words.
+        // A time here and there in plain lyrics.
         assertThat(Lrc.parse("Strophe eins\nZeile zwei\n[02:30] Solo\nZeile vier\nZeile fünf")).isNull()
         assertThat(Lrc.parse("[00:00.00]Eins\n[00:00.00]Zwei\n[00:00.00]Drei\n[00:05.00]Vier")).isNull()
         // Only one line with a time.
@@ -74,7 +74,7 @@ class LyricsTest {
     }
 
     @Test
-    fun `synced words in the plain field are found there`() {
+    fun `synced lyrics in the plain field are found there`() {
         val lrc = "[00:10.00]Eins\n[00:20.00]Zwei"
         assertThat(times(Lrc.of(lyrics = lrc, lrcLyrics = null)!!)).containsExactly(10_000L, 20_000L)
         assertThat(Lrc.of(lyrics = "Eins\nZwei", lrcLyrics = null)).isNull()
@@ -112,7 +112,7 @@ class LyricsTest {
     }
 
     @Test
-    fun `the line sung last stands in the middle, lit while it is sung`() {
+    fun `the line sung last is in the middle, highlighted while it is sung`() {
         val l = Lrc.parse("[00:05.00]Eins\n[00:09.00]Zwei\n[00:13.00]\n[00:30.00]Drei")!!
         assertThat(l.placeAt(0)).isEqualTo(LyricPlace(0, lit = false))
         assertThat(l.placeAt(5_000)).isEqualTo(LyricPlace(0, lit = true))
@@ -138,7 +138,7 @@ class LyricsTest {
         // A report a little behind: the line stays.
         assertThat(cursor.at(8_400).index).isEqualTo(1)
         assertThat(cursor.at(8_900).index).isEqualTo(1)
-        // No position (the song is leaving): it stays where it is.
+        // No position (the track is leaving): it stays where it is.
         assertThat(cursor.at(null).index).isEqualTo(1)
         // A jump ahead, and one back.
         assertThat(cursor.at(41_000).index).isEqualTo(3)

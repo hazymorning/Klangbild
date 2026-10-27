@@ -164,7 +164,7 @@ class HaSourceTest {
                 } else {
                     ok("""{"entity_categories":{},"entities":$registry}""")
                 }
-                "get_config" -> ok("""{"latitude":52.52,"longitude":13.4,"unit_system":{"temperature":"°C"}}""")
+                "get_config" -> ok("""{"unit_system":{"temperature":"°C"}}""")
                 "unsubscribe_events" -> ok()
                 "call_service" -> {
                     calls += msg
@@ -241,44 +241,41 @@ class HaSourceTest {
         start()
     }
 
+    /** The queue's timings here: a short wait for a burst of changes to settle, the others as in the app. */
+    private val fast = QueueTiming(burstMs = 20L)
+
     private fun source(
         ma: MaClient? = null,
         entity: String = "media_player.wz",
         speaker: kotlinx.coroutines.flow.StateFlow<SpeakerStatus>? = null,
-        refreshMs: Long = 60_000L,
         partyMs: Long = HaSource.PARTY_MS,
-        detailsWaitMs: Long = QueueReader.DETAILS_WAIT_MS,
-        queueSettleMs: Long = QueueReader.QUEUE_SETTLE_MS,
-        maQueueMs: Long = QueueReader.MA_QUEUE_MS,
+        queue: QueueTiming = fast,
     ) = HaSource(
         http,
         scope,
-        HaConfig(HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good"))),
+        HaAuth(http, ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("good")),
         entity,
         ma = ma,
-        queueRefreshMs = refreshMs,
+        queueTiming = queue,
         partyMs = partyMs,
-        actionAnswerMs = 500L,
-        detailsWaitMs = detailsWaitMs,
-        queueSettleMs = queueSettleMs,
-        maQueueMs = maQueueMs,
+        actionAnswerMs = 200L,
         speaker = speaker,
         ownRetryMs = 50L,
-        ownBackMs = 300L,
+        ownBackMs = 100L,
     )
 
     @Test
     fun `quick skips ask for the queue once, for where they end`() = runBlocking {
-        val s = source()
+        val s = source(queue = fast.copy(burstMs = 150L))
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track?.title == "Erstes Lied" } }
         val before = queueCalls()
         for (i in 2..6) {
             play("Lied $i")
-            delay(60)
+            delay(20)
         }
         withTimeout(5_000) { s.state.first { it.player?.track?.title == "Lied 6" } }
-        delay(1_000)
+        delay(400)
         assertThat(queueCalls() - before).isEqualTo(1)
         s.stop()
     }
@@ -286,10 +283,10 @@ class HaSourceTest {
     @Test
     fun `a player that is not Music Assistant's is never asked for a queue`() = runBlocking {
         player = """{"media_title":"Erstes Lied","media_artist":"A"}"""
-        val s = source(refreshMs = 100)
+        val s = source(queue = fast.copy(refreshMs = 100L))
         s.start()
         withTimeout(5_000) { s.state.first { it.player != null } }
-        delay(800)
+        delay(300)
         assertThat(queueCalls()).isEqualTo(0)
         s.stop()
     }
@@ -297,10 +294,10 @@ class HaSourceTest {
     @Test
     fun `a player without a queue is not asked again while the track stays`() = runBlocking {
         queueAnswer = null
-        val s = source(refreshMs = 100)
+        val s = source(queue = fast.copy(refreshMs = 100L))
         s.start()
         withTimeout(5_000) { s.state.first { it.player != null } }
-        delay(1_000)
+        delay(300)
         assertThat(queueCalls()).isEqualTo(1)
         s.stop()
     }
@@ -415,7 +412,7 @@ class HaSourceTest {
             val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), partyMs = 50L)
             s.start()
             withTimeout(5_000) { while (partyQuestions() < 1) delay(20) }
-            delay(500)
+            delay(150)
             assertThat(partyQuestions()).isEqualTo(1)
             assertThat(s.state.value.party).isFalse()
             s.stop()
@@ -556,7 +553,7 @@ class HaSourceTest {
         withTimeout(5_000) { s.state.first { it.player?.track?.artworkUrl?.contains("love-and-hate") == true } }
         // For a while it shows the station's again (with a new token): the song's stays.
         report("entity_picture" to stationPicture.replace("token=t", "token=u"))
-        delay(400)
+        delay(200)
         assertThat(picture()).isNotNull().contains("love-and-hate")
         // The next song starts with the station's picture.
         report("media_title" to "Spinning", "media_artist" to "Other", "entity_picture" to stationPicture)
@@ -638,7 +635,7 @@ class HaSourceTest {
         val s = source()
         s.start()
         withTimeout(5_000) { s.state.first { it.player != null } }
-        delay(300)
+        delay(150)
         assertThat(s.state.value.favorites).isFalse()
         assertThat(s.favorite().isFailure).isTrue()
         s.stop()
@@ -666,7 +663,7 @@ class HaSourceTest {
         val watch = scope.launch { s.state.collect { st -> st.player?.track?.let { seen += it } } }
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }
-        delay(300)
+        delay(150)
         // Never first with Home Assistant's small picture or without the year.
         assertThat(seen.map { it.artworkUrl }.distinct()).containsExactlyInAnyOrder("https://cdn.example/erstes.jpg")
         assertThat(seen.map { it.year }.distinct()).containsExactlyInAnyOrder(2024)
@@ -678,7 +675,7 @@ class HaSourceTest {
     fun `the song the queue announced as next comes at once, complete`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
-        val s = source()
+        val s = source(queue = fast.copy(burstMs = 150L))
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }
         val before = queueCalls()
@@ -696,7 +693,7 @@ class HaSourceTest {
     fun `a queue replaced as its first song starts names the new next song a moment later`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
-        val s = source(queueSettleMs = 300L)
+        val s = source(queue = fast.copy(settleMs = 300L))
         s.start()
         withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
         // Music Assistant still names the old queue's next until the player reports.
@@ -738,11 +735,11 @@ class HaSourceTest {
         }
         ma.start()
         try {
-            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), queue = fast.copy(settleMs = 100L, maQueueMs = 100L))
             s.start()
             withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
             withTimeout(5_000) { while ("player_queues/get" !in maCommands) delay(20) }
-            delay(400)
+            delay(200)
             // The same song next: Home Assistant's description stays, the picture it brings when it starts.
             assertThat(s.state.value.next!!.artworkUrl).isEqualTo("https://cdn.example/zweites.jpg")
             // A song added to play next: Music Assistant says so, and the cards to come follow.
@@ -788,7 +785,7 @@ class HaSourceTest {
         var answering = true
         val ma = maServer({ listOf("Erstes Lied", "Eingeschoben", "Zweites Lied") }, { answering })
         try {
-            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), queue = fast.copy(settleMs = 100L, maQueueMs = 100L))
             s.start()
             withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
             // Music Assistant falls silent; Home Assistant alone tells what comes next.
@@ -811,10 +808,10 @@ class HaSourceTest {
     fun `without Music Assistant itself it is never asked what comes next`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
-        val s = source(maQueueMs = 100L)
+        val s = source(queue = fast.copy(maQueueMs = 100L))
         s.start()
         withTimeout(5_000) { s.state.first { it.next?.title == "Zweites Lied" } }
-        delay(600)
+        delay(300)
         assertThat(s.state.value.next!!.title).isEqualTo("Zweites Lied")
         assertThat(maCommands).isEmpty()
         s.stop()
@@ -824,12 +821,12 @@ class HaSourceTest {
     fun `a song waits for a silent queue only a moment`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueSilent = true
-        val s = source(detailsWaitMs = 800L)
+        val s = source(queue = fast.copy(detailsWaitMs = 300L))
         val started = System.currentTimeMillis()
         s.start()
         val track = withTimeout(5_000) { s.state.first { it.player?.track != null } }.player!!.track!!
         // Shown as Home Assistant has it, once the wait is over.
-        assertThat(System.currentTimeMillis() - started).isGreaterThanOrEqualTo(750L)
+        assertThat(System.currentTimeMillis() - started).isGreaterThanOrEqualTo(250L)
         assertThat(track.artworkUrl).isNotNull().contains("/api/media_player_proxy/")
         s.stop()
     }
@@ -874,7 +871,7 @@ class HaSourceTest {
             // Asked ahead for the song up next, and only for it.
             withTimeout(5_000) { while (asked.isEmpty()) delay(20) }
             assertThat(asked).containsExactlyInAnyOrder("library://track/2")
-            delay(300)
+            delay(150)
             // It starts: its words are there with it.
             queueAnswer = { queueOf(item("Zweites Lied", "zweites"), null) }
             report("media_title" to "Zweites Lied", "media_content_id" to "library://track/2")
@@ -882,7 +879,7 @@ class HaSourceTest {
             val next = second.lyrics!!
             assertThat(next.key).isEqualTo(second.player!!.track!!.key)
             assertThat(next.lyrics!!.lines.first().text).isEqualTo("Noch eine Zeile")
-            delay(300)
+            delay(150)
             assertThat(asked).hasSize(1)
             s.stop()
         } finally {
@@ -904,7 +901,7 @@ class HaSourceTest {
     fun `the songs of a player without a queue come at once`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = null
-        val s = source()
+        val s = source(queue = fast.copy(burstMs = 150L))
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track != null } }
         withTimeout(5_000) { while (queueCalls() < 1) delay(20) }
@@ -931,7 +928,7 @@ class HaSourceTest {
             assertThat(maCommands).contains("players/all")
             // Nothing plays here yet: the chosen speaker stays.
             withTimeout(5_000) { while (triggers.none { "media_player.tv" in it.second }) delay(20) }
-            delay(300)
+            delay(150)
             assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
 
             reportTv("playing", "Hier")
@@ -975,7 +972,7 @@ class HaSourceTest {
             val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), entity = EntityId.THIS_TV, speaker = speaker)
             s.start()
             withTimeout(5_000) { s.state.first { it.link == io.github.hazymorning.klangbild.domain.LinkState.CONNECTED } }
-            delay(300)
+            delay(150)
             assertThat(s.state.value.player).isNull()
             assertThat(s.state.value.entityMissing).isFalse()
             assertThat(triggers.first().second).doesNotContain(EntityId.THIS_TV)
@@ -1043,7 +1040,7 @@ class HaSourceTest {
         }
         ma.start()
         try {
-            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), maQueueMs = 300L)
+            val s = source(ma = MaClient(http, ma.url("/").toString().trimEnd('/'), "ma-token"), queue = fast.copy(settleMs = 100L, maQueueMs = 100L))
             s.start()
             val precise = withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs.let { at -> at != null && at != reportedAtMs } } }
             val p = precise.player!!
@@ -1068,7 +1065,7 @@ class HaSourceTest {
             withTimeout(5_000) { s.state.first { it.player?.status == PlayerStatus.PLAYING } }
             repeat(3) {
                 assertThat(s.state.value.player!!.positionAtEpochMs).isEqualTo(reportedAtMs)
-                delay(300)
+                delay(100)
             }
             maState = "playing"
             withTimeout(5_000) { s.state.first { it.player?.positionAtEpochMs.let { at -> at != null && at != reportedAtMs } } }

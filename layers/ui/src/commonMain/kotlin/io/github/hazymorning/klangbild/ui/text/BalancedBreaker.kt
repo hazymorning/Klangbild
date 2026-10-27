@@ -46,8 +46,8 @@ internal class BalancedBreaker(private val measurer: TextMeasurer) : LineBalance
      * Where each line of [text] in [style] ends when it is laid out like
      * `measurer.measure(text, style, constraints = Constraints(maxWidth = maxWidth))` with a
      * balanced line break: the offsets that `getLineEnd` gives, the last one the text's length.
-     * The breaks are those of ICU's rules without a strictness, as Android 12 and Robolectric make
-     * them, which leave a line break's strictness out.
+     * The breaks follow ICU's default rules, as Android 12 and Robolectric make them; both ignore a
+     * line break's strictness.
      */
     override fun lineEnds(text: AnnotatedString, style: TextStyle, maxWidth: Int): IntArray = lines(text, style, maxWidth).ends
 
@@ -85,8 +85,8 @@ internal class BalancedBreaker(private val measurer: TextMeasurer) : LineBalance
         // After a final line feed comes one more line, an empty one.
         if (s.endsWith('\n')) out += s.length
         // Text that gets no line feed is laid out as the balanced text was; with them, exactly as wide.
-        val fed = out.size > paragraphs.size + if (s.endsWith('\n')) 1 else 0
-        val constraints = if (fed) Constraints.fixedWidth(width) else Constraints(maxWidth = maxWidth)
+        val getsLineFeeds = out.size > paragraphs.size + if (s.endsWith('\n')) 1 else 0
+        val constraints = if (getsLineFeeds) Constraints.fixedWidth(width) else Constraints(maxWidth = maxWidth)
         val directions = paragraphs.mapNotNull { it.measured?.rtl }.distinct()
         val direction = when (directions.singleOrNull()) {
             true -> TextDirection.Rtl
@@ -510,7 +510,7 @@ internal class BalancedBreaker(private val measurer: TextMeasurer) : LineBalance
  * [text] with its lines ended where [ends] says: the space a line ends on becomes a line feed,
  * and a line that ends without one (between ideographs, after a slash, inside a word too long
  * for the line) gets a line feed put in. When at most [maxLines] lines are shown, the last one
- * shown is left to hold the rest, which Android ellipsizes as it does now. Spans keep their
+ * shown is left to hold the rest, which Android ellipsizes as usual. Spans keep their
  * characters; a line feed put in takes the spans of the character before it.
  *
  * Set in [BalancedBreaker.Lines.style] with the same maxLines and overflow, and with

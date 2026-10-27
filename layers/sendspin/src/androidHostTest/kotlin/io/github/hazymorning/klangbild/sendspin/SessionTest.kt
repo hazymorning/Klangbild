@@ -47,17 +47,16 @@ class SessionTest {
         override fun clock(map: ClockMap?) {
             if (map != null) events += "clock"
         }
-        override fun playerActive(active: Boolean) { events += "player $active" }
         override fun streamStart() { events += "start" }
         override fun audio(timestampUs: Long, sendAheadUs: Long, bytes: ByteArray, offset: Int, length: Int, arrivalUs: Long) {
             audio += timestampUs to length
         }
-        override fun clear() { events += "clear" }
+        override fun streamClear() { events += "clear" }
         override fun streamEnd() { events += "end" }
         override fun volume(volume: Int) { events += "volume $volume" }
         override fun mute(muted: Boolean) { events += "mute $muted" }
         override fun outputDelay(ms: Int) { events += "delay $ms" }
-        override fun group(playing: Boolean, groupId: String, name: String) { events += "group $playing" }
+        override fun group(playing: Boolean) { events += "group $playing" }
         override fun beat(timestampUs: Long, downbeat: Boolean) { events += "beat $timestampUs" }
         override fun beatsCleared() { events += "beats cleared" }
         override fun paired(record: PairingRecord) {
@@ -79,24 +78,22 @@ class SessionTest {
         var closed = false
         private var clientInit = ByteArray(0)
         private var channel: NoiseChannel? = null
-        private var handshake: KkPsk2Handshake? = null
+        private var handshake: KkPsk2Initiator? = null
         private var psk = Psk.SENTINEL
 
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean {
+            override fun sendText(text: String) {
                 val m = Message.parse(text)
                 if (m.type == "client/init") clientInit = text.toByteArray() else fromClient += m
                 textFromClient(m)
-                return true
             }
-            override fun sendBinary(bytes: ByteArray): Boolean {
+            override fun sendBinary(bytes: ByteArray) {
                 val c = channel!!
                 val plain = c.receive.decrypt(ByteArray(0), bytes)
                 assertThat(plain[0]).isEqualTo(0.toByte())
                 val m = Message.parse(String(plain, 1, plain.size - 1))
                 fromClient += m
                 messageFromClient(m)
-                return true
             }
             override fun close() { closed = true }
         }
@@ -115,7 +112,7 @@ class SessionTest {
             }).encode()
             toClient += init
             this.psk = psk
-            val h = KkPsk2Handshake(true, clientInit + init.toByteArray(), serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
+            val h = KkPsk2Initiator(clientInit + init.toByteArray(), serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
             handshake = h
             val payload = buildJsonObject {
                 put("psk_id", Psk.id(idOf))
@@ -139,7 +136,7 @@ class SessionTest {
         /** Swaps the keys in band, naming [newPsk] as [category]. */
         fun rehandshake(newPsk: ByteArray, category: PskCategory) {
             val c = channel!!
-            val h = KkPsk2Handshake(true, c.handshakeHash, serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
+            val h = KkPsk2Initiator(c.handshakeHash, serverKeys, clientKeys.publicKey) { KeyPair.generate(random) }
             handshake = h
             psk = newPsk
             rehandshaking = true
@@ -232,7 +229,7 @@ class SessionTest {
         assertThat(state.obj("player")!!.keys).containsAtLeast("volume", "muted", "output_delay_ms", "supported_commands")
         assertThat(state.obj("visualizer")!!["types"].toString()).isEqualTo("[\"beat\"]")
         assertThat(s.synced).isTrue()
-        assertThat(events).containsAtLeast("player true", "clock")
+        assertThat(events).contains("clock")
     }
 
     @Test
@@ -249,15 +246,15 @@ class SessionTest {
         s.start()
         pump(server, s)
         assertThat(s.activated).isTrue()
-        assertThat(s.playerRole).isTrue()
         repeat(Session.SYNC_BURSTS - 1) {
             now += 300_000
             s.burst()
             pump(server, s)
         }
         assertThat(s.synced).isTrue()
-        assertThat(events).containsInOrder("player false", "player true")
-        assertThat(server.fromClient.single { it.type == "client/state" }.bool("available")).isNotNull().isTrue()
+        val state = server.fromClient.single { it.type == "client/state" }
+        assertThat(state.bool("available")).isNotNull().isTrue()
+        assertThat(state.obj("player")).isNotNull()
     }
 
     @Test
@@ -355,6 +352,18 @@ class SessionTest {
     }
 
     @Test
+    fun `a session that ends ends its streams, the beats too`() {
+        val (server, s) = connect()
+        server.send(Message.of("stream/start", buildJsonObject {
+            put("player", PcmFormat.json())
+            putJsonObject("visualizer") { }
+        }))
+        pump(server, s)
+        s.goodbye("shutdown")
+        assertThat(events).containsInOrder("start", "end", "beats cleared", "ended GOODBYE shutdown")
+    }
+
+    @Test
     fun `pairing by PSK keeps a long-term PSK and the next connection uses it`() {
         val server = Server()
         server.greet = { it.handshakeWith(pairingPsk, PskCategory.PAIRING) }
@@ -375,7 +384,10 @@ class SessionTest {
         assertThat(init.int("pairing_index")).isEqualTo(1)
         assertThat(events).containsInOrder("paired", "used")
         assertThat(records.single().serverId).isEqualTo(serverId)
-        assertThat(events).contains("player true")
+        // The long-term PSK brings the player.
+        server.send(Message.of("stream/start", buildJsonObject { put("player", PcmFormat.json()) }))
+        pump(server, s)
+        assertThat(events).contains("start")
         assertThat(ended).isNull()
 
         // Next time the server names the long-term PSK.

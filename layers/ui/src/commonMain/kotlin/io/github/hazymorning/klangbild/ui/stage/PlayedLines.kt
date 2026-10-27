@@ -5,9 +5,9 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 
 /**
- * What each song's lines showed while it played, so that a stage still on screen after its song
- * has ended (the next song's scene still being made, or its lines leaving in the change) keeps
- * its own time, its own next and its own chapter.
+ * What each track's lines showed while it played, so that a stage still on screen after its track
+ * has ended (the next track's scene still being made, or its lines leaving in a change) keeps its
+ * own position, its own next track and its own chapter.
  */
 internal class PlayedLines {
     private class Played {
@@ -15,16 +15,16 @@ internal class PlayedLines {
         var next: TrackInfo? = null
         var chapter: ChapterPlace? = null
 
-        /** It played at the last read of its place. */
+        /** It played at the last read of its position. */
         var plays = false
     }
 
-    /** The songs of the last few changes, the one used last at the end. */
-    private val songs = RecentMap<String, Played>(KEPT)
+    /** The tracks of the last few changes, the one used last at the end. */
+    private val tracks = RecentMap<String, Played>(KEPT)
 
-    private fun of(key: String) = songs.getOrPut(key) { Played() }
+    private fun of(key: String) = tracks.getOrPut(key) { Played() }
 
-    /** The song after [key]: [now] while it [plays] (and kept), else the one it had. */
+    /** The track after [key]: [now] while it [plays] (and kept), else the one it had. */
     fun next(key: String, plays: Boolean, now: TrackInfo?): TrackInfo? {
         val p = of(key)
         if (plays) p.next = now
@@ -40,8 +40,8 @@ internal class PlayedLines {
 
     /**
      * Where [key] stands: read [now] while it [plays] and kept, else where it stood last. A read
-     * that knows nothing (another song is reported already, or none) keeps the last place; a
-     * song that plays again after another starts afresh.
+     * that knows nothing (another track is reported already, or none) keeps the last position,
+     * and a track that plays again after another starts afresh.
      */
     fun position(key: String, plays: Boolean, now: () -> Long?): Long? {
         val p = of(key)
@@ -52,7 +52,7 @@ internal class PlayedLines {
     }
 
     private companion object {
-        /** The song that plays, the one leaving, and room for a quick skip or two. */
+        /** The track that plays, the one leaving, and room for a quick skip or two. */
         const val KEPT = 4
     }
 }

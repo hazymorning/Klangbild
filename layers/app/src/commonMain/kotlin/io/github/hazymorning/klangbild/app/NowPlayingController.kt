@@ -1,21 +1,15 @@
 package io.github.hazymorning.klangbild.app
 
-import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.AppearanceMode
 import io.github.hazymorning.klangbild.config.BackgroundMode
-import io.github.hazymorning.klangbild.config.DisplayOptions
 import io.github.hazymorning.klangbild.config.LaunchExtras
-import io.github.hazymorning.klangbild.config.MenuRow
-import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickActions
-import io.github.hazymorning.klangbild.config.QuickRow
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.SessionOptions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsStore
-import io.github.hazymorning.klangbild.config.SleepAction
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.LightBridge
@@ -24,18 +18,14 @@ import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.PictureDecoder
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.ha.HaAuth
-import io.github.hazymorning.klangbild.data.ha.HaConfig
+import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaSource
-import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MilkdropSound
 import io.github.hazymorning.klangbild.domain.ChapterPlace
-import io.github.hazymorning.klangbild.domain.CoverStrip
 import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.FlipGuard
 import io.github.hazymorning.klangbild.domain.LinkState
-import io.github.hazymorning.klangbild.domain.Lyrics
-import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Progress
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -43,23 +33,17 @@ import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.ScreenDecision
 import io.github.hazymorning.klangbild.domain.ScreenStateMachine
 import io.github.hazymorning.klangbild.domain.SmoothedPosition
-import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
-import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.domain.UpNext
-import io.github.hazymorning.klangbild.domain.UpNextRow
 import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.lights.LightSync
-import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
-import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.setup.DiscoverResult
 import io.github.hazymorning.klangbild.setup.SetupHandler
-import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.text.AppLanguage
@@ -67,11 +51,12 @@ import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.client.HttpClient
-import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,110 +67,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.IOException
 import kotlin.concurrent.Volatile
-import kotlin.math.roundToInt
 import kotlin.time.Clock
-
-/**
- * A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text
- * column, or the [queue] while it shows as a list beside the cover.
- */
-data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: Lyrics? = null, val queue: QueueList? = null)
-
-/** The queue as a list beside the cover: what comes next, and the small covers made so far, by [UpNextRow.id]. */
-data class QueueList(val upNext: UpNext, val covers: Map<String, ImageBitmap> = emptyMap()) {
-    /**
-     * The list once its first row, [track], plays: the rows after it. Null unless that is the
-     * song, or when nothing would be left.
-     */
-    fun movedUp(track: TrackInfo): QueueList? {
-        val first = upNext.rows.firstOrNull()?.takeIf { TrackMatch.sameTitle(it.track.title, track.title) } ?: return null
-        val rows = upNext.rows.drop(1).ifEmpty { return null }
-        return QueueList(UpNext(rows), covers - first.id)
-    }
-}
-
-/** A card of the cover flow with its scene, ready to be shown. */
-data class FlowEntry(val id: Long, val track: TrackInfo, val scene: ArtworkScene) {
-    val stage: StageData get() = StageData(track, scene)
-}
-
-/**
- * The cover flow as far as it is ready: cards in play order, the one at [current] in the middle,
- * and the middle song's [lyrics] while they take the text column.
- */
-data class FlowData(val cards: List<FlowEntry>, val current: Int, val lyrics: Lyrics? = null) {
-    val middle: FlowEntry get() = cards[current]
-
-    /** The middle card as the stage shows it: with its words. */
-    val stage: StageData get() = StageData(middle.track, middle.scene, lyrics)
-}
-
-/** The settings menu while it is open: its lines and the one the cursor is on. */
-data class MenuState(
-    val rows: List<MenuRow>,
-    val cursor: Int,
-    /** Up or down is held: the list runs on, and the explanation waits until the key is let go. */
-    val held: Boolean = false,
-    /** The group whose settings show; null while the groups themselves show. */
-    val section: MenuSection? = null,
-)
-
-/** The quick menu while it is open: its lines and the one the cursor is on. */
-data class QuickState(val rows: List<QuickRow>, val cursor: Int)
-
-/** Everything the UI renders. */
-data class UiState(
-    /** What shows. While a song that came after the clock waits for its first scene, still the clock ([HeldStage]). */
-    val screen: Screen = Screen.Rest(RestReason.CONNECTING),
-    val keepScreenOn: Boolean = true,
-    val asleep: Boolean = false,
-    val sleepAction: SleepAction = SleepAction.RELEASE,
-    /**
-     * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays
-     * through a switch to Cover Flow until the cards' first scene is made, and goes when another
-     * song (or the same one on a new wall, or to or from Cover Flow) comes after the clock or the
-     * setup page ([HeldStage]).
-     */
-    val stage: StageData? = null,
-    /** How the queue shows: with Cover Flow its strip ([flow]) shows once it is ready, else the [stage]. */
-    val queue: QueueDisplay = QueueDisplay.OFF,
-    /**
-     * How the queue should show, chosen but not on screen yet, while its stage is being made
-     * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
-     * value breathe meanwhile.
-     */
-    val queueComing: QueueDisplay? = null,
-    /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
-    val flow: FlowData? = null,
-    /** Light wall by day, dark at night (or as set). */
-    val appearance: Appearance = Appearance.DARK,
-    /** What the stage shows (clock, progress, album and so on) and how strong its light is. */
-    val display: DisplayOptions = DisplayOptions(),
-    val source: SourceState = SourceState(LinkState.CONNECTING),
-    val session: SessionOptions = SessionOptions(),
-    val entityId: String? = null,
-    /** Address, code and QR modules while the setup screen is open. */
-    val setup: SetupInfo? = null,
-    /** The settings menu, null while it is closed. */
-    val menu: MenuState? = null,
-    /** The quick menu, null while it is closed. */
-    val quick: QuickState? = null,
-    /** The volume just changed: the status line shows it for a moment. */
-    val volumeFlash: Boolean = false,
-    /** The chapter of the book or episode on stage, while it has chapters. */
-    val chapter: ChapterPlace? = null,
-    /** When the sleep timer pauses the music (wall clock), while it is set. */
-    val sleepAt: Long? = null,
-    /** The words in the language shown; null leaves them to the platform's languages (a screen rendered on its own). */
-    val texts: Texts? = null,
-    /** The values of one's own in words, as far as Home Assistant can tell them ("Outside 12 °C"). */
-    val values: List<String> = emptyList(),
-    /** The link of the party playing here, while its code shows where the cover stands (the quick settings' Party code). */
-    val partyCode: String? = null,
-    /** The quick settings have never been opened: the stage may tell how (arrow down) for a moment. */
-    val downHint: Boolean = false,
-)
 
 /**
  * The app's single source of truth. It runs the Home Assistant source and the screen state
@@ -196,7 +80,7 @@ data class UiState(
  */
 class NowPlayingController(
     private val scope: CoroutineScope,
-    /** For pictures from anywhere: requests carry no credentials but to Home Assistant's own host. */
+    /** For requests without a token: covers from other hosts. */
     private val http: HttpClient,
     /** For requests that carry a token: they never follow a redirect, so a token never reaches another host. */
     private val tokenHttp: HttpClient,
@@ -233,7 +117,10 @@ class NowPlayingController(
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
 
-    /** The stored settings have been taken in: until then [settings] holds only the defaults. */
+    /** The stored settings, read once ([load]): from then on the controller owns them and writes every change ([save]). */
+    private val stored = scope.async(start = CoroutineStart.LAZY) { settingsStore.settings.first() }
+
+    /** The stored settings are in. Until then [settings] holds the defaults, and no change is saved. */
     @Volatile private var loaded = false
 
     /** Read from coroutines and the main thread as well; written under the lock. */
@@ -244,6 +131,7 @@ class NowPlayingController(
     private var settingsJob: Job? = null
     private var machine = ScreenStateMachine()
     private val smooth = SmoothedPosition()
+    private val volumeFlash = VolumeFlash(now)
     private var lastReportKey: Any? = null
 
     /** The next chapter's start on the wall clock, so the stage turns to it on time. */
@@ -278,15 +166,17 @@ class NowPlayingController(
             }
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
-        override fun openMenu(): Unit = this@NowPlayingController.openMenu()
-        override fun applySettings(updated: Settings) = this@NowPlayingController.applySettings(updated)
+        override fun openMenu(): Unit = menu.open()
+        override fun applySettings(updated: Settings) {
+            save(updated)
+        }
         override fun send(command: RemoteCommand) = this@NowPlayingController.send(command)
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
     }
     private val sleep = SleepControl(host)
-    private val menu = MenuControl(host, sleep)
-    private val quick = QuickControl(host)
-    private val seeking = Seeking(host)
+    internal val menu: MenuControl = MenuControl(host, sleep)
+    internal val quick: QuickControl = QuickControl(host)
+    internal val seeking: Seeking = Seeking(host)
 
     /** The queue's way just chosen, until the screen shows it. */
     private val queueSwitch = QueueSwitch()
@@ -297,10 +187,7 @@ class NowPlayingController(
     /** How the current connection signs in to Home Assistant, while there is one. */
     @Volatile private var auth: HaAuth? = null
 
-    private val artwork = ArtworkLoader(http, tokenHttp, { auth }, pictures)
-    private val scenes = Scenes(scope, artwork)
-    private val thumbs = Thumbs(scope, artwork, now)
-    private val strip = CoverStrip()
+    private val stageBuilder = StageBuilder(scope, ArtworkLoader(http, tokenHttp, { auth }, pictures), log, now) { recompute() }
 
     private var viewers = 0
 
@@ -308,13 +195,14 @@ class NowPlayingController(
         settings = { settings.value },
         texts = { localizer.texts.value },
         discover = { url, credentials ->
-            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value)
+            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
+                if (r is DiscoverResult.Failed && r.refused) refused(credentials)
+            }
         },
         save = { updated ->
             // Leaving setup: the new settings start a fresh connection.
-            session.value = session.value.copy(showSetup = false)
             synchronized(lock) { machine.requestSetup(false) }
-            takeAndWrite(updated, "setup page")
+            take("setup page") { updated }
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
         clientId = { setupServer.origin?.let { "$it/" } },
@@ -334,8 +222,7 @@ class NowPlayingController(
     /** A screen (activity or dream) starts showing the controller. */
     fun attach(spec: ScreenSpec): Unit = synchronized(lock) {
         viewers++
-        scenes.show(scenes.frame.copy(screen = spec))
-        thumbs.px = (StageGrid(spec).rowCover * spec.density).roundToInt()
+        stageBuilder.screen(spec)
         if (viewers == 1) start()
     }
 
@@ -352,15 +239,10 @@ class NowPlayingController(
         // A sleep timer outlives a hand-over between the app and the screensaver, not a closed app.
         if (stoppedAt > 0 && now() - stoppedAt > HANDOVER_MS) sleep.clear()
         settingsJob = scope.launch {
-            settingsStore.settings.collect { s ->
-                // While the menu's own changes are being written, it already shows them.
-                if (localEdits.value != 0) return@collect
-                // A late echo of an older state (the very first read, overtaken by the launch's
-                // extras) never undoes a connection the store holds now.
-                if (!s.isConfigured && settings.value.isConfigured && settingsStore.settings.first().isConfigured) return@collect
-                onSettings(s)
-                loaded = true
-            }
+            // The first start reads the stored settings; a later one starts the source again on them.
+            if (loaded) onSettings(settings.value) else load()
+            // A screen started showing: ask for a new version, unless that is turned off.
+            if (settings.value.updateCheck) updates?.checkIfDue()
         }
         ticker = scope.launch {
             while (isActive) {
@@ -375,18 +257,12 @@ class NowPlayingController(
         speakerJob = scope.launch {
             speaker.collect { status -> synchronized(lock) { soundSelection.update(_ui.value.source, status) } }
         }
-        updates?.let { u ->
-            updatesJob = scope.launch { u.info.collect { recompute() } }
-            updatesDue = true
-        }
+        updates?.let { u -> updatesJob = scope.launch { u.info.collect { recompute() } } }
     }
 
     private var textsJob: Job? = null
     private var speakerJob: Job? = null
     private var updatesJob: Job? = null
-
-    /** A screen started showing: Klangbild asks for a new version once the stored settings are in. */
-    @Volatile private var updatesDue = false
 
     private fun stop() {
         settingsJob?.cancel()
@@ -417,15 +293,14 @@ class NowPlayingController(
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
         lastReportKey = null
-        lastVolume = null
+        volumeFlash.reset()
         _ui.value = _ui.value.copy(
             source = SourceState(LinkState.CONNECTING),
             screen = Screen.Rest(RestReason.CONNECTING),
             stage = null,
             flow = null,
-            queueComing = null,
+            queuePending = null,
             asleep = false,
-            keepScreenOn = true,
             chapter = null,
             sleepAt = null,
         )
@@ -434,10 +309,7 @@ class NowPlayingController(
     /** Lets go of decoded covers and scenes while no screen shows them. */
     fun releaseMemory(): Unit = synchronized(lock) {
         if (viewers > 0) return
-        scenes.clear()
-        thumbs.clear()
-        artwork.clear()
-        strip.clear()
+        stageBuilder.clear()
     }
 
     /** Once a second, or sooner when a chapter ends before that. */
@@ -448,18 +320,7 @@ class NowPlayingController(
         session.value = LaunchExtras.session(extras)
         machine.requestSetup(session.value.showSetup)
         if (LaunchExtras.hasStoredExtras(extras)) {
-            scope.launch {
-                // On a first start the stored settings may not be in yet: the extras go on top of
-                // them, never on top of the defaults.
-                if (!loaded) {
-                    val stored = settingsStore.settings.first()
-                    synchronized(lock) {
-                        if (!loaded) onSettings(stored)
-                        loaded = true
-                    }
-                }
-                takeAndWrite(LaunchExtras.applyTo(settings.value, extras), "launch's extras")
-            }
+            scope.launch { take("launch's extras") { LaunchExtras.applyTo(it, extras) } }
         }
         reconcileSource()
         recompute()
@@ -474,6 +335,9 @@ class NowPlayingController(
         (source as? HaSource)?.networkAvailable()
     }
 
+    /** Up and down change the speaker's volume. */
+    val volumeKeys: Boolean get() = settings.value.volumeKeys
+
     fun send(command: RemoteCommand) {
         val volume = command == RemoteCommand.VOLUME_UP || command == RemoteCommand.VOLUME_DOWN
         val allowed = if (volume) settings.value.volumeKeys else settings.value.remoteControl
@@ -481,147 +345,77 @@ class NowPlayingController(
         // Back to the item before: that return is wanted at once.
         if (command == RemoteCommand.PREVIOUS) synchronized(lock) { flips.expectReturn(now()) }
         if (volume) {
-            // Answer the key at once; the new value follows from Home Assistant.
-            volumeFlashUntil = now() + VOLUME_FLASH_MS
+            volumeFlash.keyPressed()
             recompute()
         }
         scope.launch { source?.send(command) }
     }
 
-    // --- spoken word: jumps and chapters ---------------------------------------------------
+    // --- settings ------------------------------------------------------------------------
 
-    /** Left and right jump within what plays (a book, an episode) instead of changing it. */
-    val spokenKeys: Boolean
-        get() {
-            val s = settings.value
-            return s.remoteControl && s.spokenSkip && (_ui.value.screen as? Screen.Stage)?.track?.kind?.spoken == true
-        }
-
-    /** Jumps back ([direction] -1) or ahead (+1) within what plays. */
-    fun skip(direction: Int) = seeking.skip(direction)
-
-    /** Held left or right: by chapters, else to the item before or after. */
-    fun jump(direction: Int) = seeking.jump(direction)
-
-    /**
-     * Left and right change a song once let go, and held, seek through it: with a length to seek
-     * in, on a player that can.
-     */
-    val holdKeys: Boolean
-        get() {
-            val s = settings.value
-            val p = _ui.value.source.player
-            return s.remoteControl && !spokenKeys && (_ui.value.screen as? Screen.Stage)?.track?.durationMs != null && p?.abilities?.seek == true
-        }
-
-    /** Left or right held [heldMs] on a song: back ([direction] -1) or ahead (+1), the farther the longer. */
-    fun hold(direction: Int, heldMs: Long) = seeking.hold(direction, heldMs)
-
-    /** The key held is let go: the place it reached is sent. */
-    fun letGo() = seeking.letGo()
-
-    // --- settings menu -------------------------------------------------------------------
-
-    private val localEdits = atomic(0)
     private val persistLock = Mutex()
 
-    val menuOpen: Boolean get() = menu.isOpen
-
-    /** Up and down change the speaker's volume. */
-    val volumeKeys: Boolean get() = settings.value.volumeKeys
-
-    fun openMenu(): Unit = menu.open()
-
-    fun closeMenu() = menu.close()
-
-    /** Back in the menu: up a level, or out of it from the groups. Whether it is still open. */
-    fun menuBack(): Boolean = menu.back()
-
-    /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
-    fun menuMove(delta: Int, held: Boolean = false) = menu.move(delta, held)
-
-    /** The key held to run through the menu is let go. */
-    fun menuRelease() = menu.release()
-
-    /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]); [repeat]: the key is held. */
-    fun menuChange(direction: Int, wrap: Boolean, repeat: Boolean = false) = menu.change(direction, wrap, repeat)
-
-    /** A change from one of the menus: shown at once, written behind it. */
-    private fun applySettings(updated: Settings) {
-        localEdits.incrementAndGet()
-        onSettings(updated)
-        scope.launch {
-            try {
-                persist()
-            } finally {
-                localEdits.decrementAndGet()
-            }
+    /** Applies the stored settings, once, before anything changes them. */
+    private suspend fun load() {
+        val s = try {
+            stored.await()
+        } catch (e: IOException) {
+            log.warn("Settings: not read (${e::class.simpleName})")
+            return
+        }
+        synchronized(lock) {
+            if (loaded) return
+            onSettings(s)
+            loaded = true
         }
     }
 
     /**
-     * Writes the settings as they are now. Always the newest state, one write at a time: quick
-     * presses overtake each other, and a change from the setup page or the launch's extras never
-     * comes back undone by a menu's write that was still on its way, or the other way round.
+     * Applies [updated] at once and writes it; the job ends once it is written. Ignored until the
+     * stored settings are in, so the defaults never overwrite them.
+     */
+    private fun save(updated: Settings): Job? = synchronized(lock) {
+        if (!loaded) return null
+        onSettings(updated)
+        scope.launch { persist() }
+    }
+
+    /**
+     * Writes the settings as they are now. Always the newest state, one write at a time, so quick
+     * changes overtake each other and an older state is never written last.
      */
     private suspend fun persist() {
-        persistLock.withLock { settingsStore.write(settings.value) }
+        try {
+            persistLock.withLock { settingsStore.write(settings.value) }
+        } catch (e: IOException) {
+            log.warn("Settings: not written (${e::class.simpleName})")
+        }
     }
 
     /**
-     * Settings from the phone's setup page or the launch's extras ([from]): taken at once and
-     * written, waiting for the write. They never wait for the store's own echo, which has been
-     * seen to stay away on a first start (Android TV 14 emulator, right after installing) and
-     * left the app on the setup page.
+     * Applies [change] from the setup page or the launch's extras ([from]) to the stored settings,
+     * and waits until the result is written.
      */
-    private suspend fun takeAndWrite(updated: Settings, from: String) {
-        if (updated.isConfigured != settings.value.isConfigured) log.info("Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
-        localEdits.incrementAndGet()
-        try {
-            onSettings(updated)
-            persist()
-        } finally {
-            localEdits.decrementAndGet()
+    private suspend fun take(from: String, change: (Settings) -> Settings) {
+        load()
+        val written = synchronized(lock) {
+            val updated = change(settings.value)
+            if (updated.isConfigured != settings.value.isConfigured) {
+                log.info("Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
+            }
+            save(updated)
         }
+        written?.join()
     }
 
-    // --- quick settings ------------------------------------------------------------------
-
-    val quickOpen: Boolean get() = quick.isOpen
-
-    /** Opens the quick settings (down on the remote), on how the queue shows. */
-    fun openQuick() = quick.open(menu.isOpen)
-
-    /** Closes the quick settings (up, back, after a while alone); a queue's choice still waiting is taken now. */
-    fun closeQuick() = quick.close()
-
-    /** A key in the quick settings that changes nothing: they stay open a while longer. */
-    fun touchQuick() = quick.touch()
-
-    /** Left (-1) or right (+1) along the quick settings; it stops at their ends. */
-    fun quickMove(delta: Int) = quick.move(delta)
-
-    /** OK on the entry under the cursor: its next value, or what it says. */
-    fun quickChange() = quick.change()
-
     private fun onSettings(s: Settings): Unit = synchronized(lock) {
-        val flow = s.queue == QueueDisplay.FLOW
-        if (flow != scenes.frame.flow || (_ui.value.queue == QueueDisplay.FLOW) != flow) {
-            // Cover Flow needs scenes of its own, and its strip starts afresh. What showed before
-            // stays on screen until the first scene is made (it goes then), so the switch never
-            // waits in the dark. Off and the list share the cover's scenes. The song on stage
-            // keeps its scene for a way straight back.
-            val onStage = _ui.value.stage?.track ?: _ui.value.flow?.middle?.track
-            scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
-            strip.clear()
-        }
+        stageBuilder.queueDisplay(s.queue == QueueDisplay.FLOW, onStage = _ui.value.stage?.track ?: _ui.value.flow?.middle?.track)
         if (_ui.value.queue != s.queue) {
             queueSwitch.chosen(s.queue)
             _ui.value = _ui.value.copy(queue = s.queue)
         }
-        // Asked for after a start, and when asking is turned on again, unless it is off.
-        if (s.updateCheck && (updatesDue || !settings.value.updateCheck)) updates?.checkIfDue()
-        updatesDue = false
+        // Turned on in the menu: ask at once.
+        if (loaded && s.updateCheck && !settings.value.updateCheck) updates?.checkIfDue()
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {
@@ -649,7 +443,11 @@ class NowPlayingController(
 
     private fun reconcileSource(): Unit = synchronized(lock) {
         val s = settings.value
-        val key = if (s.isConfigured) listOf("ha", s.haUrl, s.haCredentials, s.entityId, s.sunEntity, s.maUrl, s.maToken).joinToString("|") else "unconfigured"
+        val key = when {
+            s.isConfigured -> listOf("ha", s.haUrl, s.haCredentials, s.entityId, s.sunEntity, s.maUrl, s.maToken).joinToString("|")
+            s.haRefused -> "refused"
+            else -> "unconfigured"
+        }
         if (key == sourceKey || viewers == 0) return
         sourceKey = key
         log.info(if (s.isConfigured) "Connecting to Home Assistant (${s.entityId})" else "No connection set: setup")
@@ -659,25 +457,36 @@ class NowPlayingController(
         heldJob = null
         flips = FlipGuard()
         stopSource(source)
-        // Another speaker (or another server) has its own history.
-        strip.clear()
-        lastLyrics = null
+        stageBuilder.newSource()
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
         soundSelection.useMilkdrop(if (s.hasMusicAssistant) MilkdropSound(tokenHttp, scope, s.maUrl!!, s.maToken!!) else null)
         val newAuth = if (s.isConfigured) HaAuth(tokenHttp, s.haUrl!!, s.haCredentials!!, now) else null
         auth = newAuth
         val newSource: NowPlayingSource? =
-            newAuth?.let { HaSource(tokenHttp, scope, HaConfig(it), s.entityId!!, s.sunEntity, now, ma, speaker = speaker) }
+            newAuth?.let { HaSource(tokenHttp, scope, it, s.entityId!!, s.sunEntity, now, ma, speaker = speaker) }
         source = newSource
         if (newSource == null) {
-            _ui.value = _ui.value.copy(source = SourceState(LinkState.UNCONFIGURED))
+            _ui.value = _ui.value.copy(source = SourceState(if (s.haRefused) LinkState.AUTH_FAILED else LinkState.UNCONFIGURED))
             return
         }
         newSource.start()
         lightSync.attach(newSource as? LightBridge)
-        lastVolume = null
+        volumeFlash.reset()
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
+        }
+    }
+
+    /**
+     * Home Assistant refused [credentials]. When they are the stored ones, they are dropped
+     * ([Settings.refused]), so they are never sent again: Home Assistant counts every attempt as a
+     * failed login.
+     */
+    private fun refused(credentials: HaCredentials) {
+        synchronized(lock) {
+            if (settings.value.haCredentials != credentials) return
+            log.warn("Home Assistant refused the credentials: dropped")
+            save(settings.value.refused())
         }
     }
 
@@ -704,15 +513,12 @@ class NowPlayingController(
             // A jump with the remote holds until Home Assistant reports the new place (or another item).
             smooth.onReport(p?.track?.key, seeking.onReport(st, raw, t), t)
         }
-        // A new volume (set here, on a phone or anywhere else) is shown for a moment; another
-        // speaker shown (this TV's own, or back) has a volume of its own, which doesn't count as a change.
-        if (st.speaker != _ui.value.source.speaker) lastVolume = null
-        val volume = p?.volume?.let { it to p.muted }
-        if (volume != null) {
-            if (lastVolume != null && volume != lastVolume) volumeFlashUntil = t + VOLUME_FLASH_MS
-            lastVolume = volume
+        volumeFlash.reported(st, _ui.value.source.speaker, t)
+        if (st.link != _ui.value.source.link) {
+            log.info("Link: ${st.link}")
+            // Dropped after this report is taken in, since dropping them stops the source that sent it.
+            if (st.link == LinkState.AUTH_FAILED) auth?.credentials?.let { scope.launch { refused(it) } }
         }
-        if (st.link != _ui.value.source.link) log.info("Link: ${st.link}")
         _ui.value = _ui.value.copy(source = st)
         soundSelection.update(st, speaker.value)
         recompute()
@@ -720,9 +526,6 @@ class NowPlayingController(
 
     private var flips = FlipGuard()
     private var heldJob: Job? = null
-
-    private var lastVolume: Pair<Float, Boolean>? = null
-    @Volatile private var volumeFlashUntil = 0L
 
     /**
      * Stops [old] once the lights it was lighting have been given back through it (a few
@@ -770,15 +573,12 @@ class NowPlayingController(
         sleep.evaluate(t, stage?.track, position, speed, playing)
         val previous = _ui.value
         val menuState = menu.state(s, appearance, stage?.track)
-        val lyrics = stage?.let { lyricsFor(s, src, it.track) }
-        val list = stage?.let { queueFor(s, src, it.track, lyrics, previous.stage) }
         val quickState = quick.state(decision.screen)
         // After the clock or the setup page, another song (or the same one on a new wall, or to or
         // from Cover Flow) waits for its own scene.
         val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage)
         val decided = previous.copy(
             screen = decision.screen,
-            keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
             asleep = decision.asleep && menuState == null && quickState == null,
             sleepAction = s.sleepAction,
             appearance = appearance,
@@ -787,7 +587,7 @@ class NowPlayingController(
             entityId = s.entityId,
             menu = menuState,
             quick = quickState,
-            volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && t < volumeFlashUntil,
+            volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && volumeFlash.shown(t),
             chapter = chapter,
             sleepAt = sleep.shownPauseAt(previous.sleepAt),
             texts = texts,
@@ -802,11 +602,7 @@ class NowPlayingController(
         )
         // The colors move only while music plays, on the screen and in the lights alike.
         fieldClock.run(if (playing) s.motion.speed else 0f)
-        val ready = when {
-            stage == null -> decided
-            s.queue == QueueDisplay.FLOW -> showFlow(decided, stage, look, lyrics)
-            else -> showStage(decided, stage, look, lyrics, list)
-        }
+        val ready = if (stage == null) decided else stageBuilder.build(decided, s, stage, look, previous.stage)
         // Meanwhile the clock stays, never the dark, and the keys and the lights act on what shows;
         // the quick settings' Queue still names the choice made. One state is published, never one
         // with nothing to show in between.
@@ -814,7 +610,7 @@ class NowPlayingController(
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
         // The queue's way just chosen breathes in the quick settings and the menu until this
         // state shows it.
-        _ui.value = published.copy(queueComing = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
+        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
         // chosen, or switched off, go back at once.
         val chosen = if (s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
@@ -851,95 +647,7 @@ class NowPlayingController(
         return a
     }
 
-    /** What was last known of the words of the song on stage: it stays while a moment between two songs says nothing. */
-    private var lastLyrics: SongLyrics? = null
-
-    /**
-     * The words that take the text column for [track]: with Lyrics on, the synced words Music
-     * Assistant has for a song whose position is known (the words follow it).
-     */
-    private fun lyricsFor(s: Settings, src: SourceState, track: TrackInfo): Lyrics? {
-        src.lyrics?.let { lastLyrics = it }
-        if (!s.lyrics || track.kind != MediaKind.MUSIC || track.durationMs == null) return null
-        return lastLyrics?.takeIf { it.key == track.key }?.lyrics
-    }
-
-    /**
-     * The queue as a list beside the cover for [track], with Queue on List: what Music Assistant's
-     * queue says comes after it, while the song plays and no words take the column. A song only
-     * (a station or spoken word keeps its own last line), and only with something to come. The
-     * small covers its rows have so far come with it. A song the player no longer reports keeps
-     * the list it had ([shown]), and so does a song whose queue is being read again. A song the
-     * list announced plays a moment before its own queue is read: meanwhile the list before
-     * moves up by one, so the rows that stay glide up with the song and nothing comes twice.
-     */
-    private fun queueFor(s: Settings, src: SourceState, track: TrackInfo, lyrics: Lyrics?, shown: StageData?): QueueList? {
-        if (s.queue != QueueDisplay.LIST || lyrics != null || track.kind != MediaKind.MUSIC) return null
-        if (src.player?.track?.key != track.key) return shown?.takeIf { it.track.key == track.key }?.queue
-        if (!src.queueKnown) {
-            val before = shown?.queue ?: return null
-            return if (shown.track.key == track.key) before else before.movedUp(track)
-        }
-        val upNext = UpNext.of(src.coming) ?: return null
-        return QueueList(upNext, upNext.rows.mapNotNull { row -> thumbs.ready(row.track)?.let { row.id to it } }.toMap())
-    }
-
-    /**
-     * [ui] with the stage showing [stage]'s track as soon as its scene is ready (the next track's
-     * is made ahead), with the queue's [list] while it shows. The small covers of its rows are
-     * asked for after the song's own picture and made one at a time, so they never hold it up: a
-     * row whose small cover is still on its way shows without it, and it comes in where it stands.
-     */
-    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?, list: QueueList?): UiState {
-        scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
-        val rows = list?.upNext?.rows.orEmpty().map { it.track }
-        thumbs.retain(rows)
-        val scene = scenes.ready(stage.track, look)
-        if (scene == null) scenes.prepare(stage.track, look) { recompute() } else stage.next?.let { scenes.prepare(it, look) }
-        for (track in rows) thumbs.prepare(track) { recompute() }
-        if (scene == null) return ui
-        val shown = ui.stage
-        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && shown.queue == list && ui.flow == null) return ui
-        // Cover Flow, if it showed before, goes now.
-        return ui.copy(stage = StageData(stage.track, scene, lyrics, list), flow = null)
-    }
-
-    /**
-     * Cover Flow: [ui] with the strip around [stage]'s track. Every card's scene is made (the
-     * middle one first, then what comes, then what was), and the strip is shown once the middle
-     * one is ready; cards still on their way join it as they come. A card whose scene is being
-     * lit again keeps the one it has meanwhile. When the wall changes (light to dark), the whole
-     * strip changes at once, as soon as every card it shows is ready.
-     */
-    private fun showFlow(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?): UiState {
-        val src = ui.source
-        // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
-        val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
-        val s = strip.update(stage.track, coming, before = src.played)
-        scenes.retain(s.cards.map { it.track.sceneKey }.toSet())
-        val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
-        for (i in order) {
-            val track = s.cards[i].track
-            if (scenes.ready(track, look) == null) scenes.prepare(track, look) { recompute() }
-        }
-        val middle = scenes.ready(s.middle.track, look) ?: return ui
-        val shown = ui.flow?.cards.orEmpty().associateBy { it.id }
-        val newWall = shown.values.any { it.scene.appearance != look.appearance }
-        if (newWall && s.cards.any { it.id in shown && scenes.ready(it.track, look) == null && scenes.pending(it.track) }) return ui
-        val entries = s.cards.mapNotNull { c ->
-            val scene = scenes.ready(c.track, look) ?: shown[c.id]?.scene?.takeIf { !newWall && it.layout == middle.layout }
-            scene?.let { FlowEntry(c.id, c.track, it) }
-        }
-        val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics)
-        if (flow == ui.flow && ui.stage == null) return ui
-        // The single cover, if it showed before, goes now.
-        return ui.copy(flow = flow, stage = null)
-    }
-
     companion object {
-        /** How long a new volume stays in the status line. */
-        const val VOLUME_FLASH_MS = 3_500L
-
         /** A stop shorter than this is a hand-over between the app and the screensaver. */
         const val HANDOVER_MS = 10_000L
 

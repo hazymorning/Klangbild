@@ -48,7 +48,7 @@ class SpeakerIdentity(val name: String, val productName: String?, val manufactur
  */
 class Speaker(
     private val scope: CoroutineScope,
-    /** Pings the server now and then ([SpeakerConnection.PING_MS]). */
+    /** The WebSocket's client; it must ping the server every [SpeakerConnection.PING_MS], as `speakerClient` does. */
     private val http: HttpClient,
     private val store: SpeakerStore,
     /** Music Assistant's Sendspin address (`ws://host:8927/sendspin`). */
@@ -271,12 +271,11 @@ class Speaker(
                     while (running && !streaming) streamCame.receive()
                     continue
                 }
-                if (!playback.open()) {
-                    // No output (none on this device, or it is busy): tried again in a moment.
+                if (!playback.open() || !playback.step()) {
+                    // No output (none on this device, or it is busy), or one that failed: another in a moment.
+                    playback.close()
                     delay(OPEN_RETRY_MS)
-                    continue
                 }
-                if (!playback.step()) playback.close()
             }
         } finally {
             playback.close()
@@ -289,10 +288,6 @@ class Speaker(
 
         override fun clock(map: ClockMap?) {
             playback.clock = map
-        }
-
-        override fun playerActive(active: Boolean) {
-            if (!active && streaming) streamEnd()
         }
 
         override fun streamStart() {
@@ -309,14 +304,13 @@ class Speaker(
             queue.add(timestampUs, bytes, offset, length / PcmFormat.FRAME_BYTES)
         }
 
-        override fun clear() {
+        override fun streamClear() {
             playback.clear()
             sound.cleared()
         }
 
         override fun streamEnd() {
-            playback.clear()
-            sound.cleared()
+            streamClear()
             keepOpenUntilUs = monotonic.nowUs() + KEEP_OPEN_US
             streaming = false
             playingNow()
@@ -340,7 +334,7 @@ class Speaker(
             remember()
         }
 
-        override fun group(playing: Boolean, groupId: String, name: String) {
+        override fun group(playing: Boolean) {
             groupPlaying = playing
             playingNow()
         }
@@ -368,7 +362,6 @@ class Speaker(
         }
 
         override fun ended(end: SessionEnd, detail: String) {
-            if (streaming) streamEnd()
             log.info("Speaker connection ended: $end ($detail)")
             onEnded(end, detail)
         }

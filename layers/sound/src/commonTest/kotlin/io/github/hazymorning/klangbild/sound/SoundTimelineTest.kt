@@ -72,7 +72,7 @@ class SoundTimelineTest {
     }
 
     @Test
-    fun `the beats to come can go on their own, and a clear forgets everything`() {
+    fun `a cleared beat stream forgets every beat, and a clear forgets everything`() {
         push(0, 0.1f)
         push(50_000, 0.2f)
         timeline.beat(40_000, downbeat = false)

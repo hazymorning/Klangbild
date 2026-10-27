@@ -1,22 +1,21 @@
 package io.github.hazymorning.klangbild.domain
 
+import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import kotlinx.datetime.TimeZone
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlin.math.abs
 import kotlin.time.Clock
 
 /**
- * A value of one's own as the status line shows it ("Outside 12.5 °C"): the entity's state, or
+ * A custom value as the status line shows it ("Outside 12.5 °C"): the entity's state, or
  * one of its attributes, after the value's name. Numbers in the language's figures with Home
  * Assistant's decimals (its display precision, else as many as the state has) and their unit,
- * on and off in words, a time as a time of day. Anything else stands as Home Assistant says it.
+ * on and off in words, a time as a time of day. Anything else shows as Home Assistant says it.
  * What Home Assistant cannot tell (unavailable, unknown, nothing) shows nothing, so a template
  * helper can hide a value by having none.
  */
@@ -33,16 +32,18 @@ object ValueText {
     ): String? {
         state ?: return null
         val attribute = value.attribute
-        val raw: JsonElement = if (attribute == null) JsonPrimitive(state) else attributes?.get(attribute) ?: return null
-        val text = (raw as? JsonPrimitive)?.let { p ->
-            val unit = if (attribute == null) (attributes?.get("unit_of_measurement") as? JsonPrimitive)?.contentOrNull else unitOf(value.entity, attribute, attributes, temperatureUnit)
-            val timestamp = attribute == null && (attributes?.get("device_class") as? JsonPrimitive)?.contentOrNull == "timestamp"
-            word(p, unit, if (attribute == null) precision else null, timestamp, t, nowMs, zone)
+        val text = if (attribute == null) {
+            val timestamp = attributes?.string("device_class") == "timestamp"
+            format(JsonPrimitive(state), attributes?.string("unit_of_measurement"), precision, timestamp, t, nowMs, zone)
+        } else {
+            val raw = attributes?.get(attribute) as? JsonPrimitive ?: return null
+            format(raw, unitOf(value.entity, attribute, attributes, temperatureUnit), null, timestamp = false, t, nowMs, zone)
         } ?: return null
         return if (value.name.isEmpty()) text else "${value.name} $text"
     }
 
-    private fun word(p: JsonPrimitive, unit: String?, precision: Int?, timestamp: Boolean, t: Texts, nowMs: Long, zone: TimeZone): String? {
+    /** A state or an attribute's value as the status line shows it. */
+    private fun format(p: JsonPrimitive, unit: String?, precision: Int?, timestamp: Boolean, t: Texts, nowMs: Long, zone: TimeZone): String? {
         if (!p.isString) {
             p.booleanOrNull?.let { return t[if (it) Strings.on else Strings.off] }
             val n = p.doubleOrNull ?: return null
@@ -64,8 +65,8 @@ object ValueText {
     private fun withUnit(number: String, unit: String?, t: Texts): String = when {
         unit.isNullOrBlank() -> number
         unit == "°" -> number + unit
-        unit == "%" -> if (t.percent(0).contains(' ')) "$number %" else "$number%"
-        else -> "$number $unit"
+        unit == "%" -> number + t.percentSuffix
+        else -> "$number\u00A0$unit"
     }
 
     /** The decimals a number is written with ("12.30" has two), at most six. */
@@ -73,7 +74,7 @@ object ValueText {
 
     /** The unit of an attribute where Home Assistant names it: a weather entity's own units, a thermostat's temperatures. */
     private fun unitOf(entity: String, attribute: String, attributes: JsonObject?, temperatureUnit: String?): String? {
-        fun own(key: String) = (attributes?.get(key) as? JsonPrimitive)?.contentOrNull
+        fun own(key: String) = attributes?.string(key)
         return when (entity.substringBefore('.')) {
             "weather" -> when (attribute) {
                 "temperature", "apparent_temperature", "dew_point" -> own("temperature_unit")

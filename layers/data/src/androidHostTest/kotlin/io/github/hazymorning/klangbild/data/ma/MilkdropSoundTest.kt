@@ -5,6 +5,7 @@ import assertk.assertions.isBetween
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.hasSize
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.data.httpClient
@@ -133,6 +134,21 @@ class MilkdropSoundTest {
         withTimeout(5_000) { while (sound.read(at, out)) delay(20) }
         assertThat(out.timing).isEqualTo(SoundTiming.NONE)
         // Nobody reads: the relay is left.
+        sound.reading(false)
+        withTimeout(5_000) { while (!closed) delay(20) }
+    }
+
+    @Test
+    fun `a second reader shares the relay`() = runBlocking {
+        val sound = feed()
+        sound.reading(true)
+        sound.follow("up1a2b3c4d")
+        withTimeout(5_000) { while (said.isEmpty()) delay(20) }
+        sound.reading(true)
+        sound.reading(false)
+        delay(100)
+        assertThat(paths).hasSize(1)
+        assertThat(closed).isFalse()
         sound.reading(false)
         withTimeout(5_000) { while (!closed) delay(20) }
     }

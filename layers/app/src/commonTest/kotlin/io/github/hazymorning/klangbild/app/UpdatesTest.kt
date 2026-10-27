@@ -4,11 +4,8 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.domain.UpdateState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -89,15 +86,5 @@ class UpdatesTest {
         test.runCurrent()
         assertThat(installed).containsExactly("v2026.11.0", "v2026.11.0")
         assertThat(u.info.value.state).isEqualTo(UpdateState.IDLE)
-    }
-
-    /** What a platform keeps, in memory. */
-    private class MemoryValues : ValueStore {
-        private val values = MutableStateFlow<Map<String, Any>>(emptyMap())
-        override val data: StateFlow<Map<String, Any>> = values
-
-        override suspend fun edit(change: (MutableMap<String, Any>) -> Unit) {
-            values.value = values.value.toMutableMap().also(change)
-        }
     }
 }

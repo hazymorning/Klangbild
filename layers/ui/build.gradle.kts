@@ -82,6 +82,8 @@ roborazzi {
 tasks.withType<Test>().matching { it.name == "testAndroidHostTest" }.configureEach {
     // Two JVMs share the Robolectric classes; the screenshot classes run side by side.
     maxParallelForks = 2
+    // The root's clock reads the system's zone: the fixtures' zone (Berlin) on every machine.
+    systemProperty("user.timezone", "Europe/Berlin")
     // The picture tests render how the screens look and check nothing themselves (see Pictures
     // in the tests). The everyday run leaves them out; -Pklangbild.pictures runs them too, as
     // CI's picture comparison does.

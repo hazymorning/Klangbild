@@ -10,8 +10,10 @@ import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
+import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.render.plainPaint
 import kotlin.math.PI
@@ -24,9 +26,10 @@ import kotlin.random.Random
 
 /**
  * Procedurally painted album covers. No real artwork may live in the repository, yet the
- * screenshot tests need covers that look like the real thing, including
- * the hard edge cases (almost black, almost white, monochrome, neon, low resolution,
- * visually busy). Deterministic for a given style and size.
+ * picture tests need covers that look like the real thing, including the hard edge cases
+ * (almost black, almost white, monochrome, neon, low resolution, visually busy). Deterministic
+ * for a given style and size. Each cover's noise is seeded by its place in this list, so new
+ * covers go at the end.
  */
 enum class SyntheticCover(val nativeSize: Int = 640) {
     NIGHT_DRIVE,          // neon synthwave sunset: vivid, neon edge case
@@ -83,7 +86,7 @@ object SyntheticCovers {
     private fun paint(color: Long) = plainPaint().apply { this.color = Color(color.toInt()) }
 
     /** A paint filling with [shader]. */
-    private fun fill(shader: androidx.compose.ui.graphics.Shader) = plainPaint().apply { this.shader = shader }
+    private fun fill(shader: Shader) = plainPaint().apply { this.shader = shader }
 
     /** Android's linear gradient from (x0, y0) to (x1, y1): [colors] spread evenly where there are no [stops]. */
     private fun linear(x0: Float, y0: Float, x1: Float, y1: Float, colors: IntArray, stops: FloatArray? = null) =
@@ -189,7 +192,7 @@ object SyntheticCovers {
                 for (l in 0 until layers) {
                     val depth = l / (layers - 1f)
                     val base = 0.38f + depth * 0.42f
-                    val ridge = base - 0.16f * (noise.line(u * (2.2f + l * 0.9f) + l * 3.7f, l * 1.3f) - 0.5f) * 2f *
+                    val ridge = base - 0.16f * (noise.fbm(u * (2.2f + l * 0.9f) + l * 3.7f, l * 1.3f) - 0.5f) * 2f *
                         (1f - depth * 0.35f) - 0.05f * sin(u * PI.toFloat() * (1.3f + l * 0.4f) + l)
                     if (v > ridge) {
                         val tone = 0.70f - depth * 0.58f
@@ -197,8 +200,7 @@ object SyntheticCovers {
                         lum = tone + fog
                     }
                 }
-                val g = (lum.coerceIn(0f, 1f) * 255f).toInt()
-                px[y * w + x] = (0xFF shl 24) or (g shl 16) or (g shl 8) or g
+                px[y * w + x] = opaque(lum, lum, lum)
             }
         }
         return px
@@ -227,7 +229,7 @@ object SyntheticCovers {
             while (x <= s) {
                 val u = x / s
                 val yy = top + 0.03f * s * sin(u * 2f * PI.toFloat() * (1.2f + i * 0.35f) + i * 1.7f) +
-                    0.025f * s * (noise.line(u * 3f + i, i * 2f) - 0.5f)
+                    0.025f * s * (noise.fbm(u * 3f + i, i * 2f) - 0.5f)
                 path.lineTo(x, yy)
                 if (x >= s) break
                 x = minOf(s, x + s / 120f)
@@ -259,7 +261,7 @@ object SyntheticCovers {
             while (x <= s) {
                 val u = x / s
                 val yy = top - 0.07f * s * sin(u * PI.toFloat() * (1f + 0.4f * i) + i * 2.1f) -
-                    0.03f * s * noise.line(u * 1.5f + i * 5f, i.toFloat())
+                    0.03f * s * noise.fbm(u * 1.5f + i * 5f, i.toFloat())
                 path.lineTo(x, yy)
                 if (x >= s) break
                 x = minOf(s, x + s / 100f)
@@ -288,17 +290,14 @@ object SyntheticCovers {
             var col = floatArrayOf(sky[0] - 0.1f * v, sky[1] - 0.08f * v, sky[2] - 0.1f * v)
             for (l in layerColors.indices) {
                 val depth = l / (layerColors.size - 1f)
-                val ridge = 0.40f + depth * 0.45f - 0.12f * (noise.line(u * (1.6f + l * 0.7f) + l * 9f, l * 2f) - 0.5f) * 2f
+                val ridge = 0.40f + depth * 0.45f - 0.12f * (noise.fbm(u * (1.6f + l * 0.7f) + l * 9f, l * 2f) - 0.5f) * 2f
                 if (v > ridge) {
                     val fog = exp(-(v - ridge) * (5f + 12f * depth)) * (0.4f - 0.3f * depth)
                     val lc = layerColors[l]
                     col = floatArrayOf(lc[0] + fog * 0.5f, lc[1] + fog * 0.5f, lc[2] + fog * 0.45f)
                 }
             }
-            val r = (col[0].coerceIn(0f, 1f) * 255).toInt()
-            val g = (col[1].coerceIn(0f, 1f) * 255).toInt()
-            val b = (col[2].coerceIn(0f, 1f) * 255).toInt()
-            px[y * w + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            px[y * w + x] = opaque(col[0], col[1], col[2])
         }
         return px
     }
@@ -363,8 +362,8 @@ object SyntheticCovers {
         val lower = floatArrayOf(0.42f, 0.12f, 0.08f)
         fun block(u: Float, v: Float, x0: Float, y0: Float, x1: Float, y1: Float, n: Float): Float {
             val feather = 0.025f + 0.02f * n
-            val fx = smooth(x0 - feather, x0 + feather, u) * (1f - smooth(x1 - feather, x1 + feather, u))
-            val fy = smooth(y0 - feather, y0 + feather, v) * (1f - smooth(y1 - feather, y1 + feather, v))
+            val fx = smoothstep(x0 - feather, x0 + feather, u) * (1f - smoothstep(x1 - feather, x1 + feather, u))
+            val fy = smoothstep(y0 - feather, y0 + feather, v) * (1f - smoothstep(y1 - feather, y1 + feather, v))
             return fx * fy
         }
         for (y in 0 until h) for (x in 0 until w) {
@@ -380,10 +379,7 @@ object SyntheticCovers {
                 cc = cc + (lower[i] - cc) * b
                 cc
             }
-            val r = (col[0].coerceIn(0f, 1f) * 255).toInt()
-            val g = (col[1].coerceIn(0f, 1f) * 255).toInt()
-            val bl = (col[2].coerceIn(0f, 1f) * 255).toInt()
-            px[y * w + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+            px[y * w + x] = opaque(col[0], col[1], col[2])
         }
         return px
     }
@@ -424,7 +420,7 @@ object SyntheticCovers {
             val v = y / h.toFloat()
             val t = (v / 0.86f).coerceIn(0f, 1f)
             if (t < 0.5f) mix(sky[0], sky[1], t / 0.5f, col) else mix(sky[1], sky[2], (t - 0.5f) / 0.5f, col)
-            val star = (stars.nextFloat().pow(1100) * 1.8f + stars.nextFloat().pow(4000) * 3f) * smooth(0.85f, 0.3f, v)
+            val star = (stars.nextFloat().pow(1100) * 1.8f + stars.nextFloat().pow(4000) * 3f) * smoothstep(0.85f, 0.3f, v)
             col[0] += star * 0.85f
             col[1] += star * 0.92f
             col[2] += star
@@ -436,7 +432,7 @@ object SyntheticCovers {
             val reach = 0.19f + 0.12f * noise.fbm(u * 3f, 21f + v, 3)
             val ragged = 0.004f + 0.006f * noise.fbm(u * 60f, 31f + v, 2)
             val edge = exp(-(dy / ragged) * (dy / ragged))
-            val body = smooth(-0.002f, 0.012f, dy) * exp(-max(dy, 0f) / reach) * rays * 1.7f
+            val body = smoothstep(-0.002f, 0.012f, dy) * exp(-max(dy, 0f) / reach) * rays * 1.7f
             val below = if (dy < 0f) exp(dy / 0.03f) * 0.22f else 0f
             val light = (body + 0.7f * edge + below) * along
             val up = (dy / 0.30f).coerceIn(0f, 1f)
@@ -465,10 +461,7 @@ object SyntheticCovers {
                 }
             }
             if (dark) wood.copyInto(col)
-            val red = (col[0].coerceIn(0f, 1f) * 255).toInt()
-            val gr = (col[1].coerceIn(0f, 1f) * 255).toInt()
-            val bl = (col[2].coerceIn(0f, 1f) * 255).toInt()
-            px[y * w + x] = (0xFF shl 24) or (red shl 16) or (gr shl 8) or bl
+            px[y * w + x] = opaque(col[0], col[1], col[2])
         }
         return px
     }
@@ -479,10 +472,10 @@ object SyntheticCovers {
         for (i in 0..2) out[i] = a[i] + (b[i] - a[i]) * t
     }
 
-    private fun smooth(e0: Float, e1: Float, x: Float): Float {
-        val t = ((x - e0) / (e1 - e0)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
-    }
+    /** An opaque pixel from channels 0..1. */
+    private fun opaque(r: Float, g: Float, b: Float): Int = (0xFF shl 24) or (channel(r) shl 16) or (channel(g) shl 8) or channel(b)
+
+    private fun channel(v: Float) = (v.coerceIn(0f, 1f) * 255f).toInt()
 
     private fun addGrain(px: IntArray, amount: Float, seed: Int) {
         val rnd = Random(seed)

@@ -97,7 +97,7 @@ class QuickControlTest {
     /** Home Assistant's states for entities (`id to state`, attributes as JSON after a `|`). */
     private fun states(vararg s: Pair<String, String>): Map<String, EntityState> = s.associate { (id, v) ->
         val attrs = v.substringAfter('|', "{}")
-        id to EntityState(id, v.substringBefore('|'), Json.parseToJsonElement(attrs).jsonObject, 0.0, 0.0)
+        id to EntityState(id, v.substringBefore('|'), Json.parseToJsonElement(attrs).jsonObject, 0.0)
     }
 
     private fun report(vararg s: Pair<String, String>) {
@@ -155,7 +155,7 @@ class QuickControlTest {
 
     /** Opens the quick settings and goes right to the button for [entity]. */
     private fun choose(entity: String) {
-        if (!quick.isOpen) quick.open(menuOpen = false)
+        if (!quick.isOpen) quick.open()
         repeat(rows().size) {
             val s = quick.state(ui.screen)!!
             val row = s.rows[s.cursor]
@@ -190,7 +190,7 @@ class QuickControlTest {
     fun `a favorite that failed says so, until Music Assistant counts the song as one`() {
         ui = ui.copy(source = ui.source.copy(favorites = true))
         source.favoriteAnswer = Result.failure(IllegalStateException("No current item to add to favorites"))
-        quick.open(menuOpen = false)
+        quick.open()
         while (rows()[quick.state(ui.screen)!!.cursor].item != QuickItem.FAVORITE) quick.move(+1)
         fun favorite() = rows().first { it.item == QuickItem.FAVORITE }.value
         assertThat(favorite()).isEqualTo("Add")
@@ -225,7 +225,7 @@ class QuickControlTest {
 
     @Test
     fun `a button whose entity cannot be used is left out, and comes when it can`() {
-        quick.open(menuOpen = false)
+        quick.open()
         val shown = rows().filter { it.item == QuickItem.ACTION }.map { it.label }
         assertThat(shown).containsExactly("Ungroup", "Party")
         report(gone.entity to "2026-10-10T20:00:00+00:00")
@@ -240,7 +240,7 @@ class QuickControlTest {
         val grouped = Condition("media_player.wz", "group_members", Condition.Test.ABOVE, "1")
         actions = listOf(ungroup.copy(condition = grouped), party)
         report("media_player.wz" to """playing|{"group_members":["media_player.wz"]}""")
-        quick.open(menuOpen = false)
+        quick.open()
         assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactlyInAnyOrder("Party")
         report("media_player.wz" to """playing|{"group_members":["media_player.wz","media_player.kitchen"]}""")
         assertThat(rows().filter { it.item == QuickItem.ACTION }.map { it.label }).containsExactly("Ungroup", "Party")
@@ -262,7 +262,7 @@ class QuickControlTest {
     fun `the lyrics entry shows with Music Assistant and a song, says On quietly for a song without words, and OK turns it on and off`() {
         val song = TrackInfo("Song", listOf("A"), durationMs = 200_000L)
         ui = ui.copy(screen = Screen.Stage(song, PlayerStatus.PLAYING, null))
-        quick.open(menuOpen = false)
+        quick.open()
         // Without Music Assistant's own link, no words can come: no entry.
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
@@ -319,7 +319,7 @@ class QuickControlTest {
 
     /** Opens the quick settings and goes right to [item]. */
     private fun chooseEntry(item: QuickItem) {
-        if (!quick.isOpen) quick.open(menuOpen = false)
+        if (!quick.isOpen) quick.open()
         repeat(rows().size) {
             val s = quick.state(ui.screen)!!
             if (s.rows[s.cursor].item == item) return
@@ -394,7 +394,7 @@ class QuickControlTest {
 
     @Test
     fun `the last entry opens all settings, and the quick settings make way`() {
-        if (!quick.isOpen) quick.open(menuOpen = false)
+        if (!quick.isOpen) quick.open()
         assertThat(rows().last().item).isEqualTo(QuickItem.SETTINGS)
         assertThat(rows().last().label).isEqualTo("Settings")
         assertThat(rows().last().value).isEqualTo("Open")
@@ -406,7 +406,7 @@ class QuickControlTest {
 
     @Test
     fun `the queue steps on from how it shows, passes the list without Music Assistant, and is taken once the presses stop`() {
-        quick.open(menuOpen = false)
+        quick.open()
         fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
         assertThat(queueValue()).isEqualTo("Off")
         assertThat(quick.pending).isNull()
@@ -444,7 +444,7 @@ class QuickControlTest {
     @Test
     fun `once opened, the quick settings are known and the stage no longer tells how`() {
         assertThat(quickSeen).isFalse()
-        quick.open(menuOpen = false)
+        quick.open()
         assertThat(quickSeen).isTrue()
     }
 }

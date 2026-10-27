@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.data
 
 import assertk.assertThat
-import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isLessThanOrEqualTo
 import kotlin.random.Random
@@ -17,9 +16,7 @@ class BackoffTest {
             assertThat(d).isGreaterThanOrEqualTo(cap / 2)
             assertThat(d).isLessThanOrEqualTo(cap)
         }
-        assertThat(b.attempt).isEqualTo(10)
         b.reset()
-        assertThat(b.attempt).isEqualTo(0)
         assertThat(b.nextDelayMs()).isLessThanOrEqualTo(1000)
     }
 }

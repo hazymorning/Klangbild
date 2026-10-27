@@ -5,7 +5,7 @@ enum class PlayerStatus { PLAYING, PAUSED, BUFFERING, IDLE, OFF, UNAVAILABLE, UN
 
 /**
  * One consistent view of the speaker. [positionMs] was valid at [positionAtEpochMs]
- * (wall clock of the *server*); the UI extrapolates from there.
+ * (wall clock of the *server*); [Progress.positionAt] extrapolates from there.
  */
 data class PlayerSnapshot(
     val status: PlayerStatus,
@@ -13,7 +13,7 @@ data class PlayerSnapshot(
     val positionMs: Long? = null,
     val positionAtEpochMs: Long? = null,
     val friendlyName: String? = null,
-    /** Music Assistant queue id when MA drives the player (for get_queue enrichment). */
+    /** Music Assistant's queue id while Music Assistant drives the player, to read its queue. */
     val activeQueue: String? = null,
     val isMusicAssistant: Boolean = false,
     /** Entity ids of the other speakers playing in sync with this one (this one excluded). */
@@ -24,7 +24,7 @@ data class PlayerSnapshot(
     /** The entity is a Music Assistant group player ("Ground floor"), not a speaker. */
     val isGroupPlayer: Boolean = false,
     /**
-     * How fast the item plays (a book at 1.5×). Only Music Assistant itself knows this; the
+     * How fast the track plays (a book at 1.5×). Only Music Assistant itself knows this; the
      * position runs at this pace.
      */
     val speed: Float = 1f,
@@ -63,8 +63,6 @@ data class SpeakerGroup(
 
 /** What Music Assistant's queue adds on top of the player entity. */
 data class QueueInfo(
-    /** Identity of the current item, to match it against the player state. */
-    val currentTitle: String?,
     val current: TrackInfo?,
     val next: TrackInfo?,
     /**

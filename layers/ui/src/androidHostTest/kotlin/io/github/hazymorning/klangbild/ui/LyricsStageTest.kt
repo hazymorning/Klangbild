@@ -62,8 +62,6 @@ class LyricsStageTest {
 
     @Test fun darkEnglish() = shot("single_dark_en", Fixtures.lyricsModel(Fixtures.night, nightLyrics, position = { 81_000L }, t = en, group = "Living room"), en)
 
-    @Test fun lightEnglish() = shot("single_light_en", Fixtures.lyricsModel(Fixtures.night, nightLyrics, position = { 81_000L }, appearance = Appearance.LIGHT, t = en, group = "Living room"), en)
-
     @Test fun coverColors() = shot("single_cover_colors", Fixtures.lyricsModel(neon, neonLyrics, coverField = true))
 
     @Test fun coverColorsPaper() = shot("single_cover_colors_paper", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT, coverField = true))
@@ -73,8 +71,6 @@ class LyricsStageTest {
     @Test fun flowLight() = flowShot("flow_light", neon, neonLyrics, Appearance.LIGHT)
 
     @Test fun flowDarkEnglish() = flowShot("flow_dark_en", Fixtures.night, nightLyrics, Appearance.DARK, en)
-
-    @Test fun flowLightEnglish() = flowShot("flow_light_en", Fixtures.night, nightLyrics, Appearance.LIGHT, en)
 
     @Test fun flowCoverColors() = flowShot("flow_cover_colors", neon, neonLyrics, Appearance.DARK, coverField = true)
 

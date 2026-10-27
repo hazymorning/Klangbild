@@ -31,14 +31,14 @@ enum class MediaKind {
     }
 }
 
-/** A chapter of a book or an episode, in the item's own time: from [startMs] to [endMs]. */
+/** A chapter of a book or an episode, in the track's own time: from [startMs] to [endMs]. */
 data class Chapter(val name: String?, val startMs: Long, val endMs: Long)
 
 /**
  * Where the listener is in a book or an episode with chapters, as the stage shows it: the
- * chapter's name, its stretch of the item's time (the progress bar's range) and what follows.
+ * chapter's name, its part of the track's time (the progress bar's range) and what follows.
  */
-data class ChapterPlace(val index: Int, val count: Int, val label: String, val startMs: Long, val endMs: Long, val next: String?) {
+data class ChapterPlace(val label: String, val startMs: Long, val endMs: Long, val next: String?) {
     companion object {
         /**
          * The chapter at [positionMs] of [track], null without chapters or position; [numbered]
@@ -49,8 +49,6 @@ data class ChapterPlace(val index: Int, val count: Int, val label: String, val s
             val i = positionMs?.let { Chapters.at(chapters, it) } ?: return null
             val c = chapters[i]
             return ChapterPlace(
-                index = i,
-                count = chapters.size,
                 label = Chapters.label(c, i, numbered),
                 startMs = c.startMs,
                 endMs = c.endMs,
@@ -67,8 +65,8 @@ object Chapters {
 
     /**
      * Sorted by start, each ending where it says, else where the next one starts, else at the
-     * item's end ([durationMs]), as Music Assistant's own player does. Chapters that end before
-     * they start, or start after the item's end, are left out; a single chapter is no chapter.
+     * track's end ([durationMs]), as Music Assistant's own player does. Chapters that end before
+     * they start, or start after the track's end, are left out; a single chapter is no chapter.
      */
     fun of(raw: List<Raw>, durationMs: Long?): List<Chapter> {
         val sorted = raw.filter { it.start.isFinite() && it.start >= 0 }.sortedWith(compareBy({ it.start }, { it.position }))
@@ -88,7 +86,6 @@ object Chapters {
 
     /** The chapter at [positionMs] (its start ≤ position < its end), else null. */
     fun at(chapters: List<Chapter>, positionMs: Long): Int? {
-        if (chapters.isEmpty()) return null
         val i = chapters.indexOfLast { it.startMs <= positionMs }
         if (i < 0) return null
         return i.takeIf { positionMs < chapters[i].endMs } ?: i.takeIf { it == chapters.size - 1 }
@@ -109,7 +106,7 @@ object Chapters {
     }
 
     /** Within this long of a chapter's start, "back" goes to the chapter before (like a CD player). */
-    const val RESTART_MS = 3_000L
+    private const val RESTART_MS = 3_000L
 
     private val generic = Regex("""^(?:(?:chapter|kapitel|track|part|teil|cd|disc|chap\.?|ch\.?|kap\.?)\s*)?0*(\d{1,4})\s*$""", RegexOption.IGNORE_CASE)
 

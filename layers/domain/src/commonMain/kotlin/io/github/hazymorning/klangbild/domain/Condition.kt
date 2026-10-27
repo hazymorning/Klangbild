@@ -11,8 +11,8 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 
 /**
- * When a button of one's own shows: an entity's state, or one of its attributes, compared with a
- * value, as in Home Assistant's own state conditions. Words compare without regard to case,
+ * When a custom button shows: an entity's state, or one of its attributes, compared with a
+ * value, as in Home Assistant's own state conditions. Text compares without regard to case,
  * numbers as numbers, and a list counts its entries ("group_members above 1": the speaker plays
  * in a group). An entity Home Assistant does not have never shows the button; for anything more,
  * a template helper in Home Assistant gives a state to compare.
@@ -66,15 +66,12 @@ data class Condition(val entity: String, val attribute: String?, val test: Test,
             fun str(key: String) = o.string(key)?.trim()
             val entity = str("entity")?.takeIf { EntityId.isValid(it) } ?: return null
             val attribute = str("attribute")?.takeIf { it.isNotEmpty() }
-            if (attribute != null && !ATTRIBUTE.matches(attribute)) return null
+            if (attribute != null && !EntityId.isAttribute(attribute)) return null
             val test = Test.of(str("test")) ?: return null
             val value = str("value")?.takeIf { it.length <= MAX_VALUE } ?: return null
             if ((test == Test.ABOVE || test == Test.BELOW) && value.toNumber() == null) return null
             return Condition(entity, attribute, test, value)
         }
-
-        /** An attribute's name as Home Assistant writes them. */
-        val ATTRIBUTE = Regex("[A-Za-z0-9_]{1,64}")
 
         /** [seen] as a number: a number, a number in words ("21.5"), or a list's count. */
         fun number(seen: JsonElement?): Double? = when (seen) {

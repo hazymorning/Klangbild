@@ -8,6 +8,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 import io.ktor.client.HttpClient
 import io.ktor.http.contentLength
+import io.ktor.http.isSuccess
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Dispatchers
@@ -16,14 +17,23 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
-/**
- * Turns the bytes of a picture into a bitmap, or null when they are none. Larger sources are
- * subsampled on decode: by powers of two, while both sides stay at least half of
- * [ArtworkLoader.MAX_DECODE_PX] and the longer one is above it, then further until the picture
- * holds no more pixels than a square of [ArtworkLoader.MAX_DECODE_PX].
- */
+/** Turns the bytes of a picture into a bitmap, or null when they are none, subsampled by [sampleSize] as it decodes. */
 fun interface PictureDecoder {
     fun decode(bytes: ByteArray): ImageBitmap?
+}
+
+/**
+ * How much a [width] by [height] picture is subsampled on decode: by powers of two, while both
+ * sides stay at least half of [ArtworkLoader.MAX_DECODE_PX] and the longer one is above it, then
+ * further until the picture holds no more pixels than a square of [ArtworkLoader.MAX_DECODE_PX].
+ */
+internal fun sampleSize(width: Int, height: Int): Int {
+    val max = ArtworkLoader.MAX_DECODE_PX
+    var sample = 1
+    while (minOf(width, height) / (sample * 2) >= max / 2 && maxOf(width, height) / sample > max) sample *= 2
+    // However odd its shape, no picture takes more memory than a square of MAX_DECODE_PX.
+    while ((width / sample).toLong() * (height / sample) > max.toLong() * max) sample *= 2
+    return sample
 }
 
 /**
@@ -62,14 +72,7 @@ class ArtworkLoader(
             if (synchronized(lock) { failed[url] }?.let { now() - it < RETRY_FAILED_MS } == true) continue
             val timeout = if (url in originals) CALL_TIMEOUT_MS else UPGRADE_TIMEOUT_MS
             val bmp = slots.withPermit {
-                val bytes = try {
-                    fetch(url, timeout)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    null
-                }
-                bytes?.let { withContext(Dispatchers.Default) { decoder.decode(it) } }
+                orNull { fetch(url, timeout) }?.let { withContext(Dispatchers.Default) { decoder.decode(it) } }
             }
             if (bmp == null) {
                 // Only guesses are remembered: the addresses Home Assistant gives may work again any moment.
@@ -86,29 +89,16 @@ class ArtworkLoader(
     fun clear() = synchronized(lock) { cache.clear() }
 
     private suspend fun fetch(url: String, timeoutMs: Long): ByteArray? {
-        val auth = haAuth()
-        val token: String?
-        val client = if (auth != null && HaUrls.isHaHost(auth.baseUrl, url)) {
-            token = try {
-                auth.accessToken()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
-            tokenHttp
-        } else {
-            token = null
-            http
-        }
-        return client.fetch(
+        val auth = haAuth()?.takeIf { HaUrls.isHaHost(it.baseUrl, url) }
+        val token = auth?.let { orNull { it.accessToken() } }
+        return (if (auth != null) tokenHttp else http).fetch(
             timeoutMs,
             {
                 address(url)
                 token?.let { bearer(it) }
             },
         ) { response ->
-            if (!response.isSuccessful) return@fetch null
+            if (!response.status.isSuccess()) return@fetch null
             // A cover is a few megabytes at most; anything far larger is not read at all.
             if ((response.contentLength() ?: -1L) > MAX_BYTES) return@fetch null
             response.bodyBytes(MAX_BYTES + 1).takeIf { it.size <= MAX_BYTES }

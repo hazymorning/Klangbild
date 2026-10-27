@@ -7,6 +7,7 @@ import kotlinx.datetime.TimeZone
 @JsModule("@js-joda/timezone")
 private external object TimeZoneDatabase : JsAny
 
+/** Written in [testZone] so the code refers to [TimeZoneDatabase], whose import loads the zone rules; nothing reads it. */
 @OptIn(ExperimentalWasmJsInterop::class)
 private var database: JsAny? = null
 

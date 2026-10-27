@@ -17,6 +17,10 @@ enum class RemoteKey { UP, DOWN, LEFT, RIGHT, OK, MENU, PLAY_PAUSE, PLAY, PAUSE,
  * followed) and as it is let go ([up]), and the way back ([back]).
  */
 class RemoteKeys(private val controller: NowPlayingController, private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() }) {
+    private val menu = controller.menu
+    private val quick = controller.quick
+    private val seeking = controller.seeking
+
     private val peek: MutableLongState = mutableLongStateOf(0L)
 
     /** Local time until which hidden parts (time, place, progress) show again after a key press. */
@@ -42,10 +46,10 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     fun down(key: RemoteKey, repeat: Int): Boolean {
         if (repeat == 0) pressed += key
         // The quick settings take their keys first.
-        if (controller.quickOpen && quickKey(key)) return false
+        if (quick.isOpen && quickKey(key)) return false
         val setup = controller.ui.value.screen is Screen.Setup
-        val quickKeys = !setup && !controller.volumeKeys && !controller.menuOpen
-        if (controller.menuOpen && menuKey(key, repeat)) return false
+        val quickKeys = !setup && !controller.volumeKeys
+        if (menu.isOpen && menuKey(key, repeat)) return false
         when (key) {
             RemoteKey.OK -> {
                 if (repeat == 0) {
@@ -60,14 +64,14 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
                     holdingSince = null
                     // A book or an episode: a press jumps (on release), a held key goes by chapters.
                     // A song: a press changes it (on release), a held key seeks through it.
-                    sideSpoken = controller.spokenKeys
-                    if (sideSpoken || controller.holdKeys) return true
+                    sideSpoken = seeking.spokenKeys
+                    if (sideSpoken || seeking.holdKeys) return true
                     controller.send(if (key == RemoteKey.LEFT) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
                     peek()
                 } else if (repeat > 0) {
                     // Each repeat while held moves the place sought on.
                     holdingSince?.let { since ->
-                        controller.hold(if (key == RemoteKey.LEFT) -1 else +1, now() - since)
+                        seeking.hold(if (key == RemoteKey.LEFT) -1 else +1, now() - since)
                         peek()
                     }
                 }
@@ -80,7 +84,7 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
             }
             RemoteKey.REWIND, RemoteKey.FAST_FORWARD -> {
                 if (repeat == 0 && onStage()) {
-                    controller.skip(if (key == RemoteKey.REWIND) -1 else +1)
+                    seeking.skip(if (key == RemoteKey.REWIND) -1 else +1)
                     peek()
                 }
             }
@@ -101,14 +105,11 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
                     controller.send(if (key == RemoteKey.UP) RemoteCommand.VOLUME_UP else RemoteCommand.VOLUME_DOWN)
                 } else if (repeat == 0 && quickKeys) {
                     // Down: the quick settings rise from the bottom edge. Up: the settings open.
-                    if (key == RemoteKey.DOWN) controller.openQuick() else controller.openMenu()
+                    if (key == RemoteKey.DOWN) quick.open() else menu.open()
                     peek()
                 }
             }
-            RemoteKey.MENU -> {
-                controller.closeQuick()
-                controller.openMenu()
-            }
+            RemoteKey.MENU -> menu.open()
         }
         return false
     }
@@ -121,13 +122,13 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
      */
     private fun quickKey(key: RemoteKey): Boolean {
         when (key) {
-            RemoteKey.LEFT -> controller.quickMove(-1)
-            RemoteKey.RIGHT -> controller.quickMove(+1)
-            RemoteKey.UP, RemoteKey.DOWN -> controller.closeQuick()
-            RemoteKey.OK -> controller.touchQuick()
+            RemoteKey.LEFT -> quick.move(-1)
+            RemoteKey.RIGHT -> quick.move(+1)
+            RemoteKey.UP, RemoteKey.DOWN -> quick.close()
+            RemoteKey.OK -> quick.touch()
             RemoteKey.MENU -> {
-                controller.closeQuick()
-                controller.openMenu()
+                quick.close()
+                menu.open()
             }
             else -> return false
         }
@@ -137,13 +138,13 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     /** Keys while the settings menu is open; false lets the key through (media keys). */
     private fun menuKey(key: RemoteKey, repeat: Int): Boolean {
         when (key) {
-            RemoteKey.UP -> controller.menuMove(-1, held = repeat > 0)
-            RemoteKey.DOWN -> controller.menuMove(+1, held = repeat > 0)
-            RemoteKey.LEFT -> controller.menuChange(-1, wrap = false, repeat = repeat > 0)
-            RemoteKey.RIGHT -> controller.menuChange(+1, wrap = false, repeat = repeat > 0)
+            RemoteKey.UP -> menu.move(-1, held = repeat > 0)
+            RemoteKey.DOWN -> menu.move(+1, held = repeat > 0)
+            RemoteKey.LEFT -> menu.change(-1, wrap = false, repeat = repeat > 0)
+            RemoteKey.RIGHT -> menu.change(+1, wrap = false, repeat = repeat > 0)
             // OK acts on release, like everywhere else (a long press must not also change a line).
             RemoteKey.OK -> Unit
-            RemoteKey.MENU -> controller.closeMenu()
+            RemoteKey.MENU -> menu.close()
             else -> return false
         }
         return true
@@ -153,17 +154,17 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     fun longPress(key: RemoteKey): Boolean {
         if (key == RemoteKey.OK) {
             centerLongPressed = true
-            if (!controller.menuOpen) controller.openMenu()
+            if (!menu.isOpen) menu.open()
             return true
         }
-        if ((key == RemoteKey.LEFT || key == RemoteKey.RIGHT) && !controller.menuOpen) {
+        if ((key == RemoteKey.LEFT || key == RemoteKey.RIGHT) && !menu.isOpen) {
             sideLongPressed = true
             val direction = if (key == RemoteKey.LEFT) -1 else +1
             if (sideSpoken) {
-                controller.jump(direction)
+                seeking.jump(direction)
             } else {
                 holdingSince = now()
-                controller.hold(direction, 0)
+                seeking.hold(direction, 0)
             }
             peek()
             return true
@@ -187,29 +188,29 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
             // Only a press followed from its start acts on release: a jump, or another song.
             if (followed && !sideLongPressed && !canceled && onStage()) {
                 if (sideSpoken) {
-                    controller.skip(if (key == RemoteKey.LEFT) -1 else +1)
+                    seeking.skip(if (key == RemoteKey.LEFT) -1 else +1)
                 } else {
                     controller.send(if (key == RemoteKey.LEFT) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
                 }
                 peek()
             }
             // A hold sends the place it reached.
-            if (holdingSince != null) controller.letGo()
+            if (holdingSince != null) seeking.letGo()
             holdingSince = null
             sideLongPressed = false
             return
         }
         // Up or down held to run through the settings is let go: the explanation comes back.
-        if (key == RemoteKey.UP || key == RemoteKey.DOWN) controller.menuRelease()
+        if (key == RemoteKey.UP || key == RemoteKey.DOWN) menu.release()
     }
 
     private fun onCenterPressed() {
-        if (controller.menuOpen) {
-            controller.menuChange(+1, wrap = true)
+        if (menu.isOpen) {
+            menu.change(+1, wrap = true)
             return
         }
-        if (controller.quickOpen) {
-            controller.quickChange()
+        if (quick.isOpen) {
+            quick.change()
             return
         }
         when (val s = controller.ui.value.screen) {
@@ -233,8 +234,8 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     fun back(): Boolean {
         val s = controller.ui.value.screen
         when {
-            controller.menuOpen -> controller.menuBack()
-            controller.quickOpen -> controller.closeQuick()
+            menu.isOpen -> menu.back()
+            quick.isOpen -> quick.close()
             s is Screen.Setup && s.reason == SetupReason.REQUESTED -> controller.requestSetup(false)
             else -> return false
         }

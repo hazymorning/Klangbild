@@ -12,11 +12,11 @@ import androidx.compose.ui.text.font.FontFamily
  */
 interface Glyphs {
     /** A pen for figures drawn as outlines, in [style]'s typeface (or the platform's own) at [sizePx] px. */
-    fun drawing(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float): Pen
+    fun pen(style: TextStyle, resolver: FontFamily.Resolver, sizePx: Float): Pen
 
     interface Pen {
         /** How far the pen moves over [text] from [start] to [end], the kerning inside it included (px). */
-        fun advance(text: String, start: Int = 0, end: Int = text.length): Float
+        fun advance(text: String, start: Int, end: Int): Float
 
         /** The outlines of [text] from [start] to [end], the pen starting at [x] on the baseline at [y]. */
         fun outline(text: String, start: Int = 0, end: Int = text.length, x: Float = 0f, y: Float = 0f): Path

@@ -58,8 +58,8 @@ data class TrackText(
         private val dashVersion = Regex("""\s+[-–—]\s+([^-–—]*\b(?:$versionWords)\b[^-–—]*)$""", RegexOption.IGNORE_CASE)
         private val bracketVersion = Regex("""\s*[(\[]([^()\[\]]*\b(?:$versionWords)\b[^()\[\]]*)[)\]]$""", RegexOption.IGNORE_CASE)
 
+        /** The longest artist line [formatArtists] writes before it shortens the list. */
         const val MAX_ARTISTS_CHARS = 72
-
 
         /** The typeset text of [track]; [others] stands for artists left out of a long list. */
         fun from(track: TrackInfo, others: String): TrackText {
@@ -113,15 +113,15 @@ data class TrackText(
         private val spacedDash = Regex("""\s+[-–—]\s+""")
 
         /** Spaced hyphen/dash → en dash glued to the word before it (no-break space). */
-        fun dashes(s: String): String = s.replace(spacedDash, " – ")
+        fun dashes(s: String): String = s.replace(spacedDash, "\u00A0– ")
 
         private val dottedAbbreviation = Regex("""\b(Nr|No|Op|op|Hob|Bd|Vol|vol|Kap|Nº|L|K|D|S)\.\s+(?=\d|[IVXLC]+\b)""")
         private val catalogSpace = Regex("""\b(BWV|KV|RV|HWV|WoO|TrV|FP|BB|Sz)\s+(?=\d)""")
 
-        /** "No. 9" → "No. 9" (no break); "KV 331" → "KV 331" (no break). */
+        /** Joins an abbreviation to its number with a no-break space ("No. 9", "op. 125", "KV 331"). */
         fun abbreviations(s: String): String = s
-            .replace(dottedAbbreviation) { it.groupValues[1] + ". " }
-            .replace(catalogSpace) { it.groupValues[1] + " " }
+            .replace(dottedAbbreviation) { it.groupValues[1] + ".\u00A0" }
+            .replace(catalogSpace) { it.groupValues[1] + "\u00A0" }
 
         /** "A", "A & B", "A, B & C"; lists longer than [limit] characters end with [others]. */
         fun formatArtists(names: List<String>, others: String, limit: Int = MAX_ARTISTS_CHARS): String? {

@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.WebSocketLink
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
@@ -13,6 +14,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -20,7 +22,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
@@ -39,22 +40,20 @@ import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
-/** Where and how to reach Home Assistant. */
-data class HaConfig(val auth: HaAuth) {
-    val baseUrl: String get() = auth.baseUrl
-}
-
 /** Connection state as the rest of the app sees it, never raw exceptions. */
 sealed interface HaStatus {
     data object Stopped : HaStatus
-    data class Connecting(val attempt: Int) : HaStatus
+    data object Connecting : HaStatus
     data object Connected : HaStatus
 
-    /** The token was rejected. No automatic retries until the config changes (or [HaConnection.retryNow]). */
-    data class AuthFailed(val message: String?) : HaStatus
+    /**
+     * Home Assistant refused the credentials. The connection stays down until it is started again,
+     * since Home Assistant counts every attempt as a failed login.
+     */
+    data object AuthFailed : HaStatus
 
-    /** Lost or failed; the next attempt happens in [retryInMs]. */
-    data class Waiting(val attempt: Int, val retryInMs: Long, val reason: String?) : HaStatus
+    /** Lost or failed: waiting before the next attempt. */
+    data object Waiting : HaStatus
 }
 
 /** A Home Assistant error answer to a command. */
@@ -95,13 +94,12 @@ class HaConnection(
     private val scope: CoroutineScope,
     private val pingIntervalMs: Long = 30_000,
     private val pongTimeoutMs: Long = 10_000,
-    private val handshakeTimeoutMs: Long = 15_000,
+    /** How long Home Assistant may take to answer the sign-in and the commands other than service calls. */
+    private val answerTimeoutMs: Long = 15_000,
     private val backoffFactory: () -> Backoff = { Backoff() },
     /** How long to wait before asking the REST API again for a state it could not give. */
     private val restRetryMs: List<Long> = listOf(2_000L, 5_000L, 15_000L),
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
-
     private val _status = MutableStateFlow<HaStatus>(HaStatus.Stopped)
     val status: StateFlow<HaStatus> = _status.asStateFlow()
 
@@ -120,10 +118,10 @@ class HaConnection(
     private val wakeUp = Channel<Unit>(Channel.CONFLATED)
     private val extraIds = MutableStateFlow<Set<String>>(emptySet())
 
-    private val _config = MutableStateFlow<JsonObject?>(null)
+    private val _temperatureUnit = MutableStateFlow<String?>(null)
 
-    /** Home Assistant's own configuration (`get_config`: its location, time zone and so on), once a session has asked for it. */
-    val config: StateFlow<JsonObject?> = _config.asStateFlow()
+    /** Home Assistant's unit for temperatures ("°C", "°F") from its configuration, once a session has asked for it. */
+    val temperatureUnit: StateFlow<String?> = _temperatureUnit.asStateFlow()
 
     private val _registry = MutableStateFlow<List<RegistryEntry>?>(null)
 
@@ -132,16 +130,17 @@ class HaConnection(
 
     @Volatile private var session: Session? = null
 
-    fun start(config: HaConfig, entityIds: List<String>) {
+    /** Connects with [auth] and follows [entityIds], until [stop]. */
+    fun start(auth: HaAuth, entityIds: List<String>) {
         stop()
-        loop = scope.launch { runLoop(config, entityIds) }
+        loop = scope.launch { runLoop(auth, entityIds) }
     }
 
     /**
-     * Also follows these entities (the other speakers of a group, the lights). Their states
-     * appear in [entities] next to the main ones; the set is followed again after a reconnect.
+     * Also follows [ids] (a group's other speakers, the lights, the quick settings' entities, this
+     * TV's speaker). Their states appear in [entities] and are followed again after a reconnect.
      */
-    fun watch(ids: Set<String>) {
+    fun followAlso(ids: Set<String>) {
         extraIds.value = ids
     }
 
@@ -162,7 +161,7 @@ class HaConnection(
      */
     suspend fun uniqueIds(ids: List<String>): Map<String, String> {
         val s = session ?: error("not connected")
-        val answer = s.command(handshakeTimeoutMs) { id ->
+        val answer = s.command(answerTimeoutMs) { id ->
             buildJsonObject {
                 put("id", id)
                 put("type", "config/entity_registry/get_entries")
@@ -178,9 +177,12 @@ class HaConnection(
         registryOf(optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } })?.let { _registry.value = it }
     }
 
-    /** Skip the remaining backoff (the network just came back, say). */
+    /**
+     * Skips the rest of the wait before the next attempt (the network just came back, say). Only
+     * while waiting: a wake-up kept from before would skip the next wait for nothing.
+     */
     fun retryNow() {
-        wakeUp.trySend(Unit)
+        if (_status.value is HaStatus.Waiting) wakeUp.trySend(Unit)
     }
 
     /**
@@ -193,15 +195,15 @@ class HaConnection(
         entityId: String?,
         returnResponse: Boolean = false,
         data: JsonObject? = null,
-        timeoutMs: Long = 10_000,
+        timeoutMs: Long = CALL_TIMEOUT_MS,
     ): JsonObject? = (call(domain, service, entityId, returnResponse, data, timeoutMs) as? JsonObject)?.get("response") as? JsonObject
 
     /**
      * Calls a service and returns the id of the context Home Assistant gave the call: the
      * states it changes carry it, so they can be told from changes made by anyone else.
      */
-    suspend fun callServiceForContext(domain: String, service: String, entityId: String?, data: JsonObject? = null, timeoutMs: Long = 10_000): String? =
-        (((call(domain, service, entityId, false, data, timeoutMs) as? JsonObject)?.get("context") as? JsonObject)?.get("id") as? JsonPrimitive)
+    suspend fun callServiceForContext(domain: String, service: String, entityId: String?, data: JsonObject? = null): String? =
+        (((call(domain, service, entityId, false, data, CALL_TIMEOUT_MS) as? JsonObject)?.get("context") as? JsonObject)?.get("id") as? JsonPrimitive)
             ?.takeIf { it.isString }?.content
 
     private suspend fun call(domain: String, service: String, entityId: String?, returnResponse: Boolean, data: JsonObject?, timeoutMs: Long): JsonElement? {
@@ -219,42 +221,40 @@ class HaConnection(
         }
     }
 
-    private suspend fun runLoop(config: HaConfig, entityIds: List<String>) {
+    private suspend fun runLoop(auth: HaAuth, entityIds: List<String>) {
         val backoff = backoffFactory()
         // A refused access token from a sign-in is replaced by a fresh one once before giving up.
         var freshTokenTried = false
-        while (scope.isActive) {
-            _status.value = HaStatus.Connecting(backoff.attempt)
+        while (true) {
+            _status.value = HaStatus.Connecting
             val end = try {
-                runSession(config, entityIds) {
+                runSession(auth, entityIds) {
                     backoff.reset()
                     freshTokenTried = false
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: HaAuthRejectedException) {
-                SessionEnd.AuthInvalid(e.message)
-            } catch (e: Exception) {
-                SessionEnd.Lost(e.message ?: e::class.simpleName)
+            } catch (_: HaAuthRejectedException) {
+                SessionEnd.Refused()
+            } catch (_: Exception) {
+                SessionEnd.Lost
             } finally {
                 session = null
             }
-            if (end is SessionEnd.TokenRefused && !freshTokenTried && config.auth.refreshable) {
-                freshTokenTried = true
-                config.auth.invalidate(end.token)
-                continue
-            }
             when (end) {
-                is SessionEnd.AuthInvalid, is SessionEnd.TokenRefused -> {
-                    _status.value = HaStatus.AuthFailed((end as? SessionEnd.AuthInvalid)?.message ?: (end as SessionEnd.TokenRefused).message)
+                is SessionEnd.Refused -> {
+                    if (end.token != null && !freshTokenTried && auth.refreshable) {
+                        freshTokenTried = true
+                        auth.invalidate(end.token)
+                        continue
+                    }
+                    _status.value = HaStatus.AuthFailed
                     _entities.value = emptyMap()
-                    // Wait for an explicit retry; a wrong token will not fix itself.
-                    wakeUp.receive()
-                    freshTokenTried = false
+                    return
                 }
-                is SessionEnd.Lost -> {
+                SessionEnd.Lost -> {
                     val delayMs = backoff.nextDelayMs()
-                    _status.value = HaStatus.Waiting(backoff.attempt, delayMs, end.reason)
+                    _status.value = HaStatus.Waiting
                     select<Unit> {
                         wakeUp.onReceive { }
                         onTimeout(delayMs) { }
@@ -265,23 +265,22 @@ class HaConnection(
     }
 
     private sealed interface SessionEnd {
-        data class AuthInvalid(val message: String?) : SessionEnd
-
-        /** Home Assistant refused [token] at the WebSocket's login. */
-        data class TokenRefused(val token: String, val message: String?) : SessionEnd
-        data class Lost(val reason: String?) : SessionEnd
+        /** Home Assistant refused the credentials; [token] is the access token its WebSocket refused, if that was the cause. */
+        data class Refused(val token: String? = null) : SessionEnd
+        data object Lost : SessionEnd
     }
 
     private sealed interface WsEvent {
         data class Text(val text: String) : WsEvent
-        data class Closed(val code: Int, val reason: String) : WsEvent
-        data class Failure(val error: Throwable) : WsEvent
+
+        /** The connection was closed or failed. */
+        data object Ended : WsEvent
     }
 
-    /** States the REST API gave for [requested] ids: found, or known not to exist. */
+    /** States the REST API returned ([found]) and the IDs it says don't exist ([missing]). */
     private class RestStates(val found: List<EntityState>, val missing: Set<String>)
 
-    /** An answer, which may itself be null. */
+    /** A command's result, which can be null, wrapped so that a timeout (null from `withTimeoutOrNull`) can be told from it. */
     private class Answer(val value: JsonElement?)
 
     private inner class Session(val socket: WebSocketLink) {
@@ -304,7 +303,7 @@ class HaConnection(
          * would silently end the caller's coroutine; only the caller's own cancellation passes.
          */
         suspend fun command(timeoutMs: Long, build: (Int) -> JsonObject): JsonElement? {
-            val id = nextId.getAndIncrement()
+            val id = nextId()
             val deferred = CompletableDeferred<JsonElement?>()
             synchronized(lock) { pending[id] = deferred }
             try {
@@ -332,244 +331,265 @@ class HaConnection(
         EVENTS,
     }
 
-    private suspend fun runSession(config: HaConfig, entityIds: List<String>, onSubscribed: () -> Unit): SessionEnd = coroutineScope {
-        val token = config.auth.accessToken()
-        val rest = HaRest(http, config.auth)
+    private suspend fun runSession(auth: HaAuth, entityIds: List<String>, onSubscribed: () -> Unit): SessionEnd = coroutineScope {
+        val token = auth.accessToken()
         val events = Channel<WsEvent>(Channel.UNLIMITED)
-        val socket = WebSocketLink(this, http, HaUrls.webSocketUrl(config.baseUrl), object : WebSocketLink.Listener {
+        val socket = WebSocketLink(this, http, HaUrls.webSocketUrl(auth.baseUrl), object : WebSocketLink.Listener {
             override fun onText(text: String) {
                 events.trySend(WsEvent.Text(text))
             }
 
             override fun onClosed(code: Int, reason: String) {
-                events.trySend(WsEvent.Closed(code, reason))
+                events.trySend(WsEvent.Ended)
             }
 
             override fun onFailure(error: Throwable) {
-                events.trySend(WsEvent.Failure(error))
+                events.trySend(WsEvent.Ended)
             }
         })
-        val s = Session(socket)
         try {
-            // --- handshake -------------------------------------------------------------
-            val first = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() }
-                ?: return@coroutineScope SessionEnd.Lost("no auth_required")
-            if (first is WsEvent.Failure || first is WsEvent.Closed) return@coroutineScope lost(first)
-            val firstMsg = (first as WsEvent.Text).let { parseMessages(it.text) }.firstOrNull()
-            if (firstMsg?.type() != "auth_required") return@coroutineScope SessionEnd.Lost("unexpected greeting")
-            s.send(buildJsonObject {
-                put("type", "auth")
-                put("access_token", token)
-            })
-            val authAnswer = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() }
-                ?: return@coroutineScope SessionEnd.Lost("auth timeout")
-            if (authAnswer !is WsEvent.Text) return@coroutineScope lost(authAnswer)
-            val auth = parseMessages(authAnswer.text).firstOrNull()
-            when (auth?.type()) {
-                "auth_ok" -> Unit
-                "auth_invalid" -> return@coroutineScope SessionEnd.TokenRefused(token, auth.string("message"))
-                else -> return@coroutineScope SessionEnd.Lost("unexpected auth answer")
-            }
-            session = s
-            s.lastPong = now()
-
-            // --- subscribe ---------------------------------------------------------------
-            val store = EntityStore()
-            val main = entityIds.toSet()
-            var feed = Feed.TRIGGER
-            var mainSub = s.nextId()
-            s.send(subscribeTrigger(mainSub, entityIds))
-            var subscribed = false
-            var extraSub: Int? = null
-            var extras: Set<String> = emptySet()
-            val restResults = Channel<RestStates>(Channel.UNLIMITED)
-            val extraChanges = Channel<Set<String>>(Channel.CONFLATED)
-            fun followed() = main + extras
-            fun publish() {
-                _entities.value = store.snapshot()
-            }
-
-            /** Asks the REST API for [ids]' states; what it cannot give is asked again a few times. */
-            fun fetch(ids: Set<String>) {
-                if (ids.isEmpty()) return
-                launch {
-                    var open = ids
-                    for (wait in listOf(0L) + restRetryMs) {
-                        delay(wait)
-                        val found = ArrayList<EntityState>()
-                        val missing = HashSet<String>()
-                        val failed = HashSet<String>()
-                        for (id in open) {
-                            when (val r = rest.state(id)) {
-                                is HaRest.Fetched.Found -> found += r.state
-                                HaRest.Fetched.Missing -> missing += id
-                                HaRest.Fetched.Failed -> failed += id
-                            }
-                        }
-                        restResults.send(RestStates(found, missing))
-                        if (failed.isEmpty()) break
-                        open = failed
-                    }
-                }
-            }
-
-            fun followExtras(ids: Set<String>) {
-                val gone = extras - ids - main
-                val added = ids - extras - main
-                extras = ids
-                if (feed == Feed.TRIGGER) {
-                    extraSub?.let { old -> s.send(unsubscribe(s.nextId(), old)) }
-                    extraSub = null
-                    val own = ids - main
-                    if (own.isNotEmpty()) {
-                        val id = s.nextId()
-                        s.send(subscribeTrigger(id, own.toList()))
-                        extraSub = id
-                    }
-                }
-                if (gone.isNotEmpty()) {
-                    store.retain(followed())
-                    _missing.value = _missing.value - gone
-                    publish()
-                }
-                fetch(added)
-            }
-
-            // Home Assistant's configuration (the unit of its temperatures), and the entity
-            // registry (the favorite button of a Music Assistant speaker): asked once, on the side.
-            launch {
-                (optional(s) { id -> buildJsonObject { put("id", id); put("type", "get_config") } } as? JsonObject)?.let { _config.value = it }
-            }
-            launch {
-                val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
-                registryOf(list)?.let { _registry.value = it }
-            }
-
-            val pinger = launch {
-                while (isActive) {
-                    delay(pingIntervalMs)
-                    val id = s.nextId()
-                    val sentAt = now()
-                    s.send(buildJsonObject {
-                        put("id", id)
-                        put("type", "ping")
-                    })
-                    delay(pongTimeoutMs)
-                    if (s.lastPong < sentAt) {
-                        socket.cancel() // dead connection: a failure, then a reconnect
-                        break
-                    }
-                }
-            }
-            val extraWatcher = launch { extraIds.collect { extraChanges.send(it) } }
-
-            // --- message loop ------------------------------------------------------------
-            try {
-                while (true) {
-                    val next = select<Any> {
-                        events.onReceive { it }
-                        restResults.onReceive { it }
-                        if (subscribed) extraChanges.onReceive { it }
-                    }
-                    if (next is Set<*>) {
-                        val ids = next.filterIsInstance<String>().toSet()
-                        if (ids != extras) followExtras(ids)
-                        continue
-                    }
-                    if (next is RestStates) {
-                        var changed = false
-                        for (st in next.found) if (st.entityId in followed()) changed = store.put(st) or changed
-                        val missing = next.missing.intersect(followed())
-                        if (missing.isNotEmpty()) {
-                            for (id in missing) changed = store.remove(id) or changed
-                            _missing.value = _missing.value + missing
-                        }
-                        val known = next.found.map { it.entityId }.toSet()
-                        if (known.any { it in _missing.value }) _missing.value = _missing.value - known
-                        if (changed || missing.isNotEmpty()) publish()
-                        continue
-                    }
-                    when (val ev = next as WsEvent) {
-                        is WsEvent.Text -> {
-                            // Every change in the house arrives with the fallback feed: only the
-                            // followed entities' are worth parsing.
-                            if (feed == Feed.EVENTS && subscribed && followed().none { ev.text.contains("\"$it\"") }) {
-                                if (!ev.text.contains("\"type\":\"result\"") && !ev.text.contains("\"type\":\"pong\"")) continue
-                            }
-                            for (msg in parseMessages(ev.text)) {
-                                val id = (msg["id"] as? JsonPrimitive)?.intOrNull
-                                when (msg.type()) {
-                                    "event" -> {
-                                        if (id == null || (id != mainSub && id != extraSub)) continue
-                                        val event = msg["event"] as? JsonObject ?: continue
-                                        val (entity, state) = changeOf(event, feed) ?: continue
-                                        if (entity !in followed()) continue
-                                        val changed = if (state == null) store.remove(entity) else store.put(state)
-                                        if (state != null) {
-                                            clockSkew.addSample(now() - (state.lastUpdated * 1000).toLong())
-                                            if (entity in _missing.value) _missing.value = _missing.value - entity
-                                        }
-                                        if (changed) publish()
-                                    }
-                                    "result" -> {
-                                        val ok = (msg["success"] as? JsonPrimitive)?.booleanOrNull == true
-                                        val error = msg["error"] as? JsonObject
-                                        val waiter = id?.let { s.waiter(it) }
-                                        when {
-                                            waiter != null -> if (ok) {
-                                                waiter.complete(msg["result"])
-                                            } else {
-                                                waiter.completeExceptionally(
-                                                    HaCommandException(error?.string("code") ?: "unknown", error?.string("message") ?: "error"),
-                                                )
-                                            }
-                                            id == mainSub && ok -> {
-                                                subscribed = true
-                                                _status.value = HaStatus.Connected
-                                                onSubscribed()
-                                                fetch(main)
-                                            }
-                                            // Not an administrator: every state change, the followed ones kept.
-                                            id == mainSub && feed == Feed.TRIGGER && error?.string("code") == "unauthorized" -> {
-                                                feed = Feed.EVENTS
-                                                mainSub = s.nextId()
-                                                s.send(buildJsonObject {
-                                                    put("id", mainSub)
-                                                    put("type", "subscribe_events")
-                                                    put("event_type", "state_changed")
-                                                })
-                                            }
-                                            id == mainSub -> return@coroutineScope SessionEnd.Lost("subscribe failed: ${error?.string("code")}")
-                                            id != null && id == extraSub && !ok -> extraSub = null
-                                        }
-                                    }
-                                    "pong" -> s.lastPong = now()
-                                }
-                            }
-                        }
-                        is WsEvent.Closed, is WsEvent.Failure -> return@coroutineScope lost(ev)
-                    }
-                }
-                @Suppress("UNREACHABLE_CODE") // The loop above only ends by returning, but the try still needs a value.
-                SessionEnd.Lost(null)
-            } finally {
-                pinger.cancel()
-                extraWatcher.cancel()
-                s.cancelAll()
-            }
+            signIn(events, socket, token) ?: Subscriptions(this, Session(socket), HaRest(http, auth), entityIds, onSubscribed).run(events)
         } finally {
             socket.cancel()
         }
     }
 
-    /** A command whose answer is welcome but not needed: null when it fails. */
-    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = try {
-        s.command(handshakeTimeoutMs, build)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
+    /** Signs in on [socket] with [token]: null once Home Assistant takes it, else how the session ends. */
+    private suspend fun signIn(events: ReceiveChannel<WsEvent>, socket: WebSocketLink, token: String): SessionEnd? {
+        val greeting = withTimeoutOrNull(answerTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
+        if (parseMessages(greeting.text).firstOrNull()?.type() != "auth_required") return SessionEnd.Lost
+        socket.send(
+            buildJsonObject {
+                put("type", "auth")
+                put("access_token", token)
+            }.toString(),
+        )
+        val answer = withTimeoutOrNull(answerTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
+        return when (parseMessages(answer.text).firstOrNull()?.type()) {
+            "auth_ok" -> null
+            "auth_invalid" -> SessionEnd.Refused(token)
+            else -> SessionEnd.Lost
+        }
     }
+
+    /**
+     * What a signed-in session follows: the main entities and the extra ones ([followAlso]), by a
+     * state trigger or the events feed ([Feed]), and their states over REST, until the connection ends.
+     */
+    private inner class Subscriptions(
+        private val sessionScope: CoroutineScope,
+        private val s: Session,
+        private val rest: HaRest,
+        entityIds: List<String>,
+        private val onSubscribed: () -> Unit,
+    ) {
+        private val main = entityIds.toSet()
+        private val store = EntityStore()
+        private var feed = Feed.TRIGGER
+        private var mainSub = s.nextId()
+        private var subscribed = false
+        private var extraSub: Int? = null
+        private var extras: Set<String> = emptySet()
+
+        /** The main entities and the extra ones. */
+        private var followed: Set<String> = main
+        private val restResults = Channel<RestStates>(Channel.UNLIMITED)
+        private val extraChanges = Channel<Set<String>>(Channel.CONFLATED)
+
+        /** Subscribes, then handles what arrives until the connection ends; how it ended. */
+        suspend fun run(events: ReceiveChannel<WsEvent>): SessionEnd {
+            session = s
+            s.lastPong = now()
+            s.send(subscribeTrigger(mainSub, main))
+            // Asked once per session without holding up the subscription: Home Assistant's
+            // configuration (for its temperature unit) and the entity registry's display list.
+            sessionScope.launch {
+                val config = optional(s) { id -> buildJsonObject { put("id", id); put("type", "get_config") } } as? JsonObject
+                val unit = ((config?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content
+                unit?.takeIf { it.isNotBlank() }?.let { _temperatureUnit.value = it }
+            }
+            sessionScope.launch {
+                val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
+                registryOf(list)?.let { _registry.value = it }
+            }
+            val pinger = sessionScope.launch { ping() }
+            val extraWatcher = sessionScope.launch { extraIds.collect { extraChanges.send(it) } }
+            try {
+                while (true) {
+                    val end = select<SessionEnd?> {
+                        events.onReceive { event -> if (event is WsEvent.Text) onText(event.text) else SessionEnd.Lost }
+                        restResults.onReceive { states ->
+                            onRest(states)
+                            null
+                        }
+                        if (subscribed) {
+                            extraChanges.onReceive { ids ->
+                                if (ids != extras) followExtras(ids)
+                                null
+                            }
+                        }
+                    }
+                    if (end != null) return end
+                }
+            } finally {
+                pinger.cancel()
+                extraWatcher.cancel()
+                s.cancelAll()
+            }
+        }
+
+        /** Pings every [pingIntervalMs]; without a pong within [pongTimeoutMs] the connection is dead, and ends. */
+        private suspend fun ping() {
+            while (true) {
+                delay(pingIntervalMs)
+                val sentAt = now()
+                s.send(
+                    buildJsonObject {
+                        put("id", s.nextId())
+                        put("type", "ping")
+                    },
+                )
+                delay(pongTimeoutMs)
+                if (s.lastPong < sentAt) {
+                    s.socket.cancel()
+                    return
+                }
+            }
+        }
+
+        /** A message from Home Assistant; how the session ends, if it does. */
+        private fun onText(text: String): SessionEnd? {
+            // The events feed carries every state change in the house. Skip messages that name no
+            // followed entity, unless they answer a command or a ping.
+            if (feed == Feed.EVENTS && subscribed && followed.none { text.contains("\"$it\"") } && !ANSWER.containsMatchIn(text)) return null
+            for (msg in parseMessages(text)) {
+                val id = (msg["id"] as? JsonPrimitive)?.intOrNull
+                when (msg.type()) {
+                    "event" -> if (id != null && (id == mainSub || id == extraSub)) onEvent(msg)
+                    "result" -> onResult(id, msg)?.let { return it }
+                    "pong" -> s.lastPong = now()
+                }
+            }
+            return null
+        }
+
+        /** A followed entity's new state, or its removal. */
+        private fun onEvent(msg: JsonObject) {
+            val event = msg["event"] as? JsonObject ?: return
+            val (entity, state) = changeOf(event, feed) ?: return
+            if (entity !in followed) return
+            val changed = if (state == null) store.remove(entity) else store.put(state)
+            if (state != null) {
+                clockSkew.addSample(now() - (state.lastUpdated * 1000).toLong())
+                if (entity in _missing.value) _missing.value = _missing.value - entity
+            }
+            if (changed) publish()
+        }
+
+        /** A command's result, for a call that waits for it or for a subscription; ends the session when the main subscription failed. */
+        private fun onResult(id: Int?, msg: JsonObject): SessionEnd? {
+            val ok = (msg["success"] as? JsonPrimitive)?.booleanOrNull == true
+            val error = msg["error"] as? JsonObject
+            val waiter = id?.let { s.waiter(it) }
+            when {
+                waiter != null -> if (ok) {
+                    waiter.complete(msg["result"])
+                } else {
+                    waiter.completeExceptionally(HaCommandException(error?.string("code") ?: "unknown", error?.string("message") ?: "error"))
+                }
+                id == mainSub && ok -> {
+                    subscribed = true
+                    _status.value = HaStatus.Connected
+                    onSubscribed()
+                    readStates(main)
+                }
+                // Not an administrator: every state change, the followed ones kept.
+                id == mainSub && feed == Feed.TRIGGER && error?.string("code") == "unauthorized" -> {
+                    feed = Feed.EVENTS
+                    mainSub = s.nextId()
+                    s.send(
+                        buildJsonObject {
+                            put("id", mainSub)
+                            put("type", "subscribe_events")
+                            put("event_type", "state_changed")
+                        },
+                    )
+                }
+                id == mainSub -> return SessionEnd.Lost
+                id != null && id == extraSub && !ok -> extraSub = null
+            }
+            return null
+        }
+
+        /** States read over REST. An event may have overtaken them; an entity Home Assistant doesn't have is missing. */
+        private fun onRest(r: RestStates) {
+            var changed = false
+            for (st in r.found) if (st.entityId in followed) changed = store.put(st) or changed
+            val missing = r.missing.intersect(followed)
+            if (missing.isNotEmpty()) {
+                for (id in missing) changed = store.remove(id) or changed
+                _missing.value = _missing.value + missing
+            }
+            val known = r.found.map { it.entityId }.toSet()
+            if (known.any { it in _missing.value }) _missing.value = _missing.value - known
+            if (changed || missing.isNotEmpty()) publish()
+        }
+
+        /** Follows [ids] besides the main entities, with a trigger of their own. */
+        private fun followExtras(ids: Set<String>) {
+            val gone = extras - ids - main
+            val added = ids - extras - main
+            extras = ids
+            followed = main + ids
+            if (feed == Feed.TRIGGER) {
+                extraSub?.let { old -> s.send(unsubscribe(s.nextId(), old)) }
+                extraSub = null
+                val own = ids - main
+                if (own.isNotEmpty()) {
+                    val id = s.nextId()
+                    s.send(subscribeTrigger(id, own))
+                    extraSub = id
+                }
+            }
+            if (gone.isNotEmpty()) {
+                store.retain(followed)
+                _missing.value = _missing.value - gone
+                publish()
+            }
+            readStates(added)
+        }
+
+        /** Reads the states of [ids] over REST; what it can't read is read again a few times. */
+        private fun readStates(ids: Set<String>) {
+            if (ids.isEmpty()) return
+            sessionScope.launch {
+                var open = ids
+                for (wait in listOf(0L) + restRetryMs) {
+                    delay(wait)
+                    val found = ArrayList<EntityState>()
+                    val missing = HashSet<String>()
+                    val failed = HashSet<String>()
+                    for (id in open) {
+                        when (val r = rest.state(id)) {
+                            is HaRest.Fetched.Found -> found += r.state
+                            HaRest.Fetched.Missing -> missing += id
+                            HaRest.Fetched.Failed -> failed += id
+                        }
+                    }
+                    restResults.send(RestStates(found, missing))
+                    if (failed.isEmpty()) break
+                    open = failed
+                }
+            }
+        }
+
+        private fun publish() {
+            _entities.value = store.snapshot()
+        }
+    }
+
+    /** A command whose answer is welcome but not needed: null when it fails. */
+    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(answerTimeoutMs, build) }
 
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
@@ -595,7 +615,7 @@ class HaConnection(
         }
     }
 
-    private fun subscribeTrigger(id: Int, entityIds: List<String>) = buildJsonObject {
+    private fun subscribeTrigger(id: Int, entityIds: Iterable<String>) = buildJsonObject {
         put("id", id)
         put("type", "subscribe_trigger")
         // A state trigger with only entity ids fires on every change, attributes included.
@@ -611,15 +631,9 @@ class HaConnection(
         put("subscription", subscription)
     }
 
-    private fun lost(ev: WsEvent): SessionEnd = when (ev) {
-        is WsEvent.Closed -> SessionEnd.Lost("closed ${ev.code}")
-        is WsEvent.Failure -> SessionEnd.Lost(ev.error.message ?: ev.error::class.simpleName)
-        is WsEvent.Text -> SessionEnd.Lost(null)
-    }
-
     /** Home Assistant may send several messages as one JSON array. */
     private fun parseMessages(text: String): List<JsonObject> = try {
-        when (val el = json.parseToJsonElement(text)) {
+        when (val el = Json.parseToJsonElement(text)) {
             is JsonObject -> listOf(el)
             is JsonArray -> el.mapNotNull { it as? JsonObject }
             else -> emptyList()
@@ -631,6 +645,14 @@ class HaConnection(
     private fun JsonObject.type(): String? = string("type")
 
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()
+
+    private companion object {
+        /** How long a service call may take to be answered. */
+        const val CALL_TIMEOUT_MS = 10_000L
+
+        /** A message that answers a command or a ping, however Home Assistant spaces its JSON. */
+        val ANSWER = Regex("\"type\"\\s*:\\s*\"(result|pong)\"")
+    }
 }
 
 /**

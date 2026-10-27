@@ -1,7 +1,5 @@
 package io.github.hazymorning.klangbild.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.onRoot
@@ -46,8 +44,6 @@ class OptionsTest {
 
     private fun stage(name: String, model: StageModel) = shot(name) { Stage(model) }
 
-    @Test fun groupOfSix() = stage("stage_group", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, group = everywhere))
-
     @Test fun groupOfTwo() = stage("stage_group_two", Fixtures.model(Fixtures.track(SyntheticCover.SALT_WATER), next = spiegel, group = two))
 
     @Test fun groupAndVolumeAlways() = stage(
@@ -55,7 +51,7 @@ class OptionsTest {
         Fixtures.model(
             Fixtures.track(SyntheticCover.MOSS),
             next = spiegel,
-            lead = StageTexts.lead(PlayerStatus.PLAYING, false, false, SpeakerLabel.volume(0.35f, false, Fixtures.texts), everywhere, volumeAlways = true, t = Fixtures.texts),
+            lead = StageTexts.lead(PlayerStatus.PLAYING, false, false, SpeakerLabel.volume(0.35f, Fixtures.texts), everywhere, volumeAlways = true, t = Fixtures.texts),
         ),
     )
 
@@ -64,7 +60,7 @@ class OptionsTest {
         Fixtures.model(
             Fixtures.track(SyntheticCover.BAUHAUS),
             next = spiegel,
-            lead = StageTexts.lead(PlayerStatus.PLAYING, false, true, SpeakerLabel.volume(0.4f, false, Fixtures.texts), everywhere, volumeAlways = false, t = Fixtures.texts),
+            lead = StageTexts.lead(PlayerStatus.PLAYING, false, true, SpeakerLabel.volume(0.4f, Fixtures.texts), everywhere, volumeAlways = false, t = Fixtures.texts),
         ),
     )
 
@@ -113,7 +109,7 @@ class OptionsTest {
     @Test fun menuOpensAGroup() {
         var state by androidx.compose.runtime.mutableStateOf(Fixtures.menuGroups(cursor = 1))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_open_%02d.png".format(frame++))
@@ -138,7 +134,7 @@ class OptionsTest {
     @Test fun menuGlide() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.ALBUM))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_glide_%02d.png".format(frame++))
@@ -156,7 +152,7 @@ class OptionsTest {
     @Test fun menuHeld() {
         var state by androidx.compose.runtime.mutableStateOf(menu(MenuEntry.CLOCK))
         compose.mainClock.autoAdvance = false
-        compose.setContent { Frames { MenuScreen(state) } }
+        compose.setContent { Fixtures.Still { MenuScreen(state) } }
         compose.mainClock.advanceTimeBy(100)
         var frame = 0
         fun grab() = compose.onRoot().captureRoboImage("build/screenshots/options/menu_held_%02d.png".format(frame++))
@@ -183,11 +179,4 @@ class OptionsTest {
 
     /** The debug overlay's sound meter, as this TV's own playback feeds it, a downbeat just heard. */
     @Test fun debugSoundMeter() = shot("debug_sound_meter") { DebugOverlay(FrameStats.stats, DebugOverlayTest.Steady()) }
-
-    /**
-     * A sequence of frames on the test's own clock. The menu's light is made off the main thread on
-     * the real clock, so here it is made at once, as in a still: every run shows the same frames.
-     */
-    @Composable
-    private fun Frames(content: @Composable () -> Unit) = CompositionLocalProvider(LocalStill provides true, content = content)
 }

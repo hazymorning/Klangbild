@@ -25,28 +25,7 @@ import kotlin.test.Test
 class CoverFieldTest {
     private val spiegel = Fixtures.spiegel
 
-    private fun stage(name: String, cover: SyntheticCover, appearance: Appearance = Appearance.DARK, at: Double = 0.0) {
-        val track = Fixtures.track(cover)
-        val scene = Fixtures.scene(track, appearance = appearance, coverField = true)
-        captureRoboImage("build/screenshots/cover_field/$name.png") {
-            Fixtures.Still {
-                CompositionLocalProvider(LocalFieldTime provides FieldTime({ at }, false)) {
-                    Stage(Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = scene, appearance = appearance))
-                }
-            }
-        }
-    }
-
-    @Test fun synthwave() = stage("field_nachtfahrt", SyntheticCover.NIGHT_DRIVE)
-    @Test fun sea() = stage("field_salzwasser", SyntheticCover.SALT_WATER)
-    @Test fun terracotta() = stage("field_terrakotta", SyntheticCover.TERRACOTTA)
-    @Test fun moss() = stage("field_moos", SyntheticCover.MOSS)
-    @Test fun bauhaus() = stage("field_bauhaus", SyntheticCover.BAUHAUS)
-    @Test fun pale() = stage("field_leerraum", SyntheticCover.WHITE_SPACE)
-    @Test fun paper() = stage("field_paper_salzwasser", SyntheticCover.SALT_WATER, Appearance.LIGHT)
-    @Test fun paperTerracotta() = stage("field_paper_terrakotta", SyntheticCover.TERRACOTTA, Appearance.LIGHT)
-
-    /** Every test cover once, on both walls: the field's range at a glance. */
+    /** Every test cover once, on both walls: the field's range at a glance, standing still. */
     @Test
     fun gallery() {
         val covers = Fixtures.tracks.distinctBy { it.artworkUrl }
@@ -54,15 +33,24 @@ class CoverFieldTest {
             val scene = Fixtures.scene(track, appearance = appearance, coverField = true)
             captureRoboImage("build/screenshots/cover_field/gallery/${appearance.name.lowercase()}_%02d.png".format(i)) {
                 Fixtures.Still {
-                    Stage(Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = scene, appearance = appearance))
+                    Stage(Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = scene))
                 }
             }
         }
     }
 
+    /** The night drive's field moving, 12 seconds apart (its start is gallery/dark_00). */
     @Test
     fun moving() {
-        for (i in 0..7) stage("motion_%02d".format(i), SyntheticCover.NIGHT_DRIVE, at = i * 12.0)
+        val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
+        val model = Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, coverField = true))
+        for (i in 1..7) {
+            captureRoboImage("build/screenshots/cover_field/motion_%02d.png".format(i)) {
+                Fixtures.Still {
+                    CompositionLocalProvider(LocalFieldTime provides FieldTime({ i * 12.0 }, false)) { Stage(model) }
+                }
+            }
+        }
     }
 
     @Test
@@ -79,7 +67,7 @@ class CoverFieldTest {
             captureRoboImage("build/screenshots/cover_field/flow_${appearance.name.lowercase()}.png") {
                 Fixtures.Still {
                     FlowStage(
-                        Fixtures.model(strip[2], next = strip[3], group = "Wohnzimmer + 5", scene = scenes[2], appearance = appearance),
+                        Fixtures.model(strip[2], next = strip[3], group = "Wohnzimmer + 5", scene = scenes[2]),
                         Fixtures.restingCards(scenes, 2),
                     )
                 }

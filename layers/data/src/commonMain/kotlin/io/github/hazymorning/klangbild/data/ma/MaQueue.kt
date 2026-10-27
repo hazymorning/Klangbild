@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.data.ma
 
 import io.github.hazymorning.klangbild.data.formEncode
-import io.github.hazymorning.klangbild.data.ha.ArtworkUrls
 import io.github.hazymorning.klangbild.domain.Chapter
 import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.MediaKind
@@ -38,10 +37,10 @@ data class QueueWindow(
 data class QueueSong(val uri: String, val item: JsonObject, val lyrics: String?, val lrcLyrics: String?)
 
 /**
- * Music Assistant's queue as it stands now (`player_queues/get`): the current item's place, the
- * current item, the next one (null when nothing follows) and its id, and how many items it has.
+ * Music Assistant's queue as it stands (`player_queues/get`): the current item's index, the
+ * current item, the next one (null when nothing follows) and its ID, and how many items it has.
  */
-data class QueueNow(val index: Int?, val current: TrackInfo?, val next: TrackInfo?, val nextId: String?, val items: Int?)
+data class QueueState(val index: Int?, val current: TrackInfo?, val next: TrackInfo?, val nextId: String?, val items: Int?)
 
 /**
  * Where Music Assistant's queue stands in its current item: [elapsedMs] in the item's own time at
@@ -72,16 +71,16 @@ object MaQueue {
             current = tracks.getOrNull(at),
             coming = if (at < 0) emptyList() else tracks.drop(at + 1).filterNotNull(),
             speed = (items.getOrNull(at) as? JsonObject)?.let(::speed) ?: 1f,
-            currentSong = (items.getOrNull(at) as? JsonObject)?.takeIf { at >= 0 }?.let(::song),
+            currentSong = (items.getOrNull(at) as? JsonObject)?.let(::song),
             nextSong = (items.getOrNull(at + 1) as? JsonObject)?.takeIf { at >= 0 }?.let(::song),
         )
     }
 
-    /** What [queue] (`player_queues/get`) says now; [baseUrl] resolves pictures. */
-    fun now(queue: JsonObject, baseUrl: String): QueueNow {
+    /** The state of [queue] (`player_queues/get`); [baseUrl] resolves pictures. */
+    fun state(queue: JsonObject, baseUrl: String): QueueState {
         val current = queue["current_item"] as? JsonObject
         val next = queue["next_item"] as? JsonObject
-        return QueueNow(
+        return QueueState(
             index = (queue["current_index"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
             current = current?.let { track(it, baseUrl) },
             next = next?.let { track(it, baseUrl) },
@@ -166,8 +165,8 @@ object MaQueue {
             album = if (isRadio) playing?.string("album")?.takeIf { it.isNotBlank() && !it.equals(name, ignoreCase = true) } else album?.string("name")?.takeIf { it.isNotBlank() },
             year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
             durationMs = durationMs,
-            artworkUrl = (songPicture ?: picture?.first)?.let { ArtworkUrls.upgrade(it) },
-            artworkFallbackUrl = if (songPicture != null) picture?.first ?: songPicture else picture?.second,
+            artworkUrl = songPicture ?: picture?.url,
+            artworkFallbackUrl = if (songPicture != null) picture?.url else picture?.fallback,
             source = if (isRadio) name else null,
             kind = kind,
             chapters = if (kind.spoken) chapters(media, durationMs) else emptyList(),
@@ -203,23 +202,26 @@ object MaQueue {
         return Chapters.of(raw, durationMs)
     }
 
+    /** An item's artwork: the URL to load and the one to try when that fails. */
+    private class Artwork(val url: String, val fallback: String?)
+
     /**
-     * A picture's address and its fallback: a public one (a streaming service's CDN) as it is,
-     * with Music Assistant's image proxy behind it; anything else through the proxy only.
+     * The artwork of an [image]: a public one (a streaming service's CDN) as it is, with Music
+     * Assistant's image proxy behind it; anything else through the proxy only.
      */
-    private fun image(image: JsonObject?, baseUrl: String): Pair<String, String>? {
+    private fun image(image: JsonObject?, baseUrl: String): Artwork? {
         val path = image?.string("path")?.takeIf { it.isNotBlank() } ?: return null
         val proxy = image.string("proxy_id")?.takeIf { it.isNotBlank() }?.let { "$baseUrl/imageproxy/$it?size=$PROXY_SIZE" }
         val remote = (image["remotely_accessible"] as? JsonPrimitive)?.booleanOrNull == true &&
             (path.startsWith("https://") || path.startsWith("http://"))
         return when {
-            remote -> path to (proxy ?: path)
-            proxy != null -> proxy to proxy
+            remote -> Artwork(path, proxy)
+            proxy != null -> Artwork(proxy, null)
             else -> null
         }
     }
 
-    /** Size asked of the proxy; [ArtworkUrls.upgrade] asks for more first. */
+    /** Size asked of the proxy; the artwork loader tries a larger one first. */
     private const val PROXY_SIZE = 512
 
     /** Music Assistant plays spoken word from half to three times as fast. */

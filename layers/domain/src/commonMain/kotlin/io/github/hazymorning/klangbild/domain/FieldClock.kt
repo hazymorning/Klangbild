@@ -31,6 +31,4 @@ class FieldClock(private val wallClock: () -> Long = { Clock.System.now().toEpoc
 
     /** The field's time now. */
     fun now(): Double = at(wallClock())
-
-    val running: Boolean get() = synchronized(this) { rate > 0f }
 }

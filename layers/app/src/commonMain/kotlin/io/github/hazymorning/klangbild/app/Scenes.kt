@@ -1,13 +1,16 @@
 package io.github.hazymorning.klangbild.app
 
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.data.ArtworkLoader
+import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,6 +47,7 @@ data class Frame(val screen: ScreenSpec, val flow: Boolean)
 class Scenes(
     private val scope: CoroutineScope,
     private val artwork: ArtworkLoader,
+    private val log: Log,
 ) {
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val cache = LinkedHashMap<String, ArtworkScene>()
@@ -126,13 +130,15 @@ class Scenes(
             if (old != null) {
                 withContext(dispatcher) { SceneBuilder.relight(old, look.appearance, look.wallTint, look.coverField) }
             } else {
-                build(track, look, forFrame)
+                // Wait at most a few seconds for the cover; then the generated one steps in.
+                build(track, look, forFrame, withTimeoutOrNull(COVER_TIMEOUT_MS) { artwork.load(track) })
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
             // A broken image, out of memory and the like: the generated figure always works.
-            runCatching { withContext(dispatcher) { build(track, look, forFrame, withCover = false) } }.getOrNull()
+            log.warn("Scene: the generated cover stands in (${e::class.simpleName})")
+            runCatching { build(track, look, forFrame, cover = null) }.getOrNull()
         }
         synchronized(lock) {
             // Only its own place: the same song's scene for another frame may be on its way by now.
@@ -145,22 +151,18 @@ class Scenes(
         done(scene!!)
     }
 
-    private suspend fun build(track: TrackInfo, look: Look, frame: Frame, withCover: Boolean = true): ArtworkScene {
-        // Wait at most a few seconds for the cover; then the generated one steps in.
-        val bitmap = if (!withCover) null else withTimeoutOrNull(COVER_TIMEOUT_MS) { runCatching { artwork.load(track) }.getOrNull() }
-        return withContext(dispatcher) {
-            SceneBuilder.build(
-                key = track.key,
-                source = bitmap,
-                artFoil = track.artFoil,
-                artView = track.artView,
-                screen = frame.screen,
-                appearance = look.appearance,
-                wallTint = look.wallTint,
-                flow = frame.flow,
-                coverField = look.coverField,
-            )
-        }
+    private suspend fun build(track: TrackInfo, look: Look, frame: Frame, cover: ImageBitmap?): ArtworkScene = withContext(dispatcher) {
+        SceneBuilder.build(
+            key = track.key,
+            source = cover,
+            artFoil = track.artFoil,
+            artView = track.artView,
+            screen = frame.screen,
+            appearance = look.appearance,
+            wallTint = look.wallTint,
+            flow = frame.flow,
+            coverField = look.coverField,
+        )
     }
 
     companion object {

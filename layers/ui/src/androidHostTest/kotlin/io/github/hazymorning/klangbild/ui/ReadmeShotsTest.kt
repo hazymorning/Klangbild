@@ -8,7 +8,6 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightColor
 import io.github.hazymorning.klangbild.lights.LightColors
 import io.github.hazymorning.klangbild.lights.LightSlot
@@ -18,14 +17,11 @@ import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import kotlinx.datetime.toJavaZoneId
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
-import java.util.TimeZone
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
@@ -38,11 +34,6 @@ import kotlin.test.Test
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class ReadmeShotsTest {
-    @BeforeTest
-    fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
-    }
-
     private val en = TestTexts.english()
 
     private fun cover(c: SyntheticCover) = Catalog.SCHEME + c.name
@@ -72,7 +63,7 @@ class ReadmeShotsTest {
         File("build/screenshots/readme/$name.json").apply { parentFile?.mkdirs() }.writeText(json)
     }
 
-    private fun coverLights(name: String, scene: ArtworkScene, warmth: Float) = lights(name, CoverLightColors(scene.field!!, moving = false), warmth)
+    private fun coverLights(name: String, scene: ArtworkScene, warmth: Float) = lights(name, LightColors(scene.field!!, moving = false), warmth)
 
     /** The first picture: a song at night on the dark wall, the room lit in its colors. */
     @Test

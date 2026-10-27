@@ -4,6 +4,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -23,26 +24,32 @@ class KeystoreSecretBox(private val alias: String = KEY_ALIAS) : SecretBox {
 
     override fun seal(plain: String): String {
         val k = key ?: return plain
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, k)
-        val sealed = cipher.iv + cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
+        val sealed = try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, k)
+            cipher.iv + cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
+        } catch (e: GeneralSecurityException) {
+            throw IOException("The keystore could not seal a secret", e)
+        }
         return PREFIX + Base64.encodeToString(sealed, Base64.NO_WRAP)
     }
 
     override fun open(stored: String): String? {
         if (isPlain(stored)) return stored
         val k = key ?: return null
-        return try {
+        val plain = try {
             val bytes = Base64.decode(stored.removePrefix(PREFIX), Base64.NO_WRAP)
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, k, GCMParameterSpec(TAG_BITS, bytes, 0, IV_BYTES))
             String(cipher.doFinal(bytes, IV_BYTES, bytes.size - IV_BYTES), Charsets.UTF_8)
-        } catch (e: GeneralSecurityException) {
-            Log.w(LOG_TAG, "A stored secret could not be opened; it has to be entered again")
+        } catch (_: GeneralSecurityException) {
             null
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
+            // Not Base64, or too short for its IV.
             null
         }
+        if (plain == null) Log.w(LOG_TAG, "A stored secret could not be opened; it has to be entered again")
+        return plain
     }
 
     override fun isPlain(stored: String): Boolean = !stored.startsWith(PREFIX)
@@ -62,7 +69,7 @@ class KeystoreSecretBox(private val alias: String = KEY_ALIAS) : SecretBox {
     } catch (e: GeneralSecurityException) {
         Log.w(LOG_TAG, "No Android Keystore: secrets are stored unsealed")
         null
-    } catch (e: java.io.IOException) {
+    } catch (e: IOException) {
         Log.w(LOG_TAG, "No Android Keystore: secrets are stored unsealed")
         null
     }

@@ -2,19 +2,20 @@ package io.github.hazymorning.klangbild.config
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.preferencesDataStoreFile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-private val Context.settings: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
-/** The settings on disk. */
-fun settingsValues(context: Context): ValueStore = DataStoreValues(context.settings)
+/** The settings on disk, opened once per process ([DataStoreValues.open]). */
+fun settingsValues(context: Context): ValueStore = DataStoreValues.open(context, "settings")
 
 /** Values in a DataStore of preferences, by their names. */
 class DataStoreValues(private val store: DataStore<Preferences>) : ValueStore {
@@ -39,4 +40,17 @@ class DataStoreValues(private val store: DataStore<Preferences>) : ValueStore {
     }
 
     private fun named(p: Preferences): Map<String, Any> = p.asMap().mapKeys { it.key.name }
+
+    companion object {
+        /**
+         * The values in the app's preferences file [name], where `preferencesDataStore` keeps it.
+         * A file that cannot be read starts empty instead of failing every read. DataStore refuses
+         * a second store on a file in use, so each file is opened once per process.
+         */
+        fun open(context: Context, name: String) = DataStoreValues(
+            PreferenceDataStoreFactory.create(corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }) {
+                context.applicationContext.preferencesDataStoreFile(name)
+            },
+        )
+    }
 }

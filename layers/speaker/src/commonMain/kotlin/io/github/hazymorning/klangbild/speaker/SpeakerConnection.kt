@@ -35,7 +35,7 @@ import kotlin.concurrent.Volatile
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SpeakerConnection(
-    /** Pings the server every [PING_MS] (messaging.md: the liveness mechanism). */
+    /** The WebSocket's client; it must ping the server every [PING_MS] (messaging.md: the liveness mechanism). */
     private val http: HttpClient,
     private val scope: CoroutineScope,
     private val url: String,
@@ -71,7 +71,6 @@ class SpeakerConnection(
         loop?.cancel()
         loop = null
         session = null
-        _link.value = SpeakerLink.CONNECTING
     }
 
     /** Skips the pause before the next attempt (the network came back). */
@@ -111,6 +110,8 @@ class SpeakerConnection(
                     backoff.nextDelayMs()
                 }
             }
+            // Only a wake-up during the pause counts, not one from while the session ran.
+            wakeUp.tryReceive()
             select<Unit> {
                 wakeUp.onReceive { }
                 onTimeout(waitMs) { }
@@ -124,8 +125,14 @@ class SpeakerConnection(
         // Set by whichever comes first: the socket opening on the connection's thread, or its making returning here.
         val link = atomic<WebSocketLink?>(null)
         val transport = object : Transport {
-            override fun sendText(text: String): Boolean = link.value?.send(text) == true
-            override fun sendBinary(bytes: ByteArray): Boolean = link.value?.send(bytes) == true
+            override fun sendText(text: String) {
+                link.value?.send(text)
+            }
+
+            override fun sendBinary(bytes: ByteArray) {
+                link.value?.send(bytes)
+            }
+
             override fun close() {
                 // A close frame after whatever is queued (a goodbye), never cutting it off.
                 link.value?.close()
@@ -155,7 +162,7 @@ class SpeakerConnection(
         try {
             // The handshake, the hellos and the activation within a while, or the attempt ends.
             val active = withTimeoutOrNull(handshakeTimeoutMs) {
-                while (!s.playerRole && !done.isCompleted && !s.activated) delay(POLL_MS)
+                while (!done.isCompleted && !s.activated) delay(POLL_MS)
                 true
             }
             if (active == null) {

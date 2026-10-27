@@ -64,6 +64,10 @@ private fun String.containsInvalidHostnameAsciiCodes(): Boolean {
     return false
 }
 
+/** The bytes of this IP address, IPv4 in dotted decimal or IPv6 without brackets, or null if it isn't one. */
+internal fun String.decodeIpAddress(): ByteArray? =
+    if (':' in this) decodeIpv6(this, 0, length) else ByteArray(4).takeIf { decodeIpv4Suffix(this, 0, length, it, 0) }
+
 /** Decodes an IPv6 address like 1111:2222:3333:4444:5555:6666:7777:8888 or ::1. */
 private fun decodeIpv6(input: String, pos: Int, limit: Int): ByteArray? {
     val address = ByteArray(16)
@@ -129,7 +133,10 @@ private fun decodeIpv6(input: String, pos: Int, limit: Int): ByteArray? {
     return address
 }
 
-/** Decodes an IPv4 address suffix of an IPv6 address, like 1111::5555:6666:192.168.0.1. */
+/**
+ * Decodes the IPv4 address from [pos] to [limit] into [address] from [addressOffset]: a whole one, or
+ * the end of an IPv6 address like 1111::5555:6666:192.168.0.1. Leading zeros are refused.
+ */
 private fun decodeIpv4Suffix(input: String, pos: Int, limit: Int, address: ByteArray, addressOffset: Int): Boolean {
     var b = addressOffset
 

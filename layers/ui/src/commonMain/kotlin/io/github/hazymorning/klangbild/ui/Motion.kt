@@ -8,7 +8,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -25,56 +24,49 @@ import kotlin.math.sin
  * True while rendering a still (screenshots): nothing runs a loop of its own, so the
  * composition can come to rest.
  */
-val LocalStill = staticCompositionLocalOf { false }
+internal val LocalStill = staticCompositionLocalOf { false }
 
 /**
- * One clock for what moves by itself on the stage (the progress bar and the color field), so
- * both are redrawn in the same frame. Two loops out of step would double the frames drawn.
- * [frame] changes about 30 times a second while something moves, twice a second otherwise.
+ * One tick for what moves by itself on the stage (the progress bar, the cover field and the
+ * lyrics), so all of it is redrawn in the same frames: loops out of step would multiply the
+ * frames drawn. Null where nobody provides one.
  */
-@Stable
-class StageTick(val frame: State<Long>)
-
-/** The stage's tick; null where nobody provides one (a lone bar then keeps its own loop). */
-val LocalStageTick = staticCompositionLocalOf<StageTick?> { null }
+internal val LocalStageTick = staticCompositionLocalOf<State<Long>?> { null }
 
 /**
- * A tick for the stage: [fast] while music plays or the colors move. While nothing reads it
- * (no [running]: no bar shown, the colors still, or the settings over the stage) it stops.
+ * A tick aligned to the display's frames, its value the time of its latest frame (ns): about 30
+ * times a second while [fast], twice a second otherwise, and none while not [running] or in a
+ * still.
  */
 @Composable
-fun rememberStageTick(fast: Boolean, running: Boolean = true): StageTick {
-    val frame = rememberFrameLoop(fast, running, TICK_MS)
-    return remember(frame) { StageTick(frame) }
-}
-
-/**
- * The frames something that moves by itself is redrawn on: the stage's tick, or where there is
- * none (a part shown alone, as in a test) a loop of its own, every [fastMs] while [fast] and
- * twice a second otherwise, and none while not [running].
- */
-@Composable
-fun rememberFrames(fast: Boolean, running: Boolean = true, fastMs: Long = TICK_MS): State<Long> =
-    LocalStageTick.current?.frame ?: rememberFrameLoop(fast, running, fastMs)
-
-/** A frame-aligned loop; nothing runs in a still. */
-@Composable
-private fun rememberFrameLoop(fast: Boolean, running: Boolean, fastMs: Long): State<Long> {
-    val frame = remember { mutableLongStateOf(0L) }
+internal fun rememberTickLoop(fast: Boolean, running: Boolean): State<Long> {
+    val time = remember { mutableLongStateOf(0L) }
     if (running && !LocalStill.current) {
         LaunchedEffect(fast) {
             while (true) {
-                withFrameNanos { frame.longValue = it }
-                delay(if (fast) fastMs else SLOW_TICK_MS)
+                withFrameNanos { time.longValue = it }
+                delay(if (fast) TICK_MS else SLOW_TICK_MS)
             }
         }
     }
-    return frame
+    return time
 }
 
-/** About 30 frames a second, aligned to the display's: plenty for a bar and a field this slow. */
-const val TICK_MS = 24L
+/**
+ * The tick something that moves by itself is redrawn on: the stage's, or where there is none (a
+ * part shown alone, as in a test) a loop of its own, as [fast] and [running] say.
+ */
+@Composable
+internal fun rememberTick(fast: Boolean, running: Boolean = true): State<Long> =
+    LocalStageTick.current ?: rememberTickLoop(fast, running)
+
+/** About 30 ticks a second: plenty for a bar and a field this slow. */
+private const val TICK_MS = 24L
 private const val SLOW_TICK_MS = 500L
+
+/** How far [t] has come from [start] to [end] (0 to 1); a window without length is passed once [t] reaches it. */
+internal fun progress(t: Float, start: Float, end: Float): Float =
+    if (end <= start) (if (t >= end) 1f else 0f) else ((t - start) / (end - start)).coerceIn(0f, 1f)
 
 /**
  * A value that glides to [target]: from rest in [durationMs] ([Motion.Dimmer]). A new target
@@ -82,7 +74,7 @@ private const val SLOW_TICK_MS = 500L
  * pace, without a bounce, instead of starting over from a standstill.
  */
 @Composable
-fun animateGlide(target: Float, durationMs: Int): State<Float> {
+internal fun animateGlide(target: Float, durationMs: Int): State<Float> {
     val glide = remember { Animatable(target) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(target) {
@@ -99,7 +91,7 @@ fun animateGlide(target: Float, durationMs: Int): State<Float> {
  * bounces, nothing slides, nothing jumps. A track change takes about a second: long enough
  * to be seen, short enough that nobody waits for it.
  */
-object Motion {
+internal object Motion {
     /** Soft in-out, like a dimmer turned by hand. */
     val Dimmer = CubicBezierEasing(0.45f, 0f, 0.25f, 1f)
 
@@ -143,9 +135,9 @@ object Motion {
     const val TEXT_IN_MS = 260
     const val TEXT_LINE_MS = 380
 
-    /** New track, same picture (next song of the album): only the text changes, sooner. */
+    /** Only the text changes: the next track of the same cover, or lyrics coming or going. */
     const val TEXT_CHANGE_MS = 950
-    const val TEXT_IN_SAME_PICTURE_MS = 250
+    const val TEXT_IN_SAME_COVER_MS = 250
 
     /**
      * Cover Flow: when another picture comes to the middle, the strip turns over in 1.3 s
@@ -158,11 +150,17 @@ object Motion {
     const val FLOW_TEXT_IN_MS = 780
     const val FLOW_CLEAR_MS = 300
 
+    /** New lines rise into place from this far below it (dp). */
+    const val RISE_DP = 10f
+
+    /** Lines that leave rise this far as they fade (dp). */
+    const val LEAVE_RISE_DP = 6f
+
     /** A change that something newer is waiting behind finishes within this (ms). */
     const val HURRY_MS = 350
 
-    /** Cards beside the middle come or go (the queue changed). */
-    const val FLOW_SIDES_MS = 900
+    /** The queue changed: cards beside the middle, or the list's rows, come or go. */
+    const val QUEUE_CHANGE_MS = 900
 
     /** Same track, a better cover. */
     const val SOFT_SWAP_MS = 900
@@ -179,14 +177,11 @@ object Motion {
     /** Light, artwork and text while paused; on the light wall the artwork dims less (it would turn muddy). */
     const val PAUSED_LIGHT = 0.45f
     const val PAUSED_COVER = 0.72f
-    const val PAUSED_COVER_ON_PAPER = 0.86f
+    const val PAUSED_COVER_ON_LIGHT = 0.86f
     const val PAUSED_TEXT = 0.7f
 
     /** Eased progress of a phase that runs from [start] to [end] of the overall 0..1 [t]. */
-    fun phase(t: Float, start: Float, end: Float, easing: Easing = Dimmer): Float {
-        val x = ((t - start) / (end - start)).coerceIn(0f, 1f)
-        return easing.transform(x)
-    }
+    fun phase(t: Float, start: Float, end: Float, easing: Easing = Dimmer): Float = easing.transform(progress(t, start, end))
 
     /** [phase] with the window given in milliseconds of an animation lasting [totalMs]. */
     fun phaseMs(t: Float, startMs: Int, endMs: Int, totalMs: Int, easing: Easing = Dimmer): Float =

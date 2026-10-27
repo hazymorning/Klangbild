@@ -16,16 +16,16 @@ private class SkiaCardPainter : CardPainter {
     private val matrix = Matrix()
     private val perspective = Perspective()
     private val paint = plainPaint()
-    private val layer = plainPaint()
+    private val layerPaint = plainPaint()
 
-    override fun moved(canvas: Canvas, image: ImageBitmap, x: Float, y: Float, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
+    override fun drawTranslated(canvas: Canvas, image: ImageBitmap, x: Float, y: Float, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
         matrix.reset()
         matrix[3, 0] = x
         matrix[3, 1] = y
         draw(canvas, image, alpha, filter, blend)
     }
 
-    override fun mapped(canvas: Canvas, image: ImageBitmap, src: FloatArray, dst: FloatArray, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
+    override fun drawMapped(canvas: Canvas, image: ImageBitmap, src: FloatArray, dst: FloatArray, alpha: Int, filter: ColorFilter?, blend: CardBlend) {
         perspective.map(src, dst, matrix)
         draw(canvas, image, alpha, filter, blend)
     }
@@ -35,7 +35,7 @@ private class SkiaCardPainter : CardPainter {
         paint.colorFilter = filter
         paint.blendMode = when (blend) {
             CardBlend.OVER -> BlendMode.SrcOver
-            CardBlend.BENEATH -> BlendMode.DstOut
+            CardBlend.ERASE -> BlendMode.DstOut
             CardBlend.ADD -> BlendMode.Plus
         }
         canvas.save()
@@ -44,9 +44,9 @@ private class SkiaCardPainter : CardPainter {
         canvas.restore()
     }
 
-    override fun layer(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
-        layer.alpha = alpha / 255f
-        canvas.saveLayer(Rect(left, top, right, bottom), layer)
+    override fun saveLayer(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
+        layerPaint.alpha = alpha / 255f
+        canvas.saveLayer(Rect(left, top, right, bottom), layerPaint)
     }
 
     override fun restore(canvas: Canvas) {

@@ -23,7 +23,7 @@ class UpdateTest {
     }
 
     @Test
-    fun `a build of one's own and anything else names no version`() {
+    fun `a local build and anything else name no version`() {
         assertThat(AppVersion.parse("2026.10.24 (abc1234)")).isNull()
         assertThat(AppVersion.parse("6.4.0")).isNull()
         assertThat(AppVersion.parse("")).isNull()
@@ -37,7 +37,7 @@ class UpdateTest {
         assertThat(info.copy(latest = "v2026.10.5").available).isNull()
         assertThat(info.copy(latest = null).available).isNull()
         assertThat(info.copy(name = "2026.11.0-beta.1").available).isEqualTo("v2026.11.0")
-        // A build of one's own looks for none, and so is offered none.
+        // A local build never looks for updates, and so is offered none.
         assertThat(info.copy(name = "2026.10.24 (abc1234)").available).isNull()
     }
 }

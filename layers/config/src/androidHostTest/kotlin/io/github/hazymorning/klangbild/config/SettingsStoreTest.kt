@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
 import android.content.Context
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
@@ -73,6 +74,7 @@ class SettingsStoreTest {
             haToken = "long-lived",
             haRefreshToken = "refresh",
             haClientId = "http://192.168.1.23:8765/",
+            haRefused = true,
             entityId = "media_player.kitchen",
             otherSpeaker = "media_player.living_room",
             sunEntity = "sun.home",
@@ -186,18 +188,25 @@ class SettingsStoreTest {
 
     @Test
     fun `tokens stored by an earlier version are sealed on the next start`(): Unit = runBlocking {
+        val values = settingsValues(context)
         // An earlier version wrote the token as it is.
-        SettingsStore(settingsValues(context), FakeBox(sealing = false))
+        SettingsStore(values, FakeBox(sealing = false))
             .write(Settings().withHa("http://192.168.1.5:8123", HaCredentials.LongLived("long-lived-secret")))
 
         val box = FakeBox()
-        val store = SettingsStore(settingsValues(context), box)
+        val store = SettingsStore(values, box)
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
         assertThat(box.stored).contains("long-lived-secret")
         store.migrate()
         box.stored.clear()
         assertThat(store.settings.first().haCredentials).isEqualTo(HaCredentials.LongLived("long-lived-secret"))
         assertThat(box.stored).containsExactlyInAnyOrder("sealed:" + "long-lived-secret".reversed())
+    }
+
+    @Test
+    fun `settings that cannot be read start afresh`(): Unit = runBlocking {
+        context.preferencesDataStoreFile("settings").apply { parentFile!!.mkdirs() }.writeText("not a preferences file")
+        assertThat(SettingsStore(settingsValues(context), FakeBox()).settings.first()).isEqualTo(Settings())
     }
 
     @Test

@@ -63,9 +63,9 @@ internal class QuickControl(private val host: ControllerHost) {
     val isOpen: Boolean get() = cursor != null
 
     /** Opens the quick settings on the queue's entry. Once opened, the stage no longer tells how. */
-    fun open(menuOpen: Boolean) {
+    fun open() {
         synchronized(host.lock) {
-            if (menuOpen || cursor != null) return
+            if (cursor != null) return
             cursor = QuickKey(QuickItem.QUEUE)
             touchedAt = host.now()
             host.recompute()

@@ -35,16 +35,6 @@ class FlowMotionTest {
     @get:Rule
     val compose = composeRule()
 
-    private val mdpi = ScreenSpec(960, 540, 1f)
-
-    private val covers = listOf(
-        SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE,
-        SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS, SyntheticCover.SALT_WATER, SyntheticCover.NOCTURNE,
-    )
-
-    private fun scenes(appearance: Appearance = Appearance.DARK) = covers.mapIndexed { i, c ->
-        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, flow = true)
-    }.toMap()
 
     /** Shows [from], then each of [then] at its frame (counted from 1), capturing every [stepMs]. */
     private fun run(name: String, from: FlowData, then: Map<Int, FlowData>, frames: Int = 12, stepMs: Long = 100, partyCode: String? = null) {
@@ -70,45 +60,45 @@ class FlowMotionTest {
 
     @Test
     fun forward() {
-        val s = scenes()
+        val s = dark
         run("forward", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 3, 4, 5), 3))
     }
 
     @Test
     fun forwardBeneathAPartyCode() {
         // The code stays in the middle card's place; the cards turn beneath it.
-        val s = scenes()
+        val s = dark
         run("party", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 3, 4, 5), 3), partyCode = "http://192.168.1.5:8095/?join=Q4WZ8TNP")
     }
 
     @Test
     fun back() {
-        val s = scenes()
+        val s = dark
         run("back", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(0, 1, 2, 3), 1))
     }
 
     @Test
     fun jump() {
-        val s = scenes()
+        val s = dark
         run("jump", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 6), 6))
     }
 
     @Test
     fun songInBetween() {
         // "Play now": a song from elsewhere comes in, the queue goes on with what stood next.
-        val s = scenes()
+        val s = dark
         run("between", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 6, 3), 6), frames = 6, stepMs = 200)
     }
 
     @Test
     fun queueChanges() {
-        val s = scenes()
+        val s = dark
         run("queue", Fixtures.flow(s, listOf(0, 1, 2), 1), Fixtures.flow(s, listOf(0, 1, 5), 1), frames = 5, stepMs = 200)
     }
 
     @Test
     fun quickSkips() {
-        val s = scenes()
+        val s = dark
         val start = Fixtures.flow(s, listOf(0, 1, 2, 3), 1)
         run("skips", start, mapOf(1 to Fixtures.flow(s, listOf(0, 1, 2, 3), 2), 3 to Fixtures.flow(s, listOf(1, 2, 3, 4), 3)), frames = 12, stepMs = 200)
     }
@@ -116,7 +106,7 @@ class FlowMotionTest {
     @Test
     fun skipUndone() {
         // On and straight back: the turn hurries, then the lines of the song that stays rise.
-        val s = scenes()
+        val s = dark
         val start = Fixtures.flow(s, listOf(0, 1, 2, 3), 1)
         val stays = Fixtures.flow(s, listOf(0, 1, 2, 3), 2)
         run("undone", start, mapOf(1 to stays, 4 to Fixtures.flow(s, listOf(0, 1, 2, 3), 3), 6 to stays), frames = 16, stepMs = 100)
@@ -125,7 +115,7 @@ class FlowMotionTest {
     @Test
     fun cardJoinsDuringTheTurn() {
         // The card after next is ready a moment later: the turn runs its course, then the card comes.
-        val s = scenes()
+        val s = dark
         val start = Fixtures.flow(s, listOf(0, 1, 2, 3), 1)
         run("joins", start, mapOf(1 to Fixtures.flow(s, listOf(0, 1, 2, 3), 2), 4 to Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2)), frames = 13, stepMs = 200)
     }
@@ -133,35 +123,35 @@ class FlowMotionTest {
     @Test
     fun theQueueRunsOut() {
         // The last song comes: nothing stands to the right any more, and the composition settles in the middle with the turn.
-        val s = scenes()
+        val s = dark
         run("runs_out", Fixtures.flow(s, listOf(1, 2, 3, 4), 3), Fixtures.flow(s, listOf(2, 3, 4), 4), frames = 13, stepMs = 100)
     }
 
     @Test
     fun cardsArriveBesideALoneCover() {
         // A first song alone, then its queue: the cards roll in and everything moves along to the middle.
-        val s = scenes()
+        val s = dark
         run("arrive", Fixtures.flow(s, listOf(2), 2), Fixtures.flow(s, listOf(2, 3, 4), 2), frames = 10, stepMs = 100)
     }
 
     @Test
     fun theFirstTurn() {
         // From the first song (nothing played) to the second: a card comes to the left.
-        val s = scenes()
+        val s = dark
         run("first_turn", Fixtures.flow(s, listOf(2, 3, 4), 2), Fixtures.flow(s, listOf(2, 3, 4, 5), 3), frames = 13, stepMs = 100)
     }
 
     @Test
     fun theQueueIsCleared() {
         // Nothing comes any more: the cards to the right go first, then the cover and the text move together.
-        val s = scenes()
+        val s = dark
         run("cleared", Fixtures.flow(s, listOf(2, 3, 4), 2), Fixtures.flow(s, listOf(2), 2), frames = 12, stepMs = 100)
     }
 
     @Test
     fun backToTheFirstSong() {
         // A step back to the first song: nothing stands to the left any more.
-        val s = scenes()
+        val s = dark
         run("back_first", Fixtures.flow(s, listOf(2, 3, 4, 5), 3), Fixtures.flow(s, listOf(2, 3, 4), 2), frames = 13, stepMs = 100)
     }
 
@@ -169,7 +159,7 @@ class FlowMotionTest {
     fun aBetterCoverComes() {
         // The song stays, its picture gets better: the strip takes the new look in a quiet
         // cross-fade, the middle card always in front of the cards beside it.
-        val s = scenes()
+        val s = dark
         val start = Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2)
         val better = FlowData(start.cards.map { if (it.id == 2L) FlowEntry(2L, it.track, s.getValue(5)) else it }, start.current)
         run("better_cover", start, better, frames = 8, stepMs = 120)
@@ -177,7 +167,20 @@ class FlowMotionTest {
 
     @Test
     fun forwardOnPaper() {
-        val s = scenes(Appearance.LIGHT)
+        val s = light
         run("paper", Fixtures.flow(s, listOf(0, 1, 2, 3, 4), 2), Fixtures.flow(s, listOf(1, 2, 3, 4, 5), 3), frames = 6, stepMs = 200)
+    }
+
+    private companion object {
+        val mdpi = ScreenSpec(960, 540, 1f)
+
+        /** The strip's scenes by card id, on the dark and the light background, made once for every test. */
+        val dark by lazy { scenes(Appearance.DARK) }
+        val light by lazy { scenes(Appearance.LIGHT) }
+
+        fun scenes(appearance: Appearance) = listOf(
+            SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE,
+            SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS, SyntheticCover.SALT_WATER, SyntheticCover.NOCTURNE,
+        ).mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, flow = true) }.toMap()
     }
 }

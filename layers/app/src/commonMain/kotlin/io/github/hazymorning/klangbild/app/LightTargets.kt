@@ -6,7 +6,7 @@ import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SunClock
-import io.github.hazymorning.klangbild.lights.CoverLightColors
+import io.github.hazymorning.klangbild.lights.LightColors
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.FieldScene
@@ -17,7 +17,7 @@ import io.github.hazymorning.klangbild.render.FieldScene
  */
 internal class LightTargets(private val fieldClock: FieldClock, private val now: () -> Long) {
     /** The colors for a cover's field, made once per field (a new object fades the lights to it). */
-    private var coverColors: Pair<Any, CoverLightColors>? = null
+    private var coverColors: Pair<Any, LightColors>? = null
 
     /** The target for the lights now, or null when they have nothing to show. */
     fun target(s: Settings, ui: UiState, stage: Screen.Stage?, playing: Boolean): LightSync.Target? {
@@ -34,17 +34,16 @@ internal class LightTargets(private val fieldClock: FieldClock, private val now:
             song = shown.track.key,
             playing = playing,
             night = night,
-            warmth = night,
             motion = s.motion.speed,
             fieldTime = fieldClock::now,
             onlyOn = s.lightsOnlyOn,
         )
     }
 
-    private fun coverColors(field: FieldScene, moving: Boolean): CoverLightColors {
+    private fun coverColors(field: FieldScene, moving: Boolean): LightColors {
         val key = field to moving
         coverColors?.takeIf { it.first == key }?.let { return it.second }
-        return CoverLightColors(field, moving).also { coverColors = key to it }
+        return LightColors(field, moving).also { coverColors = key to it }
     }
 
     /** 0 by day to 1 at night, by the sun (Home Assistant's elevation, else the local clock): how far the lights dim. */

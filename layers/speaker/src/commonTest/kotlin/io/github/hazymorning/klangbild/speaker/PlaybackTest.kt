@@ -153,7 +153,7 @@ class PlaybackTest {
         fun meantUs(n: Long, delayUs: Long): Long = startServerUs + ((n - numberFrom) * 1e6 / 48_000).toLong() - OFFSET_US - delayUs
     }
 
-    private val clock = ClockMap(offset = OFFSET_US.toDouble(), drift = 0.0, lastUpdate = 0, errorUs = 100.0, count = 100)
+    private val clock = ClockMap(offset = OFFSET_US.toDouble(), drift = 0.0, lastUpdate = 0)
 
     private fun playback(sink: SimSink): Playback {
         val p = Playback(sink, ChunkQueue(48_000 * 4), { now })

@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import io.github.hazymorning.klangbild.app.AppFixtures
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.QueueList
@@ -14,7 +15,6 @@ import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
@@ -33,10 +33,10 @@ import io.github.hazymorning.klangbild.ui.theme.faces
  */
 object Fixtures : AppFixtures() {
     /** The cards of [scenes] at rest, the one at [current] in the middle. */
-    fun restingCards(scenes: List<ArtworkScene>, current: Int) =
-        scenes.mapIndexed { i, sc -> CardMotion(i.toLong(), sc.card!!, (i - current).toFloat(), (i - current).toFloat()) }
+    internal fun restingCards(scenes: List<ArtworkScene>, current: Int) =
+        scenes.mapIndexed { i, sc -> CardMotion(sc.card!!, (i - current).toFloat(), (i - current).toFloat()) }
 
-    fun model(
+    internal fun model(
         track: TrackInfo,
         next: TrackInfo? = null,
         status: PlayerStatus = PlayerStatus.PLAYING,
@@ -61,10 +61,10 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = { positionMs },
             year = track.year.takeIf { album },
-            progress = progress,
-            line = StageTexts.line(linkDown, track, t),
-            next = StageTexts.next(next, t),
-            nextTitle = StageTexts.nextTitle(next, t),
+            barShown = progress,
+            slotText = StageTexts.slotText(linkDown, track, t),
+            footer = StageTexts.footer(next, t),
+            footerTitle = StageTexts.footerTitle(next, t),
             statusLine = StatusLine(lead, clock, values),
         )
     }
@@ -73,7 +73,7 @@ object Fixtures : AppFixtures() {
      * A book or an episode at [position] (ms in its own time): the chapter in the album's place,
      * the bar over the chapter, the next chapter (or [next]) after it; [pace] in the status line.
      */
-    fun spokenModel(
+    internal fun spokenModel(
         track: TrackInfo,
         position: Long,
         pace: String?,
@@ -94,11 +94,11 @@ object Fixtures : AppFixtures() {
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
             positionMs = { position },
-            next = chapter?.next ?: StageTexts.next(next, t),
-            nextTitle = if (chapter?.next != null) null else StageTexts.nextTitle(next, t),
+            footer = chapter?.next ?: StageTexts.footer(next, t),
+            footerTitle = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
             statusLine = StatusLine(lead, "21:47"),
             chapter = chapter?.label,
-            rangeStartMs = chapter?.startMs ?: 0L,
+            barStartMs = chapter?.startMs ?: 0L,
         )
     }
 
@@ -106,7 +106,7 @@ object Fixtures : AppFixtures() {
      * The stage with the song's [lyrics] at [position] (ms), as the root builds it: the song itself
      * where "Up next" stands, the progress bar only for a moment after a key ([peek]).
      */
-    fun lyricsModel(
+    internal fun lyricsModel(
         track: TrackInfo,
         lyrics: io.github.hazymorning.klangbild.domain.Lyrics,
         position: () -> Long? = { 84_000L },
@@ -130,17 +130,17 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = position,
             year = track.year,
-            progress = peek,
-            line = StageTexts.line(linkDown, track, t),
-            next = StageTexts.next(track, t),
-            nextTitle = StageTexts.nextTitle(track, t),
+            barShown = peek,
+            slotText = StageTexts.slotText(linkDown, track, t),
+            footer = StageTexts.footer(track, t),
+            footerTitle = StageTexts.footerTitle(track, t),
             statusLine = StatusLine(lead, clock),
             lyrics = lyrics,
         )
     }
 
     /** The stage with the queue as a list ([list]), as the root builds it: the song at the top, the rows under it. */
-    fun queueModel(
+    internal fun queueModel(
         track: TrackInfo,
         list: QueueList,
         status: PlayerStatus = PlayerStatus.PLAYING,
@@ -165,9 +165,9 @@ object Fixtures : AppFixtures() {
             durationMs = track.durationMs,
             positionMs = { positionMs },
             year = track.year.takeIf { album },
-            progress = progress,
+            barShown = progress,
             barStays = barStays,
-            line = StageTexts.line(false, track, t),
+            slotText = StageTexts.slotText(false, track, t),
             statusLine = StatusLine(lead, clock),
             queue = QueueModel.of(list, t),
         )
@@ -189,33 +189,49 @@ object Fixtures : AppFixtures() {
         CompositionLocalProvider(LocalGlyphs provides AndroidGlyphs, content = content)
     }
 
-    /** The animated cover flow for one strip; what comes next is the card to the right. */
+    /**
+     * The animated cover flow for one strip; what comes next is the card to the right. As in the
+     * root, a stage keeps the next it had while it was in the middle, so one leaving in a change
+     * still names its own.
+     */
     @Composable
     fun FlowTheaterOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
-        val next = flow.cards.getOrNull(flow.current + 1)?.track
-        io.github.hazymorning.klangbild.ui.flow.FlowTheater(
-            flow = flow,
-            status = status,
-            modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            partyCode = partyCode,
-        )
+        val nexts = remember { HashMap<String, TrackInfo?>() }
+        nexts[flow.middle.track.key] = flow.cards.getOrNull(flow.current + 1)?.track
+        CompositionLocalProvider(LocalTexts provides texts) {
+            io.github.hazymorning.klangbild.ui.flow.FlowTheater(
+                flow = flow,
+                status = status,
+                modelFor = { s -> model(s.track, next = nexts[s.track.key], status = status, scene = s.scene, lead = lead) },
+                partyCode = partyCode,
+            )
+        }
     }
 
     /**
-     * The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words; the
-     * bar shown as [progress] says, and staying as [barStays] says (else only for a moment).
+     * The animated stage with the queue's list where [StageData.queue] has one, in [t]'s words, the
+     * speaker [group] in the status line; the bar shown as [progress] says, and staying as
+     * [barStays] says (else only for a moment).
      */
     @Composable
-    fun QueueTheater(stage: StageData, status: PlayerStatus = PlayerStatus.PLAYING, t: Texts = TestTexts.english(), next: TrackInfo? = null, progress: Boolean = true, barStays: Boolean = progress) {
+    fun QueueTheater(
+        stage: StageData,
+        status: PlayerStatus = PlayerStatus.PLAYING,
+        t: Texts = texts,
+        group: String = "Wohnzimmer",
+        next: TrackInfo? = null,
+        progress: Boolean = true,
+        barStays: Boolean = progress,
+    ) {
         CompositionLocalProvider(LocalTexts provides t) {
             StageTheater(
                 stage = stage,
                 status = status,
                 modelFor = { s ->
                     val list = s.queue
-                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = "Living room", t = t, progress = progress, barStays = barStays)
-                    else model(s.track, next = next, status = status, scene = s.scene, t = t, group = "Living room")
+                    if (list != null) queueModel(s.track, list, status = status, scene = s.scene, group = group, t = t, progress = progress, barStays = barStays)
+                    else model(s.track, next = next, status = status, scene = s.scene, t = t, group = group)
                 },
             )
         }
@@ -234,13 +250,15 @@ object Fixtures : AppFixtures() {
         partyCode: String? = null,
     ) {
         val lead = StageTexts.lead(status, muted, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = texts)
-        StageTheater(
-            stage = stage,
-            status = status,
-            modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
-            intensity = { intensity },
-            dimmed = linkDown,
-            partyCode = partyCode,
-        )
+        CompositionLocalProvider(LocalTexts provides texts) {
+            StageTheater(
+                stage = stage,
+                status = status,
+                modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
+                intensity = { intensity },
+                linkDown = linkDown,
+                partyCode = partyCode,
+            )
+        }
     }
 }

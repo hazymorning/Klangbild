@@ -20,13 +20,10 @@ import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.ui.stage.Stage
-import kotlinx.datetime.toJavaZoneId
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.util.TimeZone
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /** The quick settings along the bottom edge, over the stage on black and on paper. */
@@ -35,11 +32,6 @@ import kotlin.test.Test
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class QuickBarTest {
-    @BeforeTest
-    fun berlin() {
-        TimeZone.setDefault(TimeZone.getTimeZone(Fixtures.zone.toJavaZoneId()))
-    }
-
     private val withLights = Settings(roomLights = RoomLights(left = "light.links", center = "light.mitte", right = "light.rechts"), roomLightBrightness = RoomLightBrightness.P50)
 
     private fun state(focus: QuickItem, ctx: QuickContext, s: Settings = withLights): QuickState {

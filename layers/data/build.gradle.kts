@@ -1,7 +1,6 @@
 plugins {
     id("klangbild.multiplatform")
     id("klangbild.compose")
-    id("klangbild.robolectric")
 }
 
 kotlin {

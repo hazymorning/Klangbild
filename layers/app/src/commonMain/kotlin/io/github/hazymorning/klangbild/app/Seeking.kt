@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.domain.Progress
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -17,26 +18,47 @@ import kotlin.math.abs
  * Jumps within what plays with the remote: in a book or an episode by presses, in a song by
  * holding left or right. A jump shows on the progress bar at once and holds there until Home
  * Assistant reports the new place; presses close together add up to one jump, sent once they
- * stop, and a hold is sent once the key is let go.
+ * stop, and a hold is sent once the key is let go. Every change takes the controller's lock,
+ * since the keys, the reports and the sends run on different threads.
  */
 internal class Seeking(private val host: ControllerHost) {
-    /** A jump that Home Assistant has not confirmed yet: the bar shows where it goes. */
+    /** A jump that Home Assistant has not confirmed yet: the bar shows where it goes. The draw phase reads it without the lock. */
     @Volatile private var pending: Pending? = null
     private var job: Job? = null
 
     /** Where a hold began: the item's key and its place then. */
-    @Volatile private var holdFrom: Pair<String, Long>? = null
+    private var holdFrom: Pair<String, Long>? = null
+
+    /** Left and right jump within what plays (a book, an episode) instead of changing it, where it [canSeek]. */
+    val spokenKeys: Boolean
+        get() {
+            val s = host.settings
+            return s.remoteControl && s.spokenSkip && (host.ui.screen as? Screen.Stage)?.track?.kind?.spoken == true && canSeek
+        }
+
+    /**
+     * Left and right change a song once let go, and held, seek through it: with a length to seek
+     * in, on a player that can.
+     */
+    val holdKeys: Boolean
+        get() = host.settings.remoteControl && !spokenKeys && canSeek
+
+    /** The track on stage has a known duration, and the player can seek. */
+    private val canSeek: Boolean
+        get() = (host.ui.screen as? Screen.Stage)?.track?.durationMs != null && host.ui.source.player?.abilities?.seek == true
 
     /**
      * Jumps back ([direction] -1, [BACK_MS]) or ahead (+1, [AHEAD_MS]); presses in quick
      * succession add up to one jump.
      */
     fun skip(direction: Int) {
-        if (!host.settings.remoteControl) return
-        val track = (host.ui.screen as? Screen.Stage)?.track ?: return
-        val t = host.now()
-        val from = position(t) ?: return
-        seekTo(track, from + if (direction < 0) -BACK_MS else AHEAD_MS, t)
+        synchronized(host.lock) {
+            if (!host.settings.remoteControl) return
+            val track = (host.ui.screen as? Screen.Stage)?.track ?: return
+            val t = host.now()
+            val from = position(t) ?: return
+            seekTo(track, from + if (direction < 0) -BACK_MS else AHEAD_MS, t)
+        }
     }
 
     /**
@@ -44,11 +66,13 @@ internal class Seeking(private val host: ControllerHost) {
      * the next chapter. Without chapters, or past the last one, to the item before or after.
      */
     fun jump(direction: Int) {
-        if (!host.settings.remoteControl) return
-        val track = (host.ui.screen as? Screen.Stage)?.track ?: return
-        val t = host.now()
-        val at = position(t)?.let { Chapters.jump(track.chapters, it, direction) }
-        if (at != null) seekTo(track, at, t) else host.send(if (direction < 0) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
+        synchronized(host.lock) {
+            if (!host.settings.remoteControl) return
+            val track = (host.ui.screen as? Screen.Stage)?.track ?: return
+            val t = host.now()
+            val at = position(t)?.let { Chapters.jump(track.chapters, it, direction) }
+            if (at != null) seekTo(track, at, t) else host.send(if (direction < 0) RemoteCommand.PREVIOUS else RemoteCommand.NEXT)
+        }
     }
 
     /**
@@ -57,18 +81,22 @@ internal class Seeking(private val host: ControllerHost) {
      * is let go ([letGo]).
      */
     fun hold(direction: Int, heldMs: Long) {
-        if (!host.settings.remoteControl) return
-        val track = (host.ui.screen as? Screen.Stage)?.track ?: return
-        val t = host.now()
-        val from = holdFrom?.takeIf { it.first == track.key }?.second ?: (position(t) ?: return).also { holdFrom = track.key to it }
-        seekTo(track, from + direction * held(heldMs), t, HOLD_WAIT_MS)
+        synchronized(host.lock) {
+            if (!host.settings.remoteControl) return
+            val track = (host.ui.screen as? Screen.Stage)?.track ?: return
+            val t = host.now()
+            val from = holdFrom?.takeIf { it.first == track.key }?.second ?: (position(t) ?: return).also { holdFrom = track.key to it }
+            seekTo(track, from + direction * held(heldMs), t, HOLD_WAIT_MS)
+        }
     }
 
     /** The key held is let go: the place it reached is sent now. */
     fun letGo() {
-        holdFrom = null
-        val o = pending?.takeIf { it.sentAt == null } ?: return
-        send(o, 0)
+        synchronized(host.lock) {
+            holdFrom = null
+            val o = pending?.takeIf { it.sentAt == null } ?: return
+            send(o, 0)
+        }
     }
 
     /**
@@ -82,7 +110,7 @@ internal class Seeking(private val host: ControllerHost) {
 
     /**
      * A new report from Home Assistant at [t] with the item at [raw]: it confirms a jump that was
-     * sent (or ends it, when another item plays). Returns the position to show.
+     * sent (or ends it, when another item plays). Returns the position to show. Called under the lock.
      */
     fun onReport(st: SourceState, raw: Long?, t: Long): Long? {
         pending?.let { o ->
@@ -94,32 +122,37 @@ internal class Seeking(private val host: ControllerHost) {
 
     /** Forgets a jump on its way (the connection ends). */
     fun clear() {
-        job?.cancel()
-        pending = null
+        synchronized(host.lock) {
+            job?.cancel()
+            pending = null
+        }
     }
 
+    /** Shows and sends a jump to [target], unless the player can't seek. Called under the lock. */
     private fun seekTo(track: TrackInfo, target: Long, t: Long, wait: Long = SETTLE_MS) {
+        val p = host.ui.source.player?.takeIf { it.abilities.seek } ?: return
         val end = track.durationMs?.let { (it - END_MARGIN_MS).coerceAtLeast(0) } ?: return
-        val p = host.ui.source.player
-        val o = Pending(track.key, target.coerceIn(0, end), t, if (p?.status == PlayerStatus.PLAYING) p.speed else 0f)
+        val o = Pending(track.key, target.coerceIn(0, end), t, if (p.status == PlayerStatus.PLAYING) p.speed else 0f)
         pending = o
         // Presses close together make one jump: it is sent once they stop.
         send(o, wait)
         host.recompute()
     }
 
-    /** Sends [o] after [wait] unless another jump replaces it meanwhile. */
+    /** Sends [o] after [wait] unless another jump replaces it meanwhile. Called under the lock. */
     private fun send(o: Pending, wait: Long) {
         job?.cancel()
         job = host.scope.launch {
             delay(wait)
-            // Another item plays meanwhile: the jump went with the one it was for.
-            if (pending !== o || host.ui.source.player?.track?.key != o.key) return@launch
-            pending = o.copy(sentAt = host.now())
-            host.source?.seek(o.at(host.now()))
+            val sent = synchronized(host.lock) {
+                // Another item plays meanwhile: the jump went with the one it was for.
+                if (pending !== o || host.ui.source.player?.track?.key != o.key) return@launch
+                o.copy(sentAt = host.now()).also { pending = it }
+            }
+            host.source?.seek(sent.at(host.now()))
             // Home Assistant answers within moments; if not, the reported position takes over again.
             delay(TRUST_MS)
-            if (pending?.startedAt == o.startedAt) pending = null
+            synchronized(host.lock) { if (pending === sent) pending = null }
         }
     }
 

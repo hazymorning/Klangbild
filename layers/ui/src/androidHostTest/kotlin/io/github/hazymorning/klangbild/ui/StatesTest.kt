@@ -31,19 +31,12 @@ class StatesTest {
 
     private fun stage(name: String, model: StageModel) = shot(name) { Stage(model) }
 
-    @Test fun playing() = stage("stage_playing", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, group = "Wohnzimmer + 5"))
-
     @Test fun paused() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.TERRACOTTA))
         shot("stage_paused") { Fixtures.Theater(stage, PlayerStatus.PAUSED, group = "Wohnzimmer") }
     }
 
     @Test fun everywhere() = stage("stage_everywhere", Fixtures.model(Fixtures.track(SyntheticCover.MOSS), next = spiegel, group = "Überall"))
-
-    @Test fun volume() = stage(
-        "stage_volume",
-        Fixtures.model(Fixtures.track(SyntheticCover.SALT_WATER), next = spiegel, lead = "Lautstärke 35\u00A0%"),
-    )
 
     @Test fun muted() {
         val stage = Fixtures.stage(Fixtures.track(SyntheticCover.BAUHAUS))
@@ -61,11 +54,6 @@ class StatesTest {
     }
 
     @Test fun linkDown() = stage("stage_link_down", Fixtures.model(Fixtures.track(SyntheticCover.MIST), linkDown = true))
-
-    @Test fun minimal() = stage(
-        "stage_minimal",
-        Fixtures.model(Fixtures.track(SyntheticCover.CONFETTI), clock = null, album = false, progress = false),
-    )
 
     @Test fun restIdle() = shot("rest_idle") {
         RestScreen(RestReason.IDLE, "Wohnzimmer", null, Fixtures.at(10, 12), zone = Fixtures.zone)

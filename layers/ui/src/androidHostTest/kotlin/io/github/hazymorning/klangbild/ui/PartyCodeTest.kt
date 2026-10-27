@@ -1,12 +1,9 @@
 package io.github.hazymorning.klangbild.ui
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
@@ -25,7 +22,6 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import kotlin.math.abs
 import kotlin.test.Test
 
 /**
@@ -43,32 +39,28 @@ class PartyCodeTest {
     private var shown by mutableStateOf<(@Composable () -> Unit)?>(null)
 
     /** Renders [content] as a still, kept as `party/[name].png`. */
-    private fun render(name: String, content: @Composable () -> Unit): Bitmap {
+    private fun render(name: String, content: @Composable () -> Unit): Pixels {
         if (shown == null) compose.setContent { shown?.let { Fixtures.Still(it) } }
         shown = content
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screenshots/party/$name.png")
-        return compose.onRoot().captureToImage().asAndroidBitmap()
+        return compose.pixels()
     }
 
     /** What a phone's camera reads in the code within [box] (px: x0, y0, x1, y1). */
-    private fun scan(bmp: Bitmap, box: IntArray): String {
+    private fun scan(px: Pixels, box: IntArray): String {
         val w = box[2] - box[0]
         val h = box[3] - box[1]
-        val pixels = IntArray(w * h)
-        bmp.getPixels(pixels, 0, w, box[0], box[1], w, h)
+        val pixels = IntArray(w * h) { px[box[0] + it % w, box[1] + it / w] }
         val image = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(w, h, pixels)))
         return QRCodeReader().decode(image, mapOf(DecodeHintType.TRY_HARDER to true)).text
     }
 
     /** The largest difference (levels, any channel) between the pixels in [box] and its first one. */
-    private fun spread(bmp: Bitmap, box: IntArray): Int {
-        val first = bmp.getPixel(box[0], box[1])
+    private fun spread(px: Pixels, box: IntArray): Int {
+        val first = px[box[0], box[1]]
         var worst = 0
-        for (y in box[1] until box[3]) for (x in box[0] until box[2]) {
-            val p = bmp.getPixel(x, y)
-            for (shift in intArrayOf(16, 8, 0)) worst = maxOf(worst, abs(((p shr shift) and 0xFF) - ((first shr shift) and 0xFF)))
-        }
+        for (y in box[1] until box[3]) for (x in box[0] until box[2]) worst = maxOf(worst, Pixels.apart(px[x, y], first))
         return worst
     }
 
@@ -84,7 +76,7 @@ class PartyCodeTest {
     fun `where the cover stands, the code gives the party's link`() {
         for (wall in Appearance.entries) for (colors in listOf(false, true)) {
             val name = "single_${wall.name.lowercase()}" + if (colors) "_colors" else ""
-            val bmp = render(name) {
+            val px = render(name) {
                 Fixtures.Theater(
                     Fixtures.stage(song, appearance = wall, coverField = colors),
                     PlayerStatus.PLAYING,
@@ -93,18 +85,18 @@ class PartyCodeTest {
                     partyCode = LINK,
                 )
             }
-            assertThat(scan(bmp, single), name = name).isEqualTo(LINK)
+            assertThat(scan(px, single), name = name).isEqualTo(LINK)
             // Above the code its card is plain: nothing of the cover shows through.
-            assertThat(spread(bmp, intArrayOf(single[0], single[1], single[2], single[1] + 40)), name = "$name: above the code").isLessThanOrEqualTo(2)
+            assertThat(spread(px, intArrayOf(single[0], single[1], single[2], single[1] + 40)), name = "$name: above the code").isLessThanOrEqualTo(2)
         }
     }
 
     @Test
     fun `in a pause the code dims with the cover and still reads`() {
-        val bmp = render("single_paused") {
+        val px = render("single_paused") {
             Fixtures.Theater(Fixtures.stage(song), PlayerStatus.PAUSED, next = Fixtures.spiegel, group = "Wohnzimmer", partyCode = LINK)
         }
-        assertThat(scan(bmp, single)).isEqualTo(LINK)
+        assertThat(scan(px, single)).isEqualTo(LINK)
     }
 
     @Test
@@ -113,9 +105,9 @@ class PartyCodeTest {
         for (wall in Appearance.entries) {
             val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, flow = true) }.toMap()
             val name = "flow_${wall.name.lowercase()}"
-            val bmp = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
-            assertThat(scan(bmp, middle), name = name).isEqualTo(LINK)
-            assertThat(spread(bmp, intArrayOf(middle[0], middle[1], middle[2], middle[1] + 30)), name = "$name: above the code").isLessThanOrEqualTo(2)
+            val px = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
+            assertThat(scan(px, middle), name = name).isEqualTo(LINK)
+            assertThat(spread(px, intArrayOf(middle[0], middle[1], middle[2], middle[1] + 30)), name = "$name: above the code").isLessThanOrEqualTo(2)
         }
     }
 

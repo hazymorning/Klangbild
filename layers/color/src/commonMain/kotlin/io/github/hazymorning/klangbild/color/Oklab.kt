@@ -10,11 +10,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * Oklab / OkLCh color math (Björn Ottosson, 2020). All palette decisions happen in this
- * perceptual space so that "same lightness" really looks equally light and hue shifts stay
- * harmonious. Pure Kotlin, no Android dependencies, so it is testable on the JVM.
- */
+/** A color in Oklab (Björn Ottosson, 2020): lightness [l], [a] from green to red, [b] from blue to yellow. */
 data class Lab(val l: Float, val a: Float, val b: Float) {
     val chroma: Float get() = hypot(a, b)
 
@@ -40,6 +36,7 @@ data class Lab(val l: Float, val a: Float, val b: Float) {
     fun lerp(o: Lab, t: Float): Lab = Lab(l + (o.l - l) * t, a + (o.a - a) * t, b + (o.b - b) * t)
 }
 
+/** Oklab in polar form: lightness [l], chroma [c] and hue [h] in degrees. */
 data class Lch(val l: Float, val c: Float, val h: Float) {
     fun toLab(): Lab {
         val rad = radians(h.toDouble())
@@ -49,12 +46,14 @@ data class Lch(val l: Float, val c: Float, val h: Float) {
     fun toArgb(alpha: Int = 255): Int = Oklab.toArgb(toLab(), alpha)
 }
 
+/**
+ * Conversions between sRGB and Oklab, and the mapping into the sRGB gamut. Palette decisions
+ * happen in Oklab, where equal steps look equally large.
+ */
 object Oklab {
-    private val toLinearTable = FloatArray(256) { i ->
-        val c = i / 255f
-        if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
-    }
+    private val toLinearTable = FloatArray(256) { srgbToLinear(it / 255f) }
 
+    /** The 8-bit sRGB channel in the low byte of [channel] in linear light. */
     fun srgbToLinear(channel: Int): Float = toLinearTable[channel and 0xFF]
 
     /** An sRGB-encoded value 0..1 in linear light. */
@@ -63,6 +62,7 @@ object Oklab {
         return if (v <= 0.04045f) v / 12.92f else ((v + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
     }
 
+    /** Linear light 0..1 encoded as sRGB 0..1. */
     fun linearToSrgb(x: Float): Float {
         val c = x.coerceIn(0f, 1f)
         return if (c <= 0.0031308f) c * 12.92f else (1.055f * c.toDouble().pow(1.0 / 2.4).toFloat() - 0.055f)
@@ -100,7 +100,7 @@ object Oklab {
         )
     }
 
-    fun isInGamut(lab: Lab, eps: Float = 1e-4f): Boolean {
+    private fun isInGamut(lab: Lab, eps: Float = 1e-4f): Boolean {
         val rgb = toLinear(lab)
         return rgb.all { it >= -eps && it <= 1f + eps }
     }

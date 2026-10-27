@@ -1,7 +1,13 @@
 package io.github.hazymorning.klangbild.ui.stage
 
+/**
+ * [text] as a right-to-left isolate if it contains right-to-left letters, so the separators and
+ * figures around it keep their places in a left-to-right line.
+ */
+internal fun isolateRightToLeft(text: String): String = if (containsRightToLeft(text)) "\u2067$text\u2069" else text
+
 /** True if [text] contains letters of a right-to-left script. */
-fun isRightToLeft(text: String): Boolean = text.any { c ->
+internal fun containsRightToLeft(text: String): Boolean = text.any { c ->
     // The last range that starts at or before c, which holds it if it ends at or after it.
     var low = 0
     var high = RIGHT_TO_LEFT.size / 2 - 1

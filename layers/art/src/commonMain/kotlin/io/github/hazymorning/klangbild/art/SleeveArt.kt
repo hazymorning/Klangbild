@@ -14,11 +14,11 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Artwork for music without a cover: a part of Klangbild's mark (four rounded squares, each
- * turned a little further, around a ring) on a dark, matte sleeve. The lines are the sleeve's
- * own color in gloss and show only where they catch the lamp, in a broad, soft band across the
- * sleeve, like spot varnish on soft-touch paper. Each stands a little off the paper and has its
- * own thickness of varnish.
+ * The generated cover for a track without artwork: a part of Klangbild's mark (four rounded
+ * squares, each turned a little further, around a ring) on a dark, matte sleeve. The lines are
+ * the sleeve's own color in gloss and show only where they catch the lamp, in a broad, soft band
+ * across the sleeve, like spot varnish on soft-touch paper. Each stands a little off the paper
+ * and has its own thickness of varnish.
  *
  * The foil the lines catch the light in follows [Seed.foil], the view of the mark [Seed.view]:
  * one artist's records share their foil and differ in their view. Without a view the rings
@@ -30,25 +30,26 @@ import kotlin.math.sin
  */
 object SleeveArt {
 
-    /** What the artwork follows: the name its foil comes from and the name its view comes from. */
+    /** What the cover follows: the name its foil comes from and the name its view comes from. */
     data class Seed(val foil: String?, val view: String?)
 
     /** A view of the mark: its size against the sleeve's side and where its middle stands (shares of the side). */
     data class View(val zoom: Float, val x: Float, val y: Float)
 
     /**
-     * The views of the mark: in each, every line keeps clear of the sleeve's edges by a tenth of
-     * its side or crosses them steeply, never along them ([SleeveArtTest]). The last is for
-     * what has no view of its own.
+     * The views of the mark that [Seed.view] picks from. In each, every line keeps a tenth of the
+     * sleeve's side clear of its edges or crosses them steeply ([SleeveArtTest]).
      */
-    val views = listOf(
+    internal val views = listOf(
         View(2.4f, 0.90f, 0.90f),
         View(2.2f, 0.88f, 0.54f),
         View(2.6f, 0.94f, 0.32f),
         View(3.2f, 0.86f, 0.78f),
         View(2.2f, 0.60f, 0.90f),
     )
-    val rising = View(2.2f, 0.46f, 0.90f)
+
+    /** The view for a seed without one: the rings rise from below. */
+    internal val rising = View(2.2f, 0.46f, 0.90f)
 
     /** A foil: the metal where it catches the light (lightness, chroma, hue in Oklab), and the hue the sleeve leans to. */
     private class Foil(l: Float, c: Float, h: Float, ground: Float, sleeveChroma: Float = SLEEVE_C) {
@@ -68,7 +69,7 @@ object SleeveArt {
     )
     private val plain = Foil(0.92f, 0f, 0f, 0f, sleeveChroma = 0f)
 
-    /** The mark from tools/logo.svg (a 1024 canvas): each line's half size, corner, stroke and turn, from the ring outward. */
+    /** The mark from tools/logo.svg (a 1024 canvas): each line's half size, corner, stroke, turn and varnish, from the ring outward. */
     private class Line(val half: Float, val corner: Float, val stroke: Float, turn: Float, val varnish: Float) {
         val cos = cos(-turn * PI.toFloat() / 180f)
         val sin = sin(-turn * PI.toFloat() / 180f)
@@ -83,10 +84,10 @@ object SleeveArt {
     )
 
     /** Which foil [seed] gets (an index), or null for plain silver on black. */
-    fun foilOf(seed: Seed): Int? = seed.foil?.let { index(it, foils.size) }
+    internal fun foilOf(seed: Seed): Int? = seed.foil?.let { index(it, foils.size) }
 
     /** Which view of the mark [seed] gets. */
-    fun viewOf(seed: Seed): View = seed.view?.let { views[index(it, views.size)] } ?: rising
+    internal fun viewOf(seed: Seed): View = seed.view?.let { views[index(it, views.size)] } ?: rising
 
     private fun index(name: String, count: Int): Int = (stableHash(name.trim().lowercase()).toLong() and 0xFFFFFFFFL).rem(count).toInt()
 
@@ -152,7 +153,7 @@ object SleeveArt {
     private fun soft(line: Line, x: Float, y: Float, half: Float, px: Float): Float =
         (0.5f - (abs(centerline(line, x, y)) - half) / (px * RELIEF_SOFTNESS)).coerceIn(0f, 1f)
 
-    /** Linear light to an opaque ARGB pixel, dithered below one step of the screen so no gradient bands. */
+    /** Linear light to an opaque ARGB pixel, with interleaved gradient noise below one step of the screen, so gradients don't band. */
     private fun argb(rgb: FloatArray, i: Int, j: Int): Int {
         val n = fract(52.982918f * fract(0.06711056f * i + 0.00583715f * j)) - 0.5f
         var p = 0xFF shl 24
@@ -165,7 +166,7 @@ object SleeveArt {
 
     private fun fract(x: Float): Float = x - floor(x)
 
-    /** The sleeve: just lighter than the dark wall, a breath of the foil's hue. */
+    /** The sleeve: just lighter than the dark background, with a hint of the foil's hue. */
     private const val SLEEVE_L = 0.16f
     private const val SLEEVE_C = 0.022f
 

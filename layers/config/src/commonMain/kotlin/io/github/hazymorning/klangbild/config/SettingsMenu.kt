@@ -471,17 +471,8 @@ object SettingsMenu {
     fun stepLanguage(language: AppLanguage, direction: Int, wrap: Boolean): AppLanguage = move(LANGUAGE_ORDER, language, direction, wrap)
 
     /** "Ten minutes", "One hour", "90 minutes", "Two hours": numbers up to twelve in words. */
-    fun duration(minutes: Int, t: Texts): String {
-        val hours = minutes / 60
-        return if (minutes % 60 == 0 && hours in 1..MAX_WORD_COUNT) {
-            t.plural(Plurals.hours, hours, t.countWord(hours))
-        } else {
-            t.plural(Plurals.minutes, minutes, t.countWord(minutes))
-        }
-    }
-
-    /** The largest number written in words. */
-    private const val MAX_WORD_COUNT = 12
+    fun duration(minutes: Int, t: Texts): String =
+        if (minutes >= 60 && minutes % 60 == 0) t.plural(Plurals.hours, minutes / 60) else t.plural(Plurals.minutes, minutes)
 
     /** "Off", "30 minutes", "1 hour", "End of chapter", "End of episode" and so on. */
     fun sleepValue(choice: SleepChoice, kind: MediaKind?, t: Texts): String = when (choice) {
@@ -499,10 +490,10 @@ object SettingsMenu {
 
     /** "end of the chapter", for the sentence that says when the music pauses. */
     private fun endPhrase(choice: SleepChoice, kind: MediaKind?): StringId = when {
-        choice == SleepChoice.CHAPTER_END -> Strings.sleepEndChapter
-        kind == MediaKind.PODCAST -> Strings.sleepEndEpisode
-        kind == MediaKind.AUDIOBOOK -> Strings.sleepEndBook
-        else -> Strings.sleepEndTrack
+        choice == SleepChoice.CHAPTER_END -> Strings.aboutSleepTimerEndChapter
+        kind == MediaKind.PODCAST -> Strings.aboutSleepTimerEndEpisode
+        kind == MediaKind.AUDIOBOOK -> Strings.aboutSleepTimerEndBook
+        else -> Strings.aboutSleepTimerEndTrack
     }
 
     /** How the queue shows, in a word: Off, List, Cover Flow. */

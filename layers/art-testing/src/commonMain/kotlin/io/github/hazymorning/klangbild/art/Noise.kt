@@ -38,8 +38,8 @@ class Noise(seed: Int) {
         return ab + (cd - ab) * v
     }
 
-    /** Fractal Brownian motion, 0..1. */
-    fun fbm(x: Float, y: Float, octaves: Int = 5, lacunarity: Float = 2f, gain: Float = 0.5f): Float {
+    /** Fractal Brownian motion, 0..1: [octaves] layers of [value], each twice as fine and half as strong. */
+    fun fbm(x: Float, y: Float, octaves: Int = 5): Float {
         var amp = 0.5f
         var freq = 1f
         var sum = 0f
@@ -47,12 +47,9 @@ class Noise(seed: Int) {
         repeat(octaves) {
             sum += amp * value(x * freq, y * freq)
             norm += amp
-            amp *= gain
-            freq *= lacunarity
+            amp *= 0.5f
+            freq *= 2f
         }
         return sum / norm
     }
-
-    /** 1D noise along x, convenient for ridgelines. */
-    fun line(x: Float, row: Float = 0.5f, octaves: Int = 5): Float = fbm(x, row, octaves)
 }

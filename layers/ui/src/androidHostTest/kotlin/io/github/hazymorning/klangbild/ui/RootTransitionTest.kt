@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
+import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.PlayerStatus
@@ -39,22 +40,23 @@ class RootTransitionTest {
     fun trackChangeAndRest() {
         val a = Fixtures.stage(Fixtures.track(SyntheticCover.MOSS), mdpi)
         val b = Fixtures.stage(Fixtures.track(SyntheticCover.CONFETTI), mdpi)
-        fun stageUi(s: io.github.hazymorning.klangbild.app.StageData) =
-            UiState(screen = Screen.Stage(s.track, PlayerStatus.PLAYING, null), stage = s)
+        fun stageUi(s: StageData) =
+            UiState(screen = Screen.Stage(s.track, PlayerStatus.PLAYING, null), stage = s, texts = Fixtures.texts)
         var ui by mutableStateOf(stageUi(a))
         compose.mainClock.autoAdvance = false
         compose.setContent { KlangbildRoot(ui, mdpi, RootHooks(positionOf = { 60_000L }, now = { 0L }, glyphs = AndroidGlyphs)) }
         compose.mainClock.advanceTimeBy(2_500) // entrance fade
         compose.onRoot().captureRoboImage("build/screenshots/root/00_a.png")
         ui = stageUi(b)
-        for (i in 1..4) {
-            compose.mainClock.advanceTimeBy(900)
-            compose.onRoot().captureRoboImage("build/screenshots/root/0${i}_change.png")
+        // The change takes a second.
+        for (i in 1..8) {
+            compose.mainClock.advanceTimeBy(125)
+            compose.onRoot().captureRoboImage("build/screenshots/root/%02d_change.png".format(i))
         }
         ui = ui.copy(screen = Screen.Rest(RestReason.IDLE, "Wohnzimmer"))
-        for (i in 5..8) {
+        for (i in 9..12) {
             compose.mainClock.advanceTimeBy(600)
-            compose.onRoot().captureRoboImage("build/screenshots/root/0${i}_rest.png")
+            compose.onRoot().captureRoboImage("build/screenshots/root/%02d_rest.png".format(i))
         }
     }
 }

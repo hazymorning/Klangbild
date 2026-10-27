@@ -5,7 +5,6 @@ import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.bearer
 import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
-import io.github.hazymorning.klangbild.data.isSuccessful
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
@@ -15,6 +14,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HeaderValueParam
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
+import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -30,6 +31,9 @@ import kotlinx.serialization.json.put
 /** Music Assistant rejected the token. */
 class MaAuthException : IOException("Music Assistant rejected the token")
 
+/** A track's lyrics as Music Assistant has them: [plain] text, and [lrc] with the times of its lines. */
+data class TrackLyrics(val plain: String?, val lrc: String?)
+
 /** Music Assistant does not know the command (a version from before it). */
 class MaUnknownCommandException(command: String) : IOException("Music Assistant does not know $command")
 
@@ -42,7 +46,15 @@ class MaUnknownCommandException(command: String) : IOException("Music Assistant 
  * address set up; the cleartext guard of the shared client keeps plain HTTP inside the home
  * network.
  */
-class MaClient(private val http: HttpClient, val baseUrl: String, private val token: String) {
+class MaClient(
+    private val http: HttpClient,
+    val baseUrl: String,
+    private val token: String,
+    /** How long a command may take, reading included. */
+    private val callTimeoutMs: Long = CALL_TIMEOUT_MS,
+    /** How long a lyrics request may take, and wait for its next bytes. */
+    private val lyricsTimeoutMs: Long = LYRICS_TIMEOUT_MS,
+) {
 
     /** The items of queue [queueId] from [offset], at most [limit], in play order. */
     suspend fun items(queueId: String, offset: Int, limit: Int): JsonArray {
@@ -96,6 +108,8 @@ class MaClient(private val http: HttpClient, val baseUrl: String, private val to
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {
         if (command("player_queues/all", JsonObject(emptyMap())) is JsonArray) MaLink.CONNECTED else MaLink.UNREACHABLE
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: MaAuthException) {
         MaLink.AUTH_FAILED
     } catch (_: Exception) {
@@ -119,43 +133,43 @@ class MaClient(private val http: HttpClient, val baseUrl: String, private val to
      * The words Music Assistant has for [track] (a queue item's `media_item`): plain and with
      * times (`metadata/get_track_lyrics`, Music Assistant 2.8 and later). It may look them up
      * online first, which it does at most once in 30 seconds, so the answer may take a while:
-     * the call has a timeout of its own ([LYRICS_TIMEOUT_MS]). Throws [MaUnknownCommandException]
+     * the call has a timeout of its own ([lyricsTimeoutMs]). Throws [MaUnknownCommandException]
      * on a version without the command.
      */
-    suspend fun lyrics(track: JsonObject): Pair<String?, String?> {
-        return when (val answer = command(LYRICS_COMMAND, buildJsonObject { put("track", track) }, slow = true)) {
-            is JsonArray -> answer.getOrNull(0).string() to answer.getOrNull(1).string()
-            is JsonObject -> answer["lyrics"].string() to answer["lrc_lyrics"].string()
-            else -> null to null
+    suspend fun lyrics(track: JsonObject): TrackLyrics {
+        val args = buildJsonObject { put("track", track) }
+        return when (val answer = command(LYRICS_COMMAND, args, timeoutMs = lyricsTimeoutMs, readTimeoutMs = lyricsTimeoutMs)) {
+            is JsonArray -> TrackLyrics(answer.getOrNull(0).string(), answer.getOrNull(1).string())
+            is JsonObject -> TrackLyrics(answer["lyrics"].string(), answer["lrc_lyrics"].string())
+            else -> TrackLyrics(null, null)
         }
     }
 
     /**
-     * One command; canceling the coroutine cancels the request. A [slow] one has room for an
-     * answer that takes a while (the lyrics): the time it may wait for the next bytes is the
-     * call's own.
+     * One command; canceling the coroutine cancels the request. It may take [timeoutMs], reading
+     * included, and wait [readTimeoutMs] for the next bytes instead of as long as the engine lets it.
      */
-    private suspend fun command(name: String, args: JsonObject, slow: Boolean = false): JsonElement {
+    private suspend fun command(name: String, args: JsonObject, timeoutMs: Long = callTimeoutMs, readTimeoutMs: Long? = null): JsonElement {
         val body = buildJsonObject {
             put("message_id", name)
             put("command", name)
             put("args", args)
         }
         val text = http.fetch(
-            if (slow) LYRICS_TIMEOUT_MS else CALL_TIMEOUT_MS,
+            timeoutMs,
             {
                 method = HttpMethod.Post
                 address("$baseUrl/api")
                 bearer(token)
                 setBody(TextContent(body.toString(), JSON))
             },
-            readTimeoutMs = if (slow) LYRICS_TIMEOUT_MS else null,
+            readTimeoutMs = readTimeoutMs,
         ) { response ->
             val code = response.status.value
             if (code == 401 || code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
             if (code == 400 && response.bodyBytes(UNKNOWN_PEEK_BYTES).decodeToString().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
-            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", code)
+            if (!response.status.isSuccess()) throw HttpStatusException("Music Assistant", code)
             response.textBelow(MAX_ANSWER_BYTES)
         }
         return withContext(Dispatchers.Default) { Json.parseToJsonElement(text) }
@@ -173,16 +187,15 @@ class MaClient(private val http: HttpClient, val baseUrl: String, private val to
         /** A queue window is a few hundred kilobytes at most; anything far larger is not ours. */
         const val MAX_ANSWER_BYTES = 4L * 1024 * 1024
 
-        /** One command gets this long, reading included. */
-        const val CALL_TIMEOUT_MS = 10_000L
+        private const val CALL_TIMEOUT_MS = 10_000L
 
-        const val LYRICS_COMMAND = "metadata/get_track_lyrics"
+        private const val LYRICS_COMMAND = "metadata/get_track_lyrics"
 
         /**
-         * The words get this long: Music Assistant asks the online service it looks them up in
-         * at most once in 30 seconds, so an answer may wait for that, and for one before it.
+         * Timeout for a lyrics request. Music Assistant queries its online lyrics service at most
+         * once every 30 seconds, so an answer may wait for one or two of those slots.
          */
-        const val LYRICS_TIMEOUT_MS = 75_000L
+        private const val LYRICS_TIMEOUT_MS = 75_000L
 
         /** Enough of a refusal to read its first words. */
         private const val UNKNOWN_PEEK_BYTES = 256L
