@@ -30,7 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -88,7 +88,7 @@ class HaSource(
 
     /** This TV's own speaker, once it plays and Home Assistant has it. */
     private val own: OwnSpeaker? = if (ma != null && speaker != null) {
-        OwnSpeaker(scope, connection, ma, speaker, { Backoff(ownRetryMs, OwnSpeaker.LAST_RETRY_MS) }) { publish(connection.status.value, connection.entities.value) }
+        OwnSpeaker(scope, connection, ma, speaker, { Backoff(ownRetryMs, OwnSpeaker.LAST_RETRY_MS) }) { publish() }
     } else {
         null
     }
@@ -104,7 +104,7 @@ class HaSource(
     private val queue = QueueReader(
         scope, connection, { speakerShown }, config.baseUrl, ma, now,
         latest = { lastSnapshot }, shown = { _state.value.player }, lock = lock, timing = queueTiming,
-    ) { publish(connection.status.value, connection.entities.value) }
+    ) { publish() }
 
     private var linkDownSince: Long? = null
 
@@ -122,7 +122,7 @@ class HaSource(
     override fun follow(ids: Set<String>) {
         if (ids == lightIds) return
         lightIds = ids
-        publish(connection.status.value, connection.entities.value)
+        publish()
     }
 
     /** The entities of one's own: what the quick settings' buttons work and look at, and the values in the status line. */
@@ -131,7 +131,7 @@ class HaSource(
     override fun followEntities(ids: Set<String>) {
         if (ids == ownIds) return
         ownIds = ids
-        publish(connection.status.value, connection.entities.value)
+        publish()
     }
 
     /**
@@ -174,8 +174,7 @@ class HaSource(
     override fun start() {
         connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
         collector = scope.launch {
-            combine(connection.status, connection.entities, connection.registry, connection.config, connection.missing) { st, ents, _, _, _ -> st to ents }
-                .collect { (st, ents) -> publish(st, ents) }
+            merge(connection.status, connection.entities, connection.registry, connection.config, connection.missing).collect { publish() }
         }
         partyPoller = ma?.let { client -> scope.launch { pollParty(client) } }
         queue.start()
@@ -210,7 +209,7 @@ class HaSource(
             }
             if (queue != partyQueue) {
                 partyQueue = queue
-                publish(connection.status.value, connection.entities.value)
+                publish()
             }
             delay(partyMs)
         }
@@ -283,8 +282,10 @@ class HaSource(
         attempt { connection.callService("media_player", "media_seek", entity, data = data) }
     }
 
-    /** Called from the status/entity collector and after queue refreshes, serialized. */
-    private fun publish(status: HaStatus, entities: Map<String, EntityState>): Unit = synchronized(lock) {
+    /** Builds the source state from the connection's current state and publishes it, whenever an input changes. */
+    private fun publish(): Unit = synchronized(lock) {
+        val status = connection.status.value
+        val entities = connection.entities.value
         val t = now()
         val link = when (status) {
             HaStatus.Connected -> LinkState.CONNECTED
@@ -376,7 +377,7 @@ class HaSource(
             backJob = back?.let { at ->
                 scope.launch {
                     delay((at - now()).coerceAtLeast(0))
-                    publish(connection.status.value, connection.entities.value)
+                    publish()
                 }
             }
         }
