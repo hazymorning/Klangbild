@@ -312,7 +312,7 @@ class HaSource(
         }
         player = player ?: lastSnapshot.takeIf { link != LinkState.CONNECTED }
 
-        val key = player?.track?.let { TrackMatch.key(it) }
+        val key = player?.track?.let { TrackMatch.looseKey(it) }
         if (key != null) queue.onTrack(key, player)
 
         // One estimate of Home Assistant's clock for the whole state: the position is published on it.

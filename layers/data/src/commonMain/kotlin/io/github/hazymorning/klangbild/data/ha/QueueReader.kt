@@ -80,10 +80,12 @@ internal class QueueReader(
     private var queueJob: Job? = null
     @Volatile private var queue: QueueInfo? = null
     @Volatile private var window: QueueWindow? = null
-    @Volatile private var queueForKey: String? = null
 
-    /** The song that plays ([TrackMatch.key]). */
-    @Volatile private var songKey: String? = null
+    /** The track [queue] and [window] were read for ([TrackMatch.looseKey]). */
+    @Volatile private var queueReadFor: String? = null
+
+    /** The track that plays ([TrackMatch.looseKey]). */
+    @Volatile private var trackKey: String? = null
 
     /** How the link to Music Assistant itself stands, as its last answer showed. */
     @Volatile var maLink: MaLink? = null
@@ -178,8 +180,8 @@ internal class QueueReader(
         awaitEnd?.cancel()
         queue = null
         window = null
-        queueForKey = null
-        songKey = null
+        queueReadFor = null
+        trackKey = null
         maNext = null
         queueWorks = null
         awaited = null
@@ -189,16 +191,16 @@ internal class QueueReader(
 
     /** The song [key] plays on [player]: a new one starts its queue's read (called under the [lock]). */
     fun onTrack(key: String, player: PlayerSnapshot) {
-        if (key == songKey) return
+        if (key == trackKey) return
         // What Music Assistant itself said comes next belonged to the song before (the same
         // song again later has a queue of its own).
         maNext = null
-        songKey = key
+        trackKey = key
         if (player.isMusicAssistant) startQueueRead(force = false)
     }
 
     /** Whether the queue has been read for the song [key]. */
-    fun knows(key: String?): Boolean = key != null && queueForKey == key
+    fun knows(key: String?): Boolean = key != null && queueReadFor == key
 
     /** The queue as read for the song [key], if it has been. */
     fun queueFor(key: String?): QueueInfo? = queue?.takeIf { knows(key) }
@@ -214,7 +216,7 @@ internal class QueueReader(
      */
     fun awaitsDetails(p: PlayerSnapshot, key: String, t: Long): Boolean {
         val track = p.track
-        if (track == null || !p.isMusicAssistant || queueWorks == false || queueForKey == key || announced(track) != null) {
+        if (track == null || !p.isMusicAssistant || queueWorks == false || queueReadFor == key || announced(track) != null) {
             awaited = null
             return false
         }
@@ -290,7 +292,7 @@ internal class QueueReader(
             maPosition = null
             return p
         }
-        val m = maPosition?.takeIf { it.key == TrackMatch.key(track) } ?: return p
+        val m = maPosition?.takeIf { it.key == TrackMatch.looseKey(track) } ?: return p
         // The moment Music Assistant's position was valid, on Home Assistant's clock.
         val at = m.position.atMs - skewMs
         val reported = p.positionMs
@@ -305,7 +307,7 @@ internal class QueueReader(
     private fun details(p: PlayerSnapshot): PlayerSnapshot {
         val track = p.track ?: return p
         if (track.kind == MediaKind.RADIO) return enrichStation(p, track)
-        val known = queueForKey == TrackMatch.key(track)
+        val known = queueReadFor == TrackMatch.looseKey(track)
         val current = (if (known) queue?.current else announced(track)) ?: return p
         if (!sameTitle(current.title, track.title)) return p
         val w = window?.takeIf { w -> known && w.current?.let { sameTitle(it.title, track.title) } == true }
@@ -334,13 +336,13 @@ internal class QueueReader(
      * (Music Assistant's choice of the moment) and the station's from the queue.
      */
     private fun enrichStation(p: PlayerSnapshot, track: TrackInfo): PlayerSnapshot {
-        val known = queueForKey == TrackMatch.key(track)
+        val known = queueReadFor == TrackMatch.looseKey(track)
         val mine = window?.current?.takeIf { known && it.kind == MediaKind.RADIO && sameTitle(it.title, track.title) }
         val item = queue?.current?.takeIf { known && it.kind == MediaKind.RADIO }
         val station = item?.source ?: mine?.source ?: track.source
         val album = track.album ?: mine?.album ?: track.source?.takeIf { known && station != null && !it.equals(station, ignoreCase = true) }
         val picture = stationPictures.choose(
-            TrackMatch.key(track),
+            TrackMatch.looseKey(track),
             listOfNotNull(
                 mine?.takeIf { it.songPicture }?.artworkUrl?.let { StationPictures.Offer(it, mine.artworkFallbackUrl, StationPictures.Rank.SONG, certain = true) },
                 track.artworkUrl?.let { url ->
@@ -369,8 +371,8 @@ internal class QueueReader(
      * changed is published.
      */
     private suspend fun checkMaQueue(client: MaClient) {
-        val key = songKey ?: return
-        val q = queue?.takeIf { queueForKey == key } ?: return
+        val key = trackKey ?: return
+        val q = queue?.takeIf { queueReadFor == key } ?: return
         val id = q.queueId ?: latest()?.activeQueue ?: return
         val answer = try {
             client.queue(id)
@@ -392,7 +394,7 @@ internal class QueueReader(
         val same = maNext?.let { it.key == key && it.basis == basis } == true
         val read = now.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
         val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } }
-        if (songKey != key) return
+        if (trackKey != key) return
         val moved = position != null && position != maPosition?.takeIf { it.key == key }?.position
         if (position != null) maPosition = MaPosition(key, position).takeIf { position.playing }
         if (same && (read == null || read == window)) {
@@ -451,10 +453,10 @@ internal class QueueReader(
     }
 
     private suspend fun refreshQueue(force: Boolean) {
-        val key = songKey ?: return
-        if (!force && queueForKey == key) return
+        val key = trackKey ?: return
+        if (!force && queueReadFor == key) return
         delay(timing.burstMs)
-        if (songKey != key) return
+        if (trackKey != key) return
         val target = entity() ?: return
         val response = try {
             connection.callService("music_assistant", "get_queue", target, returnResponse = true)
@@ -466,16 +468,16 @@ internal class QueueReader(
         queueWorks = response != null
         // No answer (a source without a queue, like a streaming app playing on the speaker directly):
         // nothing is known to follow. A periodic refresh that fails keeps what is known.
-        val again = force && queueForKey == key
+        val again = force && queueReadFor == key
         val parsed = response?.let { PlayerParser.queue(it, target, baseUrl) }
         if (parsed == null && again) return
         // Music Assistant's queue is read again only when something moved, or for spoken word,
         // whose speed can change at any time.
         val read = parsed?.let { q -> if (!again || windowStale(q)) readWindow(q) else window } ?: window.takeIf { again }
-        if (songKey != key) return
+        if (trackKey != key) return
         queue = parsed
         window = read
-        queueForKey = key
+        queueReadFor = key
         // The words of the song that plays and of the one up next, as they come; never waited for.
         read?.let { w -> lyrics?.want(listOfNotNull(w.currentSong, w.nextSong)) }
         publish()
@@ -483,13 +485,13 @@ internal class QueueReader(
         // Music Assistant names the next item anew only when the player reports after the new one
         // has started: a queue replaced as it starts still names the old queue's next for a moment.
         delay(timing.settleMs)
-        if (songKey != key) return
+        if (trackKey != key) return
         refreshQueue(force = true)
         // A book's or an episode's chapters may follow a moment after it starts (Music Assistant 2.11).
         val current = window?.current
         if (current != null && current.kind.spoken && current.chapters.isEmpty()) {
             delay(CHAPTERS_AGAIN_MS)
-            if (songKey == key) refreshQueue(force = true)
+            if (trackKey == key) refreshQueue(force = true)
         }
     }
 
