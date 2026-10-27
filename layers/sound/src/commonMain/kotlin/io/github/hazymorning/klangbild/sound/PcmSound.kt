@@ -69,7 +69,7 @@ class PcmSound(rate: Int) : SynchronizedObject(), SoundFeed {
         if (readers > 0) timeline.beat(heardUs, downbeat)
     }
 
-    /** The server dropped the beats to come. */
+    /** The server cleared or ended its beat stream. */
     fun beatsCleared() = timeline.clearBeats()
 
     /** The music jumped or ended: what was measured for later no longer comes. */
@@ -79,7 +79,7 @@ class PcmSound(rate: Int) : SynchronizedObject(), SoundFeed {
     }
 
     companion object {
-        /** A new stretch every 512 samples: about 94 a second, each overlapping the one before by half. */
+        /** A new stretch every 512 samples: about 94 a second at 48 kHz, each overlapping the one before by half. */
         const val HOP = 512
 
         /** Two full-scale 16-bit channels summed, as -1 to 1. */

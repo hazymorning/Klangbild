@@ -44,10 +44,12 @@ class SoundTimeline(capacity: Int = CAPACITY, private val beatCapacity: Int = BE
         beatCount++
     }
 
-    /** Forgets the beats to come (the server has dropped them), keeping the stretches. */
+    /** Forgets every beat, the latest one heard too (the server cleared or ended its beat stream); keeps the stretches. */
     fun clearBeats(): Unit = synchronized(this) {
         beatCount = 0
     }
+
+    /** Forgets every stretch and every beat. */
     fun clear(): Unit = synchronized(this) {
         count = 0
         beatCount = 0
