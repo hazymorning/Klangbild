@@ -384,7 +384,7 @@ private const val GLOW_MAP_H = 270
  * the list moves through it. Like every light, it is gone before the band along the screen's
  * edges.
  */
-fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
+private fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
     val img = LinearImage(GLOW_MAP_W, GLOW_MAP_H)
     val sx = widthDp / GLOW_MAP_W
     val sy = heightDp / GLOW_MAP_H

@@ -100,7 +100,7 @@ object RestTexts {
  * The rest screen's light: a soft oval of warm light behind the clock, both exactly in the
  * screen's middle: a faint light, never off.
  */
-object RestLight {
+private object RestLight {
     const val MAP_W = 480
     const val MAP_H = 270
 
