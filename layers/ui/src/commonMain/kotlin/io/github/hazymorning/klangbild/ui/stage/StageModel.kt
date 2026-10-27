@@ -26,6 +26,8 @@ class StageModel(
     val durationMs: Long?,
     /** Smoothed playback position "now" in the item's own time (null without duration information). */
     val positionMs: () -> Long?,
+    /** The status line at the top right: where the music plays, the volume, the time. */
+    val statusLine: StatusLine,
     /** Year of the album, shown after its name. */
     val year: Int? = null,
     /** The progress bar is shown (setting, or a key was just pressed). */
@@ -43,8 +45,6 @@ class StageModel(
     val nextTitle: String? = null,
     /** The words before [next]: "Up next", unless the line tells how to open the quick settings. */
     val nextLead: String? = null,
-    /** The status line at the top right: where the music plays, the volume, the time. */
-    val statusLine: StatusLine? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */
     val chapter: String? = null,
     /** Where the progress bar starts in the item's time: the chapter's start. */

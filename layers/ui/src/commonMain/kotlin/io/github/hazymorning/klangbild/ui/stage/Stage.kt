@@ -413,24 +413,26 @@ fun StatusLayer(
     alpha: (() -> Float)? = null,
 ) {
     val status = model.statusLine
-    if (status == null || status.isEmpty) return
+    if (status.isEmpty) return
     val layout = model.scene.layout
     val styles = rememberStageStyles(model.scene.palette)
     val figures = rememberFigures(styles.time, Face.TITLE)
     val clockText = status.clock
     val measurer = rememberTextMeasurer()
-    val local = LocalDensity.current
+    val localDensity = LocalDensity.current
     val separator = TimeText.SEPARATOR.trimStart()
+    // A value after the clock, or after another value, follows a separator.
+    fun valueText(i: Int, value: String) = if (clockText == null && i == 0) value else separator + value
     // Which values fit beside the clock and the place, worked out on their measured widths.
-    val values = remember(status, styles, layout, local) {
+    val values = remember(status, styles, layout, localDensity) {
         fun width(text: AnnotatedString, style: TextStyle) = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
-        val space = with(local) { styles.label.fontSize.toPx() } * STATUS_SPACE_EM
-        var room = layout.columnWidth * local.density
+        val space = with(localDensity) { styles.label.fontSize.toPx() } * STATUS_SPACE_EM
+        var room = layout.columnWidth * localDensity.density
         if (clockText != null) room -= width(figures.of(clockText), styles.time) + space
         status.lead?.let { room -= width(AnnotatedString(separator + it), styles.label) }
         val fit = ArrayList<String>()
         for ((i, v) in status.values.withIndex()) {
-            val need = width(AnnotatedString(if (clockText == null && i == 0) v else separator + v), styles.label) + space
+            val need = width(AnnotatedString(valueText(i, v)), styles.label) + space
             if (need > room) break
             fit += v
             room -= need
@@ -438,18 +440,16 @@ fun StatusLayer(
         fit
     }
     val leadAfter = clockText != null || values.isNotEmpty()
-    val faded = if (alpha == null) modifier else modifier.graphicsLayer {
+    // Faded draw by draw: its parts never overlap, and no layer of the screen's size is needed.
+    val fade = if (alpha == null) Modifier else Modifier.graphicsLayer {
         this.alpha = alpha().coerceIn(0f, 1f)
-        // Faded draw by draw: its parts never overlap, and no layer of the screen's size is needed.
         compositingStrategy = CompositingStrategy.ModulateAlpha
     }
     Layout(
-        modifier = faded.fillMaxSize(),
+        modifier = modifier.then(fade).fillMaxSize(),
         content = {
             if (clockText != null) BasicText(figures.of(clockText), style = styles.time.copy(color = styles.muted), maxLines = 1) else Box(Modifier)
-            values.forEachIndexed { i, v ->
-                BasicText(if (clockText == null && i == 0) v else separator + v, style = styles.label, maxLines = 1)
-            }
+            values.forEachIndexed { i, v -> BasicText(valueText(i, v), style = styles.label, maxLines = 1) }
             Crossfade(
                 targetState = status.lead,
                 animationSpec = tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
@@ -473,7 +473,7 @@ fun StatusLayer(
         val clock = measurables.first().measure(Constraints())
         val parts = measurables.subList(1, measurables.size - 1).map { it.measure(Constraints()) }
         // Everything before the place, with the space after each part.
-        val before = listOf(clock).filter { it.width > 0 } + parts
+        val before = if (clock.width > 0) listOf(clock) + parts else parts
         val used = before.sumOf { it.width + space }
         val lead = measurables.last().measure(Constraints(maxWidth = (column - used).coerceAtLeast(0)))
         fun Placeable.first(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
