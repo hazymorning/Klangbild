@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
 
 /**
  * Klangbild's own new versions. As a screen starts showing it, it asks GitHub for the newest
@@ -44,7 +45,12 @@ class Updates(
     fun checkIfDue() {
         if (_info.value.installed == null) return
         scope.launch {
-            val stored = store.data.first()
+            val stored = try {
+                store.data.first()
+            } catch (e: IOException) {
+                log.warn("Update: what GitHub said is not read (${e::class.simpleName})")
+                return@launch
+            }
             _info.update { it.copy(latest = stored[LATEST] ?: it.latest) }
             val at = stored[CHECKED_AT]
             if (at == null || minutes() - at !in 0 until DAY_MINUTES) check()

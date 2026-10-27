@@ -70,7 +70,6 @@ import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -515,8 +514,6 @@ class NowPlayingController(
     private suspend fun load() {
         val s = try {
             stored.await()
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: IOException) {
             log.warn("Settings: not read (${e::class.simpleName})")
             return
@@ -545,8 +542,6 @@ class NowPlayingController(
     private suspend fun persist() {
         try {
             persistLock.withLock { settingsStore.write(settings.value) }
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: IOException) {
             log.warn("Settings: not written (${e::class.simpleName})")
         }
