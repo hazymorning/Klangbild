@@ -32,7 +32,7 @@ class LightColorsTest {
         val red = 0xFFC8321E.toInt()
         val blue = 0xFF1E46B4.toInt()
         val yellow = 0xFFE0B020.toInt()
-        val (l, c, r) = lights(CoverLightColors(field(red, yellow, blue), moving = false)).map(::lab)
+        val (l, c, r) = lights(LightColors(field(red, yellow, blue), moving = false)).map(::lab)
         for ((a, b) in listOf(l to c, c to r, l to r)) assertThat(distance(a, b)).isGreaterThan(0.09f)
         // Red sits on the left of the cover, blue on its right.
         assertThat(l.a, name = "left light red").isGreaterThan(0.08f)
@@ -41,21 +41,21 @@ class LightColorsTest {
 
     @Test
     fun `a cover of one color gives that color and two of its neighbors, a gray one three whites`() {
-        val teal = lights(CoverLightColors(field(0xFF1E8C8C.toInt()), moving = false)).map(::lab)
+        val teal = lights(LightColors(field(0xFF1E8C8C.toInt()), moving = false)).map(::lab)
         for ((a, b) in teal.zipWithNext()) assertThat(distance(a, b)).isGreaterThan(0.04f)
-        val gray = lights(CoverLightColors(field(0xFF808080.toInt()), moving = false)).map(::lab)
+        val gray = lights(LightColors(field(0xFF808080.toInt()), moving = false)).map(::lab)
         for (g in gray) assertThat(sqrt(g.a * g.a + g.b * g.b)).isLessThan(0.05f)
     }
 
     @Test
     fun `with motion the colors move on from light to light, resting in between`() {
-        val colors = CoverLightColors(field(0xFFC8321E.toInt(), 0xFFE0B020.toInt(), 0xFF1E46B4.toInt()), moving = true)
+        val colors = LightColors(field(0xFFC8321E.toInt(), 0xFFE0B020.toInt(), 0xFF1E46B4.toInt()), moving = true)
         val start = lights(colors, 0.0).map(::lab)
         // Resting: a little later nothing has changed.
-        val rest = lights(colors, CoverLightColors.ROTATE_S * 0.5).map(::lab)
+        val rest = lights(colors, LightColors.ROTATE_S * 0.5).map(::lab)
         for ((a, b) in start.zip(rest)) assertThat(distance(a, b)).isLessThan(0.001f)
         // A whole step later each light shows the color its neighbor showed.
-        val next = lights(colors, CoverLightColors.ROTATE_S).map(::lab)
+        val next = lights(colors, LightColors.ROTATE_S).map(::lab)
         assertThat(distance(next[0], start[1])).isLessThan(0.001f)
         assertThat(distance(next[1], start[2])).isLessThan(0.001f)
     }

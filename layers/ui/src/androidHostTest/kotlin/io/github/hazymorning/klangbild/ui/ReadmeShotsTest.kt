@@ -8,7 +8,6 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.TrackInfo
-import io.github.hazymorning.klangbild.lights.CoverLightColors
 import io.github.hazymorning.klangbild.lights.LightColor
 import io.github.hazymorning.klangbild.lights.LightColors
 import io.github.hazymorning.klangbild.lights.LightSlot
@@ -72,7 +71,7 @@ class ReadmeShotsTest {
         File("build/screenshots/readme/$name.json").apply { parentFile?.mkdirs() }.writeText(json)
     }
 
-    private fun coverLights(name: String, scene: ArtworkScene, warmth: Float) = lights(name, CoverLightColors(scene.field!!, moving = false), warmth)
+    private fun coverLights(name: String, scene: ArtworkScene, warmth: Float) = lights(name, LightColors(scene.field!!, moving = false), warmth)
 
     /** The first picture: a song at night on the dark wall, the room lit in its colors. */
     @Test

@@ -10,12 +10,6 @@ import kotlin.math.floor
 /** Where a light stands: left of the screen, behind its middle (above it), right of it. */
 enum class LightSlot { LEFT, CENTER, RIGHT }
 
-/** Where the lights' colors come from: what the screen shows. */
-interface LightColors {
-    /** The color (linear sRGB, 0..1) for the light at [slot] at the field's time [t] (seconds). */
-    fun color(slot: LightSlot, t: Double, out: FloatArray)
-}
-
 /**
  * Three lights, three colors: each light shows a color of its own from the cover. These are the
  * cover's most telling colors, kept apart (a cover of one color gives that color and two
@@ -24,11 +18,12 @@ interface LightColors {
  * to the middle. With motion on, the colors move on from light to light as the field moves,
  * slowly, each resting a while before it passes on.
  */
-class CoverLightColors(field: FieldScene, private val moving: Boolean) : LightColors {
+class LightColors(field: FieldScene, private val moving: Boolean) {
     /** The lights' colors (linear sRGB), the left light's first: three, or up to five when they move on. */
     val colors: List<FloatArray> = palette(field)
 
-    override fun color(slot: LightSlot, t: Double, out: FloatArray) {
+    /** The color (linear sRGB, 0..1) for the light at [slot] at the field's time [t] (seconds). */
+    fun color(slot: LightSlot, t: Double, out: FloatArray) {
         val n = colors.size
         val i = slot.ordinal
         if (!moving || n < 2) {

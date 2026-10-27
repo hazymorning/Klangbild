@@ -231,9 +231,9 @@ class LightSyncTest {
         LightSync(backgroundScope, { testScheduler.currentTime }, StandardTestDispatcher(testScheduler))
 
     /** The lights' colors for a field, made once (as the controller does): the same field never fades the lights anew. */
-    private val made = HashMap<Pair<FieldScene, Boolean>, CoverLightColors>()
+    private val made = HashMap<Pair<FieldScene, Boolean>, LightColors>()
 
-    private fun coverColors(f: FieldScene, moving: Boolean) = made.getOrPut(f to moving) { CoverLightColors(f, moving) }
+    private fun coverColors(f: FieldScene, moving: Boolean) = made.getOrPut(f to moving) { LightColors(f, moving) }
 
     private fun target(
         song: String,
