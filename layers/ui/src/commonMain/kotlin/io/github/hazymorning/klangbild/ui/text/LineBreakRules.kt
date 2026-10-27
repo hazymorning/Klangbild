@@ -1,5 +1,7 @@
 package io.github.hazymorning.klangbild.ui.text
 
+import kotlin.io.encoding.Base64
+
 /**
  * One of ICU's rule sets for line break opportunities, run the way ICU runs it: ICU compiles
  * its rules into a state machine over categories of code points, and [LineBreakTables] holds
@@ -51,15 +53,15 @@ internal class LineBreakRules(
         index += charCount(c)
         var result = from
         var row = START_STATE * rowLength
-        var mode = RUN
+        var atEnd = false
         var category = 0
         while (true) {
             if (c < 0) {
-                if (mode == END) break
-                mode = END
+                if (atEnd) break
+                atEnd = true
                 category = END_OF_TEXT
             }
-            if (mode == RUN) category = category(c)
+            if (!atEnd) category = category(c)
             val state = table[row + 3 + category].toInt() and 0xff
             row = state * rowLength
             val accepting = table[row].toInt() and 0xff
@@ -72,7 +74,7 @@ internal class LineBreakRules(
             val rule = table[row + 1].toInt() and 0xff
             if (rule > ACCEPTING) lookAhead[rule] = index
             if (state == STOP_STATE) break
-            if (mode == RUN) {
+            if (!atEnd) {
                 c = codePointAt(text, index)
                 if (c >= 0) index += charCount(c)
             }
@@ -89,9 +91,6 @@ internal class LineBreakRules(
 
         /** The category ICU reserves for the end of the text. */
         const val END_OF_TEXT = 1
-
-        const val RUN = 1
-        const val END = 2
     }
 }
 
@@ -132,29 +131,8 @@ internal fun inRanges(ranges: IntArray, c: Int): Boolean {
 }
 
 /** Bytes from base 64 text (RFC 4648 without padding), as the build writes [LineBreakTables]. */
-internal fun decodeBase64(vararg chunks: String): ByteArray {
-    val text = chunks.joinToString("")
-    val out = ByteArray(text.length * 3 / 4)
-    var bits = 0
-    var count = 0
-    var o = 0
-    for (ch in text) {
-        val value = when (ch) {
-            in 'A'..'Z' -> ch - 'A'
-            in 'a'..'z' -> ch - 'a' + 26
-            in '0'..'9' -> ch - '0' + 52
-            '+' -> 62
-            else -> 63
-        }
-        bits = bits shl 6 or value
-        count += 6
-        if (count >= 8) {
-            count -= 8
-            out[o++] = (bits shr count).toByte()
-        }
-    }
-    return out
-}
+internal fun decodeBase64(vararg chunks: String): ByteArray =
+    Base64.withPadding(Base64.PaddingOption.ABSENT).decode(chunks.joinToString(""))
 
 /** The starts of the ranges of categories: differences from one to the next in groups of seven bits. */
 internal fun readStarts(vararg chunks: String): IntArray {
