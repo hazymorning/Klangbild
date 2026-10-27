@@ -25,6 +25,7 @@ import io.github.hazymorning.klangbild.data.PictureDecoder
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaConfig
+import io.github.hazymorning.klangbild.data.ha.HaCredentials
 import io.github.hazymorning.klangbild.data.ha.HaSource
 import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.data.ma.MaClient
@@ -58,6 +59,7 @@ import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.setup.DiscoverResult
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupServer
@@ -316,7 +318,9 @@ class NowPlayingController(
         settings = { settings.value },
         texts = { localizer.texts.value },
         discover = { url, credentials ->
-            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value)
+            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
+                if (r is DiscoverResult.Failed && r.refused) refused(credentials)
+            }
         },
         save = { updated ->
             // Leaving setup: the new settings start a fresh connection.
@@ -651,7 +655,11 @@ class NowPlayingController(
 
     private fun reconcileSource(): Unit = synchronized(lock) {
         val s = settings.value
-        val key = if (s.isConfigured) listOf("ha", s.haUrl, s.haCredentials, s.entityId, s.sunEntity, s.maUrl, s.maToken).joinToString("|") else "unconfigured"
+        val key = when {
+            s.isConfigured -> listOf("ha", s.haUrl, s.haCredentials, s.entityId, s.sunEntity, s.maUrl, s.maToken).joinToString("|")
+            s.haRefused -> "refused"
+            else -> "unconfigured"
+        }
         if (key == sourceKey || viewers == 0) return
         sourceKey = key
         log.info(if (s.isConfigured) "Connecting to Home Assistant (${s.entityId})" else "No connection set: setup")
@@ -672,7 +680,7 @@ class NowPlayingController(
             newAuth?.let { HaSource(tokenHttp, scope, HaConfig(it), s.entityId!!, s.sunEntity, now, ma, speaker = speaker) }
         source = newSource
         if (newSource == null) {
-            _ui.value = _ui.value.copy(source = SourceState(LinkState.UNCONFIGURED))
+            _ui.value = _ui.value.copy(source = SourceState(if (s.haRefused) LinkState.AUTH_FAILED else LinkState.UNCONFIGURED))
             return
         }
         newSource.start()
@@ -680,6 +688,19 @@ class NowPlayingController(
         lastVolume = null
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
+        }
+    }
+
+    /**
+     * Home Assistant refused [credentials]. When they are the stored ones, they are dropped
+     * ([Settings.refused]), so they are never sent again: Home Assistant counts every attempt as a
+     * failed login.
+     */
+    private fun refused(credentials: HaCredentials) {
+        synchronized(lock) {
+            if (settings.value.haCredentials != credentials) return
+            log.warn("Home Assistant refused the credentials: dropped")
+            save(settings.value.refused())
         }
     }
 
@@ -714,7 +735,11 @@ class NowPlayingController(
             if (lastVolume != null && volume != lastVolume) volumeFlashUntil = t + VOLUME_FLASH_MS
             lastVolume = volume
         }
-        if (st.link != _ui.value.source.link) log.info("Link: ${st.link}")
+        if (st.link != _ui.value.source.link) {
+            log.info("Link: ${st.link}")
+            // Dropped after this report is taken in, since dropping them stops the source that sent it.
+            if (st.link == LinkState.AUTH_FAILED) auth?.credentials?.let { scope.launch { refused(it) } }
+        }
         _ui.value = _ui.value.copy(source = st)
         soundSelection.update(st, speaker.value)
         recompute()

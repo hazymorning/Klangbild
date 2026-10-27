@@ -7,6 +7,8 @@ import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.config.SettingsStore
 import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.data.httpClient
+import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupServer
@@ -28,10 +30,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
-/** The settings the controller owns: read from the store once, and written on every change. */
+/**
+ * The settings the controller owns: read from the store once and written on every change, without
+ * the credentials Home Assistant refused.
+ */
 class NowPlayingControllerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val http = httpClient(OkHttp.create())
@@ -62,6 +69,32 @@ class NowPlayingControllerTest {
         withTimeout(5_000) { controller.ui.first { it.queue == QueueDisplay.LIST } }
         assertThat(stored.data.value).isEqualTo(kept)
         controller.detach()
+    }
+
+    @Test
+    fun `credentials Home Assistant refuses are dropped and never sent again`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse.Builder().code(400).body("""{"error":"invalid_grant"}""").build())
+            server.start()
+            val stored = MemoryValues(
+                mapOf(
+                    "ha_url" to server.url("/").toString().trimEnd('/'),
+                    "ha_refresh_token" to "revoked",
+                    "ha_client_id" to "http://192.168.1.23:8765/",
+                    "entity_id" to "media_player.wz",
+                ),
+            )
+            val controller = controller(stored)
+            controller.attach(screen)
+            withTimeout(5_000) { stored.data.first { "ha_refresh_token" !in it } }
+            assertThat(stored.data.value["ha_refused"]).isEqualTo(true)
+            // Shown again, the screen makes a new connection, which would send stored credentials again.
+            controller.detach()
+            controller.attach(screen)
+            withTimeout(5_000) { controller.ui.first { it.screen == Screen.Setup(SetupReason.AUTH_FAILED) } }
+            assertThat(server.requestCount).isEqualTo(1)
+            controller.detach()
+        }
     }
 
     private fun controller(values: ValueStore) = NowPlayingController(

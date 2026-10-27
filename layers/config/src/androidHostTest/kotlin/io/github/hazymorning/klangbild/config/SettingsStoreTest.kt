@@ -73,6 +73,7 @@ class SettingsStoreTest {
             haToken = "long-lived",
             haRefreshToken = "refresh",
             haClientId = "http://192.168.1.23:8765/",
+            haRefused = true,
             entityId = "media_player.kitchen",
             otherSpeaker = "media_player.living_room",
             sunEntity = "sun.home",

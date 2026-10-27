@@ -50,7 +50,10 @@ sealed interface HaStatus {
     data class Connecting(val attempt: Int) : HaStatus
     data object Connected : HaStatus
 
-    /** The token was rejected. No automatic retries until the config changes (or [HaConnection.retryNow]). */
+    /**
+     * Home Assistant refused the credentials. The connection stays down until it is started again,
+     * since Home Assistant counts every attempt as a failed login.
+     */
     data class AuthFailed(val message: String?) : HaStatus
 
     /** Lost or failed; the next attempt happens in [retryInMs]. */
@@ -178,9 +181,12 @@ class HaConnection(
         registryOf(optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } })?.let { _registry.value = it }
     }
 
-    /** Skip the remaining backoff (the network just came back, say). */
+    /**
+     * Skips the rest of the wait before the next attempt (the network just came back, say). Only
+     * while waiting: a wake-up kept from before would skip the next wait for nothing.
+     */
     fun retryNow() {
-        wakeUp.trySend(Unit)
+        if (_status.value is HaStatus.Waiting) wakeUp.trySend(Unit)
     }
 
     /**
@@ -233,24 +239,22 @@ class HaConnection(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: HaAuthRejectedException) {
-                SessionEnd.AuthInvalid(e.message)
+                SessionEnd.Refused(e.message)
             } catch (e: Exception) {
                 SessionEnd.Lost(e.message ?: e::class.simpleName)
             } finally {
                 session = null
             }
-            if (end is SessionEnd.TokenRefused && !freshTokenTried && config.auth.refreshable) {
-                freshTokenTried = true
-                config.auth.invalidate(end.token)
-                continue
-            }
             when (end) {
-                is SessionEnd.AuthInvalid, is SessionEnd.TokenRefused -> {
-                    _status.value = HaStatus.AuthFailed((end as? SessionEnd.AuthInvalid)?.message ?: (end as SessionEnd.TokenRefused).message)
+                is SessionEnd.Refused -> {
+                    if (end.token != null && !freshTokenTried && config.auth.refreshable) {
+                        freshTokenTried = true
+                        config.auth.invalidate(end.token)
+                        continue
+                    }
+                    _status.value = HaStatus.AuthFailed(end.message)
                     _entities.value = emptyMap()
-                    // Wait for an explicit retry; a wrong token will not fix itself.
-                    wakeUp.receive()
-                    freshTokenTried = false
+                    return
                 }
                 is SessionEnd.Lost -> {
                     val delayMs = backoff.nextDelayMs()
@@ -265,10 +269,8 @@ class HaConnection(
     }
 
     private sealed interface SessionEnd {
-        data class AuthInvalid(val message: String?) : SessionEnd
-
-        /** Home Assistant refused [token] at the WebSocket's login. */
-        data class TokenRefused(val token: String, val message: String?) : SessionEnd
+        /** Home Assistant refused the credentials; [token] is the access token its WebSocket refused, if that was the cause. */
+        data class Refused(val message: String?, val token: String? = null) : SessionEnd
         data class Lost(val reason: String?) : SessionEnd
     }
 
@@ -367,7 +369,7 @@ class HaConnection(
             val auth = parseMessages(authAnswer.text).firstOrNull()
             when (auth?.type()) {
                 "auth_ok" -> Unit
-                "auth_invalid" -> return@coroutineScope SessionEnd.TokenRefused(token, auth.string("message"))
+                "auth_invalid" -> return@coroutineScope SessionEnd.Refused(auth.string("message"), token)
                 else -> return@coroutineScope SessionEnd.Lost("unexpected auth answer")
             }
             session = s

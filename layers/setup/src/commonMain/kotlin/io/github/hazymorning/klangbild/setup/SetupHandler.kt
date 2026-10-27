@@ -90,7 +90,9 @@ sealed interface DiscoverResult {
         val actions: List<ActionOption> = emptyList(),
         val entities: List<EntityOption> = emptyList(),
     ) : DiscoverResult
-    data class Failed(val message: String) : DiscoverResult
+
+    /** [refused]: Home Assistant refused the credentials. */
+    data class Failed(val message: String, val refused: Boolean = false) : DiscoverResult
 }
 
 /**

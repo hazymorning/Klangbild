@@ -49,8 +49,9 @@ data class HaTokens(val accessToken: String, val refreshToken: String?, val expi
  * shortly before it expires.
  *
  * Every 4xx answer of Home Assistant's token endpoint counts there as a failed login (a
- * notification, and a ban where one is configured), so a refused refresh token is never
- * tried again: the credentials are rejected until someone signs in anew.
+ * notification, and a ban where one is configured), so a refused refresh token is never tried
+ * again. Whoever keeps the credentials drops them once they are refused
+ * ([HaAuthRejectedException]), so that no other instance tries them either.
  */
 class HaAuth(
     private val http: HttpClient,

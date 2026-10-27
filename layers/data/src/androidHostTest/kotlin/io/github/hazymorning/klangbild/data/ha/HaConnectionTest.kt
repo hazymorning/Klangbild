@@ -277,18 +277,15 @@ class HaConnectionTest {
     }
 
     @Test
-    fun `a rejected token stops retrying until asked`() = runBlocking {
+    fun `a refused token is never sent again, not even on request`() = runBlocking {
         val conn = connection()
         conn.start(config(token = "wrong"), listOf("media_player.wz"))
         val status = withTimeout(5_000) { conn.status.first { it is HaStatus.AuthFailed } }
         assertThat((status as HaStatus.AuthFailed).message).isEqualTo("Invalid access token or password")
+        // Each attempt counts as a failed login in Home Assistant.
+        conn.retryNow()
         delay(400)
         assertThat(upgrades.get()).isEqualTo(1)
-        // After fixing the token on the server side, an explicit retry connects.
-        acceptToken = "wrong"
-        conn.retryNow()
-        withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
-        assertThat(upgrades.get()).isEqualTo(2)
         conn.stop()
     }
 
@@ -330,6 +327,23 @@ class HaConnectionTest {
         withTimeout(5_000) {
             conn.status.first { it == HaStatus.Connected && upgrades.get() >= 2 }
         }
+        conn.stop()
+    }
+
+    @Test
+    fun `a wake-up skips only a wait that is under way`() = runBlocking {
+        val conn = HaConnection(http, scope, backoffFactory = { Backoff(baseMs = 10_000, maxMs = 10_000, random = Random(3)) })
+        conn.start(config(), listOf("media_player.wz"))
+        withTimeout(5_000) { conn.status.first { it == HaStatus.Connected } }
+        // The network is reported back while the connection stands, then the connection is lost.
+        conn.retryNow()
+        sockets.single().close(1001, "restart")
+        withTimeout(5_000) { conn.status.first { it is HaStatus.Waiting } }
+        delay(300)
+        assertThat(upgrades.get()).isEqualTo(1)
+        // Now the network comes back while it waits.
+        conn.retryNow()
+        withTimeout(5_000) { conn.status.first { it == HaStatus.Connected && upgrades.get() == 2 } }
         conn.stop()
     }
 

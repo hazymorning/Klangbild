@@ -16,6 +16,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val token = stringKey("ha_token")
         val refreshToken = stringKey("ha_refresh_token")
         val clientId = stringKey("ha_client_id")
+        val refused = booleanKey("ha_refused")
         val entity = stringKey("entity_id")
         val sun = stringKey("sun_entity")
         val sleepMinutes = intKey("sleep_minutes")
@@ -94,6 +95,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             haToken = p[Keys.token]?.let(secrets::open),
             haRefreshToken = p[Keys.refreshToken]?.let(secrets::open),
             haClientId = p[Keys.clientId],
+            haRefused = p[Keys.refused] ?: defaults.haRefused,
             entityId = p[Keys.entity],
             otherSpeaker = p[Keys.otherSpeaker],
             sunEntity = p[Keys.sun] ?: defaults.sunEntity,
@@ -136,6 +138,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         putSecret(Keys.token, s.haToken)
         putSecret(Keys.refreshToken, s.haRefreshToken)
         putOrRemove(Keys.clientId, s.haClientId)
+        p[Keys.refused] = s.haRefused
         putOrRemove(Keys.entity, s.entityId)
         putOrRemove(Keys.otherSpeaker, s.otherSpeaker)
         p[Keys.sun] = s.sunEntity
