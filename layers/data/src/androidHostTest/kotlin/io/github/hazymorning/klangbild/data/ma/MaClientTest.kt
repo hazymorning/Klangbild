@@ -4,19 +4,25 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.ktor.client.engine.okhttp.OkHttp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
@@ -58,6 +64,19 @@ class MaClientTest {
         assertThat(client.check()).isEqualTo(MaLink.UNREACHABLE)
         server.close()
         assertThat(client.check()).isEqualTo(MaLink.UNREACHABLE)
+    }
+
+    @Test
+    fun `a check that is canceled ends its caller too`() = runBlocking {
+        server.enqueue(MockResponse.Builder().headersDelay(5, TimeUnit.SECONDS).body("[]").build())
+        var carriedOn = false
+        val caller = launch(Dispatchers.IO) {
+            client.check()
+            carriedOn = true
+        }
+        withContext(Dispatchers.IO) { server.takeRequest() }
+        caller.cancelAndJoin()
+        assertThat(carriedOn).isFalse()
     }
 
     @Test

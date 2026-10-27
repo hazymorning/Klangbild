@@ -15,6 +15,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HeaderValueParam
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -96,6 +97,8 @@ class MaClient(private val http: HttpClient, val baseUrl: String, private val to
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {
         if (command("player_queues/all", JsonObject(emptyMap())) is JsonArray) MaLink.CONNECTED else MaLink.UNREACHABLE
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: MaAuthException) {
         MaLink.AUTH_FAILED
     } catch (_: Exception) {
