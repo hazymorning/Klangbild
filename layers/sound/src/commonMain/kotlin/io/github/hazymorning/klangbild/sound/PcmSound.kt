@@ -80,7 +80,7 @@ class PcmSound(rate: Int) : SynchronizedObject(), SoundFeed {
 
     companion object {
         /** A new stretch every 512 samples: about 94 a second at 48 kHz, each overlapping the one before by half. */
-        const val HOP = 512
+        private const val HOP = 512
 
         /** Two full-scale 16-bit channels summed, as -1 to 1. */
         private const val STEREO_SCALE = 65_536f

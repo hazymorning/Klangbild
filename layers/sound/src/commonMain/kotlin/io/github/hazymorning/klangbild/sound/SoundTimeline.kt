@@ -8,7 +8,7 @@ import kotlinx.atomicfu.locks.synchronized
  * read as they come due. One writer (the source), any number of readers; every frame lives in
  * a slot made once, so neither writing nor reading allocates.
  */
-class SoundTimeline(capacity: Int = CAPACITY, private val beatCapacity: Int = BEATS) : SynchronizedObject() {
+class SoundTimeline(capacity: Int = CAPACITY, beatCapacity: Int = BEATS) : SynchronizedObject() {
     private val frames = Array(capacity) { SoundFrame() }
     private var start = 0
     private var count = 0
@@ -27,15 +27,15 @@ class SoundTimeline(capacity: Int = CAPACITY, private val beatCapacity: Int = BE
             start = (start + 1) % frames.size
             count--
         }
-        frames[index(count)].set(frame)
+        frames[index(count)].copyFrom(frame)
         count++
     }
 
     /** Adds a beat heard at [timeUs], replacing any later ones (they belonged to music that no longer comes). */
     fun beat(timeUs: Long, downbeat: Boolean): Unit = synchronized(this) {
         while (beatCount > 0 && beatTimes[beatIndex(beatCount - 1)] >= timeUs) beatCount--
-        if (beatCount == beatCapacity) {
-            beatStart = (beatStart + 1) % beatCapacity
+        if (beatCount == beatTimes.size) {
+            beatStart = (beatStart + 1) % beatTimes.size
             beatCount--
         }
         val i = beatIndex(beatCount)
@@ -76,7 +76,7 @@ class SoundTimeline(capacity: Int = CAPACITY, private val beatCapacity: Int = BE
             out.silence()
             return false
         }
-        out.set(frames[index(found)])
+        out.copyFrom(frames[index(found)])
         out.beatUs = SoundFrame.NO_BEAT
         out.downbeat = false
         for (b in beatCount - 1 downTo 0) {
@@ -92,12 +92,12 @@ class SoundTimeline(capacity: Int = CAPACITY, private val beatCapacity: Int = BE
 
     private fun index(i: Int) = (start + i) % frames.size
 
-    private fun beatIndex(i: Int) = (beatStart + i) % beatCapacity
+    private fun beatIndex(i: Int) = (beatStart + i) % beatTimes.size
 
     companion object {
         /** Room for several seconds ahead of time, as Music Assistant sends them. */
-        const val CAPACITY = 1_024
-        const val BEATS = 64
+        private const val CAPACITY = 1_024
+        private const val BEATS = 64
 
         /** A stretch older than this says nothing about now: the music has stopped. */
         const val STALE_US = 200_000L

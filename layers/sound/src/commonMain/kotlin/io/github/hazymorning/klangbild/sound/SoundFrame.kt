@@ -48,7 +48,8 @@ class SoundFrame {
         timing = SoundTiming.NONE
     }
 
-    fun set(from: SoundFrame) {
+    /** Takes every value of [from]. */
+    fun copyFrom(from: SoundFrame) {
         timeUs = from.timeUs
         loudness = from.loudness
         from.bands.copyInto(bands)
