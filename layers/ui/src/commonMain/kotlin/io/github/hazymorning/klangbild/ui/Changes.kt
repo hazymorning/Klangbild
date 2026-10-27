@@ -17,7 +17,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Plays one change of a theater: [t] runs from 0 to 1 in [totalMs]. If another song is waiting
+ * Plays one change of a theater: [t] runs from 0 to 1 in [totalMs]. If another track is waiting
  * before the end ([newer] returns), the rest of the change hurries (at most [Motion.HURRY_MS])
  * once [onHurry] has learned where it stood. The change still lands (nothing jumps), and the
  * next one follows at once. Anything else that comes meanwhile (a card that joins the strip, a
@@ -40,15 +40,15 @@ suspend fun playChange(
     try {
         t.animateTo(1f, tween(totalMs, easing = LinearEasing))
     } catch (e: CancellationException) {
-        // The hurried rest took over the animation; anything else is a real cancellation.
+        // The hurried rest took over the animation. Anything else is a real cancellation.
         if (!hurried) throw e
     }
     if (hurried) watch.join() else watch.cancel()
 }
 
 /**
- * How the lines of a change's new text rise: each in [Motion.TEXT_LINE_MS], from [startMs] plus its stagger, in a change
- * of [totalMs].
+ * How the lines of a change's new text rise in a change of [totalMs]: each in
+ * [Motion.TEXT_LINE_MS], from [startMs] plus its stagger.
  */
 class TextRise(private val startMs: Int, val totalMs: Int) {
     /** When the first line sets off (0 to 1 of the change). */
@@ -66,20 +66,21 @@ class TextRise(private val startMs: Int, val totalMs: Int) {
 
 /**
  * The new text of a theater's changes. Its lines rise one after another as the change runs on
- * [t]. When the change hurries they stop where they are ([hold]), so the lines of a song that
- * is skipped past never come up. They rise the rest of the way only if that song stays after all
- * ([release]). When the next song's text comes ([begin]), this one leaves from where it stood
- * ([leaving]), so nothing jumps.
+ * [t]. When the change hurries they stop where they are ([hold]), so the lines of a track that
+ * is skipped past never come up. They rise the rest of the way only if that track stays after
+ * all ([release]). When the next track's text comes ([begin]), this one leaves from where it
+ * stood ([leaving]), so nothing jumps.
  */
 @Stable
 class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
-    private class Stood(val rise: TextRise?, val at: Float) {
+    /** The text that leaves, its lines where [rise] had them at [at] when the change began. */
+    private class LeavingText(val rise: TextRise?, val at: Float) {
         fun level(line: TextLine): Float = rise?.level(at, line) ?: 1f
     }
 
     private var rise by mutableStateOf<TextRise?>(null)
     private var held by mutableStateOf<Float?>(null)
-    private var left by mutableStateOf<Stood?>(null)
+    private var leavingText by mutableStateOf<LeavingText?>(null)
 
     /** The lines are on their way up (rising, or held on the way). */
     val rising: Boolean get() = rise != null
@@ -89,22 +90,22 @@ class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
 
     /**
      * How far [line] has risen as its change runs, whether it is held or not: the queue's rows
-     * come the whole way, since they are the queue and not the song skipped past.
+     * come the whole way, since they are the queue and not the track skipped past.
      */
     fun unheld(line: TextLine): Float = rise?.level(t.value, line) ?: 1f
 
     /** How far [line] of the text that leaves had risen when the change began. */
-    fun leaving(line: TextLine): Float = left?.level(line) ?: 1f
+    fun leaving(line: TextLine): Float = leavingText?.level(line) ?: 1f
 
     /**
      * How far [line] stood before the change now running began: the text that leaves, or the text
      * that stays. A frame composed before the change began still shows its lines so.
      */
-    fun before(line: TextLine): Float = left?.level(line) ?: level(line)
+    fun before(line: TextLine): Float = leavingText?.level(line) ?: level(line)
 
     /** A change brings new text that rises as [next] says; the text so far leaves from where it stands. */
     fun begin(next: TextRise) {
-        left = Stood(rise, held ?: 1f)
+        leavingText = LeavingText(rise, held ?: 1f)
         rise = next
         held = null
     }
@@ -117,12 +118,12 @@ class RisingText(private val t: Animatable<Float, AnimationVector1D>) {
     /** The change has landed: its lines are in place, unless they were held. */
     fun landed() {
         if (held == null) rise = null
-        left = null
+        leavingText = null
     }
 
     /**
      * Held lines rise the rest of the way at the pace of their change. They start at once, since
-     * the change has landed. If another song comes first ([newer] returns), they stay where they
+     * the change has landed. If another track comes first ([newer] returns), they stay where they
      * are.
      */
     suspend fun release(newer: suspend () -> Unit) {
