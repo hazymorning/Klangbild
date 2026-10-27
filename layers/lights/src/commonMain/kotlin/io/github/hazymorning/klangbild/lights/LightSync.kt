@@ -272,11 +272,13 @@ class LightSync(
         }
         idleSince = null
         val wanted = slots(tg.lights)
-        // Lights no longer wanted are given back; new ones are saved first, once their states
-        // have arrived (they are followed only now), or after a while with what is there.
         if (wanted.keys != activeFor) {
+            // Other lights chosen: the lights are restored, and taken over anew on a later step
+            // with the states they have then.
+            if (activeFor != null) return restore(b)
+            // Saved once their states have arrived (they are followed only now), or after a while
+            // with what is there.
             if (wanted.keys.any { it !in states } && t - followedAt < STATES_WAIT_MS) return
-            if (activeFor != null) restore(b)
             activate(b, wanted, states, t, tg.onlyOn)
         }
         // "Leave off" chosen while they glow: the lights switched on for the music go back off

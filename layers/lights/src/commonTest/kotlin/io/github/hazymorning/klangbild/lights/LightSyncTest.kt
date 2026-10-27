@@ -292,6 +292,25 @@ class LightSyncTest {
     }
 
     @Test
+    fun `with a light added, the lights are taken over anew with their states from before the music`() = runTest {
+        val center = "light.tv_center"
+        val ha = FakeHa(this, mapOf(left to light(left, on = false), center to light(center, on = true), right to light(right, on = true, brightness = 60)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        s.update(target("a", lights = RoomLights(left = left, center = center, right = right)))
+        testScheduler.advanceTimeBy(15_000)
+        assertThat(ha.scenes.keys).containsExactlyInAnyOrder("scene.klangbild_tv_left", "scene.klangbild_tv_center", "scene.klangbild_tv_right")
+        // Home Assistant restarted: restored from what was noted, each light is as before the music.
+        ha.scenesLost = true
+        s.update(target("a", level = RoomLightBrightness.OFF))
+        testScheduler.advanceTimeBy(10_000)
+        assertThat(ha.states.value.getValue(left).state).isEqualTo("off")
+        assertThat(ha.states.value.getValue(right).number("brightness")).isEqualTo(60.0)
+    }
+
+    @Test
     fun `a light that shows up later joins in`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true)))
         val s = sync()
