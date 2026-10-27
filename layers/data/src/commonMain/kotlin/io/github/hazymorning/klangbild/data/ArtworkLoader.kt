@@ -16,14 +16,23 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
-/**
- * Turns the bytes of a picture into a bitmap, or null when they are none. Larger sources are
- * subsampled on decode: by powers of two, while both sides stay at least half of
- * [ArtworkLoader.MAX_DECODE_PX] and the longer one is above it, then further until the picture
- * holds no more pixels than a square of [ArtworkLoader.MAX_DECODE_PX].
- */
+/** Turns the bytes of a picture into a bitmap, or null when they are none, subsampled by [sampleSize] as it decodes. */
 fun interface PictureDecoder {
     fun decode(bytes: ByteArray): ImageBitmap?
+}
+
+/**
+ * How much a [width] by [height] picture is subsampled on decode: by powers of two, while both
+ * sides stay at least half of [ArtworkLoader.MAX_DECODE_PX] and the longer one is above it, then
+ * further until the picture holds no more pixels than a square of [ArtworkLoader.MAX_DECODE_PX].
+ */
+internal fun sampleSize(width: Int, height: Int): Int {
+    val max = ArtworkLoader.MAX_DECODE_PX
+    var sample = 1
+    while (minOf(width, height) / (sample * 2) >= max / 2 && maxOf(width, height) / sample > max) sample *= 2
+    // However odd its shape, no picture takes more memory than a square of MAX_DECODE_PX.
+    while ((width / sample).toLong() * (height / sample) > max.toLong() * max) sample *= 2
+    return sample
 }
 
 /**
