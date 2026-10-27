@@ -6,6 +6,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import io.github.hazymorning.klangbild.text.TestTexts
+import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.text.testZone
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toInstant
@@ -13,7 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 
-/** A value of one's own in words: Home Assistant's decimals and units, the language's figures, nothing for what cannot be told. */
+/** A custom value as text: Home Assistant's decimals and units, the language's figures, nothing for what cannot be told. */
 class ValueTextTest {
     private val en = TestTexts.english()
     private val de = TestTexts.german
@@ -28,7 +29,7 @@ class ValueTextTest {
         entity: String = "sensor.x",
         precision: Int? = null,
         unit: String? = null,
-        t: io.github.hazymorning.klangbild.text.Texts = en,
+        t: Texts = en,
     ) = ValueText.of(OwnValue(name, entity, attribute), state, Json.parseToJsonElement(attrs).jsonObject, precision, unit, t, now, zone)
 
     @Test

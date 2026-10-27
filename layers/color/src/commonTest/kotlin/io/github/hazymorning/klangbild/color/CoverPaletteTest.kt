@@ -10,11 +10,14 @@ import assertk.assertions.isLessThanOrEqualTo
 import kotlin.test.Test
 
 class CoverPaletteTest {
-    private fun solid(argb: Int, n: Int = 48 * 48) = IntArray(n) { argb }
+    /** Pixels in a 48 × 48 thumbnail. */
+    private val thumbnail = 48 * 48
+
+    private fun solid(argb: Int) = IntArray(thumbnail) { argb }
 
     private fun mix(vararg parts: Pair<Int, Float>): IntArray {
         val out = ArrayList<Int>()
-        for ((c, share) in parts) repeat((share * 2304).toInt()) { out += c }
+        for ((c, share) in parts) repeat((share * thumbnail).toInt()) { out += c }
         return out.toIntArray()
     }
 
@@ -34,7 +37,7 @@ class CoverPaletteTest {
     }
 
     @Test
-    fun `text stays readable on both walls for every edge case`() {
+    fun `text stays readable on both backgrounds for every edge case`() {
         for (pixels in covers) for (appearance in Appearance.entries) {
             val p = CoverPalette.derive(CoverPalette.analyze(pixels), appearance)
             assertThat(contrastRatio(p.ink, p.wall), name = "title $p").isGreaterThanOrEqualTo(if (appearance == Appearance.DARK) 10f else 9f)
@@ -43,7 +46,7 @@ class CoverPaletteTest {
     }
 
     @Test
-    fun `the walls are black and warm paper, never white`() {
+    fun `the backgrounds are black and a warm off-white, never white`() {
         for (pixels in covers) {
             val dark = CoverPalette.derive(CoverPalette.analyze(pixels), Appearance.DARK)
             assertThat(dark.wall).isEqualTo(0xFF000000.toInt())
@@ -58,30 +61,30 @@ class CoverPaletteTest {
     }
 
     @Test
-    fun `the light wall takes a hint of a warm cover's color and stays warm paper for a cool one`() {
+    fun `the light background takes a hint of a warm cover's color and stays warm for a cool one`() {
         val red = CoverPalette.derive(CoverPalette.analyze(solid(0xFFB0412E.toInt())), Appearance.LIGHT)
         val blue = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT)
         val teal = CoverPalette.derive(CoverPalette.analyze(solid(0xFF1F7A78.toInt())), Appearance.LIGHT)
         val gray = CoverPalette.derive(CoverPalette.analyze(solid(0xFF777777.toInt())), Appearance.LIGHT)
         assertThat(Oklab.fromArgb(red.wall).chroma).isGreaterThan(Oklab.fromArgb(gray.wall).chroma)
-        // paper is never mint or blue: a cool cover gives it less color, not its hue
+        // never mint or blue: a cool cover gives it less color, not its hue
         for (p in listOf(red, blue, teal, gray)) {
             assertThat(Oklab.fromArgb(p.wall).hue).isBetween(45f, 95f)
         }
         assertThat(Oklab.fromArgb(blue.wall).chroma).isLessThanOrEqualTo(Oklab.fromArgb(red.wall).chroma)
         assertThat(Oklab.fromArgb(gray.wall).hue).isCloseTo(Lamp.HUE, 20f)
-        // the Intensity setting turned off leaves plain paper
+        // the Intensity setting turned off leaves it without the cover's color
         val plain = CoverPalette.derive(CoverPalette.analyze(solid(0xFF2E5BA6.toInt())), Appearance.LIGHT, wallTint = 0f)
         assertThat(Oklab.fromArgb(plain.wall).chroma).isLessThanOrEqualTo(Oklab.fromArgb(gray.wall).chroma)
     }
 
     @Test
-    fun `the wall turns with the sun and holds steady near the horizon`() {
+    fun `the background follows the sun and holds steady near the horizon`() {
         assertThat(Appearance.bySun(30.0)).isEqualTo(Appearance.LIGHT)
         assertThat(Appearance.bySun(-6.0)).isEqualTo(Appearance.DARK)
         // sunset is at −0.833°: just above it is still day …
         assertThat(Appearance.bySun(-0.5)).isEqualTo(Appearance.LIGHT)
-        // … and a value wobbling around the line does not flip the wall back and forth
+        // … and a value wobbling around the line does not flip the background back and forth
         assertThat(Appearance.bySun(-0.6, previous = Appearance.DARK)).isEqualTo(Appearance.DARK)
         assertThat(Appearance.bySun(-1.0, previous = Appearance.LIGHT)).isEqualTo(Appearance.LIGHT)
         assertThat(Appearance.bySun(0.0, previous = Appearance.DARK)).isEqualTo(Appearance.LIGHT)
