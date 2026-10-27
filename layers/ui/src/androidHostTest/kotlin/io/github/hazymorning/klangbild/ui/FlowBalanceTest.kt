@@ -17,6 +17,7 @@ import kotlin.test.Test
  * Cover Flow with only some of its cards: the first song (nothing played yet), the last one
  * (nothing to come), a player without a queue (only what played), a single cover. Whatever is
  * there stands in the middle of the screen with the text, as much room left of it as right.
+ * The full strip is flow/flow_dark.png ([FlowTest]).
  */
 @Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
@@ -51,7 +52,6 @@ class FlowBalanceTest {
     @Test fun oneBefore() = shot("one_before", 1, 0)
     @Test fun oneToCome() = shot("one_to_come", 0, 1)
     @Test fun twoAndOne() = shot("two_and_one", 2, 1)
-    @Test fun full() = shot("full", 2, 2)
     @Test fun lastOnPaper() = shot("last_paper", 2, 0, Appearance.LIGHT)
     @Test fun firstOnPaper() = shot("first_paper", 0, 2, Appearance.LIGHT)
     @Test fun lastOnCoverColors() = shot("last_field", 2, 0, coverField = true)

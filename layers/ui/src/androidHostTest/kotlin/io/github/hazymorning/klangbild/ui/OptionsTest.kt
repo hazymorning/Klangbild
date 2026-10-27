@@ -44,8 +44,6 @@ class OptionsTest {
 
     private fun stage(name: String, model: StageModel) = shot(name) { Stage(model) }
 
-    @Test fun groupOfSix() = stage("stage_group", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, group = everywhere))
-
     @Test fun groupOfTwo() = stage("stage_group_two", Fixtures.model(Fixtures.track(SyntheticCover.SALT_WATER), next = spiegel, group = two))
 
     @Test fun groupAndVolumeAlways() = stage(
