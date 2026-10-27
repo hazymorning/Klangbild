@@ -21,13 +21,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hazymorning.klangbild.sound.SoundFeed
 import io.github.hazymorning.klangbild.sound.SoundFrame
 import io.github.hazymorning.klangbild.sound.SoundTiming
 import io.github.hazymorning.klangbild.sound.monotonicMicros
 import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.ui.theme.faces
+import io.github.hazymorning.klangbild.ui.theme.textType
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -41,10 +42,11 @@ data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int)
 fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed) {
     val s by frames.collectAsStateWithLifecycle()
     val t = texts()
+    val style = faces().textType(TEXT_SP, 440, INK)
     Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopStart) {
         Column(Modifier.background(BACKDROP).padding(horizontal = 8.dp, vertical = 4.dp)) {
-            BasicText(t.format(Strings.debugFrames, s.frames, t.decimal(s.worstMs.toDouble(), 1), s.janky), style = TextStyle(color = INK, fontSize = 12.sp))
-            SoundMeter(sound)
+            BasicText(t.format(Strings.debugFrames, s.frames, t.decimal(s.worstMs.toDouble(), 1), s.janky), style = style)
+            SoundMeter(sound, style)
         }
     }
 }
@@ -56,7 +58,7 @@ fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed) {
  * the meter is drawn on every frame then (it shows only with the overlay).
  */
 @Composable
-private fun SoundMeter(sound: SoundFeed) {
+private fun SoundMeter(sound: SoundFeed, style: TextStyle) {
     DisposableEffect(sound) {
         sound.reading(true)
         onDispose { sound.reading(false) }
@@ -65,8 +67,7 @@ private fun SoundMeter(sound: SoundFeed) {
     val heard = remember { SoundFrame() }
     val t = texts()
     val measurer = rememberTextMeasurer()
-    val words = remember(t, measurer) {
-        val style = TextStyle(color = INK, fontSize = 12.sp)
+    val words = remember(t, measurer, style) {
         mapOf(
             SoundTiming.EXACT to measurer.measure(t[Strings.debugSoundExact], style),
             SoundTiming.CLOSE to measurer.measure(t[Strings.debugSoundClose], style),
@@ -97,6 +98,9 @@ private fun SoundMeter(sound: SoundFeed) {
         drawCircle(if (lit) (if (heard.downbeat) DOWNBEAT else INK) else TRACK, radius = bar, center = Offset(x + bar, size.height / 2))
     }
 }
+
+/** The overlay's text size (sp): smaller than anything else on screen, which is allowed only here. */
+private const val TEXT_SP = 12f
 
 private val INK = Color(0xFFB0A090)
 private val DOWNBEAT = Color(0xFFE0C8A0)
