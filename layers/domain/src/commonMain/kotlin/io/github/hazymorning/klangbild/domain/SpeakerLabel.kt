@@ -26,7 +26,7 @@ object SpeakerLabel {
         val self = group.self?.let(::roomName)
         val single = others.singleOrNull()?.let(::roomName)
         return when {
-            self == null -> (others.size + 1).let { n -> t.plural(Plurals.groupSpeakers, n, t.countWord(n)) }
+            self == null -> t.plural(Plurals.groupSpeakers, others.size + 1)
             single != null && single != self -> "$self\u00A0+ $single"
             else -> "$self\u00A0+\u00A0${others.size}"
         }

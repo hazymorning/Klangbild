@@ -42,18 +42,11 @@ class Texts internal constructor(
 
     fun format(id: StringId, vararg args: Any): String = fontSafe(formatted(words.strings[id.index], args))
 
-    /** The plural form of [id] for [count], with [count] as its first argument. */
-    fun plural(id: PluralId, count: Int): String = plural(id, count, count)
-
-    /** The plural form of [id] for [count], with [args] as its arguments. */
-    fun plural(id: PluralId, count: Int, vararg args: Any): String =
-        fontSafe(formatted((if (count == 1) words.one else words.other)[id.index], args))
-
-    /**
-     * [count] in words where the language has a word for it ("Three" in English, its German word
-     * in German), else in figures.
-     */
-    fun countWord(count: Int): String = words.countWords.getOrNull(count) ?: region.integer(count.toLong())
+    /** The plural form of [id] for [count], with [count] in words where the language has one ("Three speakers"), else in figures. */
+    fun plural(id: PluralId, count: Int): String {
+        val number = words.countWords.getOrNull(count) ?: region.integer(count.toLong())
+        return fontSafe(formatted((if (count == 1) words.one else words.other)[id.index], arrayOf(number)))
+    }
 
     /** "35%", "35 %": a whole percent as the language writes it. */
     fun percent(percent: Int): String = fontSafe(region.integer(percent.toLong()) + region.percentSuffix)
