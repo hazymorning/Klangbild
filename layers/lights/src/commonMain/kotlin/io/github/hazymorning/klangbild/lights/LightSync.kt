@@ -266,8 +266,9 @@ class LightSync(
             if (lastTarget?.onlyOn == true) letGoSwitchedOff(states)
             val since = idleSince ?: t.also { idleSince = it }
             if (t - since >= IDLE_RELEASE_MS) return restore(b)
-            if (!shownPaused && t - since >= PAUSE_DELAY_MS) lastTarget?.let { send(b, it, t, PAUSE_TRANSITION_MS, force = true, paused = true) }
-            return
+            val last = lastTarget ?: return
+            if (!shownPaused && t - since >= PAUSE_DELAY_MS) send(b, last, t, PAUSE_TRANSITION_MS, force = true, paused = true)
+            return retryDue(b, last, t)
         }
         idleSince = null
         val wanted = slots(tg.lights)
@@ -327,7 +328,11 @@ class LightSync(
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
             !paused && tg.motion > 0f && lastSentAt.let { it == null || t - it >= DRIFT_MS } -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
-        // Calls that had to wait (a light still busy, a failure to try again): those lights only.
+        retryDue(b, tg, t)
+    }
+
+    /** Sends the calls that had to wait (a light still busy, a failure to try again), to those lights only. */
+    private fun retryDue(b: LightBridge, tg: Target, t: Long) {
         val due = lights.values.filter { light -> !light.theirs && !light.inFlight && light.retryAt.let { it != null && it <= t } }.mapTo(HashSet()) { it.id }
         if (due.isNotEmpty()) send(b, tg, t, SOFT_TRANSITION_MS, force = true, paused = shownPaused, only = due)
     }

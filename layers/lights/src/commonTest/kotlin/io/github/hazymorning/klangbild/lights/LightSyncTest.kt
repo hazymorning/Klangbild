@@ -677,6 +677,22 @@ class LightSyncTest {
     }
 
     @Test
+    fun `a light still busy when the music ends dims once it is free`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        // A slow answer: the next track's call is still under way when the lights dim.
+        ha.answerMs = 4_000
+        s.update(target("b"))
+        testScheduler.advanceTimeBy(3_000)
+        s.update(null)
+        testScheduler.advanceTimeBy(10_000)
+        assertThat(ha.to(left).last().brightness).isEqualTo(26)
+    }
+
+    @Test
     fun `lights no longer chosen go back at once, with nothing on stage too`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
         val s = sync()
