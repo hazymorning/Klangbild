@@ -5,6 +5,7 @@ import assertk.assertThat
 import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isLessThan
+import assertk.assertions.isNull
 import assertk.assertions.isSameInstanceAs
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.color.Appearance
@@ -35,7 +36,8 @@ import kotlin.test.Test
 
 /**
  * A switch to Cover Flow and straight back lets go of the scene still being made for Cover Flow:
- * the single cover's own scene starts at once instead of waiting for one nobody will show.
+ * the single cover's own scene starts at once instead of waiting for one nobody will show. The
+ * song on stage keeps its scene for the way back.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -60,13 +62,13 @@ class ScenesTest {
             val screen = ScreenSpec(960, 540, 1f)
             val track = TrackInfo("Song", listOf("A"), artworkUrl = "http://192.168.1.5:8095/cover.jpg")
             val look = Look(Appearance.DARK, 1f)
-            scenes.frame = Frame(screen, flow = true)
+            scenes.show(Frame(screen, flow = true))
             scenes.prepare(track, look)
             assertThat(scenes.pending(track)).isTrue()
             // Cover Flow's scene is really waiting for its cover.
             withTimeout(5_000) { while (asked.get() == 0) delay(5) }
             // Back to the single cover while Cover Flow's scene still waits for its cover.
-            scenes.frame = Frame(screen, flow = false)
+            scenes.show(Frame(screen, flow = false))
             assertThat(scenes.pending(track)).isFalse()
             val made = CompletableDeferred<ArtworkScene>()
             val start = System.nanoTime()
@@ -79,6 +81,29 @@ class ScenesTest {
             assertThat(scenes.pending(track)).isFalse()
             // The cover was asked for again, and its first ask let go.
             assertThat(asked.get()).isGreaterThanOrEqualTo(2)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `the song on stage finds its scene again on the way straight back`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val scenes = Scenes(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder))
+            val single = scenes.frame
+            // Without a cover: the generated one, made without asking for anything.
+            val track = TrackInfo("Song", listOf("A"))
+            val look = Look(Appearance.DARK, 1f)
+            val made = CompletableDeferred<ArtworkScene>()
+            scenes.prepare(track, look) { made.complete(it) }
+            val scene = withTimeout(30_000) { made.await() }
+            scenes.show(single.copy(flow = true), keep = track.sceneKey)
+            assertThat(scenes.ready(track, look)).isNull()
+            // Straight back: the single cover's scene is there at once, the same as before.
+            scenes.show(single, keep = track.sceneKey)
+            assertThat(scenes.ready(track, look)).isSameInstanceAs(scene)
+            assertThat(scenes.pending(track)).isFalse()
         } finally {
             scope.cancel()
         }

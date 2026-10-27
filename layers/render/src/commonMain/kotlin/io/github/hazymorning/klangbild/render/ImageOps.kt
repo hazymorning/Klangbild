@@ -160,13 +160,34 @@ object ImageOps {
         if (sw == dw && sh == dh) return src.copyOf()
         val ch = contributions(sw, dw)
         val cv = contributions(sh, dh)
-        // horizontal pass → float planes (dw × sh)
-        val tr = FloatArray(dw * sh)
-        val tg = FloatArray(dw * sh)
-        val tb = FloatArray(dw * sh)
-        val ta = FloatArray(dw * sh)
-        for (y in 0 until sh) {
+        // A source row's channels, read out once for all the taps that use them.
+        val sr = FloatArray(sw)
+        val sg = FloatArray(sw)
+        val sb = FloatArray(sw)
+        val sa = FloatArray(sw)
+        // The source rows the output row being made needs, resized across (dw each): a few
+        // rows in turn instead of the whole picture, as the rows move down one by one.
+        val taps = cv.weights.maxOf { it.size }
+        val ringRow = IntArray(taps) { -1 }
+        val tr = Array(taps) { FloatArray(dw) }
+        val tg = Array(taps) { FloatArray(dw) }
+        val tb = Array(taps) { FloatArray(dw) }
+        val ta = Array(taps) { FloatArray(dw) }
+        fun across(y: Int): Int {
+            val slot = y % taps
+            if (ringRow[slot] == y) return slot
             val row = y * sw
+            for (x in 0 until sw) {
+                val p = src[row + x]
+                sa[x] = ((p ushr 24) and 0xFF).toFloat()
+                sr[x] = ((p shr 16) and 0xFF).toFloat()
+                sg[x] = ((p shr 8) and 0xFF).toFloat()
+                sb[x] = (p and 0xFF).toFloat()
+            }
+            val dr = tr[slot]
+            val dg = tg[slot]
+            val db = tb[slot]
+            val da = ta[slot]
             for (x in 0 until dw) {
                 val s = ch.start[x]
                 val w = ch.weights[x]
@@ -175,35 +196,43 @@ object ImageOps {
                 var b = 0f
                 var a = 0f
                 for (k in w.indices) {
-                    val p = src[row + s + k]
                     val wk = w[k]
-                    a += ((p ushr 24) and 0xFF) * wk
-                    r += ((p shr 16) and 0xFF) * wk
-                    g += ((p shr 8) and 0xFF) * wk
-                    b += (p and 0xFF) * wk
+                    a += sa[s + k] * wk
+                    r += sr[s + k] * wk
+                    g += sg[s + k] * wk
+                    b += sb[s + k] * wk
                 }
-                val o = y * dw + x
-                tr[o] = r; tg[o] = g; tb[o] = b; ta[o] = a
+                dr[x] = r; dg[x] = g; db[x] = b; da[x] = a
             }
+            ringRow[slot] = y
+            return slot
         }
         val out = IntArray(dw * dh)
+        val r = FloatArray(dw)
+        val g = FloatArray(dw)
+        val b = FloatArray(dw)
+        val a = FloatArray(dw)
         for (y in 0 until dh) {
             val s = cv.start[y]
             val w = cv.weights[y]
-            for (x in 0 until dw) {
-                var r = 0f
-                var g = 0f
-                var b = 0f
-                var a = 0f
-                for (k in w.indices) {
-                    val o = (s + k) * dw + x
-                    val wk = w[k]
-                    r += tr[o] * wk; g += tg[o] * wk; b += tb[o] * wk; a += ta[o] * wk
+            r.fill(0f); g.fill(0f); b.fill(0f); a.fill(0f)
+            for (k in w.indices) {
+                val slot = across(s + k)
+                val wk = w[k]
+                val ir = tr[slot]
+                val ig = tg[slot]
+                val ib = tb[slot]
+                val ia = ta[slot]
+                for (x in 0 until dw) {
+                    r[x] += ir[x] * wk; g[x] += ig[x] * wk; b[x] += ib[x] * wk; a[x] += ia[x] * wk
                 }
-                out[y * dw + x] = (a.roundToInt().coerceIn(0, 255) shl 24) or
-                    (r.roundToInt().coerceIn(0, 255) shl 16) or
-                    (g.roundToInt().coerceIn(0, 255) shl 8) or
-                    b.roundToInt().coerceIn(0, 255)
+            }
+            val row = y * dw
+            for (x in 0 until dw) {
+                out[row + x] = (a[x].roundToInt().coerceIn(0, 255) shl 24) or
+                    (r[x].roundToInt().coerceIn(0, 255) shl 16) or
+                    (g[x].roundToInt().coerceIn(0, 255) shl 8) or
+                    b[x].roundToInt().coerceIn(0, 255)
             }
         }
         return out

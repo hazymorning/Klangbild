@@ -334,7 +334,7 @@ class NowPlayingController(
     /** A screen (activity or dream) starts showing the controller. */
     fun attach(spec: ScreenSpec): Unit = synchronized(lock) {
         viewers++
-        scenes.frame = scenes.frame.copy(screen = spec)
+        scenes.show(scenes.frame.copy(screen = spec))
         thumbs.px = (StageGrid(spec).rowCover * spec.density).roundToInt()
         if (viewers == 1) start()
     }
@@ -609,8 +609,10 @@ class NowPlayingController(
         if (flow != scenes.frame.flow || (_ui.value.queue == QueueDisplay.FLOW) != flow) {
             // Cover Flow needs scenes of its own, and its strip starts afresh. What showed before
             // stays on screen until the first scene is made (it goes then), so the switch never
-            // waits in the dark. Off and the list share the cover's scenes.
-            scenes.frame = scenes.frame.copy(flow = flow)
+            // waits in the dark. Off and the list share the cover's scenes. The song on stage
+            // keeps its scene for a way straight back.
+            val onStage = _ui.value.stage?.track ?: _ui.value.flow?.middle?.track
+            scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
             strip.clear()
         }
         if (_ui.value.queue != s.queue) {
