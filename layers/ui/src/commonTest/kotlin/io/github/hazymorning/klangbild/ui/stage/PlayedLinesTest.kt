@@ -9,16 +9,16 @@ import kotlin.test.Test
 
 /** A song that no longer plays keeps what its lines showed while it played. */
 class PlayedLinesTest {
-    private val b = TrackInfo("Who Has Seen the Wind", listOf("Willow Static"))
-    private val c = TrackInfo("Cold Light", listOf("Willow Static"))
+    private val next = TrackInfo("Who Has Seen the Wind", listOf("Willow Static"))
+    private val afterNext = TrackInfo("Cold Light", listOf("Willow Static"))
 
     @Test
     fun aSongThatNoLongerPlaysKeepsItsOwnNext() {
         val lines = PlayedLines()
-        assertThat(lines.next("a", plays = true, now = b)).isEqualTo(b)
+        assertThat(lines.next("a", plays = true, now = next)).isEqualTo(next)
         // B plays now, and C comes after it: A, still on screen, keeps its own next.
-        assertThat(lines.next("a", plays = false, now = c)).isEqualTo(b)
-        assertThat(lines.next("b", plays = true, now = c)).isEqualTo(c)
+        assertThat(lines.next("a", plays = false, now = afterNext)).isEqualTo(next)
+        assertThat(lines.next("b", plays = true, now = afterNext)).isEqualTo(afterNext)
     }
 
     @Test
@@ -61,15 +61,15 @@ class PlayedLinesTest {
     @Test
     fun aSongNeverSeenPlayingHasNothingOfItsOwn() {
         val lines = PlayedLines()
-        assertThat(lines.next("x", plays = false, now = c)).isNull()
+        assertThat(lines.next("x", plays = false, now = afterNext)).isNull()
         assertThat(lines.position("x", plays = false) { 1_000L }).isNull()
     }
 
     @Test
     fun onlyTheLastFewSongsAreKept() {
         val lines = PlayedLines()
-        for (k in 0 until 10) lines.next("s$k", plays = true, now = b)
-        assertThat(lines.next("s0", plays = false, now = c)).isNull()
-        assertThat(lines.next("s9", plays = false, now = c)).isEqualTo(b)
+        for (k in 0 until 10) lines.next("s$k", plays = true, now = next)
+        assertThat(lines.next("s0", plays = false, now = afterNext)).isNull()
+        assertThat(lines.next("s9", plays = false, now = afterNext)).isEqualTo(next)
     }
 }

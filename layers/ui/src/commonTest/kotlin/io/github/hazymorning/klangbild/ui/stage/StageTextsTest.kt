@@ -71,7 +71,6 @@ class StageTextsTest {
         val radio = TrackInfo("Morgenmusik", source = "Radio Morgenlicht")
         assertThat(StageTexts.line(false, radio, de)).isEqualTo("Radio Morgenlicht")
         assertThat(StageTexts.line(true, radio, de)).isEqualTo(de[Strings.stageLinkDown])
-        assertThat(StageTexts.line(true, radio, de)).isEqualTo("Verbindung wird wiederhergestellt\u00A0…")
         assertThat(StageTexts.line(false, radio.copy(durationMs = 1000), de)).isNull()
     }
 }
