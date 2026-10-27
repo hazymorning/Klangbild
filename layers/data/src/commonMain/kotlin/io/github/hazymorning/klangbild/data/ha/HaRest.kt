@@ -63,24 +63,24 @@ class HaRest(private val http: HttpClient, private val auth: HaAuth) {
      * signed-in token fetches a fresh token and tries once more.
      */
     private suspend fun <T> get(path: String, read: (Int, String) -> T): T {
-        var token = auth.accessToken()
-        repeat(2) { attempt ->
-            val (code, text) = http.fetch(
-                CALL_TIMEOUT_MS,
-                {
-                    address(auth.baseUrl + path)
-                    bearer(token)
-                },
-            ) { response -> response.status.value to response.textBelow(MAX_ANSWER_BYTES) }
-            if (code == 401 && attempt == 0 && auth.refreshable) {
-                auth.invalidate(token)
-                token = auth.accessToken()
-                return@repeat
-            }
-            return withContext(Dispatchers.Default) { read(code, text) }
+        val token = auth.accessToken()
+        var response = request(path, token)
+        if (response.first == 401 && auth.refreshable) {
+            auth.invalidate(token)
+            response = request(path, auth.accessToken())
         }
-        throw IOException("Home Assistant refused the token")
+        val (code, text) = response
+        return withContext(Dispatchers.Default) { read(code, text) }
     }
+
+    /** GET [path] with [token]: the status and the body. */
+    private suspend fun request(path: String, token: String): Pair<Int, String> = http.fetch(
+        CALL_TIMEOUT_MS,
+        {
+            address(auth.baseUrl + path)
+            bearer(token)
+        },
+    ) { response -> response.status.value to response.textBelow(MAX_ANSWER_BYTES) }
 
     /** [text] as a JSON object; null when it isn't one, such as a proxy's error page. */
     private fun objectOf(text: String): JsonObject? = try {
