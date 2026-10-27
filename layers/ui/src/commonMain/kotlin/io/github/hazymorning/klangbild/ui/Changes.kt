@@ -57,6 +57,11 @@ class TextRise(private val startMs: Int, val totalMs: Int) {
     /** How far [line] has risen at [at] (0 to 1 of the change). */
     fun level(at: Float, line: TextLine): Float =
         Motion.phaseMs(at, startMs + line.stagger, startMs + line.stagger + Motion.TEXT_LINE_MS, totalMs, Motion.Decelerate)
+
+    companion object {
+        /** When the last line of text that sets off at [startMs] is in place (ms). */
+        fun endMs(startMs: Int): Int = startMs + TextLine.entries.maxOf { it.stagger } + Motion.TEXT_LINE_MS
+    }
 }
 
 /**
