@@ -97,7 +97,7 @@ class QuickControlTest {
     /** Home Assistant's states for entities (`id to state`, attributes as JSON after a `|`). */
     private fun states(vararg s: Pair<String, String>): Map<String, EntityState> = s.associate { (id, v) ->
         val attrs = v.substringAfter('|', "{}")
-        id to EntityState(id, v.substringBefore('|'), Json.parseToJsonElement(attrs).jsonObject, 0.0, 0.0)
+        id to EntityState(id, v.substringBefore('|'), Json.parseToJsonElement(attrs).jsonObject, 0.0)
     }
 
     private fun report(vararg s: Pair<String, String>) {

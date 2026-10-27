@@ -275,7 +275,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val t = texts()
     val clock = if (display.clock || peek) t.clock(wall.value) else null
     val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
-    val volume = SpeakerLabel.volume(player?.volume, muted, t)
+    val volume = SpeakerLabel.volume(player?.volume, t)
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = stageScreen?.track?.kind?.spoken == true
     val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }

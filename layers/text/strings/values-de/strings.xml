@@ -234,7 +234,6 @@
         <item>Elf</item>
         <item>Zwölf</item>
     </string-array>
-    <string name="volume_muted">stumm</string>
     <string name="stage_link_down">Verbindung wird wiederhergestellt …</string>
     <string name="stage_next">Als Nächstes</string>
     <string name="hint_down_key">Pfeil runter</string>

@@ -21,7 +21,7 @@ import kotlin.test.Test
 class PlayerParserTest {
     private val base = "http://192.168.1.5:8123"
     private fun obj(s: String): JsonObject = Json.parseToJsonElement(s).jsonObject
-    private fun entity(state: String, attrs: String) = EntityState("media_player.wz", state, obj(attrs), 0.0, 0.0)
+    private fun entity(state: String, attrs: String) = EntityState("media_player.wz", state, obj(attrs), 0.0)
 
     @Test
     fun `maps a music assistant player`() {

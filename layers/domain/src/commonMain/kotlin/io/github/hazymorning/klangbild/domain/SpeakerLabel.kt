@@ -48,12 +48,8 @@ object SpeakerLabel {
     private fun key(s: String): String =
         s.lowercase().normalize(Form.NFKD).filter { it.isLetterOrDigit() }
 
-    /** "35%" (or "35 %", as the language writes it), or "muted". */
-    fun volume(level: Float?, muted: Boolean, t: Texts): String? = when {
-        muted -> t[Strings.volumeMuted]
-        level == null -> null
-        else -> t.percent((level * 100f).roundToInt().coerceIn(0, 100))
-    }
+    /** "35%", or "35 %" as the language writes it; null when the player reports no volume. */
+    fun volume(level: Float?, t: Texts): String? = level?.let { t.percent((it * 100f).roundToInt().coerceIn(0, 100)) }
 
     /**
      * Words that name the device rather than the room ("Living room speaker" is "Living room"),

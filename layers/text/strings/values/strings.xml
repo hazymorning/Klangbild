@@ -250,7 +250,6 @@
         <item>Eleven</item>
         <item>Twelve</item>
     </string-array>
-    <string name="volume_muted">muted</string>
     <string name="stage_link_down">Reconnecting…</string>
     <string name="stage_next">Up next</string>
     <string name="hint_down_key">Arrow down</string>

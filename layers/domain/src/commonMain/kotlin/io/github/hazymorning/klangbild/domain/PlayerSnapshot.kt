@@ -63,8 +63,6 @@ data class SpeakerGroup(
 
 /** What Music Assistant's queue adds on top of the player entity. */
 data class QueueInfo(
-    /** Identity of the current item, to match it against the player state. */
-    val currentTitle: String?,
     val current: TrackInfo?,
     val next: TrackInfo?,
     /**

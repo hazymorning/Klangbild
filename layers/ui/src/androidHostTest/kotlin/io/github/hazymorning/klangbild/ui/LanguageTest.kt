@@ -222,7 +222,7 @@ class LanguageTest {
             SpeakerGroup(null, (1..14).map { "Room $it" }),
             SpeakerGroup("Living room", listOf("Kitchen"), everywhere = true),
         ).map { SpeakerLabel.group(it, en) }
-        val volumes = listOf(SpeakerLabel.volume(0.35f, false, en), SpeakerLabel.volume(0.35f, true, en), null)
+        val volumes = listOf(SpeakerLabel.volume(0.35f, en), null)
         for (status in PlayerStatus.entries) for (muted in listOf(true, false)) for (flash in listOf(true, false)) {
             for (volume in volumes) for (group in groups + null) for (always in listOf(true, false)) {
                 for (pace in listOf(null, TimeText.speed(1.5f, en), StageTexts.sleep(Fixtures.at(23, 10), en, Fixtures.zone))) {

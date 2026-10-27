@@ -138,7 +138,7 @@ data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 data class UiState(
     /** What shows. While a song that came after the clock waits for its first scene, still the clock ([HeldStage]). */
     val screen: Screen = Screen.Rest(RestReason.CONNECTING),
-    val keepScreenOn: Boolean = true,
+    /** Nothing has played for the sleep timeout and no menu is open: the screen may turn off, or the app close. */
     val asleep: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**
@@ -425,7 +425,6 @@ class NowPlayingController(
             flow = null,
             queueComing = null,
             asleep = false,
-            keepScreenOn = true,
             chapter = null,
             sleepAt = null,
         )
@@ -778,7 +777,6 @@ class NowPlayingController(
         val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage)
         val decided = previous.copy(
             screen = decision.screen,
-            keepScreenOn = decision.keepScreenOn || menuState != null || quickState != null,
             asleep = decision.asleep && menuState == null && quickState == null,
             sleepAction = s.sleepAction,
             appearance = appearance,

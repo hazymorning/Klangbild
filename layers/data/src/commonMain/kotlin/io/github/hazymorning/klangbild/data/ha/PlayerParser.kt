@@ -160,7 +160,6 @@ object PlayerParser {
         val current = q["current_item"] as? JsonObject
         val next = q["next_item"] as? JsonObject
         return QueueInfo(
-            currentTitle = current?.let { (it["media_item"] as? JsonObject)?.string("name") ?: it.string("name") },
             current = current?.let { queueItem(it, baseUrl) },
             next = next?.let { queueItem(it, baseUrl) },
             name = q.string("name")?.trim()?.takeIf { it.isNotEmpty() },

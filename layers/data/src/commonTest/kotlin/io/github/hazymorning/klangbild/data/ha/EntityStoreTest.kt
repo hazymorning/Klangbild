@@ -27,7 +27,6 @@ class EntityStoreTest {
         assertThat(st.state).isEqualTo("playing")
         assertThat(st.string("media_title")).isEqualTo("A")
         assertThat(st.number("media_position")).isEqualTo(10.0)
-        assertThat(st.lastChanged).isEqualTo(1_791_655_200.5)
         assertThat(st.lastUpdated).isEqualTo(1_791_655_201.0)
         assertThat(st.context).isEqualTo("01K")
         assertThat(st.contextParent).isEqualTo("01P")

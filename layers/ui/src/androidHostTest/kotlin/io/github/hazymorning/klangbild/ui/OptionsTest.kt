@@ -55,7 +55,7 @@ class OptionsTest {
         Fixtures.model(
             Fixtures.track(SyntheticCover.MOSS),
             next = spiegel,
-            lead = StageTexts.lead(PlayerStatus.PLAYING, false, false, SpeakerLabel.volume(0.35f, false, Fixtures.texts), everywhere, volumeAlways = true, t = Fixtures.texts),
+            lead = StageTexts.lead(PlayerStatus.PLAYING, false, false, SpeakerLabel.volume(0.35f, Fixtures.texts), everywhere, volumeAlways = true, t = Fixtures.texts),
         ),
     )
 
@@ -64,7 +64,7 @@ class OptionsTest {
         Fixtures.model(
             Fixtures.track(SyntheticCover.BAUHAUS),
             next = spiegel,
-            lead = StageTexts.lead(PlayerStatus.PLAYING, false, true, SpeakerLabel.volume(0.4f, false, Fixtures.texts), everywhere, volumeAlways = false, t = Fixtures.texts),
+            lead = StageTexts.lead(PlayerStatus.PLAYING, false, true, SpeakerLabel.volume(0.4f, Fixtures.texts), everywhere, volumeAlways = false, t = Fixtures.texts),
         ),
     )
 

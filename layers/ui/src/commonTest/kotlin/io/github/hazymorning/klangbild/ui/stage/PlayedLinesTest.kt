@@ -53,7 +53,7 @@ class PlayedLinesTest {
     @Test
     fun aSongThatNoLongerPlaysKeepsItsChapter() {
         val lines = PlayedLines()
-        val seven = ChapterPlace(6, 12, "Chapter 7", 600_000L, 900_000L, "Chapter 8")
+        val seven = ChapterPlace("Chapter 7", 600_000L, 900_000L, "Chapter 8")
         assertThat(lines.chapter("book", plays = true, now = seven)).isEqualTo(seven)
         assertThat(lines.chapter("book", plays = false, now = null)).isEqualTo(seven)
     }

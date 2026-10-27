@@ -29,7 +29,6 @@ class ScreenStateMachineTest {
         val m = ScreenStateMachine(timing)
         val d = m.decide(src(), now = 0)
         assertThat(d.screen).isEqualTo(Screen.Stage(song, PlayerStatus.PLAYING, null))
-        assertThat(d.keepScreenOn).isTrue()
         assertThat(d.asleep).isFalse()
     }
 
@@ -41,11 +40,10 @@ class ScreenStateMachineTest {
         assertThat(m.decide(src(PlayerStatus.PAUSED), 1_000 + 180_000).screen).isEqualTo(Screen.Rest(RestReason.PAUSED))
         val late = m.decide(src(PlayerStatus.PAUSED), 1_000 + 600_000)
         assertThat(late.asleep).isTrue()
-        assertThat(late.keepScreenOn).isFalse()
         // Music again: wakes up immediately.
         val again = m.decide(src(), 1_000 + 700_000)
         assertThat(again.screen).isInstanceOf<Screen.Stage>()
-        assertThat(again.keepScreenOn).isTrue()
+        assertThat(again.asleep).isFalse()
     }
 
     @Test
@@ -108,7 +106,7 @@ class ScreenStateMachineTest {
         m.requestSetup(true)
         val d = m.decide(src(), 0)
         assertThat(d.screen).isEqualTo(Screen.Setup(SetupReason.REQUESTED))
-        assertThat(d.keepScreenOn).isTrue()
+        assertThat(d.asleep).isFalse()
         m.requestSetup(false)
         assertThat(m.decide(src(), 0).screen).isInstanceOf<Screen.Stage>()
     }

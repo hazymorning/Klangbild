@@ -224,7 +224,6 @@ class LightSyncTest {
             put("supported_features", features)
         },
         0.0,
-        0.0,
         "before",
     )
 

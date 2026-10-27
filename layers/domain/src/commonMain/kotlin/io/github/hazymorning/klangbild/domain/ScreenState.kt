@@ -57,9 +57,7 @@ data class Timing(
 
 data class ScreenDecision(
     val screen: Screen,
-    /** Hold FLAG_KEEP_SCREEN_ON. */
-    val keepScreenOn: Boolean,
-    /** The sleep timeout has passed. */
+    /** Nothing has played for the sleep timeout: the screen may turn off, or the app close. */
     val asleep: Boolean,
 )
 
@@ -107,11 +105,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
         } else {
             screen
         }
-        return ScreenDecision(
-            screen = shown,
-            keepScreenOn = !asleep,
-            asleep = asleep,
-        )
+        return ScreenDecision(shown, asleep)
     }
 
     private fun screenFor(s: SourceState, now: Long): Screen {

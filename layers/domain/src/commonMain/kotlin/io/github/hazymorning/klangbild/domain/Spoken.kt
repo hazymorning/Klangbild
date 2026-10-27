@@ -38,7 +38,7 @@ data class Chapter(val name: String?, val startMs: Long, val endMs: Long)
  * Where the listener is in a book or an episode with chapters, as the stage shows it: the
  * chapter's name, its stretch of the item's time (the progress bar's range) and what follows.
  */
-data class ChapterPlace(val index: Int, val count: Int, val label: String, val startMs: Long, val endMs: Long, val next: String?) {
+data class ChapterPlace(val label: String, val startMs: Long, val endMs: Long, val next: String?) {
     companion object {
         /**
          * The chapter at [positionMs] of [track], null without chapters or position; [numbered]
@@ -49,8 +49,6 @@ data class ChapterPlace(val index: Int, val count: Int, val label: String, val s
             val i = positionMs?.let { Chapters.at(chapters, it) } ?: return null
             val c = chapters[i]
             return ChapterPlace(
-                index = i,
-                count = chapters.size,
                 label = Chapters.label(c, i, numbered),
                 startMs = c.startMs,
                 endMs = c.endMs,

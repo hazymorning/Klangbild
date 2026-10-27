@@ -18,7 +18,6 @@ data class EntityState(
     val entityId: String,
     val state: String,
     val attributes: JsonObject,
-    val lastChanged: Double,
     val lastUpdated: Double,
     val context: String? = null,
     val contextParent: String? = null,
@@ -36,14 +35,12 @@ data class EntityState(
         fun of(o: JsonObject?): EntityState? {
             o ?: return null
             val id = o.string("entity_id") ?: return null
-            val changed = seconds(o.string("last_changed")) ?: 0.0
             val context = o["context"] as? JsonObject
             return EntityState(
                 entityId = id,
                 state = o.string("state") ?: "unknown",
                 attributes = o["attributes"] as? JsonObject ?: JsonObject(emptyMap()),
-                lastChanged = changed,
-                lastUpdated = seconds(o.string("last_updated")) ?: changed,
+                lastUpdated = seconds(o.string("last_updated")) ?: seconds(o.string("last_changed")) ?: 0.0,
                 context = context?.string("id"),
                 contextParent = context?.string("parent_id"),
                 contextUser = context?.string("user_id"),

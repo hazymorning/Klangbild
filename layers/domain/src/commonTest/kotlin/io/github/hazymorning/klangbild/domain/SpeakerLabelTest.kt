@@ -63,15 +63,13 @@ class SpeakerLabelTest {
         assertThat(SpeakerLabel.group(SpeakerGroup(null, listOf("Kitchen", "Bath")), en)).isEqualTo("Three speakers")
         assertThat(SpeakerLabel.group(SpeakerGroup(null, (1..12).map { "Room $it" }), en)).isEqualTo("13 speakers")
         assertThat(SpeakerLabel.group(SpeakerGroup("Living room", listOf("Kitchen"), everywhere = true), en)).isEqualTo("Everywhere")
-        assertThat(SpeakerLabel.volume(0.35f, muted = false, en)).isEqualTo("35%")
-        assertThat(SpeakerLabel.volume(0.35f, muted = true, en)).isEqualTo("muted")
+        assertThat(SpeakerLabel.volume(0.35f, en)).isEqualTo("35%")
     }
 
     @Test
     fun `volume in figures with a no-break space`() {
-        assertThat(SpeakerLabel.volume(0.35f, muted = false, de)).isEqualTo("35 %")
-        assertThat(SpeakerLabel.volume(1.2f, muted = false, de)).isEqualTo("100 %")
-        assertThat(SpeakerLabel.volume(0.35f, muted = true, de)).isEqualTo("stumm")
-        assertThat(SpeakerLabel.volume(null, muted = false, de)).isNull()
+        assertThat(SpeakerLabel.volume(0.35f, de)).isEqualTo("35 %")
+        assertThat(SpeakerLabel.volume(1.2f, de)).isEqualTo("100 %")
+        assertThat(SpeakerLabel.volume(null, de)).isNull()
     }
 }
