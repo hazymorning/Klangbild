@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -116,10 +117,12 @@ fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = M
     val last = remember { arrayOfNulls<MenuState>(1) }
     if (menu != null) last[0] = menu
     val shown = remember { Animatable(0f) }
+    // Composition only asks whether it shows, so the fade redraws without composing anew.
+    val gone by remember { derivedStateOf { shown.value <= 0f } }
     LaunchedEffect(menu != null) {
-        shown.animateTo(if (menu != null) 1f else 0f, tween(if (menu != null) 450 else 600, easing = Motion.Dimmer))
+        shown.animateTo(if (menu != null) 1f else 0f, tween(if (menu != null) MENU_IN_MS else MENU_OUT_MS, easing = Motion.Dimmer))
     }
-    if (menu == null && shown.value <= 0f) return
+    if (menu == null && gone) return
     val state = menu ?: last[0] ?: return
     // Faded draw by draw, not through a layer of the screen's size: the menu's background
     // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
@@ -351,6 +354,10 @@ private fun BaselineAt(x: Float, baseline: Float, width: Float, content: @Compos
 private const val SLIDER_HEIGHT = 4f
 private const val SLIDER_TRACK = 0.28f
 private const val SLIDER_LIFT = 4f
+
+/** The menu fading in, and out once it closes (ms). */
+private const val MENU_IN_MS = 450
+private const val MENU_OUT_MS = 600
 
 /** The heading's size (sp). */
 private const val HEADING_SP = 36f

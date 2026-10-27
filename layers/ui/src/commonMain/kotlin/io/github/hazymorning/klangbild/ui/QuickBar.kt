@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -106,10 +107,12 @@ fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifi
     if (quick != null) last[0] = quick
     val density = LocalDensity.current.density
     val shown = remember { Animatable(0f) }
+    // Composition only asks whether it shows, so the fade redraws without composing anew.
+    val gone by remember { derivedStateOf { shown.value <= 0f } }
     LaunchedEffect(quick != null) {
-        shown.animateTo(if (quick != null) 1f else 0f, tween(if (quick != null) 360 else 280, easing = Motion.Dimmer))
+        shown.animateTo(if (quick != null) 1f else 0f, tween(if (quick != null) BAR_IN_MS else BAR_OUT_MS, easing = Motion.Dimmer))
     }
-    if (quick == null && shown.value <= 0f) return
+    if (quick == null && gone) return
     val state = quick ?: last[0] ?: return
     // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's size,
     // which would cut its veil off at the screen's edges while it moves.
@@ -305,6 +308,10 @@ private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit)
         }
     }
 }
+
+/** The bar rising in, and sinking away once it closes (ms). */
+private const val BAR_IN_MS = 360
+private const val BAR_OUT_MS = 280
 
 /** The bar's glide to the chosen entry from rest (ms). */
 private const val ROW_GLIDE_MS = 280
