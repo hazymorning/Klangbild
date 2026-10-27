@@ -54,11 +54,11 @@ class StageStyles(palette: ScenePalette, val faces: Faces) {
     val muted = palette.inkMuted.asColor()
     val quiet = palette.inkQuiet.asColor()
 
-    /** The progress bar's fill: the artist's level, or on the cover's colors their leading hue. */
-    val accent = palette.accent.asColor()
+    /** The progress bar's fill: the artist's ink, or on the cover colors background their leading hue. */
+    val barFill = palette.accent.asColor()
 
-    /** The progress bar's track: the title's color, or the cover's leading hue, faint. */
-    val track = if (palette.accent == palette.inkMuted) ink.copy(alpha = 0.16f) else accent.copy(alpha = 0.24f)
+    /** The progress bar's groove: the title's ink, or the cover's leading hue, faint. */
+    val barGroove = if (palette.accent == palette.inkMuted) ink.copy(alpha = 0.16f) else barFill.copy(alpha = 0.24f)
 
     /** The title at one step of [titleLadder] ([headingStyle]). */
     fun title(step: TitleStep, cjk: Boolean = false): TextStyle = faces.headingStyle(step, cjk, ink)

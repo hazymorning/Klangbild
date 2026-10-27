@@ -31,11 +31,11 @@ import io.github.hazymorning.klangbild.ui.theme.rememberFigures
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** Colors of the progress bar. */
-class ProgressColors(val track: Color, val fill: Color, val label: Color)
+/** The progress bar's [groove], the [fill] of its played part, and its times' [label] color. */
+class ProgressColors(val groove: Color, val fill: Color, val label: Color)
 
 /**
- * A classic progress bar: a thin track with round ends, the played part filled (no knob, since
+ * A classic progress bar: a thin bar with round ends, the played part filled (no knob, since
  * nothing here is touched), the elapsed time under its left end and the track's length under
  * its right end ("1:35" and "4:11"). Only one number ticks, and its figures sit in fixed
  * cells, so nothing jitters.
@@ -93,7 +93,7 @@ fun ProgressBar(
                 val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
                 val f = glide.at(target, now, durationMs)
                 val r = CornerRadius(size.height / 2f)
-                drawRoundRect(colors.track, cornerRadius = r)
+                drawRoundRect(colors.groove, cornerRadius = r)
                 if (f > 0f) {
                     // Never shorter than it is high: a round dot at the very start.
                     val w = (size.width * f).coerceAtLeast(size.height)

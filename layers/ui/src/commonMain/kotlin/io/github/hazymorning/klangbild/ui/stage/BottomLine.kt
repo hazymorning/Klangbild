@@ -50,7 +50,7 @@ internal fun BottomLine(model: StageModel, styles: StageStyles, modifier: Modifi
                 startMs = slot.startMs,
                 item = slot.trackKey,
                 playing = model.playing,
-                colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
+                colors = ProgressColors(groove = styles.barGroove, fill = styles.barFill, label = styles.quiet),
                 labelStyle = styles.time,
                 modifier = Modifier.graphicsLayer { alpha = barAlpha().coerceIn(0f, 1f) },
             )
