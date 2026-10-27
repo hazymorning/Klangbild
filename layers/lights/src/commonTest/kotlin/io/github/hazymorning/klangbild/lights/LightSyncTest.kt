@@ -450,9 +450,11 @@ class LightSyncTest {
         s.update(target("a"))
         testScheduler.advanceTimeBy(3_000)
         assertThat(ha.followed).containsExactlyInAnyOrder(left, right)
-        // The light that was on goes straight to its color ...
+        // The light that was on goes straight to its color, at once ...
         val l = ha.to(left).single()
         assertThat(l.service).isEqualTo("turn_on")
+        assertThat(l.at).isEqualTo(0L)
+        assertThat(l.transition).isEqualTo(LightSync.FIRST_TRANSITION_MS / 1000.0)
         assertThat(l.brightness).isEqualTo(51)
         assertThat(l.data!!["xy_color"]!!.jsonArray).hasSize(2)
         // ... the one that was off first comes on at the very least, in its new color, then rises.

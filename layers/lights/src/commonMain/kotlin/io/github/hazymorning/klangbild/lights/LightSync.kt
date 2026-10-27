@@ -113,10 +113,14 @@ class LightSync(
 
     private class Light(val id: String, val slot: LightSlot) {
         var shown: Shown? = null
-        var sentAt = 0L
+
+        /** When the last call to it went out; null before the first. */
+        var sentAt: Long? = null
         var transitionMs = 0L
         var inFlight = false
-        var retryAt = 0L
+
+        /** When a call that had to wait is due; null: none. */
+        var retryAt: Long? = null
         var takenOver = false
 
         /** Calls that failed in a row: one is tried again, then the light waits for the next change. */
@@ -172,7 +176,9 @@ class LightSync(
     private var idleSince: Long? = null
     private var pausedSince: Long? = null
     private var shownPaused = false
-    private var lastStepAt = 0L
+
+    /** When [send] last ran: the colors drift on [DRIFT_MS] after it. */
+    private var lastSentAt: Long? = null
     private var shownShare = 0f
     private val rgb = FloatArray(3)
 
@@ -293,10 +299,11 @@ class LightSync(
                     waitingSince = t
                 }
                 // The first song after taking over is shown at once.
-                if (shownSong == null || t - waitingSince >= SETTLE_MS) {
+                val first = shownSong == null
+                if (first || t - waitingSince >= SETTLE_MS) {
                     shownSong = tg.song
                     shownColors = tg.colors
-                    send(b, tg, t, if (lastStepAt == 0L) FIRST_TRANSITION_MS else TRACK_TRANSITION_MS, force = true, paused = paused)
+                    send(b, tg, t, if (first) FIRST_TRANSITION_MS else TRACK_TRANSITION_MS, force = true, paused = paused)
                 }
             }
             paused && !shownPaused && t - (pausedSince ?: t) >= PAUSE_DELAY_MS -> send(b, tg, t, PAUSE_TRANSITION_MS, force = true, paused = true)
@@ -307,10 +314,10 @@ class LightSync(
             }
             // A new level or a later hour (a pause is dimmed above, after its delay).
             share(tg, shownPaused) != shownShare -> send(b, tg, t, SOFT_TRANSITION_MS, force = false, paused = shownPaused)
-            !paused && tg.motion > 0f && t - lastStepAt >= DRIFT_MS -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
+            !paused && tg.motion > 0f && lastSentAt.let { it == null || t - it >= DRIFT_MS } -> send(b, tg, t, DRIFT_TRANSITION_MS, force = false, paused = false)
         }
         // Calls that had to wait (a light still busy, a failure to try again): those lights only.
-        val due = lights.values.filter { !it.takenOver && !it.inFlight && it.retryAt in 1..t }.mapTo(HashSet()) { it.id }
+        val due = lights.values.filter { light -> !light.takenOver && !light.inFlight && light.retryAt.let { it != null && it <= t } }.mapTo(HashSet()) { it.id }
         if (due.isNotEmpty()) send(b, tg, t, SOFT_TRANSITION_MS, force = true, paused = shownPaused, only = due)
     }
 
@@ -363,7 +370,6 @@ class LightSync(
         shownSong = null
         waitingSong = null
         shownPaused = false
-        lastStepAt = 0L
     }
 
     /** Saves [states] in snapshot scenes of Home Assistant's own (one per light), and notes them as a fallback. */
@@ -403,13 +409,14 @@ class LightSync(
             // "Leave off": a light that is off stays off.
             if (wasOff && target.onlyOn) continue
             if (shown == Shown.On && !wasOff) continue
-            if (small(light.shown, shown) && !force && light.retryAt == 0L) continue
-            if (light.inFlight || t - light.sentAt < MIN_GAP_MS) {
-                light.retryAt = maxOf(t + 1, light.sentAt + MIN_GAP_MS)
+            if (small(light.shown, shown) && !force && light.retryAt == null) continue
+            val last = light.sentAt
+            if (last != null && (light.inFlight || t - last < MIN_GAP_MS)) {
+                light.retryAt = maxOf(t + 1, last + MIN_GAP_MS)
                 continue
             }
             light.inFlight = true
-            light.retryAt = 0L
+            light.retryAt = null
             light.sentAt = t
             light.shown = shown
             val preOn = wasOff && caps.dimmable
@@ -434,7 +441,7 @@ class LightSync(
                 }
             }
         }
-        lastStepAt = t
+        lastSentAt = t
         shownPaused = paused
         shownShare = share
     }
@@ -486,7 +493,8 @@ class LightSync(
             // Brightness and color are judged once the light has settled (a fade reports steps on
             // the way); what a person or an automation did counts at once.
             val byPerson = s.contextUser != null || s.contextParent != null
-            if (!byPerson && t - light.sentAt < light.transitionMs + SETTLE_REPORT_MS) continue
+            val sent = light.sentAt
+            if (!byPerson && sent != null && t - sent < light.transitionMs + SETTLE_REPORT_MS) continue
             light.checkedUpdate = s.lastUpdated
             val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
             val sentBri = when (shown) {
