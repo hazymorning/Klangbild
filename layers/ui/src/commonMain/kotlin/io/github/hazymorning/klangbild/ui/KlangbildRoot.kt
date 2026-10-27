@@ -292,7 +292,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val playingKey = stageScreen?.track?.key
     val playingNow by rememberUpdatedState(playingKey)
     val played = remember { PlayedLines() }
-    val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t) {
+    val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t, hooks) {
         { s: StageData ->
             val key = s.track.key
             val plays = key == playingKey
