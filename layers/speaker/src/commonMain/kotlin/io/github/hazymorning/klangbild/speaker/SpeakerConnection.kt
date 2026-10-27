@@ -71,7 +71,6 @@ class SpeakerConnection(
         loop?.cancel()
         loop = null
         session = null
-        _link.value = SpeakerLink.CONNECTING
     }
 
     /** Skips the pause before the next attempt (the network came back). */
