@@ -28,6 +28,19 @@ class Lyrics(val lines: List<LyricLine>, val breaks: List<Long> = emptyList()) {
         val start = lines[i].startMs
         return LyricPlace(i, lit = breaks.none { it in (start + 1)..positionMs })
     }
+
+    /**
+     * Whether these can be the words of a recording [durationMs] long. Words timed for a longer
+     * one, such as the album's version heard as a radio edit, are still sung after it has ended.
+     * A length known only to the second, or taken from another copy of the same recording, is
+     * allowed [FIT_SLACK_MS].
+     */
+    fun fit(durationMs: Long): Boolean = lines.last().startMs <= durationMs + FIT_SLACK_MS
+
+    companion object {
+        /** Music Assistant takes two copies of a recording for one when their lengths are this close. */
+        const val FIT_SLACK_MS = 8_000L
+    }
 }
 
 /** The line that stands in the middle of the words ([index]), and whether it is being sung. */

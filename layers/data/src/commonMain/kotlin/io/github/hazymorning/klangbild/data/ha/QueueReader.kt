@@ -230,7 +230,13 @@ internal class QueueReader(
         if (track.kind != MediaKind.MUSIC) return null
         val uri = entity?.string("media_content_id")?.takeIf { it.contains("://") }
             ?: w?.currentSong?.uri?.takeIf { w.current?.let { c -> sameTitle(c.title, track.title) } == true }
-        val known = if (uri == null) lastLyrics?.takeIf { it.key == track.key } else loader.known(uri)?.let { SongLyrics(track.key, it.lyrics) }
+        // Words still sung after the song has ended were timed for another recording: none.
+        val length = track.durationMs
+        val known = if (uri == null) {
+            lastLyrics?.takeIf { it.key == track.key }
+        } else {
+            loader.known(uri)?.let { SongLyrics(track.key, it.lyrics?.takeIf { l -> length == null || l.fit(length) }) }
+        }
         if (known != null) lastLyrics = known
         return known
     }

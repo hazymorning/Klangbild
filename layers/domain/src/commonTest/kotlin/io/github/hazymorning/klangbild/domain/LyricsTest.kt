@@ -4,7 +4,9 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import kotlin.test.Test
 
 /** Synced words: LRC read tolerantly (tidied or raw), and where the words stand as the song plays. */
@@ -40,6 +42,16 @@ class LyricsTest {
         assertThat(texts(l)).containsExactly(
             "Die Straße glänzt", "und alle Ampeln", "Ich fahre\u00A0– ohne Ziel", "Neonlicht, Neonlicht", "Neonlicht, Neonlicht",
         )
+    }
+
+    @Test
+    fun `words still sung after the song ends belong to a longer recording`() {
+        val l = Lrc.parse("[00:10.00]Erste Zeile\n[03:58.00]Letzte Zeile")!!
+        assertThat(l.fit(240_000)).isTrue()
+        // A length a few seconds short, as another copy of the recording may have it.
+        assertThat(l.fit(232_000)).isTrue()
+        // The radio edit of a longer album version.
+        assertThat(l.fit(200_000)).isFalse()
     }
 
     @Test
