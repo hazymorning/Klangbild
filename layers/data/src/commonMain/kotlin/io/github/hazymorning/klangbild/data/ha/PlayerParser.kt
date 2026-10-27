@@ -156,7 +156,7 @@ object PlayerParser {
      * entity id: `{"media_player.x": {"current_item": {...}, "next_item": {...}}}`.
      */
     fun queue(response: JsonObject, entityId: String, baseUrl: String): QueueInfo? {
-        val q = (response[entityId] as? JsonObject) ?: (response.values.firstOrNull() as? JsonObject) ?: return null
+        val q = response[entityId] as? JsonObject ?: return null
         val current = q["current_item"] as? JsonObject
         val next = q["next_item"] as? JsonObject
         return QueueInfo(
