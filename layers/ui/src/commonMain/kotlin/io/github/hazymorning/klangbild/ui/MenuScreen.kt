@@ -28,9 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -64,7 +62,7 @@ import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.render.imageBitmapOf
 import io.github.hazymorning.klangbild.text.Strings
-import io.github.hazymorning.klangbild.ui.stage.BEYOND_EDGES_DP
+import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -206,27 +204,22 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
     val levels = remember { HashMap<MenuSection?, MenuState>() }
     levels[menu.section] = menu
 
-    BoxWithConstraints(
-        modifier.fillMaxSize().drawBehind {
-            // The background reaches beyond the screen: the drift against burn-in never shows what lies under it.
-            val m = BEYOND_EDGES_DP * density
-            drawRect(colors.wall, Offset(-m, -m), Size(size.width + 2 * m, size.height + 2 * m))
-        },
-    ) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        BaseWall(colors.wall)
         val density = LocalDensity.current.density
         val screen = ScreenSpec((maxWidth.value * density).roundToInt(), (maxHeight.value * density).roundToInt(), density)
         val layout = StageGrid(screen)
         val focusY = maxHeight.value / 2f
 
         val glowCx = layout.columnLeft + layout.columnWidth / 2f
-        val field = rememberOffMain(screen, colors) {
-            val px = glowField(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
+        val map = rememberOffMain(screen, colors) {
+            val px = glowMap(glowCx, focusY, screen.widthDp, screen.heightDp, ImageOps.ditherFor(colors.band.toArgb()))
             imageBitmapOf(px, GLOW_MAP_W, GLOW_MAP_H)
         }
-        if (field != null) Canvas(Modifier.fillMaxSize()) {
+        if (map != null) Canvas(Modifier.fillMaxSize()) {
             // The band's light adds to the background, dark or light.
             drawImage(
-                field,
+                map,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
                 colorFilter = ColorFilter.tint(colors.band, BlendMode.Modulate),
                 filterQuality = FilterQuality.Low,
@@ -382,7 +375,7 @@ private const val GLOW_MAP_H = 270
  * and not its neighbors (grayscale, dithered, tinted when drawn). It never moves; the list moves
  * through it. Like every light, it is gone before the band along the screen's edges.
  */
-private fun glowField(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
+private fun glowMap(cx: Float, cy: Float, widthDp: Float, heightDp: Float, ditherLsb: Float): IntArray {
     val img = LinearImage(GLOW_MAP_W, GLOW_MAP_H)
     val sx = widthDp / GLOW_MAP_W
     val sy = heightDp / GLOW_MAP_H
