@@ -90,7 +90,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
             raw is Screen.Stage -> raw.also { lastPlaying = null }
             // Nothing plays for a moment right after a song played: the stage stays.
             raw is Screen.Rest && raw.reason == RestReason.IDLE && now - lastPlayingAt < timing.betweenSongsMs -> lastPlaying ?: raw
-            else -> raw.also { if (raw !is Screen.Rest || raw.reason != RestReason.IDLE) lastPlaying = null }
+            else -> raw.also { lastPlaying = null }
         }
         val playing = screen is Screen.Stage &&
             (screen.status == PlayerStatus.PLAYING || screen.status == PlayerStatus.BUFFERING)
