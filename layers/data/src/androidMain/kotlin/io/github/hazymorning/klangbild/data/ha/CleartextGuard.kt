@@ -6,7 +6,7 @@ import java.net.InetAddress
 import java.net.Proxy
 
 /**
- * OkHttp interceptor that refuses cleartext requests outside the home network ([LocalNetwork]).
+ * OkHttp interceptor that refuses cleartext requests outside the local network ([LocalNetwork]).
  * Android's network security config cannot express IP ranges, so the platform allows cleartext
  * in general (res/xml/network_security_config.xml) and this narrows it down again. As an
  * application interceptor it checks the host's name before anything is sent; as a network

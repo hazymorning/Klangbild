@@ -4,18 +4,20 @@ import io.github.hazymorning.klangbild.data.decodeIpAddress
 import kotlinx.io.IOException
 
 /**
- * Cleartext (http://) is only allowed inside the home network: private and link-local
- * addresses, `.local`/`.lan`/`.home.arpa` names and single-label hostnames. A hostname that
- * resolves only to private addresses (local DNS) is local too. The platform's HTTP client
- * checks every request against these rules before anything is sent.
+ * Cleartext (http://) is allowed only inside the local network: loopback, private and link-local
+ * addresses, single-label names, and names ending in `.local`, `.lan`, `.home`, `.internal`,
+ * `.home.arpa`, `.localdomain` or `.fritz.box`. A name that resolves only to private addresses
+ * counts as local too. The platform's HTTP client checks every request against these rules before
+ * anything is sent.
  */
 object LocalNetwork {
-    private val localSuffixes = listOf(".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain", ".fritz.box", ".box")
+    /** Domains no public name ends in, and `.fritz.box`, the one a widespread home router gives its network. */
+    private val localSuffixes = listOf(".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain", ".fritz.box")
 
-    /** A cleartext request to a host outside the home network, refused. */
+    /** A cleartext request to a host outside the local network, refused. */
     class CleartextRefused(host: String) : IOException("Cleartext HTTP to $host is only allowed in the local network")
 
-    /** Purely syntactic check (no DNS). */
+    /** Whether [host] is local by its name or address alone, without asking DNS. */
     fun looksLocal(host: String): Boolean {
         val h = host.trim().trimStart('[').trimEnd(']').lowercase()
         if (h.isEmpty()) return false
