@@ -159,10 +159,10 @@
     <string name="about_sleep_timer_off">Hält die Musik nach einer Weile an, auf Wunsch am Ende eines Kapitels. Dafür muss Klangbild laufen.</string>
     <string name="about_sleep_timer_at">Die Musik hält um %s an.</string>
     <string name="about_sleep_timer_end">Die Musik hält an, sobald %s erreicht ist.</string>
-    <string name="sleep_end_chapter">das Ende des Kapitels</string>
-    <string name="sleep_end_episode">das Ende der Folge</string>
-    <string name="sleep_end_book">das Ende des Hörbuchs</string>
-    <string name="sleep_end_track">das Ende des Titels</string>
+    <string name="about_sleep_timer_end_chapter">das Ende des Kapitels</string>
+    <string name="about_sleep_timer_end_episode">das Ende der Folge</string>
+    <string name="about_sleep_timer_end_book">das Ende des Hörbuchs</string>
+    <string name="about_sleep_timer_end_track">das Ende des Titels</string>
     <string name="about_sleep_after">Läuft keine Musik mehr, schaltet Klangbild nach dieser Zeit aus.</string>
     <string name="about_sleep_action_close">Klangbild schließt sich, zurück zum Startbildschirm.</string>
     <string name="about_sleep_action_release">Der Fernseher übernimmt: sein Bildschirmschoner oder Standby.</string>

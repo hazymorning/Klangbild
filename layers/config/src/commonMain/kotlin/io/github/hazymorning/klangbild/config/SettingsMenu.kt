@@ -490,10 +490,10 @@ object SettingsMenu {
 
     /** "end of the chapter", for the sentence that says when the music pauses. */
     private fun endPhrase(choice: SleepChoice, kind: MediaKind?): StringId = when {
-        choice == SleepChoice.CHAPTER_END -> Strings.sleepEndChapter
-        kind == MediaKind.PODCAST -> Strings.sleepEndEpisode
-        kind == MediaKind.AUDIOBOOK -> Strings.sleepEndBook
-        else -> Strings.sleepEndTrack
+        choice == SleepChoice.CHAPTER_END -> Strings.aboutSleepTimerEndChapter
+        kind == MediaKind.PODCAST -> Strings.aboutSleepTimerEndEpisode
+        kind == MediaKind.AUDIOBOOK -> Strings.aboutSleepTimerEndBook
+        else -> Strings.aboutSleepTimerEndTrack
     }
 
     /** How the queue shows, in a word: Off, List, Cover Flow. */

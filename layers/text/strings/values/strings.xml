@@ -171,10 +171,10 @@
     <string name="about_sleep_timer_off">Pauses the music after a while, or at the end of a chapter. Klangbild must be running.</string>
     <string name="about_sleep_timer_at">The music pauses at %s.</string>
     <string name="about_sleep_timer_end">The music pauses at the %s.</string>
-    <string name="sleep_end_chapter">end of the chapter</string>
-    <string name="sleep_end_episode">end of the episode</string>
-    <string name="sleep_end_book">end of the audiobook</string>
-    <string name="sleep_end_track">end of the track</string>
+    <string name="about_sleep_timer_end_chapter">end of the chapter</string>
+    <string name="about_sleep_timer_end_episode">end of the episode</string>
+    <string name="about_sleep_timer_end_book">end of the audiobook</string>
+    <string name="about_sleep_timer_end_track">end of the track</string>
     <string name="about_sleep_after">When no music plays, Klangbild turns off after this time.</string>
     <string name="about_sleep_action_close">Klangbild closes and returns to the home screen.</string>
     <string name="about_sleep_action_release">The TV takes over: its screen saver or standby.</string>
@@ -273,7 +273,7 @@
     <string name="setup_text_rejected">Scan the code and sign in to Home Assistant again on the page.</string>
     <string name="setup_back">Back closes</string>
     <string name="setup_code">Code</string>
-    <string name="setup_in_browser">or in a browser: </string>
+    <string name="setup_in_browser">or in a browser:</string>
     <string name="setup_no_network">No network connection</string>
 
     <!-- This TV as a speaker: the notification its service always has -->
