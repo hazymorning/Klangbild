@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import io.github.hazymorning.klangbild.app.QueueList
 import io.github.hazymorning.klangbild.color.Appearance
-import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.text.Strings
@@ -185,11 +184,11 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
     val styles = remember(model.scene.palette, faces) { StageStyles(model.scene.palette, faces) }
     val figures = rememberFigures(styles.time, Face.TITLE)
     // The room the bar (or a line in its place) takes, gliding as it comes and goes.
-    val target = slotRoom(bottomOf(model), styles, density)
+    val target = slotRoom(slotOf(model), styles, density)
     val room = remember(rooms, model.scene.key) { rooms?.of(model.scene.key, target) ?: SlotRoom(target) }
     LaunchedEffect(room, target) { room.to(target) }
     // The room it takes at rest, which the rows are set for: none for a bar that comes only for a moment.
-    val rest = slotRoom(bottomOf(model)?.takeIf { it != BAR || model.barStays }, styles, density)
+    val rest = slotRoom(slotOf(model)?.takeIf { it !is Slot.Bar || model.barStays }, styles, density)
     return remember(model.text, model.year, model.chapter, queue, model.scene.layout, model.scene.palette, density, figures, room, rest) {
         planQueue(model, queue, styles, figures, measurer, density, room, rest)
     }
@@ -211,13 +210,13 @@ internal class QueueRooms {
 }
 
 /** The room [slot] takes above the rows (px): the bar's block or a line's cap height, with the space above it. */
-private fun slotRoom(slot: String?, styles: StageStyles, density: Density): Float {
+private fun slotRoom(slot: Slot?, styles: StageStyles, density: Density): Float {
     val d = density.density
     return when (slot) {
         null -> 0f
         // The bar's block, from its top to its labels' baseline, as the bar measures it.
-        BAR -> barSpace(styles, density) + (BAR_THICKNESS * d).roundToInt() + (BAR_LABEL_GAP * d).roundToInt() + (with(density) { styles.time.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
-        else -> barSpace(styles, density) + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
+        is Slot.Bar -> barSpace(styles, density) + (BAR_THICKNESS * d).roundToInt() + (BAR_LABEL_GAP * d).roundToInt() + (with(density) { styles.time.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
+        is Slot.Text -> barSpace(styles, density) + with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT
     }
 }
 
@@ -488,7 +487,6 @@ internal fun QueueText(
     pictureDim: () -> Float,
 ) {
     val styles = plan.styles
-    val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
     val bottomLine = model.line
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
@@ -503,7 +501,7 @@ internal fun QueueText(
                 if (plan.version != null) BasicText(plan.version, line(TextLine.VERSION), style = plan.versionStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
                 if (plan.meta != null) BasicText(plan.meta, line(TextLine.ARTIST), style = plan.metaStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
                 BottomLine(
-                    bottomOf(model), model, styles, playing,
+                    model, styles,
                     line(TextLine.BOTTOM).graphicsLayer { this.alpha = plan.room.line },
                     label = "queue-bottom-line",
                     barAlpha = { plan.room.bar },

@@ -56,7 +56,10 @@ class StageModel(
     val lyrics: Lyrics? = null,
     /** The queue as a list beside the cover, while it shows (and no words take the column): then the song stands at the top of the column. */
     val queue: QueueModel? = null,
-)
+) {
+    /** The track plays, or is about to: the progress bar and the lyrics move on. */
+    val playing: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING
+}
 
 /**
  * The quiet line at the top of the column: [clock], the time, then the [values] of one's own

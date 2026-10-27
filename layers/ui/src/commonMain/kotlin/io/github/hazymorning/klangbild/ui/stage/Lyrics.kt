@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import io.github.hazymorning.klangbild.domain.LyricPlace
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.LyricsCursor
-import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.LocalStill
@@ -309,10 +308,8 @@ internal fun LyricsText(
     val position by rememberUpdatedState(model.positionMs)
     // The list first stands where the song is.
     val plan = rememberLyricsPlan(view, layout, room.around()) { view.cursor.at(position()) }
-    val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
-
     // The place follows the position on the stage's tick (in a still, once).
-    val frames = rememberFrames(fast = playing)
+    val frames = rememberFrames(fast = model.playing)
     if (plan != null) {
         LaunchedEffect(view, plan) {
             snapshotFlow {
@@ -323,9 +320,8 @@ internal fun LyricsText(
     }
 
     val bottomLine = model.line
-    val slot = bottomOf(model)
     // While the bar or a notice shows above the song, the words make room for it.
-    val slotShown = animateFloatAsState(if (slot != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot")
+    val slotShown = animateFloatAsState(if (slotOf(model) != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot")
     val colW = (layout.columnWidth * LocalDensity.current.density).roundToInt()
 
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
@@ -352,7 +348,7 @@ internal fun LyricsText(
                 drawLyrics(p, view.scroll.value, x, focus, around, inks, glow, a * come)
             }
             // 1: the progress bar or a notice, above the song; changes cross-fade
-            BottomLine(slot, model, styles, playing, line(TextLine.BOTTOM), label = "lyrics-slot-line")
+            BottomLine(model, styles, line(TextLine.BOTTOM), label = "lyrics-slot-line")
             // 2: the song itself, where "Up next" stands
             val song = model.next?.let { fitSong(it, model.nextTitle, styles, colW) }
             if (song != null) BasicText(songText(song), line(TextLine.NEXT), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)

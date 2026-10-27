@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.color.Lamp
-import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.FlowLight
@@ -251,7 +250,6 @@ internal fun TextLayer(
     val block = plan.styles
     val localDensity = LocalDensity.current
     val colW = (layout.columnWidth * localDensity.density).roundToInt()
-    val playing = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.BUFFERING
 
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
     val bottomLine = model.line
@@ -291,7 +289,7 @@ internal fun TextLayer(
                 else -> Box(Modifier)
             }
             // 5: progress bar, station or notice; changes cross-fade
-            BottomLine(bottomOf(model), model, styles, playing, line(TextLine.BOTTOM), label = "bottom-line")
+            BottomLine(model, styles, line(TextLine.BOTTOM), label = "bottom-line")
             // 6: what comes next, on the artwork's bottom edge
             NextLine(plan.next, plan.nextLead, styles, line(TextLine.NEXT))
         },

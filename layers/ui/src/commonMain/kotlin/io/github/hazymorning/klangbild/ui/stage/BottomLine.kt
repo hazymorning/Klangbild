@@ -1,7 +1,9 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -11,44 +13,48 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.github.hazymorning.klangbild.ui.Motion
 import kotlin.math.roundToInt
 
-/** The progress bar itself, as [bottomOf] names it beside the words a line may hold. */
-internal const val BAR = "\u0000bar"
+/** What stands in the progress bar's place ([slotOf]). */
+internal sealed interface Slot {
+    /** The progress bar over [durationMs] from [startMs] in the track's time, for the track with [trackKey]. */
+    data class Bar(val durationMs: Long, val startMs: Long, val trackKey: String) : Slot
 
-/** What stands in the progress bar's place: a notice or a station ([StageModel.line]), the bar, or nothing. */
-internal fun bottomOf(model: StageModel): String? = when {
-    model.line != null -> model.line
-    model.progress && model.durationMs != null -> BAR
+    /** A notice or a station ([StageModel.line]). */
+    data class Text(val text: String) : Slot
+}
+
+/** What stands in [model]'s progress bar place: a notice or a station, the bar, or nothing. */
+internal fun slotOf(model: StageModel): Slot? = when {
+    model.line != null -> Slot.Text(model.line)
+    model.progress && model.durationMs != null -> Slot.Bar(model.durationMs, model.rangeStartMs, model.scene.key)
     else -> null
 }
 
 /**
- * The progress bar's place in the column ([bottomOf]): the bar, or a line of words. A change
- * cross-fades; the bar itself shows as much as [barAlpha] says on top of that.
+ * The progress bar's place in the column ([slotOf]): the bar, or a line of words. A change
+ * cross-fades, and a bar that leaves keeps its own length; a new chapter only starts a new bar.
+ * The bar itself shows as much as [barAlpha] says on top of that.
  */
+@OptIn(ExperimentalAnimationApi::class) // For Transition.Crossfade's contentKey, so a new chapter updates the bar in place.
 @Composable
-internal fun BottomLine(
-    content: String?,
-    model: StageModel,
-    styles: StageStyles,
-    playing: Boolean,
-    modifier: Modifier,
-    label: String,
-    barAlpha: () -> Float = { 1f },
-) {
-    Crossfade(content, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = label) { shown ->
-        when (shown) {
+internal fun BottomLine(model: StageModel, styles: StageStyles, modifier: Modifier, label: String, barAlpha: () -> Float = { 1f }) {
+    updateTransition(slotOf(model), label).Crossfade(
+        modifier,
+        tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer),
+        contentKey = { if (it is Slot.Bar) Slot.Bar::class else it },
+    ) { slot ->
+        when (slot) {
             null -> Box(Modifier)
-            BAR -> ProgressBar(
-                durationMs = model.durationMs ?: 1L,
+            is Slot.Bar -> ProgressBar(
+                durationMs = slot.durationMs,
                 positionMs = model.positionMs,
-                startMs = model.rangeStartMs,
-                item = model.scene.key,
-                playing = playing,
+                startMs = slot.startMs,
+                item = slot.trackKey,
+                playing = model.playing,
                 colors = ProgressColors(track = styles.track, fill = styles.accent, label = styles.quiet),
                 labelStyle = styles.time,
                 modifier = Modifier.graphicsLayer { alpha = barAlpha().coerceIn(0f, 1f) },
             )
-            else -> BasicText(shown, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            is Slot.Text -> BasicText(slot.text, style = styles.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
