@@ -225,17 +225,15 @@ class LightSync(
      * Gives the lights back as they were, through the link they were taken over with (the app
      * closes, or another server is set up); the returned job ends when the calls are out.
      */
-    fun release(): Job {
+    fun release(): Job = synchronized(lock) {
         val b = bridge
         target = null
-        val old = synchronized(lock) { loop.also { loop = null } }
+        val old = loop.also { loop = null }
         old?.cancel()
-        val job = scope.launch(context) {
+        scope.launch(context) {
             old?.join()
             restore(b)
-        }
-        releasing = job
-        return job
+        }.also { releasing = it }
     }
 
     private fun ensureLoop(): Unit = synchronized(lock) {
@@ -247,10 +245,8 @@ class LightSync(
             while (isActive) {
                 step(now())
                 // Nothing taken over and nothing to show: the loop rests until it is needed again.
-                if (activeFor == null && target == null) {
-                    synchronized(lock) { loop = null }
-                    break
-                }
+                val rests = synchronized(lock) { (activeFor == null && target == null).also { if (it) loop = null } }
+                if (rests) break
                 withTimeoutOrNull(TICK_MS) { wake.receive() }
             }
         }
