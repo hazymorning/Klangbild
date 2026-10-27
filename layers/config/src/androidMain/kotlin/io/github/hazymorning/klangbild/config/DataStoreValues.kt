@@ -11,15 +11,27 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 /** The settings on disk, opened once per process ([DataStoreValues.open]). */
 fun settingsValues(context: Context): ValueStore = DataStoreValues.open(context, "settings")
 
 /** Values in a DataStore of preferences, by their names. */
 class DataStoreValues(private val store: DataStore<Preferences>) : ValueStore {
-    override val data: Flow<Map<String, Any>> = store.data.map(::named)
+    /** How many edits are done: each one makes every watcher read the store anew. */
+    private val edits = MutableStateFlow(0)
+
+    // DataStore counts a write before it writes the file, so a watcher whose first read comes
+    // in between takes the old values for the new ones and lets the write pass by. Read anew
+    // once a write is done, it has them.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val data: Flow<Map<String, Any>> = edits.flatMapLatest { store.data }.map(::named).distinctUntilChanged()
 
     override suspend fun edit(change: (MutableMap<String, Any>) -> Unit) {
         store.edit { p ->
@@ -37,6 +49,7 @@ class DataStoreValues(private val store: DataStore<Preferences>) : ValueStore {
                 }
             }
         }
+        edits.update { it + 1 }
     }
 
     private fun named(p: Preferences): Map<String, Any> = p.asMap().mapKeys { it.key.name }
