@@ -94,7 +94,8 @@ class HaConnection(
     private val scope: CoroutineScope,
     private val pingIntervalMs: Long = 30_000,
     private val pongTimeoutMs: Long = 10_000,
-    private val handshakeTimeoutMs: Long = 15_000,
+    /** How long Home Assistant may take to answer the sign-in and the commands other than service calls. */
+    private val answerTimeoutMs: Long = 15_000,
     private val backoffFactory: () -> Backoff = { Backoff() },
     /** How long to wait before asking the REST API again for a state it could not give. */
     private val restRetryMs: List<Long> = listOf(2_000L, 5_000L, 15_000L),
@@ -162,7 +163,7 @@ class HaConnection(
      */
     suspend fun uniqueIds(ids: List<String>): Map<String, String> {
         val s = session ?: error("not connected")
-        val answer = s.command(handshakeTimeoutMs) { id ->
+        val answer = s.command(answerTimeoutMs) { id ->
             buildJsonObject {
                 put("id", id)
                 put("type", "config/entity_registry/get_entries")
@@ -196,15 +197,15 @@ class HaConnection(
         entityId: String?,
         returnResponse: Boolean = false,
         data: JsonObject? = null,
-        timeoutMs: Long = 10_000,
+        timeoutMs: Long = CALL_TIMEOUT_MS,
     ): JsonObject? = (call(domain, service, entityId, returnResponse, data, timeoutMs) as? JsonObject)?.get("response") as? JsonObject
 
     /**
      * Calls a service and returns the id of the context Home Assistant gave the call: the
      * states it changes carry it, so they can be told from changes made by anyone else.
      */
-    suspend fun callServiceForContext(domain: String, service: String, entityId: String?, data: JsonObject? = null, timeoutMs: Long = 10_000): String? =
-        (((call(domain, service, entityId, false, data, timeoutMs) as? JsonObject)?.get("context") as? JsonObject)?.get("id") as? JsonPrimitive)
+    suspend fun callServiceForContext(domain: String, service: String, entityId: String?, data: JsonObject? = null): String? =
+        (((call(domain, service, entityId, false, data, CALL_TIMEOUT_MS) as? JsonObject)?.get("context") as? JsonObject)?.get("id") as? JsonPrimitive)
             ?.takeIf { it.isString }?.content
 
     private suspend fun call(domain: String, service: String, entityId: String?, returnResponse: Boolean, data: JsonObject?, timeoutMs: Long): JsonElement? {
@@ -357,7 +358,7 @@ class HaConnection(
 
     /** Signs in on [socket] with [token]: null once Home Assistant takes it, else how the session ends. */
     private suspend fun signIn(events: ReceiveChannel<WsEvent>, socket: WebSocketLink, token: String): SessionEnd? {
-        val greeting = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
+        val greeting = withTimeoutOrNull(answerTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
         if (parseMessages(greeting.text).firstOrNull()?.type() != "auth_required") return SessionEnd.Lost
         socket.send(
             buildJsonObject {
@@ -365,7 +366,7 @@ class HaConnection(
                 put("access_token", token)
             }.toString(),
         )
-        val answer = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
+        val answer = withTimeoutOrNull(answerTimeoutMs) { events.receive() } as? WsEvent.Text ?: return SessionEnd.Lost
         return when (parseMessages(answer.text).firstOrNull()?.type()) {
             "auth_ok" -> null
             "auth_invalid" -> SessionEnd.Refused(token)
@@ -590,7 +591,7 @@ class HaConnection(
     }
 
     /** A command whose answer is welcome but not needed: null when it fails. */
-    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(handshakeTimeoutMs, build) }
+    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(answerTimeoutMs, build) }
 
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
@@ -648,6 +649,9 @@ class HaConnection(
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
     private companion object {
+        /** How long a service call may take to be answered. */
+        const val CALL_TIMEOUT_MS = 10_000L
+
         /** A message that answers a command or a ping, however Home Assistant spaces its JSON. */
         val ANSWER = Regex("\"type\"\\s*:\\s*\"(result|pong)\"")
     }
