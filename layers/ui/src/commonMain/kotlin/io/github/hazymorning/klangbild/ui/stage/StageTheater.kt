@@ -116,10 +116,9 @@ fun StageTheater(
         }
     }
 
-    val dim = rememberStageDim(status, dimmed, stage.scene.appearance)
-
     val cur = current
     val prev = previous
+    val dim = rememberStageDim(status, dimmed, cur.scene.appearance)
     val kind = change
     val total = durationOf(kind)
     // A change can begin between composing a frame and drawing it. Until it is composed, the frame
