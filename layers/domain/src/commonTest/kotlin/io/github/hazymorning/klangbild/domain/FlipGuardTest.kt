@@ -59,6 +59,18 @@ class FlipGuardTest {
     }
 
     @Test
+    fun `each held return waits on its own`() {
+        val g = FlipGuard()
+        for ((i, key) in listOf("a", "b", "c").withIndex()) g.admit(key, i * 100L)
+        assertThat(g.admit("a", 300)).isFalse()
+        // Then b returns: its hold starts now, not with a's.
+        assertThat(g.admit("b", 2_000)).isFalse()
+        assertThat(g.admit("b", 2_300)).isFalse()
+        assertThat(g.passesAt).isEqualTo(2_000 + FlipGuard.HOLD_MS)
+        assertThat(g.admit("b", 2_000 + FlipGuard.HOLD_MS)).isTrue()
+    }
+
+    @Test
     fun `nothing playing passes and changes nothing`() {
         val g = FlipGuard()
         g.admit("a", 0)
