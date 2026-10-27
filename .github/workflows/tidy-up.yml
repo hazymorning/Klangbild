@@ -1,16 +1,15 @@
 name: Tidy up
 
-# Run by hand from the Actions tab: keeps only the newest releases (the older ones go, and their
-# version tags with them) and deletes the branches that are fully merged into main. Only versions
-# named by the calendar (v2026.11.0) are counted and go; the releases with the old numbers (up to
-# 6.4.0) stay for now, and so do their tags.
+# Run by hand from the Actions tab, best after a release: keeps only the newest releases (the older
+# ones go, and their version tags with them), deletes the drafts a release has overtaken and the
+# branches nobody needs anymore. Only versions named by the calendar (v2026.11.0) count.
 on:
   workflow_dispatch:
     inputs:
       keep:
-        description: "How many of the newest releases to keep (those with the old numbers always stay)"
+        description: "How many of the newest releases to keep"
         required: true
-        default: "10"
+        default: "5"
 
 permissions:
   contents: write
@@ -25,7 +24,7 @@ defaults:
 
 jobs:
   tidy:
-    name: Old releases and merged branches
+    name: Old releases, drafts and branches
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -47,12 +46,30 @@ jobs:
               gh release delete "$tag" -R "$REPO" --yes --cleanup-tag
               echo "Deleted the release $tag and its tag." >> "$GITHUB_STEP_SUMMARY"
             done
-          echo "The newest $KEEP releases are kept, and those with the old numbers too." >> "$GITHUB_STEP_SUMMARY"
+          echo "The newest $KEEP releases are kept." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete the drafts a release has overtaken
+        # A draft for a version newer than the newest release stays, like the next release or its
+        # beta while it's being tested. One for that version or an older one goes, a beta's too.
+        run: |
+          newest="$(gh api --paginate "repos/$REPO/releases?per_page=100" \
+            --jq '.[] | select(((.draft or .prerelease) | not) and (.tag_name | test("^v[0-9]{4}\\."))) | .tag_name' |
+            sed 's/^v//' | sort -V | tail -n 1)"
+          [ -n "$newest" ] || exit 0
+          gh api --paginate "repos/$REPO/releases?per_page=100" \
+            --jq '.[] | select(.draft and (.tag_name | test("^v[0-9]{4}\\."))) | [.id, .tag_name] | @tsv' |
+            while IFS=$'\t' read -r id tag; do
+              version="${tag#v}"
+              version="${version%%-*}"
+              if [ "$(printf '%s\n' "$version" "$newest" | sort -V | tail -n 1)" = "$newest" ]; then
+                gh api -X DELETE "repos/$REPO/releases/$id"
+                echo "Deleted the draft $tag, since v$newest is out." >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
 
       - name: Delete the tags of releases that are gone
         # A release deleted on the website leaves its tag behind. A tag on a commit newer than the
-        # oldest release kept stays, since its release may still be on its way. Only the calendar's
-        # versions count: a tag with the old numbers stays, like its release.
+        # oldest release kept stays, since its release may still be on its way.
         run: |
           releases="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[].tag_name')"
           oldest="$(gh api --paginate "repos/$REPO/releases?per_page=100" --jq '.[] | select((.draft | not) and (.tag_name | test("^v[0-9]{4}\\."))) | .published_at' | sort | sed -n 1p)"
@@ -68,14 +85,26 @@ jobs:
               fi
             done
 
-      - name: Delete merged branches
+      - name: Delete the branches nobody needs
+        # A branch goes once it's merged into main. One that isn't goes once the newest release is
+        # newer than its last commit and no pull request is open for it, like a beta's branch.
         run: |
           main="$(gh api "repos/$REPO" --jq .default_branch)"
+          released="$(gh api --paginate "repos/$REPO/releases?per_page=100" \
+            --jq '.[] | select(((.draft or .prerelease) | not) and (.tag_name | test("^v[0-9]{4}\\."))) | .published_at' |
+            sort | tail -n 1)"
+          open="$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].head.ref')"
           gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | select(.protected | not) | .name' |
             while read -r branch; do
               [ "$branch" = "$main" ] && continue
               if [ "$(gh api "repos/$REPO/compare/$main...$branch" --jq .ahead_by)" = 0 ]; then
-                gh api -X DELETE "repos/$REPO/git/refs/heads/$branch"
-                echo "Deleted the branch $branch, which is merged into $main." >> "$GITHUB_STEP_SUMMARY"
+                why="it's merged into $main"
+              elif [ -n "$released" ] && ! grep -qxF "$branch" <<< "$open" &&
+                [ "$(date -d "$(gh api "repos/$REPO/commits/$branch" --jq .commit.committer.date)" +%s)" -lt "$(date -d "$released" +%s)" ]; then
+                why="the newest release came after its last commit and no pull request is open for it"
+              else
+                continue
               fi
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$branch"
+              echo "Deleted the branch $branch, since $why." >> "$GITHUB_STEP_SUMMARY"
             done
