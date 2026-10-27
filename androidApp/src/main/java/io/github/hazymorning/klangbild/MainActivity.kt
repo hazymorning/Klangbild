@@ -31,7 +31,9 @@ import kotlinx.coroutines.launch
  * The one and only activity. Started by Home Assistant via
  * `am start -n io.github.hazymorning.klangbild/.MainActivity [--es entity …]`; while it runs,
  * new extras arrive through [onNewIntent] without a restart. What the remote's keys do is the
- * app's own ([RemoteKeys]); this hands them over.
+ * app's own ([RemoteKeys]); this hands them over. A key it answers it takes whole, its press and
+ * its release: passed on, a media key's release would reach the media app that played last,
+ * which may bring its own player to the front.
  */
 class MainActivity : ComponentActivity() {
     private val controller get() = graph.controller
@@ -115,7 +117,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        val key = remoteKey(keyCode) ?: return super.onKeyDown(keyCode, event)
+        val key = remoteKey(keyCode) ?: return keyCode in KEPT || super.onKeyDown(keyCode, event)
         if (keys.down(key, event.repeatCount)) event.startTracking()
         return true
     }
@@ -126,8 +128,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        val key = remoteKey(keyCode)
-        return key != null && keys.up(key, followed = event.isTracking, canceled = event.isCanceled) || super.onKeyUp(keyCode, event)
+        val key = remoteKey(keyCode) ?: return keyCode in KEPT || super.onKeyUp(keyCode, event)
+        keys.up(key, followed = event.isTracking, canceled = event.isCanceled)
+        return true
     }
 
     /** The remote's key that [keyCode] is, if the app answers it. */
@@ -138,11 +141,12 @@ class MainActivity : ComponentActivity() {
         KeyEvent.KEYCODE_DPAD_RIGHT -> RemoteKey.RIGHT
         KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> RemoteKey.OK
         KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> RemoteKey.MENU
-        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> RemoteKey.PLAY_PAUSE
+        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_HEADSETHOOK -> RemoteKey.PLAY_PAUSE
         KeyEvent.KEYCODE_MEDIA_PLAY -> RemoteKey.PLAY
-        KeyEvent.KEYCODE_MEDIA_PAUSE -> RemoteKey.PAUSE
-        KeyEvent.KEYCODE_MEDIA_NEXT -> RemoteKey.NEXT
-        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> RemoteKey.PREVIOUS
+        // There is no stop: stop pauses.
+        KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_MEDIA_STOP -> RemoteKey.PAUSE
+        KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> RemoteKey.NEXT
+        KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> RemoteKey.PREVIOUS
         KeyEvent.KEYCODE_MEDIA_REWIND -> RemoteKey.REWIND
         KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> RemoteKey.FAST_FORWARD
         else -> null
@@ -161,5 +165,10 @@ class MainActivity : ComponentActivity() {
             out += LaunchExtras.fromLink(uri.queryParameterNames.associateWith { uri.getQueryParameter(it) })
         }
         return out
+    }
+
+    private companion object {
+        /** Media keys the app has no use for, kept all the same: passed on, they would reach the media app that played last. */
+        val KEPT = setOf(KeyEvent.KEYCODE_MEDIA_RECORD, KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK)
     }
 }
