@@ -464,11 +464,7 @@ class HaConnection(
         private fun onText(text: String): SessionEnd? {
             // The events feed carries every state change in the house. Skip messages that name no
             // followed entity, unless they answer a command or a ping.
-            if (feed == Feed.EVENTS && subscribed && followed.none { text.contains("\"$it\"") } &&
-                !text.contains("\"type\":\"result\"") && !text.contains("\"type\":\"pong\"")
-            ) {
-                return null
-            }
+            if (feed == Feed.EVENTS && subscribed && followed.none { text.contains("\"$it\"") } && !ANSWER.containsMatchIn(text)) return null
             for (msg in parseMessages(text)) {
                 val id = (msg["id"] as? JsonPrimitive)?.intOrNull
                 when (msg.type()) {
@@ -652,6 +648,11 @@ class HaConnection(
     private fun JsonObject.type(): String? = string("type")
 
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()
+
+    private companion object {
+        /** A message that answers a command or a ping, however Home Assistant spaces its JSON. */
+        val ANSWER = Regex("\"type\"\\s*:\\s*\"(result|pong)\"")
+    }
 }
 
 /**

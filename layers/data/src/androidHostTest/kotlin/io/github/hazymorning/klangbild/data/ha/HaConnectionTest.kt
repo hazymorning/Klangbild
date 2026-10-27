@@ -155,7 +155,12 @@ class HaConnectionTest {
                 "config/entity_registry/list_for_display" -> ok(
                     """{"entity_categories":{},"entities":[{"ei":"button.wz_favorite","pl":"music_assistant","di":"d1","tk":"favorite_now_playing"},{"ei":"light.x"}]}""",
                 )
-                "call_service" -> ok("""{"context":{"id":"c"},"response":{"media_player.wz":{"next_item":{"name":"Zweites Lied"}}}}""")
+                // A light's call is answered spaced, as JSON allows, and names no followed entity.
+                "call_service" -> if (msg["domain"]?.jsonPrimitive?.content == "light") {
+                    webSocket.send("""{"id": $id, "type": "result", "success": true, "result": {"context": {"id": "c"}}}""")
+                } else {
+                    ok("""{"context":{"id":"c"},"response":{"media_player.wz":{"next_item":{"name":"Zweites Lied"}}}}""")
+                }
                 "ping" -> webSocket.send("""{"id":$id,"type":"pong"}""")
             }
         }
@@ -237,6 +242,8 @@ class HaConnectionTest {
         // Removed from Home Assistant: gone here too.
         sockets.last().send(event("media_player.wz", "null"))
         withTimeout(5_000) { conn.entities.first { it.isEmpty() } }
+        // A call's result comes through, though it names none of them.
+        assertThat(conn.callServiceForContext("light", "turn_on", "light.flur")).isEqualTo("c")
         conn.stop()
     }
 
