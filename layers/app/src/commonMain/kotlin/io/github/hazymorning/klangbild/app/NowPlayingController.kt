@@ -67,11 +67,13 @@ import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.client.HttpClient
-import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,6 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.IOException
 import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
 import kotlin.time.Clock
@@ -233,7 +236,10 @@ class NowPlayingController(
     private val settings = MutableStateFlow(Settings())
     private val session = MutableStateFlow(SessionOptions())
 
-    /** The stored settings have been taken in: until then [settings] holds only the defaults. */
+    /** The stored settings, read once ([load]): from then on the controller owns them and writes every change ([save]). */
+    private val stored = scope.async(start = CoroutineStart.LAZY) { settingsStore.settings.first() }
+
+    /** The stored settings are in. Until then [settings] holds the defaults, and no change is saved. */
     @Volatile private var loaded = false
 
     /** Read from coroutines and the main thread as well; written under the lock. */
@@ -279,7 +285,9 @@ class NowPlayingController(
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
         override fun openMenu(): Unit = this@NowPlayingController.openMenu()
-        override fun applySettings(updated: Settings) = this@NowPlayingController.applySettings(updated)
+        override fun applySettings(updated: Settings) {
+            save(updated)
+        }
         override fun send(command: RemoteCommand) = this@NowPlayingController.send(command)
         override fun requestSetup(show: Boolean) = this@NowPlayingController.requestSetup(show)
     }
@@ -312,9 +320,8 @@ class NowPlayingController(
         },
         save = { updated ->
             // Leaving setup: the new settings start a fresh connection.
-            session.value = session.value.copy(showSetup = false)
             synchronized(lock) { machine.requestSetup(false) }
-            takeAndWrite(updated, "setup page")
+            take("setup page") { updated }
         },
         // Home Assistant knows the TV by its setup page's address; its login page sends the phone back there.
         clientId = { setupServer.origin?.let { "$it/" } },
@@ -352,15 +359,10 @@ class NowPlayingController(
         // A sleep timer outlives a hand-over between the app and the screensaver, not a closed app.
         if (stoppedAt > 0 && now() - stoppedAt > HANDOVER_MS) sleep.clear()
         settingsJob = scope.launch {
-            settingsStore.settings.collect { s ->
-                // While the menu's own changes are being written, it already shows them.
-                if (localEdits.value != 0) return@collect
-                // A late echo of an older state (the very first read, overtaken by the launch's
-                // extras) never undoes a connection the store holds now.
-                if (!s.isConfigured && settings.value.isConfigured && settingsStore.settings.first().isConfigured) return@collect
-                onSettings(s)
-                loaded = true
-            }
+            // The first start reads the stored settings; a later one starts the source again on them.
+            if (loaded) onSettings(settings.value) else load()
+            // A screen started showing: ask for a new version, unless that is turned off.
+            if (settings.value.updateCheck) updates?.checkIfDue()
         }
         ticker = scope.launch {
             while (isActive) {
@@ -375,18 +377,12 @@ class NowPlayingController(
         speakerJob = scope.launch {
             speaker.collect { status -> synchronized(lock) { soundSelection.update(_ui.value.source, status) } }
         }
-        updates?.let { u ->
-            updatesJob = scope.launch { u.info.collect { recompute() } }
-            updatesDue = true
-        }
+        updates?.let { u -> updatesJob = scope.launch { u.info.collect { recompute() } } }
     }
 
     private var textsJob: Job? = null
     private var speakerJob: Job? = null
     private var updatesJob: Job? = null
-
-    /** A screen started showing: Klangbild asks for a new version once the stored settings are in. */
-    @Volatile private var updatesDue = false
 
     private fun stop() {
         settingsJob?.cancel()
@@ -447,18 +443,7 @@ class NowPlayingController(
         session.value = LaunchExtras.session(extras)
         machine.requestSetup(session.value.showSetup)
         if (LaunchExtras.hasStoredExtras(extras)) {
-            scope.launch {
-                // On a first start the stored settings may not be in yet: the extras go on top of
-                // them, never on top of the defaults.
-                if (!loaded) {
-                    val stored = settingsStore.settings.first()
-                    synchronized(lock) {
-                        if (!loaded) onSettings(stored)
-                        loaded = true
-                    }
-                }
-                takeAndWrite(LaunchExtras.applyTo(settings.value, extras), "launch's extras")
-            }
+            scope.launch { take("launch's extras") { LaunchExtras.applyTo(it, extras) } }
         }
         reconcileSource()
         recompute()
@@ -519,10 +504,68 @@ class NowPlayingController(
     /** The key held is let go: the place it reached is sent. */
     fun letGo() = seeking.letGo()
 
-    // --- settings menu -------------------------------------------------------------------
+    // --- settings ------------------------------------------------------------------------
 
-    private val localEdits = atomic(0)
     private val persistLock = Mutex()
+
+    /** Applies the stored settings, once, before anything changes them. */
+    private suspend fun load() {
+        val s = try {
+            stored.await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            log.warn("Settings: not read (${e::class.simpleName})")
+            return
+        }
+        synchronized(lock) {
+            if (loaded) return
+            onSettings(s)
+            loaded = true
+        }
+    }
+
+    /**
+     * Applies [updated] at once and writes it; the job ends once it is written. Ignored until the
+     * stored settings are in, so the defaults never overwrite them.
+     */
+    private fun save(updated: Settings): Job? = synchronized(lock) {
+        if (!loaded) return null
+        onSettings(updated)
+        scope.launch { persist() }
+    }
+
+    /**
+     * Writes the settings as they are now. Always the newest state, one write at a time, so quick
+     * changes overtake each other and an older state is never written last.
+     */
+    private suspend fun persist() {
+        try {
+            persistLock.withLock { settingsStore.write(settings.value) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            log.warn("Settings: not written (${e::class.simpleName})")
+        }
+    }
+
+    /**
+     * Applies [change] from the setup page or the launch's extras ([from]) to the stored settings,
+     * and waits until the result is written.
+     */
+    private suspend fun take(from: String, change: (Settings) -> Settings) {
+        load()
+        val written = synchronized(lock) {
+            val updated = change(settings.value)
+            if (updated.isConfigured != settings.value.isConfigured) {
+                log.info("Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
+            }
+            save(updated)
+        }
+        written?.join()
+    }
+
+    // --- settings menu -------------------------------------------------------------------
 
     val menuOpen: Boolean get() = menu.isOpen
 
@@ -544,45 +587,6 @@ class NowPlayingController(
 
     /** Changes the line under the cursor: left (-1) or right (+1) along its scale, OK goes round ([wrap]); [repeat]: the key is held. */
     fun menuChange(direction: Int, wrap: Boolean, repeat: Boolean = false) = menu.change(direction, wrap, repeat)
-
-    /** A change from one of the menus: shown at once, written behind it. */
-    private fun applySettings(updated: Settings) {
-        localEdits.incrementAndGet()
-        onSettings(updated)
-        scope.launch {
-            try {
-                persist()
-            } finally {
-                localEdits.decrementAndGet()
-            }
-        }
-    }
-
-    /**
-     * Writes the settings as they are now. Always the newest state, one write at a time: quick
-     * presses overtake each other, and a change from the setup page or the launch's extras never
-     * comes back undone by a menu's write that was still on its way, or the other way round.
-     */
-    private suspend fun persist() {
-        persistLock.withLock { settingsStore.write(settings.value) }
-    }
-
-    /**
-     * Settings from the phone's setup page or the launch's extras ([from]): taken at once and
-     * written, waiting for the write. They never wait for the store's own echo, which has been
-     * seen to stay away on a first start (Android TV 14 emulator, right after installing) and
-     * left the app on the setup page.
-     */
-    private suspend fun takeAndWrite(updated: Settings, from: String) {
-        if (updated.isConfigured != settings.value.isConfigured) log.info("Settings from the $from: connection ${if (updated.isConfigured) "set" else "not set"}")
-        localEdits.incrementAndGet()
-        try {
-            onSettings(updated)
-            persist()
-        } finally {
-            localEdits.decrementAndGet()
-        }
-    }
 
     // --- quick settings ------------------------------------------------------------------
 
@@ -618,9 +622,8 @@ class NowPlayingController(
             queueSwitch.chosen(s.queue)
             _ui.value = _ui.value.copy(queue = s.queue)
         }
-        // Asked for after a start, and when asking is turned on again, unless it is off.
-        if (s.updateCheck && (updatesDue || !settings.value.updateCheck)) updates?.checkIfDue()
-        updatesDue = false
+        // Turned on in the menu: ask at once.
+        if (loaded && s.updateCheck && !settings.value.updateCheck) updates?.checkIfDue()
         settings.value = s
         val timing = timingFor(s)
         if (timing != machine.timing) {

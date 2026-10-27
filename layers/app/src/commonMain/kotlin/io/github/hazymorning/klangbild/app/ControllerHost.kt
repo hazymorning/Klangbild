@@ -58,7 +58,7 @@ internal interface ControllerHost {
     /** Opens the settings menu on its groups. */
     fun openMenu()
 
-    /** A change from one of the menus: shown at once, written behind it. */
+    /** A change from one of the menus: applied at once and written behind it; ignored until the stored settings are in. */
     fun applySettings(updated: Settings)
 
     fun send(command: RemoteCommand)
