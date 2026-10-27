@@ -66,7 +66,7 @@ object ValueText {
         unit.isNullOrBlank() -> number
         unit == "°" -> number + unit
         unit == "%" -> number + t.percentSuffix
-        else -> "$number $unit"
+        else -> "$number\u00A0$unit"
     }
 
     /** The decimals a number is written with ("12.30" has two), at most six. */

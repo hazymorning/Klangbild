@@ -6,7 +6,7 @@ import io.github.hazymorning.klangbild.text.Texts
 /** Durations and playback speed as text, and the one separator every line uses. */
 object TimeText {
     /** The one separator used everywhere: a middle dot, glued to the word before it. */
-    const val SEPARATOR = " · "
+    const val SEPARATOR = "\u00A0· "
 
     /** "Speed 1.5×" for spoken word that plays faster or slower than it was read; null at its own pace. */
     fun speed(speed: Float, t: Texts): String? {

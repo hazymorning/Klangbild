@@ -29,6 +29,6 @@ class TimeTextTest {
 
     @Test
     fun `the separator stays with the word before it`() {
-        assertThat(TimeText.SEPARATOR).isEqualTo(" · ")
+        assertThat(TimeText.SEPARATOR).isEqualTo("\u00A0· ")
     }
 }
