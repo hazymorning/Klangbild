@@ -92,7 +92,7 @@ private class Timeline(val clearMs: Int, val turnMs: Int, val totalMs: Int, val 
 }
 
 /** A change's choreography: each card's way and the timeline they follow. */
-private class Plan(val motions: List<CardMotion>, val timeline: Timeline)
+private class Choreography(val motions: List<CardMotion>, val timeline: Timeline)
 
 /**
  * Cover Flow with its transitions. When another picture comes to the middle, the strip turns
@@ -101,7 +101,7 @@ private class Plan(val motions: List<CardMotion>, val timeline: Timeline)
  * arrives (as they do when the song's words come or go, the cards standing still), and the
  * light above the cards takes its color. New cards roll in opaque from beyond
  * the end of the strip. Cards that are no longer wanted dissolve first, before anything moves
- * behind them ([plan]), so two covers are never on top of each other. A pause dims the light,
+ * behind them ([choreograph]), so two covers are never on top of each other. A pause dims the light,
  * the cards and the text; nothing moves.
  *
  * Where cards are missing (the first song, the last, a player without a queue), what is there
@@ -131,7 +131,7 @@ fun FlowTheater(
     var previous by remember { mutableStateOf<FlowData?>(null) }
     var change by remember { mutableStateOf(FlowChange.MOVE) }
     var newLook by remember { mutableStateOf(false) }
-    var motions by remember { mutableStateOf(resting(flow)) }
+    var motions by remember { mutableStateOf(cardsAtRest(flow)) }
     var timeline by remember { mutableStateOf(Timeline(0, Motion.FLOW_TURN_MS, Motion.FLOW_TURN_MS)) }
     var began by remember { mutableIntStateOf(0) }
     val t = remember { Animatable(1f) }
@@ -149,27 +149,26 @@ fun FlowTheater(
             if (target == old) return@collect
             val kind = changeOf(old, target)
             val look = takesNewLook(old, target, kind)
-            val plan = plan(old, target, kind, FlowGeometry(target.middle.scene.layout), look)
-            if (kind == FlowChange.SIDES && plan.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha }) {
+            val choreography = choreograph(old, target, kind, FlowGeometry(target.middle.scene.layout), look)
+            if (kind == FlowChange.SIDES && choreography.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha }) {
                 // Only a card's scene was renewed (the same picture in the same light): nothing to watch.
                 current = target
-                motions = plan.motions
+                motions = choreography.motions
                 return@collect
             }
             began++
             t.snapTo(0f)
-            val line = plan.timeline
-            line.rise?.let { text.begin(it) }
+            choreography.timeline.rise?.let { text.begin(it) }
             change = kind
             newLook = look
-            timeline = line
-            motions = plan.motions
+            timeline = choreography.timeline
+            motions = choreography.motions
             previous = old
             current = target
-            playChange(t, line.totalMs, newer) { text.hold(it) }
+            playChange(t, choreography.timeline.totalMs, newer) { text.hold(it) }
             previous = null
             text.landed()
-            motions = resting(target)
+            motions = cardsAtRest(target)
             if (latest.middle.track.key == song) text.release(newer)
         }
     }
@@ -180,8 +179,8 @@ fun FlowTheater(
 
     val prev = previous
     val kind = change
-    val line = timeline
-    val total = line.totalMs
+    val timing = timeline
+    val total = timing.totalMs
     // A change can begin between composing a frame and drawing it. Until it is composed, the frame
     // shows the stage as the change before left it, its lines where they stood.
     val seen = began
@@ -194,12 +193,14 @@ fun FlowTheater(
     val curModel = remember(curStage, modelFor) { modelFor(curStage) }
     val prevModel = remember(prevStage, modelFor) { prevStage?.let(modelFor) }
     val geometry = remember(middle.scene.layout) { FlowGeometry(middle.scene.layout) }
-    val rest = remember(current, geometry) { balanceOf(current, geometry) }
-    val from = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: rest }
-    val balance: () -> Balance = { if (prev == null) rest else from.towards(rest, Motion.Turn.transform(line.settle.of(at()))) }
+    val targetBalance = remember(current, geometry) { balanceOf(current, geometry) }
+    val fromBalance = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: targetBalance }
+    val balance: () -> Balance = {
+        if (prev == null) targetBalance else fromBalance.towards(targetBalance, Motion.Turn.transform(timing.settle.of(at())))
+    }
     // Lines that leave and rise anew keep to their own places; lines that stay move along.
-    val newColumn: () -> Float = { if (prev != null && kind.newText) rest.column else balance().column }
-    val oldColumn: () -> Float = { if (kind.newText) from.column else balance().column }
+    val newColumn: () -> Float = { if (prev != null && kind.newText) targetBalance.column else balance().column }
+    val oldColumn: () -> Float = { if (kind.newText) fromBalance.column else balance().column }
     val wall = middle.scene.palette.wall.asColor()
     val lightLevel: () -> Float = { dim.lightLevel * intensity() }
     // The strip takes a new look (a better cover, the other wall): each card goes over from its
@@ -210,21 +211,21 @@ fun FlowTheater(
     val newWall: () -> Float = {
         when {
             prev == null -> 1f
-            kind == FlowChange.MOVE -> p(line.clearMs, line.clearMs + Motion.FLOW_LIGHT_MS, Motion.Sine)
+            kind == FlowChange.MOVE -> p(timing.clearMs, timing.clearMs + Motion.FLOW_LIGHT_MS, Motion.Sine)
             restrip -> p(0, total, Motion.Sine)
             else -> 1f
         }
     }
-    val textIn: (TextLine) -> Float = { row ->
+    val textIn: (TextLine) -> Float = { line ->
         when {
-            began != seen -> text.before(row)
-            prev != null && kind.isSoft -> text.level(row) * p(0, total, Motion.Sine)
-            else -> text.level(row)
+            began != seen -> text.before(line)
+            prev != null && kind.isSoft -> text.level(line) * p(0, total, Motion.Sine)
+            else -> text.level(line)
         }
     }
-    val textRise: (TextLine) -> Float = { row -> Motion.RISE_DP * (1f - if (began != seen) text.before(row) else text.level(row)) }
-    // The text so far leaves from where it stood; a new look of the same song cross-fades in place.
-    val stood: (TextLine) -> Float = { row -> if (kind.isSoft) text.level(row) else text.leaving(row) }
+    val textRise: (TextLine) -> Float = { line -> Motion.RISE_DP * (1f - if (began != seen) text.before(line) else text.level(line)) }
+    // The text so far leaves from where it stood; a new look of the same track crossfades in place.
+    val oldLevel: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
 
     // The words of the song shown and of the one leaving keep their places through a change.
     val lyricsStates = remember { LyricsStates() }
@@ -263,8 +264,8 @@ fun FlowTheater(
             if (prevModel != null && kind != FlowChange.SIDES) {
                 TextLayer(
                     prevModel,
-                    alpha = { row -> stood(row) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
-                    rise = { row -> Motion.RISE_DP * (1f - stood(row)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) },
+                    alpha = { line -> oldLevel(line) * (if (kind.isSoft) 1f - p(0, total) else 1f - p(0, Motion.TEXT_OUT_MS)) },
+                    rise = { line -> Motion.RISE_DP * (1f - oldLevel(line)) - (if (kind.isSoft) 0f else Motion.LEAVE_RISE_DP * p(0, Motion.TEXT_OUT_MS)) },
                     textLevel = { dim.textLevel },
                     shift = oldColumn,
                 )
@@ -328,7 +329,7 @@ internal fun balanceOf(flow: FlowData, geometry: FlowGeometry): Balance =
     geometry.balance(left = flow.current, right = flow.cards.size - flow.current - 1)
 
 /** The cards of [flow] standing still, the middle one at position 0. */
-private fun resting(flow: FlowData): List<CardMotion> = flow.cards.mapIndexed { i, e ->
+private fun cardsAtRest(flow: FlowData): List<CardMotion> = flow.cards.mapIndexed { i, e ->
     val p = (i - flow.current).toFloat()
     CardMotion(e.card, p, p)
 }
@@ -359,7 +360,7 @@ private val FlowEntry.card: FlowCard get() = checkNotNull(scene.card) { "A Cover
  * its new one. In a new look of the same song (a better cover, the other wall) nothing rolls or
  * moves: cards that come, go or change places fade where they stand.
  */
-private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry, newLook: Boolean): Plan {
+private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowGeometry, newLook: Boolean): Choreography {
     val oldPos = HashMap<Long, Float>()
     old.cards.forEachIndexed { i, e -> oldPos[e.id] = (i - old.current).toFloat() }
     val oldCards = old.cards.associate { it.id to it.card }
@@ -438,7 +439,7 @@ private fun plan(old: FlowData, new: FlowData, kind: FlowChange, geometry: FlowG
             CardMotion(card, dir * from, dir * (from - 1f), toAlpha = 0f, move = turn, fade = turn)
         }
     }
-    return Plan(out, timeline)
+    return Choreography(out, timeline)
 }
 
 /** Smaller moves of the text column count as none (dp). */
