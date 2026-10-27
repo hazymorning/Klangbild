@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.formBody
 import io.github.hazymorning.klangbild.data.isSuccessful
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
@@ -129,13 +130,8 @@ class HaAuth(
          * goes over to another Home Assistant). Home Assistant always answers 200.
          */
         suspend fun revoke(http: HttpClient, baseUrl: String, refreshToken: String) {
-            try {
-                http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/revoke", formBody("token" to refreshToken)) }) { }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Best effort: an unreachable Home Assistant keeps the token until it expires unused.
-            }
+            // Best effort: an unreachable Home Assistant keeps the token until it expires unused.
+            orNull { http.fetch(CALL_TIMEOUT_MS, { post("$baseUrl/auth/revoke", formBody("token" to refreshToken)) }) { } }
         }
 
         /** A POST of the form [form] to [url]. */

@@ -71,14 +71,7 @@ class ArtworkLoader(
             if (synchronized(lock) { failed[url] }?.let { now() - it < RETRY_FAILED_MS } == true) continue
             val timeout = if (url in originals) CALL_TIMEOUT_MS else UPGRADE_TIMEOUT_MS
             val bmp = slots.withPermit {
-                val bytes = try {
-                    fetch(url, timeout)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    null
-                }
-                bytes?.let { withContext(Dispatchers.Default) { decoder.decode(it) } }
+                orNull { fetch(url, timeout) }?.let { withContext(Dispatchers.Default) { decoder.decode(it) } }
             }
             if (bmp == null) {
                 // Only guesses are remembered: the addresses Home Assistant gives may work again any moment.
@@ -98,13 +91,7 @@ class ArtworkLoader(
         val auth = haAuth()
         val token: String?
         val client = if (auth != null && HaUrls.isHaHost(auth.baseUrl, url)) {
-            token = try {
-                auth.accessToken()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
+            token = orNull { auth.accessToken() }
             tokenHttp
         } else {
             token = null

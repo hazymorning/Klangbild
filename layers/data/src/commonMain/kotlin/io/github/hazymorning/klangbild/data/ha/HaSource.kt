@@ -4,6 +4,7 @@ import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.domain.ActionKind
@@ -22,6 +23,7 @@ import io.github.hazymorning.klangbild.domain.SpeakerSwitch
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -157,7 +159,7 @@ class HaSource(
         return try {
             connection.callService(domain, service, action.entity, data = data, timeoutMs = actionAnswerMs)
             true
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (_: HaNoAnswerException) {
             true
@@ -166,13 +168,8 @@ class HaSource(
         }
     }
 
-    override suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String? = try {
-        connection.callServiceForContext(domain, service, entityId, data)
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    override suspend fun call(domain: String, service: String, entityId: String?, data: JsonObject?): String? =
+        orNull { connection.callServiceForContext(domain, service, entityId, data) }
 
     override fun start() {
         connection.start(config, listOfNotNull(playerEntity.takeIf { it != EntityId.THIS_TV }, sunEntity))
@@ -204,7 +201,7 @@ class HaSource(
         while (true) {
             val queue = try {
                 client.partyPlayer().also { failed = 0 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (_: MaUnknownCommandException) {
                 return
@@ -219,13 +216,7 @@ class HaSource(
         }
     }
 
-    override suspend fun partyUrl(): String? = try {
-        ma?.partyUrl()
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    override suspend fun partyUrl(): String? = orNull { ma?.partyUrl() }
 
     /** The network came back: do not wait for the backoff timer. */
     fun networkAvailable() = connection.retryNow()
@@ -252,13 +243,13 @@ class HaSource(
     }
 
     /** Runs [block]; whether it worked. Only a cancellation passes. */
-    private suspend fun attempt(block: suspend () -> Unit): Boolean = tried(block).isSuccess
+    private suspend fun attempt(block: suspend () -> Unit): Boolean = orNull { block() } != null
 
     /** Runs [block]; what went wrong, if anything. Only a cancellation passes. */
     private suspend fun tried(block: suspend () -> Unit): Result<Unit> = try {
         block()
         Result.success(Unit)
-    } catch (e: kotlinx.coroutines.CancellationException) {
+    } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Result.failure(e)

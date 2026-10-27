@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameStation
 import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameTitle
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaAuthException
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
@@ -19,6 +20,7 @@ import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -383,7 +385,7 @@ internal class QueueReader(
         val id = q.queueId ?: latest()?.activeQueue ?: return
         val answer = try {
             client.queue(id)
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (_: MaUnknownCommandException) {
             // A version that cannot say: it is not asked again.
@@ -431,7 +433,7 @@ internal class QueueReader(
             val sent = now()
             val server = try {
                 client.serverTime()
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (_: MaUnknownCommandException) {
                 maClockUnknown = true
@@ -476,13 +478,7 @@ internal class QueueReader(
         delay(timing.burstMs)
         if (trackKey != key) return
         val target = entity() ?: return
-        val response = try {
-            connection.callService("music_assistant", "get_queue", target, returnResponse = true)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
+        val response = orNull { connection.callService("music_assistant", "get_queue", target, returnResponse = true) }
         queueWorks = response != null
         // No answer (a source without a queue, like a streaming app playing on the speaker directly):
         // nothing is known to follow. A periodic refresh that fails keeps what is known.
@@ -547,7 +543,7 @@ internal class QueueReader(
                 maLink = MaLink.CONNECTED
                 windowReadAt = now()
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (_: MaAuthException) {
             maLink = MaLink.AUTH_FAILED

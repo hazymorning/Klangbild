@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.WebSocketLink
+import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
@@ -565,13 +566,7 @@ class HaConnection(
     }
 
     /** A command whose answer is welcome but not needed: null when it fails. */
-    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = try {
-        s.command(handshakeTimeoutMs, build)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(handshakeTimeoutMs, build) }
 
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
