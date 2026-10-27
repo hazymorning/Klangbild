@@ -62,7 +62,7 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
                         RootHooks(positionOf = controller::positionOf, fieldTime = controller::fieldTime, glyphs = AndroidGlyphs)
                     }
                     // Any key ends the dream: it never tells which key opens the quick settings.
-                    KlangbildScreen(controller.ui, spec, hooks, keys = false)
+                    KlangbildScreen(controller.ui, spec, hooks, keyHint = false)
                 }
             },
         )

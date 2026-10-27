@@ -12,14 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The app on a screen: [ui] as it changes, on the root ([KlangbildRoot]), with the typefaces
- * loaded once for all of it. Without [keys] (a screensaver, which any key ends) nothing tells
- * which key opens the quick settings. [overlay] lies on top, given the state.
+ * loaded once for all of it. [keyHint] false (a screensaver, which any key ends) hides the hint
+ * that tells which key opens the quick settings. [overlay] lies on top, given the state.
  */
 @Composable
-fun KlangbildScreen(ui: StateFlow<UiState>, screen: ScreenSpec, hooks: RootHooks, keys: Boolean = true, overlay: @Composable (UiState) -> Unit = {}) {
+fun KlangbildScreen(ui: StateFlow<UiState>, screen: ScreenSpec, hooks: RootHooks, keyHint: Boolean = true, overlay: @Composable (UiState) -> Unit = {}) {
     CompositionLocalProvider(LocalFaces provides rememberFaces()) {
         val state by ui.collectAsStateWithLifecycle()
-        KlangbildRoot(if (keys) state else state.copy(downHint = false), screen, hooks)
+        KlangbildRoot(if (keyHint) state else state.copy(downHint = false), screen, hooks)
         overlay(state)
     }
 }
