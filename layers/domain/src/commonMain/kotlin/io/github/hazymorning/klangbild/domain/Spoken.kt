@@ -106,7 +106,7 @@ object Chapters {
     }
 
     /** Within this long of a chapter's start, "back" goes to the chapter before (like a CD player). */
-    const val RESTART_MS = 3_000L
+    private const val RESTART_MS = 3_000L
 
     private val generic = Regex("""^(?:(?:chapter|kapitel|track|part|teil|cd|disc|chap\.?|ch\.?|kap\.?)\s*)?0*(\d{1,4})\s*$""", RegexOption.IGNORE_CASE)
 

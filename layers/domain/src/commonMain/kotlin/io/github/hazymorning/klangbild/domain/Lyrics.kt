@@ -39,7 +39,7 @@ class Lyrics(val lines: List<LyricLine>, val breaks: List<Long> = emptyList()) {
 
     companion object {
         /** Music Assistant takes two copies of a recording for one when their lengths are this close. */
-        const val FIT_SLACK_MS = 8_000L
+        private const val FIT_SLACK_MS = 8_000L
     }
 }
 
@@ -77,7 +77,7 @@ class LyricsCursor(private val lyrics: Lyrics, private val leadMs: Long = LEAD_M
         const val LEAD_MS = 300L
 
         /** A step back smaller than this is a correction of the position, not a jump. */
-        const val BACK_SLACK_MS = 1_500L
+        private const val BACK_SLACK_MS = 1_500L
     }
 }
 
@@ -203,10 +203,10 @@ object Lrc {
     }
 
     /** Lines starting this close together are sung together. */
-    const val TOGETHER_MS = 150L
+    private const val TOGETHER_MS = 150L
 
     /** A rest shorter than this is a pause for breath, not a break: the line stays highlighted. */
-    const val MIN_BREAK_MS = 4_000L
+    private const val MIN_BREAK_MS = 4_000L
 
     /** Lines read at most: more than any track has, so a huge text can't stall parsing. */
     private const val MAX_LINES = 2_000

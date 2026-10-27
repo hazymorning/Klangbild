@@ -48,7 +48,7 @@ data class EntityState(
         }
 
         /** An ISO 8601 time as epoch seconds. */
-        fun seconds(iso: String?): Double? = iso?.let(::instant)?.let { it.epochSeconds + it.nanosecondsOfSecond / 1e9 }
+        private fun seconds(iso: String?): Double? = iso?.let(::instant)?.let { it.epochSeconds + it.nanosecondsOfSecond / 1e9 }
 
         /**
          * An ISO 8601 time with its offset ("2026-10-20T19:30:00.5+02:00", or without the seconds);
