@@ -254,14 +254,13 @@ internal class LyricsView(val lyrics: Lyrics) {
                 // The words that stood are still going: the new place only changes what comes.
                 s.snapTo(target)
             } else {
-                // The words that came (or are coming) go from as strong as they are.
+                // The words that came (or are coming) go from as strong as they are. The jump starts
+                // before the list moves, so no frame shows the new place at full strength.
                 fromAlpha = if (jump.isRunning) Motion.phase(j, JUMP_IN, 1f, Motion.Dimmer) else 1f
                 from = s.value
+                jump.snapTo(0f)
                 s.snapTo(target)
-                scope.launch {
-                    jump.snapTo(0f)
-                    jump.animateTo(1f, tween(JUMP_MS, easing = LinearEasing))
-                }
+                scope.launch { jump.animateTo(1f, tween(JUMP_MS, easing = LinearEasing)) }
             }
         }
         val l = lit
