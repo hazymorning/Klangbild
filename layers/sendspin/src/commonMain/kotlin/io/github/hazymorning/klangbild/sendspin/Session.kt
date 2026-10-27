@@ -384,15 +384,10 @@ class Session(
 
     private fun activate(m: Message) {
         val acts = m.strings("activities")?.toSet() ?: emptySet()
-        val requested = if (m.payload.containsKey("active_roles")) m.strings("active_roles")?.toSet() ?: emptySet() else roles
-        val allowed = when (matched) {
-            PskCategory.LONG_TERM -> setOf(emptySet(), setOf(PLAYBACK))
-            // Unpaired access is on: playback may come over the Sentinel or the pairing PSK too.
-            PskCategory.PAIRING, PskCategory.SENTINEL -> setOf(emptySet(), setOf(PAIRING), setOf(PLAYBACK), setOf(PLAYBACK, PAIRING))
-        }
-        if (acts !in allowed) return refuse()
-        val capable = (acts + PLAYBACK) in allowed
-        val newRoles = if (capable) requested else if (m.payload.containsKey("active_roles") && requested.isNotEmpty()) return refuse() else emptySet()
+        // Unpaired access is on: playback may come over the Sentinel or the pairing PSK too.
+        val permitted = if (matched == PskCategory.LONG_TERM) setOf(PLAYBACK) else setOf(PLAYBACK, PAIRING)
+        if (!permitted.containsAll(acts)) return refuse()
+        val newRoles = if (m.payload.containsKey("active_roles")) m.strings("active_roles")?.toSet() ?: emptySet() else roles
         if (PAIRING in acts) {
             pairingIndex++
             val method = m.obj("pairing")?.get("method")?.let { (it as? JsonPrimitive)?.content }
