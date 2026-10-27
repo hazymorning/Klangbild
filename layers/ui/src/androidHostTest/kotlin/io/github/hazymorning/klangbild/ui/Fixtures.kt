@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import io.github.hazymorning.klangbild.app.AppFixtures
 import io.github.hazymorning.klangbild.app.FlowData
 import io.github.hazymorning.klangbild.app.QueueList
@@ -188,16 +189,21 @@ object Fixtures : AppFixtures() {
         CompositionLocalProvider(LocalGlyphs provides AndroidGlyphs, content = content)
     }
 
-    /** The animated cover flow for one strip; what comes next is the card to the right. */
+    /**
+     * The animated cover flow for one strip; what comes next is the card to the right. As in the
+     * root, a stage keeps the next it had while it was in the middle, so one leaving in a change
+     * still names its own.
+     */
     @Composable
     fun FlowTheaterOf(flow: FlowData, status: PlayerStatus = PlayerStatus.PLAYING, partyCode: String? = null) {
         val lead = StageTexts.lead(status, false, volumeFlash = false, volume = null, group = "Wohnzimmer + 5", volumeAlways = false, t = texts)
-        val next = flow.cards.getOrNull(flow.current + 1)?.track
+        val nexts = remember { HashMap<String, TrackInfo?>() }
+        nexts[flow.middle.track.key] = flow.cards.getOrNull(flow.current + 1)?.track
         CompositionLocalProvider(LocalTexts provides texts) {
             io.github.hazymorning.klangbild.ui.flow.FlowTheater(
                 flow = flow,
                 status = status,
-                modelFor = { s -> model(s.track, next = next, status = status, scene = s.scene, lead = lead) },
+                modelFor = { s -> model(s.track, next = nexts[s.track.key], status = status, scene = s.scene, lead = lead) },
                 partyCode = partyCode,
             )
         }
