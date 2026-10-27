@@ -59,6 +59,9 @@ class MilkdropSound(
     private val timeline = SoundTimeline()
     private var readers = 0
     private var player: String? = null
+
+    /** The player the relay connection under way is for. */
+    private var listening: String? = null
     private var job: Job? = null
     private val lock = SynchronizedObject()
 
@@ -78,6 +81,8 @@ class MilkdropSound(
 
     private fun listen() {
         val id = player.takeIf { readers > 0 }
+        if (id == listening) return
+        listening = id
         job?.cancel()
         job = null
         timeline.clear()
