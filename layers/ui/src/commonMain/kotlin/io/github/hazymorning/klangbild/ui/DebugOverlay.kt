@@ -39,7 +39,7 @@ data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int)
 
 /** The frames of each second, as the platform counts them ([frames]), and what [sound] hears. */
 @Composable
-fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed = SoundFeed.None) {
+fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed) {
     val s by frames.collectAsStateWithLifecycle()
     val t = texts()
     Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopStart) {

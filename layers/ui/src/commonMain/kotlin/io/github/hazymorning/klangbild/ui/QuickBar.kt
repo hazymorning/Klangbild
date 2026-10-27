@@ -260,7 +260,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 // The queue's way just chosen is on its way: its value breathes until the screen shows it.
                 val breath = if (row.item == QuickItem.QUEUE) rememberBreath(preparing) else null
                 val waitingColor by animateColorAsState(colors.waitingInk(focused), tween(240, easing = Motion.Dimmer), label = "quick-waiting")
-                Entry(x = { left - shift }, labelBaseline = QuickGrid.LABEL_BASELINE, valueBaseline = QuickGrid.VALUE_BASELINE, width = width) {
+                Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
                     Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
                         BasicText(v, style = valueStyle, color = { breathed(valueColor, waitingColor, breath?.value ?: 0f).let { it.copy(alpha = it.alpha * seen()) } }, maxLines = 1)
@@ -312,11 +312,11 @@ fun quickWidths(
 }
 
 /**
- * An entry: its name with its baseline at [labelBaseline], its value with its baseline at
- * [valueBaseline] (dp), from [x] (read when it is placed, so a gliding row is only placed anew).
+ * An entry: its label and its value on their baselines ([QuickGrid]), from [x] (read when it is
+ * placed, so a gliding row is only placed anew).
  */
 @Composable
-private fun Entry(x: () -> Float, labelBaseline: Float, valueBaseline: Float, width: Float, content: @Composable () -> Unit) {
+private fun Entry(x: () -> Float, width: Float, content: @Composable () -> Unit) {
     Layout(content = content, modifier = Modifier.fillMaxSize()) { measurables, constraints ->
         val c = Constraints(maxWidth = ((width + 8f) * density).roundToInt())
         val label = measurables[0].measure(c)
@@ -324,8 +324,8 @@ private fun Entry(x: () -> Float, labelBaseline: Float, valueBaseline: Float, wi
         fun androidx.compose.ui.layout.Placeable.first(): Int = this[FirstBaseline].takeIf { it != androidx.compose.ui.layout.AlignmentLine.Unspecified } ?: 0
         layout(constraints.maxWidth, constraints.maxHeight) {
             val left = (x() * density).roundToInt()
-            label.place(left, (labelBaseline * density).roundToInt() - label.first())
-            value.place(left, (valueBaseline * density).roundToInt() - value.first())
+            label.place(left, (QuickGrid.LABEL_BASELINE * density).roundToInt() - label.first())
+            value.place(left, (QuickGrid.VALUE_BASELINE * density).roundToInt() - value.first())
         }
     }
 }

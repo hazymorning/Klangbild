@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
@@ -26,7 +27,7 @@ class SetupArtTest {
         // On a 720p screen the cover's side is 490.67 px.
         for (screen in listOf(ScreenSpec(1280, 720, 1.33125f), ScreenSpec.TV_1080)) {
             val cover = SetupArt.scene(info, screen).cover
-            assertThat(cover.pixels().contentEquals(SetupArt.card(qr, cover.width).pixels()), name = "${screen.heightPx}p").isTrue()
+            assertThat(cover.pixels().contentEquals(SetupArt.card(qr, cover.width, Appearance.DARK).pixels()), name = "${screen.heightPx}p").isTrue()
         }
     }
 }

@@ -56,7 +56,7 @@ object SetupArt {
      * quiet zone. Becomes the "cover" of the setup scene, so it hangs on the wall in the same
      * light as an album.
      */
-    fun card(qr: Array<BooleanArray>?, sizePx: Int, appearance: Appearance = Appearance.DARK): ImageBitmap {
+    fun card(qr: Array<BooleanArray>?, sizePx: Int, appearance: Appearance): ImageBitmap {
         val px = IntArray(sizePx * sizePx)
         px.fill(if (appearance == Appearance.DARK) 0xFFEAE2D4.toInt() else 0xFFF7F4EE.toInt())
         if (qr != null) {
