@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
 import io.github.hazymorning.klangbild.color.Appearance
@@ -21,6 +22,7 @@ import io.github.hazymorning.klangbild.render.FlowCard
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.WallGlow
 import io.github.hazymorning.klangbild.ui.Motion
+import io.github.hazymorning.klangbild.ui.progress
 import io.github.hazymorning.klangbild.ui.stage.coverScale
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -32,7 +34,7 @@ import kotlin.math.roundToInt
 @Immutable
 class Window(val start: Float, val end: Float) {
     /** How far [t] has come through this stretch (0..1). */
-    fun of(t: Float): Float = if (end <= start) (if (t >= end) 1f else 0f) else ((t - start) / (end - start)).coerceIn(0f, 1f)
+    fun of(t: Float): Float = progress(t, start, end)
 
     companion object {
         val ALL = Window(0f, 1f)
@@ -120,6 +122,7 @@ fun FlowStrip(
     val arriving = remember(cards) { cards.firstOrNull { it.to == 0f && it.toAlpha > 0f } }
     val leaving = remember(cards) { cards.firstOrNull { it.from == 0f && it.fromAlpha > 0f } }
     val tools = remember { DrawTools() }
+    val edgeBands = remember { EdgeBands() }
     val lights = remember(appearance, wall) { Lights(appearance, wall.toArgb()) }
     val lightsBefore = remember(before) { before?.let { Lights(it.appearance, it.wall.toArgb()) } }
     Canvas(modifier.fillMaxSize()) {
@@ -130,7 +133,7 @@ fun FlowStrip(
         val come = if (before == null) 1f else look().coerceIn(0f, 1f)
         val old = if (come < 1f) before else null
         val arrived = arriving?.let { Motion.Turn.transform(it.move.of(t)) } ?: 1f
-        val arrivingLightness = arriving?.lightness(come) ?: 0.5f
+        val arrivingLightness = arriving?.lightness(come) ?: NO_MIDDLE_LIGHTNESS
         val leavingLightness = leaving?.lightness(come) ?: arrivingLightness
         val middleLightness = leavingLightness + (arrivingLightness - leavingLightness) * arrived
         for (i in 0 until n) {
@@ -158,12 +161,11 @@ fun FlowStrip(
             for (o in 0 until n) {
                 val i = order[o]
                 val a = alphas[i]
-                if (a <= 0.004f) continue
+                if (a <= UNSEEN) continue
                 val c = cards[i]
                 val card = c.card
                 val p = pos[i]
-                geometry.corners(p, tools.dp)
-                for (j in 0 until 8) tools.dst[j] = (tools.dp[j] + if (j % 2 == 0) dx else 0f) * density
+                tools.place(geometry, p, dx, density)
                 val lit = geometry.light(p) * d
                 val lightness = c.lightness(come)
                 // How much the card is squeezed sideways: far turned cards take the half-size texture.
@@ -186,9 +188,8 @@ fun FlowStrip(
             }
             // The sign facing the room in the middle card's place, crisp on whole pixels, lit as the middle card.
             val signBefore = old?.sign?.takeIf { it !== sign }
-            if ((sign != null || signBefore != null) && covered > 0.004f) {
-                geometry.corners(0f, tools.dp)
-                for (j in 0 until 8) tools.dst[j] = (tools.dp[j] + if (j % 2 == 0) dx else 0f) * density
+            if ((sign != null || signBefore != null) && covered > UNSEEN) {
+                tools.place(geometry, 0f, dx, density)
                 val lit = geometry.light(0f) * d
                 tools.clear()
                 // Until the new wall's sign is made, the one before stands in: lit as before, so it
@@ -207,13 +208,42 @@ fun FlowStrip(
         if (edge <= 0f) return@Canvas
         val ink = (if (old == null) wall else over(old.wall, wall, come)).let { if (edge < 1f) it.copy(alpha = it.alpha * edge) else it }
         val band = WallGlow.EDGE_BLACK_DP * density
-        val fadeDp = (if (old == null) edgeFade(appearance) else edgeFade(old.appearance) + (edgeFade(appearance) - edgeFade(old.appearance)) * come) * density
-        val reach = min(band + fadeDp, (geometry.cx - geometry.side / 2f + dx) * density)
-        drawRect(ink, Offset.Zero, Size(band, size.height))
-        drawRect(Brush.horizontalGradient(listOf(ink, ink.copy(alpha = 0f)), startX = band, endX = reach), Offset(band, 0f), Size(reach - band, size.height))
+        val fade = (if (old == null) edgeFade(appearance) else edgeFade(old.appearance) + (edgeFade(appearance) - edgeFade(old.appearance)) * come) * density
+        val reach = min(band + fade, (geometry.cx - geometry.side / 2f + dx) * density)
+        edgeBands.draw(this, ink, band, reach, fade)
+    }
+}
+
+/**
+ * The bands along the screen's left and bottom edges in which the cards dissolve: solid [band] px
+ * of the background's color, then a fade over [fade] px, the left one ending at [reach] px. The
+ * gradients are made anew only when one of these changes, so a frame at rest allocates nothing.
+ */
+private class EdgeBands {
+    // What the gradients were made for.
+    private var madeInk = Color.Unspecified
+    private var madeBand = Float.NaN
+    private var madeReach = Float.NaN
+    private var madeFade = Float.NaN
+    private var madeHeight = Float.NaN
+    private lateinit var side: Brush
+    private lateinit var foot: Brush
+
+    fun draw(scope: DrawScope, ink: Color, band: Float, reach: Float, fade: Float) = with(scope) {
         val bottom = size.height - band
+        if (ink != madeInk || band != madeBand || reach != madeReach || fade != madeFade || size.height != madeHeight) {
+            side = Brush.horizontalGradient(listOf(ink, ink.copy(alpha = 0f)), startX = band, endX = reach)
+            foot = Brush.verticalGradient(listOf(ink.copy(alpha = 0f), ink), startY = bottom - fade, endY = bottom)
+            madeInk = ink
+            madeBand = band
+            madeReach = reach
+            madeFade = fade
+            madeHeight = size.height
+        }
+        drawRect(ink, Offset.Zero, Size(band, size.height))
+        drawRect(side, Offset(band, 0f), Size(reach - band, size.height))
         drawRect(ink, Offset(0f, bottom), Size(size.width, band))
-        drawRect(Brush.verticalGradient(listOf(ink.copy(alpha = 0f), ink), startY = bottom - fadeDp, endY = bottom), Offset(0f, bottom - fadeDp), Size(size.width, fadeDp))
+        drawRect(foot, Offset(0f, bottom - fade), Size(size.width, fade))
     }
 }
 
@@ -266,6 +296,12 @@ private class DrawTools {
     val weights = FloatArray(4)
     val filters = arrayOfNulls<ColorFilter>(4)
     var count = 0
+
+    /** Puts the quad of a card at [position] into [dst] (px), moved right by [dx] dp. */
+    fun place(geometry: FlowGeometry, position: Float, dx: Float, density: Float) {
+        geometry.corners(position, dp)
+        for (j in 0 until 8) dst[j] = (dp[j] + if (j % 2 == 0) dx else 0f) * density
+    }
 
     fun clear() {
         count = 0
@@ -398,6 +434,12 @@ private fun cardMatrix(light: Float, appearance: Appearance, paper: Int): ColorM
         )
     }
 }
+
+/** A card or a sign fainter than this, about one step of 8-bit alpha, is not drawn. */
+private const val UNSEEN = 0.004f
+
+/** The middle card's lightness the side cards step back from while no card arrives in the middle. */
+private const val NO_MIDDLE_LIGHTNESS = 0.5f
 
 /** A card passing the middle fades beneath a sign there from this far from it (in card places), fully within [SIGN_NEAR]. */
 private const val SIGN_NEAR = 0.3f

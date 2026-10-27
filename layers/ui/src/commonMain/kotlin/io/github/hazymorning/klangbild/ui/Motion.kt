@@ -77,6 +77,10 @@ private fun rememberFrameLoop(fast: Boolean, running: Boolean): State<Long> {
 const val TICK_MS = 24L
 private const val SLOW_TICK_MS = 500L
 
+/** How far [t] has come from [start] to [end] (0 to 1); a window without length is passed once [t] reaches it. */
+internal fun progress(t: Float, start: Float, end: Float): Float =
+    if (end <= start) (if (t >= end) 1f else 0f) else ((t - start) / (end - start)).coerceIn(0f, 1f)
+
 /**
  * A value that glides to [target]: from rest in [durationMs] ([Motion.Dimmer]). A new target
  * that comes while it still glides (a key held, or pressed again quickly) carries on from its
@@ -190,10 +194,7 @@ object Motion {
     const val PAUSED_TEXT = 0.7f
 
     /** Eased progress of a phase that runs from [start] to [end] of the overall 0..1 [t]. */
-    fun phase(t: Float, start: Float, end: Float, easing: Easing = Dimmer): Float {
-        val x = ((t - start) / (end - start)).coerceIn(0f, 1f)
-        return easing.transform(x)
-    }
+    fun phase(t: Float, start: Float, end: Float, easing: Easing = Dimmer): Float = easing.transform(progress(t, start, end))
 
     /** [phase] with the window given in milliseconds of an animation lasting [totalMs]. */
     fun phaseMs(t: Float, startMs: Int, endMs: Int, totalMs: Int, easing: Easing = Dimmer): Float =
