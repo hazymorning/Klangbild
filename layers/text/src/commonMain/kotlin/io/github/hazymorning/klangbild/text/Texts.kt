@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.text
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.jvm.JvmInline
@@ -34,7 +35,7 @@ class Texts internal constructor(
     /** The language the words are in, with the system's region where it has one (formats follow it). */
     val locale: Locale,
     /** Times of day in 24 hours (else 12 hours with AM and PM). */
-    val clock24: Boolean,
+    private val clock24: Boolean,
 ) {
     private val region = locale.region()
 
@@ -69,26 +70,26 @@ class Texts internal constructor(
      * PM). No leading zero, as a clock on a wall shows it.
      */
     fun clock(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String {
-        val time = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
-        return fontSafe(if (clock24) clock24(time.hour, time.minute) else clock12(time.hour, time.minute) + "\u00A0" + region.dayPeriod(time.hour))
+        val time = timeAt(epochMs, zone)
+        return if (clock24) figures(time) else fontSafe(figures(time) + "\u00A0" + region.dayPeriod(time.hour))
     }
 
     /** The figures of the time of day alone, for the large rest clock: "21:47", or "9:47" in 12 hours. */
-    fun clockFigures(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String {
-        val time = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
-        return if (clock24) clock24(time.hour, time.minute) else clock12(time.hour, time.minute)
-    }
+    fun clockFigures(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String = figures(timeAt(epochMs, zone))
 
     /**
      * The date at [epochMs] with the weekday, as the language writes it: "Saturday, October 10"
      * in English, day before month in German.
      */
     fun date(epochMs: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String =
-        fontSafe(region.date(Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone).date))
+        fontSafe(region.date(timeAt(epochMs, zone).date))
 
-    private fun clock24(hour: Int, minute: Int) = "$hour:${minute.toString().padStart(2, '0')}"
+    private fun timeAt(epochMs: Long, zone: TimeZone): LocalDateTime = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
 
-    private fun clock12(hour: Int, minute: Int) = "${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
+    private fun figures(time: LocalDateTime): String {
+        val hour = if (clock24) time.hour else (time.hour + 11) % 12 + 1
+        return "$hour:${time.minute.toString().padStart(2, '0')}"
+    }
 
     companion object {
         /**
