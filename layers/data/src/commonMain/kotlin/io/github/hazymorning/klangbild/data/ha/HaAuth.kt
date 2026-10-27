@@ -4,7 +4,6 @@ import io.github.hazymorning.klangbild.data.HttpStatusException
 import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.formBody
-import io.github.hazymorning.klangbild.data.isSuccessful
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.json.string
@@ -14,6 +13,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
@@ -155,7 +155,7 @@ class HaAuth(
                 onRejected(reason)
                 throw HaAuthRejectedException(reason)
             }
-            if (!response.isSuccessful) throw HttpStatusException("Home Assistant", code)
+            if (!response.status.isSuccess()) throw HttpStatusException("Home Assistant", code)
             val o = json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
             HaTokens(
                 accessToken = o.string("access_token") ?: throw IOException("No access token"),

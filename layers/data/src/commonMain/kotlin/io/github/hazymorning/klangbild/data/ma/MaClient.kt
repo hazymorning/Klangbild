@@ -5,7 +5,6 @@ import io.github.hazymorning.klangbild.data.address
 import io.github.hazymorning.klangbild.data.bearer
 import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
-import io.github.hazymorning.klangbild.data.isSuccessful
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.json.string
@@ -15,6 +14,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HeaderValueParam
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -166,7 +166,7 @@ class MaClient(
             if (code == 401 || code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
             if (code == 400 && response.bodyBytes(UNKNOWN_PEEK_BYTES).decodeToString().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
-            if (!response.isSuccessful) throw HttpStatusException("Music Assistant", code)
+            if (!response.status.isSuccess()) throw HttpStatusException("Music Assistant", code)
             response.textBelow(MAX_ANSWER_BYTES)
         }
         return withContext(Dispatchers.Default) { Json.parseToJsonElement(text) }

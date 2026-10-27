@@ -8,6 +8,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 import io.ktor.client.HttpClient
 import io.ktor.http.contentLength
+import io.ktor.http.isSuccess
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Dispatchers
@@ -104,7 +105,7 @@ class ArtworkLoader(
                 token?.let { bearer(it) }
             },
         ) { response ->
-            if (!response.isSuccessful) return@fetch null
+            if (!response.status.isSuccess()) return@fetch null
             // A cover is a few megabytes at most; anything far larger is not read at all.
             if ((response.contentLength() ?: -1L) > MAX_BYTES) return@fetch null
             response.bodyBytes(MAX_BYTES + 1).takeIf { it.size <= MAX_BYTES }

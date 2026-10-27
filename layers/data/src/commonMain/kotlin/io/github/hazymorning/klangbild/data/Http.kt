@@ -59,9 +59,6 @@ fun HttpRequestBuilder.bearer(token: String) {
     header("Authorization", value)
 }
 
-/** Whether the status is a success (2xx). */
-val HttpResponse.isSuccessful: Boolean get() = status.value in 200..299
-
 /** Up to [limit] bytes of the body: all of it when there are fewer. A body cut off by a failure throws it. */
 suspend fun HttpResponse.bodyBytes(limit: Long): ByteArray {
     val body = bodyAsChannel()
