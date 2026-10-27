@@ -385,14 +385,14 @@ internal class QueueReader(
         } catch (_: Exception) {
             null
         } ?: return
-        val now = MaQueue.now(answer, client.baseUrl)
-        val current = now.current ?: return
+        val state = MaQueue.state(answer, client.baseUrl)
+        val current = state.current ?: return
         val shown = latest()?.track ?: return
         // Music Assistant has moved on to another item: that song's own read follows.
         if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
-        val basis = Triple(now.index, now.nextId, now.items)
+        val basis = Triple(state.index, state.nextId, state.items)
         val same = maNext?.let { it.key == key && it.basis == basis } == true
-        val read = now.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
+        val read = state.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
         val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } }
         if (trackKey != key) return
         val moved = position != null && position != maPosition?.takeIf { it.key == key }?.position
@@ -402,7 +402,7 @@ internal class QueueReader(
             if (moved) publish()
             return
         }
-        maNext = MaNext(key, now.next, basis)
+        maNext = MaNext(key, state.next, basis)
         if (read != null) {
             window = read
             lyrics?.want(listOfNotNull(read.currentSong, read.nextSong))

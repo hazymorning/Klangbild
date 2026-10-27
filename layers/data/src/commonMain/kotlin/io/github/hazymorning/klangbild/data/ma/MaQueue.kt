@@ -37,10 +37,10 @@ data class QueueWindow(
 data class QueueSong(val uri: String, val item: JsonObject, val lyrics: String?, val lrcLyrics: String?)
 
 /**
- * Music Assistant's queue as it stands now (`player_queues/get`): the current item's place, the
- * current item, the next one (null when nothing follows) and its id, and how many items it has.
+ * Music Assistant's queue as it stands (`player_queues/get`): the current item's index, the
+ * current item, the next one (null when nothing follows) and its ID, and how many items it has.
  */
-data class QueueNow(val index: Int?, val current: TrackInfo?, val next: TrackInfo?, val nextId: String?, val items: Int?)
+data class QueueState(val index: Int?, val current: TrackInfo?, val next: TrackInfo?, val nextId: String?, val items: Int?)
 
 /**
  * Where Music Assistant's queue stands in its current item: [elapsedMs] in the item's own time at
@@ -76,11 +76,11 @@ object MaQueue {
         )
     }
 
-    /** What [queue] (`player_queues/get`) says now; [baseUrl] resolves pictures. */
-    fun now(queue: JsonObject, baseUrl: String): QueueNow {
+    /** The state of [queue] (`player_queues/get`); [baseUrl] resolves pictures. */
+    fun state(queue: JsonObject, baseUrl: String): QueueState {
         val current = queue["current_item"] as? JsonObject
         val next = queue["next_item"] as? JsonObject
-        return QueueNow(
+        return QueueState(
             index = (queue["current_index"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
             current = current?.let { track(it, baseUrl) },
             next = next?.let { track(it, baseUrl) },
