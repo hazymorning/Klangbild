@@ -28,6 +28,8 @@ release notes, commits, pull requests, issues, discussions and code comments.
 
 - Write plain, standard English, the way a native speaker would write it on GitHub. Use US
   spelling and the usual words for things, like track, lyrics, queue, library and Now Playing.
+  Comments and names use the same words: the cover is the image on screen, the artwork the image
+  a source gives.
 - Use as few words as the information needs, and make every sentence tell the reader something
   new. Keep text short by leaving things out, not by writing clipped sentences.
 - Keep the tone friendly and modest. Use periods and commas for most things and a colon only where
@@ -38,9 +40,9 @@ release notes, commits, pull requests, issues, discussions and code comments.
   publicly whether something was tried on a real TV.
 - Don't mention brands of lights, speakers, media players or TV devices anywhere. Data used to
   recognize them, like the words in `SpeakerLabel`, is fine.
-- The UI is in English, with German in `values-de`. No English UI string is longer than its German
-  translation (`LanguageTest`). Menu labels use the words people know from TVs and phones, and
-  their values are plain words. Everything else in the repository is in English.
+- The UI is in English, with German in `values-de`. No English sentence in the UI is longer than
+  its German translation (`LanguageTest`). Menu labels use the words people know from TVs and
+  phones, and their values are plain words. Everything else in the repository is in English.
 - Music metadata keeps its own typography (`TrackText`). Dashes in string literals and test data
   are data, so never change them with find and replace.
 
@@ -155,7 +157,7 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - Tests are in commonTest, which runs on all three targets, unless they need Android, Robolectric
   or a JVM library (androidHostTest) or the JVM's own classes (jvmTest). Tests live in the module
   of their package. A test that needs a layer above its own goes in the lowest module that depends
-  on that layer, like `ProgressTest` in data. Test helpers shared by several layers are separate
+  on that layer, like `DesignRulesTest` in ui. Test helpers shared by several layers are separate
   modules (`art-testing`, `text-testing`, `domain-testing`, `app-testing`). A test that reads a
   file outside its module gets the path from the build (`reads` in build-logic).
 
@@ -222,9 +224,9 @@ are in the code, and the tests named here check them.
   then what frames them (`Rhythm`). A space runs from the descenders of the line above to the cap
   height of the line below, never from the baseline, so the space under the title grows with its
   size and a y or g never crowds the next line. In the queue's list the song stands in the middle
-  between the status line and the rows, and the last row ends where the cover does
-  (`CenteringTest`). Judge spacing by measuring the ink of every gap in the rendered pictures, with
-  titles whose letters reach down, not by eye.
+  between the status line and the rows, and the last row ends at the column's foot, where Up next
+  would end (`CenteringTest`). Judge spacing by measuring the ink of every gap in the rendered
+  pictures, with titles whose letters reach down, not by eye.
 - There are two typefaces. Jost is for titles of 24 sp and up, the clock, headings and all numbers
   (`titleType()`), and DM Sans is for the smaller text (`textType()`). Text is in sentence case,
   with no letter spacing or italics, and never in the system font. Outside the debug overlay,
