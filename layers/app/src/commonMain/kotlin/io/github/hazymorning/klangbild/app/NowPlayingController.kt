@@ -153,7 +153,7 @@ data class UiState(
     /**
      * How the queue should show, chosen but not on screen yet, while its stage is being made
      * ([QueueSwitch]); null while no song is on stage. The quick settings' and the menu's Queue
-     * value shimmer meanwhile.
+     * value breathe meanwhile.
      */
     val queueComing: QueueDisplay? = null,
     /** The cover flow (with [QueueDisplay.FLOW]); like [stage] it may lag behind [screen], and stays through a switch away. */
@@ -334,7 +334,7 @@ class NowPlayingController(
     /** A screen (activity or dream) starts showing the controller. */
     fun attach(spec: ScreenSpec): Unit = synchronized(lock) {
         viewers++
-        scenes.frame = scenes.frame.copy(screen = spec)
+        scenes.show(scenes.frame.copy(screen = spec))
         thumbs.px = (StageGrid(spec).rowCover * spec.density).roundToInt()
         if (viewers == 1) start()
     }
@@ -609,8 +609,10 @@ class NowPlayingController(
         if (flow != scenes.frame.flow || (_ui.value.queue == QueueDisplay.FLOW) != flow) {
             // Cover Flow needs scenes of its own, and its strip starts afresh. What showed before
             // stays on screen until the first scene is made (it goes then), so the switch never
-            // waits in the dark. Off and the list share the cover's scenes.
-            scenes.frame = scenes.frame.copy(flow = flow)
+            // waits in the dark. Off and the list share the cover's scenes. The song on stage
+            // keeps its scene for a way straight back.
+            val onStage = _ui.value.stage?.track ?: _ui.value.flow?.middle?.track
+            scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
             strip.clear()
         }
         if (_ui.value.queue != s.queue) {
@@ -810,7 +812,7 @@ class NowPlayingController(
         // with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
-        // The queue's way just chosen shimmers in the quick settings and the menu until this
+        // The queue's way just chosen breathes in the quick settings and the menu until this
         // state shows it.
         _ui.value = published.copy(queueComing = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer

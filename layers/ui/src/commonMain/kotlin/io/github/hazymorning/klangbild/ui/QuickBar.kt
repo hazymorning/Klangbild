@@ -98,7 +98,7 @@ object QuickGrid {
  * chosen line, its words at full strength (no frame, no chip, no icon). A value that holds but
  * has nothing to show now stands in a quieter ink. The entries keep their places whatever their
  * values say, so nothing jumps while a value changes. While the queue's way just chosen is
- * [preparing], its value shimmers ([Shimmer]).
+ * [preparing], its value breathes ([rememberBreath]).
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, preparing: Boolean = false) {
@@ -155,10 +155,10 @@ internal class QuickColors(
     }
 
     /**
-     * The ink a shimmering value waits in, one step quieter than its own: the name's ink, chosen
-     * or at rest. The band brings its own ink back as it passes.
+     * The ink a value on its way sinks into as it breathes: a muted value's, the quietest that
+     * still reads well where it stands, chosen or at rest.
      */
-    fun waitingInk(focused: Boolean): Color = if (focused) labelFocus else label
+    fun waitingInk(focused: Boolean): Color = valueInk(focused, muted = true)
 
     companion object {
         fun of(appearance: Appearance): QuickColors {
@@ -257,16 +257,13 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
-                // The queue's way just chosen is on its way: its value shimmers until the screen shows it.
-                val sweep = if (row.item == QuickItem.QUEUE) rememberSweep(preparing) else null
+                // The queue's way just chosen is on its way: its value breathes until the screen shows it.
+                val breath = if (row.item == QuickItem.QUEUE) rememberBreath(preparing) else null
+                val waitingColor by animateColorAsState(colors.waitingInk(focused), tween(240, easing = Motion.Dimmer), label = "quick-waiting")
                 Entry(x = { left - shift }, labelBaseline = QuickGrid.LABEL_BASELINE, valueBaseline = QuickGrid.VALUE_BASELINE, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
                     Crossfade(targetState = row.value, animationSpec = tween(220, easing = Motion.Dimmer), label = "quick-value-text") { v ->
-                        if (sweep != null) {
-                            ShimmerText(v, valueStyle, sweep, ink = { valueColor }, waiting = colors.waitingInk(focused), alpha = seen)
-                        } else {
-                            BasicText(v, style = valueStyle, color = { valueColor.copy(alpha = valueColor.alpha * seen()) }, maxLines = 1)
-                        }
+                        BasicText(v, style = valueStyle, color = { breathed(valueColor, waitingColor, breath?.value ?: 0f).let { it.copy(alpha = it.alpha * seen()) } }, maxLines = 1)
                     }
                 }
             }

@@ -161,7 +161,7 @@ internal class QuickControl(private val host: ControllerHost) {
     /**
      * Applies the queue view chosen in the quick settings; stepped round to the one it had,
      * nothing changes. The choice counts as waiting until the setting has it, so the screen never
-     * works out a moment with neither (the Queue value would stop shimmering for it).
+     * works out a moment with neither (the Queue value would stop breathing for it).
      */
     private fun applyQueue() {
         val next = synchronized(host.lock) {

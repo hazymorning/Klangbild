@@ -1,7 +1,6 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -61,8 +60,8 @@ internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance:
         LaunchedEffect(buffering) {
             if (buffering) {
                 while (true) {
-                    breath.animateTo(BREATH_LOW, tween(BREATH_MS, easing = Motion.Dimmer))
-                    breath.animateTo(1f, tween(BREATH_MS, easing = Exhale))
+                    breath.animateTo(BREATH_LOW, tween(Motion.BREATH_MS, easing = Motion.Dimmer))
+                    breath.animateTo(1f, tween(Motion.BREATH_MS, easing = Motion.Exhale))
                 }
             } else if (breath.value < 1f) {
                 breath.animateTo(1f, tween(Motion.PAUSE_MS, easing = Motion.Dimmer))
@@ -72,9 +71,5 @@ internal fun rememberStageDim(status: PlayerStatus, dimmed: Boolean, appearance:
     return StageDim(pause, breath.asState(), picture, text)
 }
 
-/** The light's lowest point while the speaker buffers, and how long a breath takes each way (ms). */
+/** The light's lowest point while the speaker buffers. */
 private const val BREATH_LOW = 0.7f
-private const val BREATH_MS = 1_600
-
-/** The way back up is the way down played backwards, so the breath rises as it sank. */
-private val Exhale = Easing { 1f - Motion.Dimmer.transform(1f - it) }

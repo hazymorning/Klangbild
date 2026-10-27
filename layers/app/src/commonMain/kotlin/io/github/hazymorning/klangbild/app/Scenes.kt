@@ -50,22 +50,32 @@ class Scenes(
     private val lock = SynchronizedObject()
     private val building = HashMap<String, Job>()
 
-    /**
-     * What scenes are built for now. Another frame lets go of every scene, and of those still
-     * being made for the frame left: a switch to Cover Flow and straight back never waits for a
-     * scene nobody will show, and its own scene starts at once.
-     */
+    /** What scenes are built for now ([show]). */
     @Volatile var frame = Frame(ScreenSpec.TV_1080, flow = false)
-        set(value) {
-            synchronized(lock) {
-                if (value != field) {
-                    building.values.forEach { it.cancel() }
-                    building.clear()
-                    cache.clear()
-                }
-                field = value
-            }
+        private set
+
+    /** The scene of the song on stage in the frame left last, with its key, waiting for a way back. */
+    private var aside: Triple<Frame, String, ArtworkScene>? = null
+
+    /**
+     * Builds scenes for [value] from now on. Another frame lets go of every scene, and of those
+     * still being made for the frame left: a switch to Cover Flow and straight back never waits
+     * for a scene nobody will show, and its own scene starts at once. Only the scene of [keep]
+     * (the song on stage, by its [TrackInfo.sceneKey]) is set aside, so a way straight back finds
+     * it at once.
+     */
+    fun show(value: Frame, keep: String? = null) {
+        synchronized(lock) {
+            if (value == frame) return
+            building.values.forEach { it.cancel() }
+            building.clear()
+            val back = aside?.takeIf { it.first == value }
+            aside = keep?.let { key -> cache[key]?.let { Triple(frame, key, it) } }
+            cache.clear()
+            back?.let { (_, key, scene) -> cache[key] = scene }
+            frame = value
         }
+    }
 
     /** How many scenes are kept: the cover flow needs a whole strip of them. */
     private val capacity get() = if (frame.flow) 10 else 3
@@ -97,6 +107,7 @@ class Scenes(
             building.values.forEach { it.cancel() }
             building.clear()
             cache.clear()
+            aside = null
         }
     }
 

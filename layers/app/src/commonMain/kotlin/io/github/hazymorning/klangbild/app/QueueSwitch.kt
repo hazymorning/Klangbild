@@ -5,7 +5,7 @@ import io.github.hazymorning.klangbild.config.QueueDisplay
 /**
  * The queue view that was chosen but isn't on screen yet. A switch to or from Cover Flow takes a
  * few seconds, since the other view has to make its first scene before it can come. Until then
- * the Queue value in the quick settings and the menu shimmers, so it's clear the choice is on its
+ * the Queue value in the quick settings and the menu breathes, so it's clear the choice is on its
  * way. It starts with the press (the quick settings apply a choice only once the presses stop)
  * and ends in the state that shows the new view. It only exists while a song is on stage: over
  * the clock, the setup page or a screen that says something is wrong nothing is made, and a stage
