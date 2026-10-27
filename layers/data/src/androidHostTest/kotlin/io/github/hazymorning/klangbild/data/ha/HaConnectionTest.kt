@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.data.ha
 import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.containsAtLeast
-import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.doesNotContain
 import assertk.assertions.hasSize
@@ -18,7 +17,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -280,8 +282,7 @@ class HaConnectionTest {
     fun `a refused token is never sent again, not even on request`() = runBlocking {
         val conn = connection()
         conn.start(config(token = "wrong"), listOf("media_player.wz"))
-        val status = withTimeout(5_000) { conn.status.first { it is HaStatus.AuthFailed } }
-        assertThat((status as HaStatus.AuthFailed).message).isEqualTo("Invalid access token or password")
+        withTimeout(5_000) { conn.status.first { it == HaStatus.AuthFailed } }
         // Each attempt counts as a failed login in Home Assistant.
         conn.retryNow()
         delay(400)
@@ -307,7 +308,7 @@ class HaConnectionTest {
         val conn = connection()
         val auth = HaAuth(http, baseUrl(), HaCredentials.SignedIn("revoked", "http://192.168.1.23:8765/"))
         conn.start(HaConfig(auth), listOf("media_player.wz"))
-        withTimeout(5_000) { conn.status.first { it is HaStatus.AuthFailed } }
+        withTimeout(5_000) { conn.status.first { it == HaStatus.AuthFailed } }
         // Each refused refresh counts as a failed login in Home Assistant: no second one, not even on request.
         conn.retryNow()
         delay(300)
@@ -321,7 +322,7 @@ class HaConnectionTest {
         closeAfterSubscribe = true
         val conn = connection()
         conn.start(config(), listOf("media_player.wz"))
-        withTimeout(5_000) { conn.status.first { it is HaStatus.Waiting } }
+        withTimeout(5_000) { conn.status.first { it == HaStatus.Waiting } }
         // Home Assistant is back.
         closeAfterSubscribe = false
         withTimeout(5_000) {
@@ -338,7 +339,7 @@ class HaConnectionTest {
         // The network is reported back while the connection stands, then the connection is lost.
         conn.retryNow()
         sockets.single().close(1001, "restart")
-        withTimeout(5_000) { conn.status.first { it is HaStatus.Waiting } }
+        withTimeout(5_000) { conn.status.first { it == HaStatus.Waiting } }
         delay(300)
         assertThat(upgrades.get()).isEqualTo(1)
         // Now the network comes back while it waits.
@@ -348,19 +349,13 @@ class HaConnectionTest {
     }
 
     @Test
-    fun `unreachable server keeps trying with growing delays`() = runBlocking {
+    fun `an unreachable server is tried again and again`() = runBlocking {
         val port = server.port
         server.close()
         val conn = connection()
         conn.start(HaConfig(HaAuth(http, "http://127.0.0.1:$port", HaCredentials.LongLived("good"))), listOf("media_player.wz"))
-        val waits = mutableListOf<HaStatus.Waiting>()
-        withTimeout(5_000) {
-            conn.status.first { st ->
-                if (st is HaStatus.Waiting && waits.none { it.attempt == st.attempt }) waits += st
-                waits.size >= 3
-            }
-        }
-        assertThat(waits.map { it.attempt }).containsExactly(1, 2, 3)
+        // A wait comes after every attempt.
+        withTimeout(5_000) { conn.status.filter { it == HaStatus.Waiting }.take(3).collect() }
         conn.stop()
     }
 }

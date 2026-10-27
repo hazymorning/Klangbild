@@ -14,8 +14,7 @@ class Backoff(
     private val maxMs: Long = 60_000,
     private val random: Random = Random.Default,
 ) {
-    var attempt: Int = 0
-        private set
+    private var attempt = 0
 
     fun nextDelayMs(): Long {
         // 2^16 times the base is far above any bound; the limit keeps the product from overflowing.

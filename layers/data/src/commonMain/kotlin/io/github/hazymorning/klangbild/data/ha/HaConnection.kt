@@ -48,17 +48,17 @@ data class HaConfig(val auth: HaAuth) {
 /** Connection state as the rest of the app sees it, never raw exceptions. */
 sealed interface HaStatus {
     data object Stopped : HaStatus
-    data class Connecting(val attempt: Int) : HaStatus
+    data object Connecting : HaStatus
     data object Connected : HaStatus
 
     /**
      * Home Assistant refused the credentials. The connection stays down until it is started again,
      * since Home Assistant counts every attempt as a failed login.
      */
-    data class AuthFailed(val message: String?) : HaStatus
+    data object AuthFailed : HaStatus
 
-    /** Lost or failed; the next attempt happens in [retryInMs]. */
-    data class Waiting(val attempt: Int, val retryInMs: Long, val reason: String?) : HaStatus
+    /** Lost or failed: waiting before the next attempt. */
+    data object Waiting : HaStatus
 }
 
 /** A Home Assistant error answer to a command. */
@@ -230,8 +230,8 @@ class HaConnection(
         val backoff = backoffFactory()
         // A refused access token from a sign-in is replaced by a fresh one once before giving up.
         var freshTokenTried = false
-        while (scope.isActive) {
-            _status.value = HaStatus.Connecting(backoff.attempt)
+        while (true) {
+            _status.value = HaStatus.Connecting
             val end = try {
                 runSession(config, entityIds) {
                     backoff.reset()
@@ -239,10 +239,10 @@ class HaConnection(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: HaAuthRejectedException) {
-                SessionEnd.Refused(e.message)
-            } catch (e: Exception) {
-                SessionEnd.Lost(e.message ?: e::class.simpleName)
+            } catch (_: HaAuthRejectedException) {
+                SessionEnd.Refused()
+            } catch (_: Exception) {
+                SessionEnd.Lost
             } finally {
                 session = null
             }
@@ -253,13 +253,13 @@ class HaConnection(
                         config.auth.invalidate(end.token)
                         continue
                     }
-                    _status.value = HaStatus.AuthFailed(end.message)
+                    _status.value = HaStatus.AuthFailed
                     _entities.value = emptyMap()
                     return
                 }
-                is SessionEnd.Lost -> {
+                SessionEnd.Lost -> {
                     val delayMs = backoff.nextDelayMs()
-                    _status.value = HaStatus.Waiting(backoff.attempt, delayMs, end.reason)
+                    _status.value = HaStatus.Waiting
                     select<Unit> {
                         wakeUp.onReceive { }
                         onTimeout(delayMs) { }
@@ -271,14 +271,15 @@ class HaConnection(
 
     private sealed interface SessionEnd {
         /** Home Assistant refused the credentials; [token] is the access token its WebSocket refused, if that was the cause. */
-        data class Refused(val message: String?, val token: String? = null) : SessionEnd
-        data class Lost(val reason: String?) : SessionEnd
+        data class Refused(val token: String? = null) : SessionEnd
+        data object Lost : SessionEnd
     }
 
     private sealed interface WsEvent {
         data class Text(val text: String) : WsEvent
-        data class Closed(val code: Int, val reason: String) : WsEvent
-        data class Failure(val error: Throwable) : WsEvent
+
+        /** The connection was closed or failed. */
+        data object Ended : WsEvent
     }
 
     /** States the REST API gave for [requested] ids: found, or known not to exist. */
@@ -345,33 +346,29 @@ class HaConnection(
             }
 
             override fun onClosed(code: Int, reason: String) {
-                events.trySend(WsEvent.Closed(code, reason))
+                events.trySend(WsEvent.Ended)
             }
 
             override fun onFailure(error: Throwable) {
-                events.trySend(WsEvent.Failure(error))
+                events.trySend(WsEvent.Ended)
             }
         })
         val s = Session(socket)
         try {
             // --- handshake -------------------------------------------------------------
-            val first = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() }
-                ?: return@coroutineScope SessionEnd.Lost("no auth_required")
-            if (first is WsEvent.Failure || first is WsEvent.Closed) return@coroutineScope lost(first)
-            val firstMsg = (first as WsEvent.Text).let { parseMessages(it.text) }.firstOrNull()
-            if (firstMsg?.type() != "auth_required") return@coroutineScope SessionEnd.Lost("unexpected greeting")
+            val first = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() } as? WsEvent.Text
+                ?: return@coroutineScope SessionEnd.Lost
+            if (parseMessages(first.text).firstOrNull()?.type() != "auth_required") return@coroutineScope SessionEnd.Lost
             s.send(buildJsonObject {
                 put("type", "auth")
                 put("access_token", token)
             })
-            val authAnswer = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() }
-                ?: return@coroutineScope SessionEnd.Lost("auth timeout")
-            if (authAnswer !is WsEvent.Text) return@coroutineScope lost(authAnswer)
-            val auth = parseMessages(authAnswer.text).firstOrNull()
-            when (auth?.type()) {
+            val authAnswer = withTimeoutOrNull(handshakeTimeoutMs) { events.receive() } as? WsEvent.Text
+                ?: return@coroutineScope SessionEnd.Lost
+            when (parseMessages(authAnswer.text).firstOrNull()?.type()) {
                 "auth_ok" -> Unit
-                "auth_invalid" -> return@coroutineScope SessionEnd.Refused(auth.string("message"), token)
-                else -> return@coroutineScope SessionEnd.Lost("unexpected auth answer")
+                "auth_invalid" -> return@coroutineScope SessionEnd.Refused(token)
+                else -> return@coroutineScope SessionEnd.Lost
             }
             session = s
             s.lastPong = now()
@@ -542,7 +539,7 @@ class HaConnection(
                                                     put("event_type", "state_changed")
                                                 })
                                             }
-                                            id == mainSub -> return@coroutineScope SessionEnd.Lost("subscribe failed: ${error?.string("code")}")
+                                            id == mainSub -> return@coroutineScope SessionEnd.Lost
                                             id != null && id == extraSub && !ok -> extraSub = null
                                         }
                                     }
@@ -550,11 +547,11 @@ class HaConnection(
                                 }
                             }
                         }
-                        is WsEvent.Closed, is WsEvent.Failure -> return@coroutineScope lost(ev)
+                        WsEvent.Ended -> return@coroutineScope SessionEnd.Lost
                     }
                 }
                 @Suppress("UNREACHABLE_CODE") // The loop above only ends by returning, but the try still needs a value.
-                SessionEnd.Lost(null)
+                SessionEnd.Lost
             } finally {
                 pinger.cancel()
                 extraWatcher.cancel()
@@ -606,12 +603,6 @@ class HaConnection(
         put("id", id)
         put("type", "unsubscribe_events")
         put("subscription", subscription)
-    }
-
-    private fun lost(ev: WsEvent): SessionEnd = when (ev) {
-        is WsEvent.Closed -> SessionEnd.Lost("closed ${ev.code}")
-        is WsEvent.Failure -> SessionEnd.Lost(ev.error.message ?: ev.error::class.simpleName)
-        is WsEvent.Text -> SessionEnd.Lost(null)
     }
 
     /** Home Assistant may send several messages as one JSON array. */

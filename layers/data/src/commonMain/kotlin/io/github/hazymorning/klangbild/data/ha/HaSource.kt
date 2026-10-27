@@ -289,9 +289,9 @@ class HaSource(
         val t = now()
         val link = when (status) {
             HaStatus.Connected -> LinkState.CONNECTED
-            is HaStatus.AuthFailed -> LinkState.AUTH_FAILED
-            is HaStatus.Connecting -> if (lastSnapshot == null && linkDownSince == null) LinkState.CONNECTING else LinkState.RECONNECTING
-            is HaStatus.Waiting -> LinkState.RECONNECTING
+            HaStatus.AuthFailed -> LinkState.AUTH_FAILED
+            HaStatus.Connecting -> if (lastSnapshot == null && linkDownSince == null) LinkState.CONNECTING else LinkState.RECONNECTING
+            HaStatus.Waiting -> LinkState.RECONNECTING
             HaStatus.Stopped -> LinkState.CONNECTING
         }
         linkDownSince = if (link == LinkState.CONNECTED) null else (linkDownSince ?: t)
