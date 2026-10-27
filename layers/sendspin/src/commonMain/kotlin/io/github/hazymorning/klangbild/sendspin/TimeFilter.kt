@@ -12,15 +12,7 @@ import kotlin.math.sqrt
  *
  * Not thread-safe: one thread feeds it and reads [snapshot]s, which other threads may use.
  */
-class TimeFilter(
-    private val processStdDev: Double = 0.0,
-    private val driftProcessStdDev: Double = 1e-11,
-    private val forgetFactor: Double = 2.0,
-    private val adaptiveCutoff: Double = 3.0,
-    private val minSamples: Int = 100,
-    private val driftSignificance: Double = 2.0,
-    private val maxErrorScale: Double = 0.5,
-) {
+class TimeFilter {
     private var offset = 0.0
     private var drift = 0.0
     private var pOo = Double.POSITIVE_INFINITY
@@ -63,7 +55,7 @@ class TimeFilter(
         if (timeAdded <= lastUpdate || maxError <= 0) return false
         val dt = (timeAdded - lastUpdate).toDouble()
         lastUpdate = timeAdded
-        val r = (maxErrorScale * maxError).let { it * it }
+        val r = (MAX_ERROR_SCALE * maxError).let { it * it }
         val y0 = measurement.toDouble()
         when (count) {
             0 -> {
@@ -83,14 +75,14 @@ class TimeFilter(
             }
         }
         val offsetP = offset + drift * dt
-        var pOoP = pOo + 2 * pOd * dt + pDd * dt * dt + processStdDev * processStdDev * dt
+        var pOoP = pOo + 2 * pOd * dt + pDd * dt * dt + PROCESS_STD_DEV * PROCESS_STD_DEV * dt
         var pOdP = pOd + pDd * dt
-        var pDdP = pDd + driftProcessStdDev * driftProcessStdDev * dt
+        var pDdP = pDd + DRIFT_PROCESS_STD_DEV * DRIFT_PROCESS_STD_DEV * dt
         val y = y0 - offsetP
-        if (count < minSamples) {
+        if (count < MIN_SAMPLES) {
             count++
-        } else if (abs(y) > adaptiveCutoff * maxError) {
-            val f = forgetFactor * forgetFactor
+        } else if (abs(y) > ADAPTIVE_CUTOFF * maxError) {
+            val f = FORGET_FACTOR * FORGET_FACTOR
             pOoP *= f
             pOdP *= f
             pDdP *= f
@@ -103,12 +95,12 @@ class TimeFilter(
         pOo = pOoP - kO * pOoP
         pOd = pOdP - kD * pOoP
         pDd = pDdP - kD * pOdP
-        useDrift = drift * drift > driftSignificance * driftSignificance * pDd
+        useDrift = drift * drift > DRIFT_SIGNIFICANCE * DRIFT_SIGNIFICANCE * pDd
         return true
     }
 
     /** The mapping as it stands, to be handed to other threads. */
-    fun snapshot(): ClockMap = ClockMap(offset, if (useDrift) drift else 0.0, lastUpdate, errorUs, count)
+    fun snapshot(): ClockMap = ClockMap(offset, if (useDrift) drift else 0.0, lastUpdate)
 
     /** One `server/time` exchange in the filter's terms. */
     data class Measurement(val offset: Long, val maxError: Long) {
@@ -119,21 +111,24 @@ class TimeFilter(
             )
         }
     }
+
+    private companion object {
+        // The spec's parameters, named as it names them.
+        const val PROCESS_STD_DEV = 0.0
+        const val DRIFT_PROCESS_STD_DEV = 1e-11
+        const val FORGET_FACTOR = 2.0
+        const val ADAPTIVE_CUTOFF = 3.0
+        const val MIN_SAMPLES = 100
+        const val DRIFT_SIGNIFICANCE = 2.0
+        const val MAX_ERROR_SCALE = 0.5
+    }
 }
 
 /**
  * A fixed mapping between the local clock and the server's (all in microseconds), as the time
  * filter had it: safe to share, cheap to use per audio block.
  */
-class ClockMap(
-    private val offset: Double,
-    private val drift: Double,
-    private val lastUpdate: Long,
-    /** The standard deviation of the offset in microseconds. */
-    val errorUs: Double,
-    /** How many measurements the filter had taken (counting stops at the spec's `min_samples`). */
-    val count: Int,
-) {
+class ClockMap(private val offset: Double, private val drift: Double, private val lastUpdate: Long) {
     fun serverTime(clientUs: Long): Long = clientUs + roundHalfAway(offset + drift * (clientUs - lastUpdate))
 
     fun clientTime(serverUs: Long): Long = roundHalfAway((serverUs - offset + drift * lastUpdate) / (1 + drift))
