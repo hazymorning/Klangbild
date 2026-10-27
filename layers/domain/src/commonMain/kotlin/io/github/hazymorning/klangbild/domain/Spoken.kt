@@ -86,7 +86,6 @@ object Chapters {
 
     /** The chapter at [positionMs] (its start ≤ position < its end), else null. */
     fun at(chapters: List<Chapter>, positionMs: Long): Int? {
-        if (chapters.isEmpty()) return null
         val i = chapters.indexOfLast { it.startMs <= positionMs }
         if (i < 0) return null
         return i.takeIf { positionMs < chapters[i].endMs } ?: i.takeIf { it == chapters.size - 1 }

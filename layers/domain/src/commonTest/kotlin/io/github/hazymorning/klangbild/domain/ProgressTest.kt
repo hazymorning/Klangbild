@@ -50,7 +50,7 @@ class ProgressTest {
 
     @Test
     fun `small corrections glide, seeks jump`() {
-        val smooth = SmoothedPosition(glideLimitMs = 2_500, tauMs = 700.0)
+        val smooth = SmoothedPosition()
         smooth.onReport("a", rawNowMs = 10_000, nowMs = 0)
         assertThat(smooth.display("a", 10_000, 0)).isEqualTo(10_000)
         // Server says we are 1 s behind what is shown: glide, do not jump.
@@ -68,7 +68,7 @@ class ProgressTest {
 
     @Test
     fun `a new song never glides from the time of the song before`() {
-        val smooth = SmoothedPosition(glideLimitMs = 2_500, tauMs = 700.0)
+        val smooth = SmoothedPosition()
         smooth.onReport("a", rawNowMs = 2_600, nowMs = 0)
         assertThat(smooth.display("a", 2_600, 0)).isEqualTo(2_600)
         // B is reported twice before anything shows its time: the second report has nothing of

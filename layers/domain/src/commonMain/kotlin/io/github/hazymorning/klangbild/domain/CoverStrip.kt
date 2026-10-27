@@ -18,7 +18,7 @@ data class Strip(val cards: List<StripCard>, val current: Int) {
  * the right, a step back brings back the card from the left, anything else is a new card. A
  * song whose picture changes while it plays (a station's song getting its own) keeps its card.
  */
-class CoverStrip(private val side: Int = SIDE) {
+class CoverStrip {
     private var lastId = 0L
     private val history = ArrayList<StripCard>()
     private var current: StripCard? = null
@@ -64,11 +64,11 @@ class CoverStrip(private val side: Int = SIDE) {
         }
         val reuse = (upcoming + listOfNotNull(spare)).associateBy { it.picture }
         upcoming = if (coming == null) {
-            stays.take(side)
+            stays.take(SIDE)
         } else {
-            distinct(coming, now.picture).take(side).map { t -> reuse[t.pictureKey]?.copy(track = t) ?: card(t) }
+            distinct(coming, now.picture).take(SIDE).map { t -> reuse[t.pictureKey]?.copy(track = t) ?: card(t) }
         }
-        val shown = history.takeLast(side)
+        val shown = history.takeLast(SIDE)
         return Strip(shown + now + upcoming, shown.size)
     }
 

@@ -14,7 +14,8 @@ import kotlin.math.sqrt
  * Levels are A-weighted where they stand for loudness and mapped as Sendspin's visualizer maps
  * them: -60 dB is 0, full scale (a full-scale sine) is 1, linear in between.
  */
-class SoundAnalyzer(sampleRate: Int, val window: Int = WINDOW) {
+class SoundAnalyzer(sampleRate: Int) {
+    private val window = WINDOW
     private val fft = Fft(window)
     private val re = FloatArray(window)
     private val im = FloatArray(window)

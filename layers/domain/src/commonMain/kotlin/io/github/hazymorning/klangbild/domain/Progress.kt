@@ -32,13 +32,10 @@ object Progress {
 
 /**
  * Glides over small corrections instead of jumping: when a new report differs from what
- * is on screen by less than [glideLimitMs], the difference fades out with time constant
- * [tauMs]. Real seeks (bigger jumps) and track changes are shown immediately.
+ * is on screen by less than [GLIDE_LIMIT_MS], the difference fades out with time constant
+ * [TAU_MS]. Real seeks (bigger jumps) and track changes are shown immediately.
  */
-class SmoothedPosition(
-    private val glideLimitMs: Long = 2_500,
-    private val tauMs: Double = 700.0,
-) : SynchronizedObject() {
+class SmoothedPosition : SynchronizedObject() {
     private var correction = 0.0
     private var correctionAt = 0L
     private var lastShown: Long? = null
@@ -54,7 +51,7 @@ class SmoothedPosition(
             correction = 0.0
         } else {
             val diff = shown - rawNowMs
-            correction = if (abs(diff) <= glideLimitMs) diff.toDouble() else 0.0
+            correction = if (abs(diff) <= GLIDE_LIMIT_MS) diff.toDouble() else 0.0
         }
         correctionAt = nowMs
         lastKey = trackKey
@@ -68,9 +65,14 @@ class SmoothedPosition(
             lastShown = null
             return null
         }
-        val decay = exp(-(nowMs - correctionAt).coerceAtLeast(0) / tauMs)
+        val decay = exp(-(nowMs - correctionAt).coerceAtLeast(0) / TAU_MS)
         val shown = (rawNowMs + correction * decay).toLong().coerceAtLeast(0)
         lastShown = shown
         return shown
+    }
+
+    private companion object {
+        const val GLIDE_LIMIT_MS = 2_500L
+        const val TAU_MS = 700.0
     }
 }

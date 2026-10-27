@@ -8,8 +8,8 @@ import assertk.assertions.isNull
 import kotlin.test.Test
 
 class UpNextTest {
-    private fun song(title: String, ms: Long? = 240_000L, id: String? = "q-$title") =
-        TrackInfo(title, listOf("Amal Haddad"), album = "Cairo Nights", durationMs = ms, queueItemId = id)
+    private fun song(title: String, id: String? = "q-$title") =
+        TrackInfo(title, listOf("Amal Haddad"), album = "Cairo Nights", durationMs = 240_000L, queueItemId = id)
 
     @Test
     fun `nothing to come is no list, and a long queue keeps only the rows it can show`() {

@@ -88,9 +88,6 @@ class Texts internal constructor(
     private fun clock12(hour: Int, minute: Int) = "${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
 
     companion object {
-        /** The languages the app's words exist in; English is the default. */
-        val LANGUAGES = setOf("en", "de")
-
         /**
          * The words for [language] and the system's locales [system], with times as [clock24]
          * says. A language the app does not have falls back to English, as Android's own
@@ -107,7 +104,7 @@ class Texts internal constructor(
          * (British English keeps its dates); English when none is.
          */
         fun formatLocale(wanted: List<Locale>, system: List<Locale>): Locale {
-            val language = wanted.firstOrNull { it.language in LANGUAGES }?.language ?: "en"
+            val language = wanted.firstOrNull { it.language in WORDS }?.language ?: "en"
             val fromSystem = system.firstOrNull { it.language == language && it.country.isNotEmpty() }
             return fromSystem ?: wanted.firstOrNull { it.language == language } ?: Locale(language)
         }

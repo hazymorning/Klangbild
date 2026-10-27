@@ -4,7 +4,7 @@ package io.github.hazymorning.klangbild.domain
 object Emoji {
     fun isEmoji(cp: Int): Boolean =
         cp in 0x1F000..0x1FAFF || cp in 0x2600..0x27BF || cp in 0x2B00..0x2BFF ||
-            cp == 0x200D || cp == 0xFE0F || cp in 0x1F3FB..0x1F3FF || cp == 0x20E3 || cp in 0xE0020..0xE007F
+            cp == 0x200D || cp == 0xFE0F || cp == 0x20E3 || cp in 0xE0020..0xE007F
 
     /** True if [text] contains at least one visible emoji (not just joiners/selectors). */
     fun containsEmoji(text: String): Boolean {
@@ -38,14 +38,7 @@ object Emoji {
         return if (trimmed.any { it.isLetterOrDigit() }) trimmed else text.trim()
     }
 
-    /** White space as Java's Character.isWhitespace has it, and the no-break space. */
-    private fun isSpace(cp: Int): Boolean = when (cp) {
-        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1C, 0x1D, 0x1E, 0x1F, 0xA0 -> true
-        0x2007, 0x202F -> false
-        else -> cp < 0x10000 && cp.toChar().category.let {
-            it == CharCategory.SPACE_SEPARATOR || it == CharCategory.LINE_SEPARATOR || it == CharCategory.PARAGRAPH_SEPARATOR
-        }
-    }
+    private fun isSpace(cp: Int): Boolean = cp < 0x10000 && cp.toChar().isWhitespace()
 
     /** The code point at [i] in [text]: a surrogate pair is one. */
     fun codePointAt(text: String, i: Int): Int {
