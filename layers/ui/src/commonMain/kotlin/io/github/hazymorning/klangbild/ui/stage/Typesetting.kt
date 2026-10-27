@@ -431,7 +431,7 @@ internal fun nextText(text: String, styles: StageStyles, lead: String): Annotate
     withStyle(styles.nextLead) { append(lead) }
     // A no-break space widened to about 12 dp.
     withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(" ") }
-    append(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
+    append(isolateRightToLeft(text))
 }
 
 /**

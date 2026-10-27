@@ -351,7 +351,7 @@ internal fun LyricsText(
             BottomLine(model, styles, line(TextLine.BOTTOM), label = "lyrics-slot-line")
             // 2: the song itself, where "Up next" stands
             val song = model.next?.let { fitSong(it, model.nextTitle, styles, colW) }
-            if (song != null) BasicText(songText(song), line(TextLine.NEXT), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            if (song != null) BasicText(AnnotatedString(isolateRightToLeft(song)), line(TextLine.NEXT), style = styles.next, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
         val words = measurables[0].measure(constraints)
@@ -486,12 +486,9 @@ private fun glowOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
 private fun fitSong(full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
     return remember(full, title, styles, width) {
-        if (title == null || measurer.measure(songText(full), styles.next, maxLines = 1, softWrap = false).size.width <= width) full else title
+        if (title == null || measurer.measure(AnnotatedString(isolateRightToLeft(full)), styles.next, maxLines = 1, softWrap = false).size.width <= width) full else title
     }
 }
-
-/** The song's line, isolated if right-to-left (as "Up next" sets what comes). */
-private fun songText(text: String): AnnotatedString = AnnotatedString(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
 
 /**
  * The space from a line's last baseline to the next line's cap height (dp) for words in [style]

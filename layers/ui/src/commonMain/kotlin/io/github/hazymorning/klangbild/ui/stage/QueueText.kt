@@ -350,8 +350,8 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
         rows += PlannedRow(
             id = row.id,
             top = top,
-            title = measure(isolated(fitWords(measurer, row.title, rowTitle, titleWidth)), rowTitle, width = titleWidth),
-            artists = row.artists?.let { measure(isolated(fitWords(measurer, it, rowArtists, textWidth)), rowArtists, width = textWidth) },
+            title = measure(AnnotatedString(isolateRightToLeft(fitWords(measurer, row.title, rowTitle, titleWidth))), rowTitle, width = titleWidth),
+            artists = row.artists?.let { measure(AnnotatedString(isolateRightToLeft(fitWords(measurer, it, rowArtists, textWidth))), rowArtists, width = textWidth) },
             time = time,
             cover = row.cover?.let { ShaderBrush(ImageShader(it)) },
             bitmap = row.cover,
@@ -421,10 +421,10 @@ private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyl
     fun line(artist: String?, rest: List<String>): AnnotatedString? {
         if (artist == null && rest.isEmpty()) return null
         return buildAnnotatedString {
-            if (artist != null) withStyle(SpanStyle(fontWeight = FontWeight(500), color = styles.muted)) { append(if (isRightToLeft(artist)) "\u2067$artist\u2069" else artist) }
+            if (artist != null) withStyle(SpanStyle(fontWeight = FontWeight(500), color = styles.muted)) { append(isolateRightToLeft(artist)) }
             for ((i, part) in rest.withIndex()) {
                 if (artist != null || i > 0) append(TimeText.SEPARATOR)
-                append(if (isRightToLeft(part)) "\u2067$part\u2069" else part)
+                append(isolateRightToLeft(part))
             }
         }
     }
@@ -461,9 +461,6 @@ private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextS
         if (fits(cut)) return cut
     }
 }
-
-/** A line isolated if it is written right to left, so the dot and the times keep their places. */
-private fun isolated(text: String) = AnnotatedString(if (isRightToLeft(text)) "\u2067$text\u2069" else text)
 
 /**
  * The column with the list ([TextLayer] while [StageModel.queue] is set): the song at the top
