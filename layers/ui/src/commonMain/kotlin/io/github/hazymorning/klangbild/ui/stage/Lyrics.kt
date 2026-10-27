@@ -51,7 +51,7 @@ import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.rememberFrames
+import io.github.hazymorning.klangbild.ui.rememberTick
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -297,11 +297,11 @@ internal fun LyricsText(
     // The list first stands where the song is.
     val plan = rememberLyricsPlan(state, layout, room.around()) { state.cursor.at(position()) }
     // The place follows the position on the stage's tick (in a still, once).
-    val frames = rememberFrames(fast = model.playing)
+    val tick = rememberTick(fast = model.playing)
     if (plan != null) {
         LaunchedEffect(state, plan) {
             snapshotFlow {
-                frames.value
+                tick.value
                 state.cursor.at(position())
             }.distinctUntilChanged().collect { place -> state.moveTo(place, plan, this) }
         }

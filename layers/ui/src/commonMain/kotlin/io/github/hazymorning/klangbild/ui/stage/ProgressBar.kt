@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.rememberFrames
+import io.github.hazymorning.klangbild.ui.rememberTick
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
@@ -66,7 +66,7 @@ fun ProgressBar(
     modifier: Modifier = Modifier,
 ) {
     // The stage's one tick, shared with the cover field and the lyrics.
-    val frame = rememberFrames(fast = playing)
+    val tick = rememberTick(fast = playing)
     val fillLevel by animateFloatAsState(
         targetValue = if (playing) 1f else PAUSED_FILL,
         animationSpec = tween(Motion.PAUSE_MS, easing = Motion.Dimmer),
@@ -81,7 +81,7 @@ fun ProgressBar(
     // The labels only change when the displayed second does.
     val second by remember(trackKey, startMs, durationMs) {
         derivedStateOf {
-            frame.value // re-read every refresh
+            tick.value // read on every tick
             elapsed() / 1000L
         }
     }
@@ -93,7 +93,7 @@ fun ProgressBar(
         content = {
             // Its own layer: the refresh re-records only the bar, not the labels.
             Canvas(Modifier.fillMaxWidth().height(BAR_THICKNESS.dp).graphicsLayer()) {
-                val now = frame.value // redraw on every refresh
+                val now = tick.value // redraw on every tick
                 val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
                 val f = if (still) target else glide.at(target, now, durationMs)
                 val r = CornerRadius(size.height / 2f)

@@ -340,9 +340,9 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
     // The bar moves when its length is known and nothing stands in its place.
     val barMoves = barWanted(stage.lyrics) && !linkDown && (chapter != null || stage.track.durationMs != null)
-    // One tick for the bar, the colors and the words, so they are redrawn in the same frames. With
-    // nothing to redraw, or with the settings covering the stage, it stops.
-    val tick = rememberStageTick(
+    // The stage's tick: fast while music plays. With nothing to redraw, or with the settings
+    // covering the stage, it stops.
+    val tick = rememberTickLoop(
         fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
         running = (moving || barMoves || stage.lyrics != null) && ui.menu == null,
     )

@@ -33,7 +33,7 @@ import io.github.hazymorning.klangbild.render.CoverField
 import io.github.hazymorning.klangbild.render.FieldBlob
 import io.github.hazymorning.klangbild.render.FieldMotion
 import io.github.hazymorning.klangbild.render.imageBitmapOf
-import io.github.hazymorning.klangbild.ui.rememberFrames
+import io.github.hazymorning.klangbild.ui.rememberTick
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.random.Random
@@ -75,8 +75,8 @@ fun FieldLayer(
     val places = remember(field) { FloatArray(field.blobs.size * FieldMotion.STRIDE) }
     val dark = field.dark
     val time = LocalFieldTime.current
-    // The stage's one tick, shared with the progress bar.
-    val frame = rememberFrames(fast = true, running = time.moving)
+    // The stage's one tick, shared with the progress bar and the lyrics.
+    val tick = rememberTick(fast = true, running = time.moving)
     val grain = remember { ShaderBrush(ImageShader(Grain.image, TileMode.Repeated, TileMode.Repeated)) }
     val density = LocalDensity.current.density
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -105,7 +105,7 @@ fun FieldLayer(
                     colorFilter = VIVID
                 },
         ) {
-            if (time.moving) frame.value // a new frame while the field moves
+            if (time.moving) tick.value // redraw on every tick while the field moves
             val t = time.now()
             // From here on in screen pixels: (0, 0) is the screen's top left corner.
             withTransform({

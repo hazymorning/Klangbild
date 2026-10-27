@@ -8,7 +8,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -28,53 +27,41 @@ import kotlin.math.sin
 val LocalStill = staticCompositionLocalOf { false }
 
 /**
- * One clock for what moves by itself on the stage (the progress bar and the color field), so
- * both are redrawn in the same frame. Two loops out of step would double the frames drawn.
- * [frame] changes about 30 times a second while something moves, twice a second otherwise.
+ * One tick for what moves by itself on the stage (the progress bar, the cover field and the
+ * lyrics), so all of it is redrawn in the same frames: loops out of step would multiply the
+ * frames drawn. Null where nobody provides one.
  */
-@Stable
-class StageTick(val frame: State<Long>)
-
-/** The stage's tick; null where nobody provides one (a lone bar then keeps its own loop). */
-val LocalStageTick = staticCompositionLocalOf<StageTick?> { null }
+internal val LocalStageTick = staticCompositionLocalOf<State<Long>?> { null }
 
 /**
- * A tick for the stage: [fast] while music plays or the colors move. While nothing reads it
- * (no [running]: no bar shown, the colors still, or the settings over the stage) it stops.
+ * A tick aligned to the display's frames, its value the time of its latest frame (ns): about 30
+ * times a second while [fast], twice a second otherwise, and none while not [running] or in a
+ * still.
  */
 @Composable
-fun rememberStageTick(fast: Boolean, running: Boolean): StageTick {
-    val frame = rememberFrameLoop(fast, running)
-    return remember(frame) { StageTick(frame) }
-}
-
-/**
- * The frames something that moves by itself is redrawn on: the stage's tick, or where there is
- * none (a part shown alone, as in a test) a loop of its own, about 30 times a second while
- * [fast], twice a second otherwise, none while not [running]. [fast] and [running] apply only to
- * that loop.
- */
-@Composable
-fun rememberFrames(fast: Boolean, running: Boolean = true): State<Long> =
-    LocalStageTick.current?.frame ?: rememberFrameLoop(fast, running)
-
-/** A frame-aligned loop; nothing runs in a still. */
-@Composable
-private fun rememberFrameLoop(fast: Boolean, running: Boolean): State<Long> {
-    val frame = remember { mutableLongStateOf(0L) }
+internal fun rememberTickLoop(fast: Boolean, running: Boolean): State<Long> {
+    val time = remember { mutableLongStateOf(0L) }
     if (running && !LocalStill.current) {
         LaunchedEffect(fast) {
             while (true) {
-                withFrameNanos { frame.longValue = it }
+                withFrameNanos { time.longValue = it }
                 delay(if (fast) TICK_MS else SLOW_TICK_MS)
             }
         }
     }
-    return frame
+    return time
 }
 
-/** About 30 frames a second, aligned to the display's: plenty for a bar and a field this slow. */
-const val TICK_MS = 24L
+/**
+ * The tick something that moves by itself is redrawn on: the stage's, or where there is none (a
+ * part shown alone, as in a test) a loop of its own, as [fast] and [running] say.
+ */
+@Composable
+internal fun rememberTick(fast: Boolean, running: Boolean = true): State<Long> =
+    LocalStageTick.current ?: rememberTickLoop(fast, running)
+
+/** About 30 ticks a second: plenty for a bar and a field this slow. */
+private const val TICK_MS = 24L
 private const val SLOW_TICK_MS = 500L
 
 /** How far [t] has come from [start] to [end] (0 to 1); a window without length is passed once [t] reaches it. */

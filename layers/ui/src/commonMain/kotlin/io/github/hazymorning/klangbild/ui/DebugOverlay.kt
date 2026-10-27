@@ -62,7 +62,7 @@ private fun SoundMeter(sound: SoundFeed) {
         sound.reading(true)
         onDispose { sound.reading(false) }
     }
-    val frames = rememberFrames(fast = true)
+    val frames = rememberTick(fast = true)
     val heard = remember { SoundFrame() }
     val t = texts()
     val measurer = rememberTextMeasurer()
