@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.dream
 
 import android.service.dreams.DreamService
+import android.view.KeyEvent
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Klangbild as the system screensaver: when the TV would otherwise show its ambient mode,
- * it shows what is playing, or the quiet clock. Any key ends the dream (non-interactive).
+ * it shows what is playing, or the quiet clock. Any key ends the dream, once it is let go.
  * Once nothing has played for the "turn off after" time it ends itself and the TV may sleep:
  * a clock that stays for hours would mark an OLED. On the TV device it can only be chosen via
  * ADB: `adb shell settings put secure screensaver_components
@@ -65,6 +66,16 @@ class KlangbildDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
                 }
             },
         )
+    }
+
+    /**
+     * Ends the dream once the key is let go, so the whole press stays here. Ended as the key went
+     * down, the dream would hand the key's release to the screen underneath, which never saw it
+     * pressed, and a media key's release on to the media app that played last.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP) wakeUp()
+        return true
     }
 
     override fun onDreamingStarted() {

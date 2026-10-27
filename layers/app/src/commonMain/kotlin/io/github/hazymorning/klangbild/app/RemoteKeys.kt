@@ -22,6 +22,9 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     /** Local time until which hidden parts (time, place, progress) show again after a key press. */
     val peekUntil: State<Long> get() = peek
 
+    /** The keys that went down here and are not let go yet. */
+    private val pressed = mutableSetOf<RemoteKey>()
+
     private var centerLongPressed = false
     private var sideLongPressed = false
 
@@ -37,6 +40,7 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /** [key] going down, [repeat] times repeated while held. True asks the platform to follow it for a long press and its release. */
     fun down(key: RemoteKey, repeat: Int): Boolean {
+        if (repeat == 0) pressed += key
         // The quick settings take their keys first.
         if (controller.quickOpen && quickKey(key)) return false
         val setup = controller.ui.value.screen is Screen.Setup
@@ -169,13 +173,15 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /**
      * [key] let go: [followed] if [down] asked to follow it, [canceled] if the platform took it
-     * back. False lets the platform go on with it.
+     * back. A key let go that went down elsewhere does nothing (the press that ended the
+     * screensaver, say).
      */
-    fun up(key: RemoteKey, followed: Boolean, canceled: Boolean): Boolean {
+    fun up(key: RemoteKey, followed: Boolean, canceled: Boolean) {
+        if (!pressed.remove(key)) return
         if (key == RemoteKey.OK) {
             if (!centerLongPressed && !canceled) onCenterPressed()
             centerLongPressed = false
-            return true
+            return
         }
         if (key == RemoteKey.LEFT || key == RemoteKey.RIGHT) {
             // Only a press followed from its start acts on release: a jump, or another song.
@@ -191,11 +197,10 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
             if (holdingSince != null) controller.letGo()
             holdingSince = null
             sideLongPressed = false
-            return true
+            return
         }
         // Up or down held to run through the settings is let go: the explanation comes back.
         if (key == RemoteKey.UP || key == RemoteKey.DOWN) controller.menuRelease()
-        return false
     }
 
     private fun onCenterPressed() {
