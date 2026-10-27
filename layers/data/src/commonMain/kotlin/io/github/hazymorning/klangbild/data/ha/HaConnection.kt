@@ -100,8 +100,6 @@ class HaConnection(
     /** How long to wait before asking the REST API again for a state it could not give. */
     private val restRetryMs: List<Long> = listOf(2_000L, 5_000L, 15_000L),
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
-
     private val _status = MutableStateFlow<HaStatus>(HaStatus.Stopped)
     val status: StateFlow<HaStatus> = _status.asStateFlow()
 
@@ -635,7 +633,7 @@ class HaConnection(
 
     /** Home Assistant may send several messages as one JSON array. */
     private fun parseMessages(text: String): List<JsonObject> = try {
-        when (val el = json.parseToJsonElement(text)) {
+        when (val el = Json.parseToJsonElement(text)) {
             is JsonObject -> listOf(el)
             is JsonArray -> el.mapNotNull { it as? JsonObject }
             else -> emptyList()

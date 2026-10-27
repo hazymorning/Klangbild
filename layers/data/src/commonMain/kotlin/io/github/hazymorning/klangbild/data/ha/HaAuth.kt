@@ -112,8 +112,6 @@ class HaAuth(
         /** One call to the token endpoint gets this long. */
         private const val CALL_TIMEOUT_MS = 15_000L
 
-        private val json = Json { ignoreUnknownKeys = true }
-
         /**
          * Exchanges the authorization code [code] from Home Assistant's login page for tokens.
          * [clientId] must be the one the login page was opened with.
@@ -150,13 +148,13 @@ class HaAuth(
             val text = response.textBelow(MAX_ANSWER_BYTES)
             val code = response.status.value
             if (code in 400..499) {
-                val reason = runCatching { (json.parseToJsonElement(text) as? JsonObject)?.string("error") }.getOrNull()
+                val reason = runCatching { (Json.parseToJsonElement(text) as? JsonObject)?.string("error") }.getOrNull()
                     ?: "HTTP $code"
                 onRejected(reason)
                 throw HaAuthRejectedException(reason)
             }
             if (!response.status.isSuccess()) throw HttpStatusException("Home Assistant", code)
-            val o = json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
+            val o = Json.parseToJsonElement(text) as? JsonObject ?: throw IOException("Unexpected answer")
             HaTokens(
                 accessToken = o.string("access_token") ?: throw IOException("No access token"),
                 refreshToken = o.string("refresh_token"),
