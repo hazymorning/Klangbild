@@ -95,6 +95,17 @@ enum class QueueDisplay {
     FLOW,
 }
 
+/** When this TV plays as one of Music Assistant's speakers (needs Music Assistant). */
+enum class PlayHere {
+    OFF,
+
+    /** While Klangbild is open. Closed, the TV leaves Music Assistant, so no music starts here over another app. */
+    OPEN,
+
+    /** Also while Klangbild is closed. */
+    ALWAYS,
+}
+
 /** The color lights behind the TV (Home Assistant light entities), from the left; any may be missing. */
 data class RoomLights(val left: String? = null, val center: String? = null, val right: String? = null) {
     /** Each light once, from the left. */
@@ -160,8 +171,7 @@ data class Settings(
     /** Music Assistant's URL and token, optional. Lyrics, the queue list, favorites, the party code and Play here need them. */
     val maUrl: String? = null,
     val maToken: String? = null,
-    /** This TV plays music from Music Assistant, as one of its speakers (needs Music Assistant). */
-    val tvSpeaker: Boolean = false,
+    val playHere: PlayHere = PlayHere.OFF,
     val background: BackgroundMode = BackgroundMode.WALL,
     val motion: MotionLevel = MotionLevel.OFF,
     /** The color lights behind the TV and how brightly they join in (by day; at night they dim on their own). */
@@ -197,8 +207,23 @@ data class Settings(
 
     val hasMusicAssistant: Boolean get() = !maUrl.isNullOrBlank() && !maToken.isNullOrBlank()
 
+    /** Playing here is on, while Klangbild is open or always. */
+    val tvSpeaker: Boolean get() = playHere != PlayHere.OFF
+
     /** This TV plays as a speaker: switched on, and Music Assistant set up. */
     val speakerOn: Boolean get() = tvSpeaker && hasMusicAssistant
+
+    /** Whether the speaker runs now: switched on, and Klangbild [open] unless it plays always. */
+    fun speakerRuns(open: Boolean): Boolean = speakerOn && (open || playHere == PlayHere.ALWAYS)
+
+    /** Playing here turned [on] or off. Turned on, it plays while Klangbild is open, unless it already plays always. */
+    fun withPlayHere(on: Boolean): Settings = copy(
+        playHere = when {
+            !on -> PlayHere.OFF
+            tvSpeaker -> playHere
+            else -> PlayHere.OPEN
+        },
+    )
 
     /** Following [entity] (or "This TV"), keeping the speaker followed before it to go back to. */
     fun following(entity: String): Settings = copy(

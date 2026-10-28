@@ -72,6 +72,8 @@
     <string name="appearance_dark">Dark</string>
     <string name="volume_on_change">When it changes</string>
     <string name="volume_always">Always</string>
+    <string name="play_here_open">While open</string>
+    <string name="play_here_always">Always</string>
     <string name="background_plain">Plain</string>
     <string name="background_cover">Cover colors</string>
     <string name="intensity_strong">Strong</string>
@@ -195,8 +197,9 @@
     <string name="about_speaker_this_tv">Klangbild follows this TV. To follow another speaker, choose it on your phone. OK shows the QR code.</string>
     <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>
     <string name="about_play_here_off">Music Assistant can play music on this TV too, in time with your other speakers. Once you turn it on, this TV shows up there under its own name.</string>
-    <string name="about_play_here_on">This TV is one of Music Assistant’s speakers and keeps playing while Klangbild is closed. When music starts here, Klangbild shows it.</string>
-    <string name="about_play_here_followed">This TV is the speaker Klangbild follows, so it keeps playing here. To turn it off, choose another speaker on your phone first. OK shows the QR code.</string>
+    <string name="about_play_here_open">This TV is one of Music Assistant’s speakers while Klangbild is open. When you close Klangbild, it leaves, so music never interrupts another app.</string>
+    <string name="about_play_here_always">This TV is one of Music Assistant’s speakers and keeps playing while Klangbild is closed. When music starts here, Klangbild shows it.</string>
+    <string name="about_play_here_followed">This TV is the speaker Klangbild follows, so it keeps playing here. To turn it off, choose another speaker on your phone first.</string>
     <string name="about_play_here_followed_back">This TV is the speaker Klangbild follows, so it keeps playing here. Turned off, Klangbild follows the speaker chosen on your phone again.</string>
     <string name="about_play_here_unreachable">Music Assistant doesn’t answer on port 8927 right now, so this TV can’t play yet. Klangbild keeps trying.</string>
     <string name="about_play_here_too_old">To play on this TV, Music Assistant needs version 2.10.7 or later.</string>
@@ -317,7 +320,7 @@
     <string name="page_ma_token_placeholder">From Music Assistant</string>
     <string name="page_ma_token_hint">Create a long-lived access token in Music Assistant under Settings → Profile. Leave it empty if you don’t need it.</string>
     <string name="page_tv_speaker">Play music from Music Assistant on this TV</string>
-    <string name="page_tv_speaker_hint">This TV then shows up in Music Assistant as a speaker under its own name and plays in time with your other speakers, also while Klangbild is closed.</string>
+    <string name="page_tv_speaker_hint">This TV then shows up in Music Assistant as a speaker under its own name and plays in time with your other speakers while Klangbild is open. Under “Play here” in the settings on the TV, it can also play while Klangbild is closed.</string>
     <string name="page_pair_toggle">Pairing code</string>
     <string name="page_pair_hint">Only needed if Music Assistant asks to pair this TV: enter this code there.</string>
     <string name="page_this_tv">This TV</string>

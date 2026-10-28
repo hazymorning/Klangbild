@@ -123,7 +123,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         when {
             // The connections, what needs them or lights or values first, and another speaker
             // than this TV are set up on the phone.
-            entry == MenuEntry.CONNECTION || entry == MenuEntry.MUSIC_ASSISTANT || SettingsMenu.opensSetup(entry, s) -> {
+            entry == MenuEntry.CONNECTION || entry == MenuEntry.MUSIC_ASSISTANT || SettingsMenu.opensSetup(entry, s, direction, wrap) -> {
                 synchronized(host.lock) {
                     cursor = null
                     section = null

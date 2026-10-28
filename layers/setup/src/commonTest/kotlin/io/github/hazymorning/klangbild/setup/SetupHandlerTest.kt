@@ -18,6 +18,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import assertk.assertions.startsWith
 import dev.whyoleg.cryptography.random.CryptographyRandom
+import io.github.hazymorning.klangbild.config.PlayHere
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SleepAction
@@ -206,8 +207,12 @@ class SetupHandlerTest {
         // "This TV" needs Music Assistant.
         assertThat(post("/api/save", """{$base,"entity":"this_tv","tvSpeaker":true}""").status).isEqualTo(400)
         assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"192.168.1.5:8095","maToken":"ma-secret","tvSpeaker":true}""").status).isEqualTo(200)
-        assertThat(stored.tvSpeaker).isTrue()
+        assertThat(stored.playHere).isEqualTo(PlayHere.OPEN)
         assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["tvSpeaker"]!!.jsonPrimitive.content).isEqualTo("true")
+        // Ticked while it plays always, it goes on doing so: when it plays is chosen on the TV.
+        stored = stored.copy(playHere = PlayHere.ALWAYS)
+        assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"http://192.168.1.5:8095","tvSpeaker":true}""").status).isEqualTo(200)
+        assertThat(stored.playHere).isEqualTo(PlayHere.ALWAYS)
         assertThat(post("/api/save", """{$base,"entity":"media_player.wz","maUrl":"http://192.168.1.5:8095","tvSpeaker":false}""").status).isEqualTo(200)
         assertThat(stored.tvSpeaker).isFalse()
         // Chosen, it plays here, and the speaker followed before is kept to go back to.

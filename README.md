@@ -127,7 +127,7 @@ Press the down button on the remote to open the quick settings, where you can ch
 <summary><b>Sendspin</b></summary>
 <br>
 
-With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name and keeps playing even while Klangbild is closed.
+With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name while Klangbild is open. Set to "Always", it keeps playing even while Klangbild is closed.
 
 > **Important**<br>
 > "Play here" makes the TV a speaker, but Klangbild keeps following the speaker chosen on the setup page. To have it follow the TV, open Home Assistant under System in the settings, scan the code, choose "This TV" as the speaker and save.
