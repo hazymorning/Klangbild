@@ -438,8 +438,7 @@ class SetupHandler(
             }
             else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
         }
-        val updated = withMa.following(entity).copy(
-            tvSpeaker = tvSpeaker,
+        val updated = withMa.following(entity).withPlayHere(tvSpeaker).copy(
             sleepAfterMinutes = minutes,
             sleepAction = action,
             showClock = body.bool("clock") ?: current.showClock,

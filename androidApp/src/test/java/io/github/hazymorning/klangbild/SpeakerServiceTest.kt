@@ -9,6 +9,8 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isSameInstanceAs
+import io.github.hazymorning.klangbild.config.PlayHere
 import io.github.hazymorning.klangbild.config.Settings
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -24,8 +26,8 @@ import org.robolectric.annotation.Config
 
 /**
  * The speaker's service starts only while the setting is on and Music Assistant is set up,
- * while Klangbild shows, and ends itself once the setting goes off. With the speaker off
- * nothing of it runs.
+ * while Klangbild shows, and ends itself once the setting goes off, or, playing only while
+ * Klangbild is open, once Klangbild is out of sight. With the speaker off nothing of it runs.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [28, 34], qualifiers = "w960dp-h540dp-land-xhdpi")
@@ -48,6 +50,16 @@ class SpeakerServiceTest {
     /** The stored settings, once they meet [condition]. */
     private fun stored(condition: (Settings) -> Boolean): Settings = runBlocking {
         withTimeout(WAIT_MS) { app.graph.settings.settings.first(condition) }
+    }
+
+    /** The speaker's service as Klangbild started it, running once its speaker is there. */
+    private fun speakerService(): ServiceController<SpeakerService> {
+        var started: Intent? = null
+        until("the service's start") { shadowOf(app).nextStartedService?.also { started = it } != null }
+        assertThat(started?.component?.className).isEqualTo(SpeakerService::class.java.name)
+        return Robolectric.buildService(SpeakerService::class.java, started).create().startCommand(0, 1).also {
+            until("the speaker") { app.graph.speakerHub.speaker != null }
+        }
     }
 
     /** Runs the main thread's work until [done] holds. */
@@ -84,12 +96,8 @@ class SpeakerServiceTest {
         val activity = launch("tv_speaker" to "on")
         var service: ServiceController<SpeakerService>? = null
         try {
-            var started: Intent? = null
-            until("the service's start") { shadowOf(app).nextStartedService?.also { started = it } != null }
-            assertThat(started?.component?.className).isEqualTo(SpeakerService::class.java.name)
-            service = Robolectric.buildService(SpeakerService::class.java, started).create().startCommand(0, 1)
+            service = speakerService()
             val shadow = shadowOf(service.get())
-            until("the speaker") { app.graph.speakerHub.speaker != null }
             assertThat(shadow.lastForegroundNotification).isNotNull()
 
             // Switched off (here by an extra, as Home Assistant sends it): the speaker goes and the service ends itself.
@@ -102,8 +110,50 @@ class SpeakerServiceTest {
         }
     }
 
+    @Test
+    fun `playing while Klangbild is open, the speaker goes once Klangbild is out of sight`() {
+        val activity = launch("tv_speaker" to "on")
+        var service: ServiceController<SpeakerService>? = null
+        try {
+            assertThat(stored { it.speakerOn }.playHere).isEqualTo(PlayHere.OPEN)
+            service = speakerService()
+            val shadow = shadowOf(service.get())
+            activity.pause().stop()
+            until("the service's end") { shadow.isStoppedBySelf }
+            assertThat(app.graph.speakerHub.speaker).isNull()
+        } finally {
+            service?.destroy()
+            activity.destroy()
+        }
+    }
+
+    @Test
+    fun `playing always, the speaker stays once Klangbild is out of sight`() {
+        runBlocking { app.graph.settings.write(Settings(playHere = PlayHere.ALWAYS)) }
+        val activity = launch()
+        var service: ServiceController<SpeakerService>? = null
+        try {
+            assertThat(stored { it.speakerOn }.playHere).isEqualTo(PlayHere.ALWAYS)
+            service = speakerService()
+            val shadow = shadowOf(service.get())
+            val speaker = app.graph.speakerHub.speaker
+            activity.pause().stop()
+            // Time for the service to hear that Klangbild is out of sight.
+            Thread.sleep(SETTLE_MS)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertThat(shadow.isStoppedBySelf).isFalse()
+            assertThat(app.graph.speakerHub.speaker).isSameInstanceAs(speaker)
+        } finally {
+            service?.destroy()
+            activity.destroy()
+        }
+    }
+
     private companion object {
         /** How long a step may take on a machine that runs every module's tests at once. */
         const val WAIT_MS = 30_000L
+
+        /** Far longer than the service takes to act on a change. */
+        const val SETTLE_MS = 1_000L
     }
 }

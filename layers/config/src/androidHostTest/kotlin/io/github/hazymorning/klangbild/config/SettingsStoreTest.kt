@@ -95,7 +95,7 @@ class SettingsStoreTest {
             lyrics = true,
             maUrl = "http://192.168.1.5:8095",
             maToken = "ma-token",
-            tvSpeaker = true,
+            playHere = PlayHere.OPEN,
             background = BackgroundMode.COVER,
             motion = MotionLevel.LIVELY,
             roomLights = RoomLights("light.left", "light.top", "light.right"),
@@ -154,6 +154,19 @@ class SettingsStoreTest {
         // A value it does not know reads as the default, and the queue's own key wins.
         assertThat(store.read(mapOf(view to "ELSEWHERE")).queue).isEqualTo(Settings().queue)
         assertThat(store.read(mapOf(view to "FLOW", queue to "LIST")).queue).isEqualTo(QueueDisplay.LIST)
+    }
+
+    @Test
+    fun `Play here switched on by an earlier version plays always, as it did, and its key goes`() {
+        val store = SettingsStore(settingsValues(context), FakeBox())
+        val former = "tv_speaker"
+        fun after(on: Boolean): Map<String, Any> = mutableMapOf<String, Any>(former to on).also { store.migrate(it) }
+        assertThat(after(true)).isEqualTo(mapOf("play_here" to "ALWAYS"))
+        assertThat(after(false)).isEqualTo(mapOf("play_here" to "OFF"))
+        // Read before the step has run, it means the same, and its own key wins.
+        assertThat(store.read(mapOf(former to true)).playHere).isEqualTo(PlayHere.ALWAYS)
+        assertThat(store.read(mapOf(former to false)).playHere).isEqualTo(PlayHere.OFF)
+        assertThat(store.read(mapOf(former to true, "play_here" to "OPEN")).playHere).isEqualTo(PlayHere.OPEN)
     }
 
     @Test

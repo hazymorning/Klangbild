@@ -140,11 +140,19 @@ object SettingsMenu {
     fun followsThisTv(s: Settings): Boolean = s.entityId == EntityId.THIS_TV && s.tvSpeaker
 
     /**
-     * Whether OK on [e] opens the setup: what needs setting up first, and leaving this TV while
-     * no other speaker was ever followed.
+     * Whether a step of [e] ([direction] and [wrap] as in [step]) opens the setup: what needs
+     * setting up first, and leaving this TV while no other speaker was ever followed, by Speaker
+     * or by turning playing here off.
      */
-    fun opensSetup(e: MenuEntry, s: Settings): Boolean =
-        needsSetup(e, s) || ((e == MenuEntry.SPEAKER || e == MenuEntry.PLAY_HERE) && followsThisTv(s) && s.otherSpeaker == null)
+    fun opensSetup(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean): Boolean {
+        if (needsSetup(e, s)) return true
+        val leavesThisTv = when (e) {
+            MenuEntry.SPEAKER -> true
+            MenuEntry.PLAY_HERE -> move(PLAY_HERE_ORDER, s.playHere, direction, wrap) == PlayHere.OFF
+            else -> false
+        }
+        return leavesThisTv && followsThisTv(s) && s.otherSpeaker == null
+    }
 
     /** A line's label; the two connection lines are named after what they connect to. */
     fun label(e: MenuEntry, t: Texts): String = when (e) {
@@ -239,7 +247,14 @@ object SettingsMenu {
             s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
             else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
         }
-        MenuEntry.PLAY_HERE -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.tvSpeaker, t)
+        MenuEntry.PLAY_HERE -> t[
+            when {
+                !s.hasMusicAssistant -> Strings.needsMusicAssistant
+                s.playHere == PlayHere.OPEN -> Strings.playHereOpen
+                s.playHere == PlayHere.ALWAYS -> Strings.playHereAlways
+                else -> Strings.off
+            },
+        ]
         MenuEntry.LANGUAGE -> languageValue(ctx.language, t)
         MenuEntry.UPDATE -> updateValue(ctx.update, t)
         MenuEntry.UPDATE_CHECK -> onOff(s.updateCheck, t)
@@ -389,7 +404,7 @@ object SettingsMenu {
             SpeakerLink.NO_KEY -> Strings.aboutPlayHereNoKey
             SpeakerLink.OFF, SpeakerLink.CONNECTING, SpeakerLink.CONNECTED ->
                 when {
-                    !followsThisTv(s) -> Strings.aboutPlayHereOn
+                    !followsThisTv(s) -> if (s.playHere == PlayHere.ALWAYS) Strings.aboutPlayHereAlways else Strings.aboutPlayHereOpen
                     s.otherSpeaker == null -> Strings.aboutPlayHereFollowed
                     else -> Strings.aboutPlayHereFollowedBack
                 }
@@ -441,13 +456,16 @@ object SettingsMenu {
         MenuEntry.SPEAKER -> when {
             !s.hasMusicAssistant -> null
             s.entityId == EntityId.THIS_TV -> s.otherSpeaker?.let(s::following)
-            else -> s.following(EntityId.THIS_TV).copy(tvSpeaker = true)
+            else -> s.following(EntityId.THIS_TV).withPlayHere(true)
         }
-        // Turned off while this TV is followed, it goes back to the speaker followed before.
-        MenuEntry.PLAY_HERE -> when {
-            !s.hasMusicAssistant -> null
-            followsThisTv(s) -> s.otherSpeaker?.let { s.following(it).copy(tvSpeaker = false) }
-            else -> s.copy(tvSpeaker = !s.tvSpeaker)
+        MenuEntry.PLAY_HERE -> {
+            val next = move(PLAY_HERE_ORDER, s.playHere, direction, wrap)
+            when {
+                !s.hasMusicAssistant -> null
+                // Turned off while this TV is followed, it goes back to the speaker followed before.
+                next == PlayHere.OFF && followsThisTv(s) -> s.otherSpeaker?.let { s.following(it).copy(playHere = next) }
+                else -> s.copy(playHere = next)
+            }
         }
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
         MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
@@ -517,6 +535,7 @@ object SettingsMenu {
     /** From quiet to present: left means less, right means more. */
     val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST, QueueDisplay.FLOW)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
+    private val PLAY_HERE_ORDER = listOf(PlayHere.OFF, PlayHere.OPEN, PlayHere.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)
     private val MOTION_ORDER = listOf(MotionLevel.OFF, MotionLevel.GENTLE, MotionLevel.MEDIUM, MotionLevel.LIVELY)

@@ -38,7 +38,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val lyrics = booleanKey("lyrics")
         val maUrl = stringKey("ma_url")
         val maToken = stringKey("ma_token")
-        val tvSpeaker = booleanKey("tv_speaker")
+        val playHere = stringKey("play_here")
+
+        /** Play here of versions before it could play only while Klangbild is open: on or off. Read once, then removed. */
+        val formerTvSpeaker = booleanKey("tv_speaker")
         val otherSpeaker = stringKey("other_speaker")
         val background = stringKey("background")
         val motion = stringKey("motion")
@@ -67,25 +70,30 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
 
     /**
      * Brings what an earlier version stored up to date, in the same step that reads it: tokens
-     * stored before secrets were sealed are sealed, the view becomes how the queue shows, and
-     * settings that no longer exist go.
+     * stored before secrets were sealed are sealed, the view becomes how the queue shows, Play
+     * here's switch becomes when it plays, and settings that no longer exist go.
      */
     suspend fun migrate() {
         store.edit { migrate(it) }
     }
 
     /**
-     * [p] brought up to date in place, as [migrate] does on disk. The view only moves its own
-     * key, and the settings gone take only theirs: rewriting every setting would open the sealed
-     * tokens, and one that cannot be opened at that moment would be lost.
+     * [p] brought up to date in place, as [migrate] does on disk. The view and Play here's switch
+     * only move their own keys, and the settings gone take only theirs: rewriting every setting
+     * would open the sealed tokens, and one that cannot be opened at that moment would be lost.
      */
     internal fun migrate(p: MutableMap<String, Any>) {
         val plain = listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }
         if (plain) write(p, read(p))
         Keys.gone.forEach { p.remove(it) }
-        val view = p[Keys.formerView] ?: return
-        if (Keys.queue !in p) p[Keys.queue] = queueOfView(view).name
-        p.remove(Keys.formerView)
+        p[Keys.formerView]?.let { view ->
+            if (Keys.queue !in p) p[Keys.queue] = queueOfView(view).name
+            p.remove(Keys.formerView)
+        }
+        p[Keys.formerTvSpeaker]?.let { on ->
+            if (Keys.playHere !in p) p[Keys.playHere] = playHereOf(on).name
+            p.remove(Keys.formerTvSpeaker)
+        }
     }
 
     /** The settings as [p] stores them; what an earlier version stored is read with its current meaning. */
@@ -115,7 +123,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
             maUrl = p[Keys.maUrl],
             maToken = p[Keys.maToken]?.let(secrets::open),
-            tvSpeaker = p[Keys.tvSpeaker] ?: defaults.tvSpeaker,
+            playHere = p[Keys.playHere]?.let { enumOr(it, defaults.playHere) } ?: playHereOf(p[Keys.formerTvSpeaker]),
             background = enumOr(p[Keys.background], defaults.background),
             motion = enumOr(p[Keys.motion], defaults.motion),
             roomLights = RoomLights(p[Keys.lightsLeft], p[Keys.lightsCenter], p[Keys.lightsRight]),
@@ -159,7 +167,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.lyrics] = s.lyrics
         putOrRemove(Keys.maUrl, s.maUrl)
         putSecret(Keys.maToken, s.maToken)
-        p[Keys.tvSpeaker] = s.tvSpeaker
+        p[Keys.playHere] = s.playHere.name
+        p.remove(Keys.formerTvSpeaker)
         p[Keys.background] = s.background.name
         p[Keys.motion] = s.motion.name
         putOrRemove(Keys.lightsLeft, s.roomLights.left)
@@ -180,6 +189,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
      * the single cover, which had no list beside it, is the queue off.
      */
     private fun queueOfView(view: String?): QueueDisplay = if (view == "FLOW") QueueDisplay.FLOW else defaults.queue
+
+    /** When this TV plays for the switch an earlier version stored: on, it also played while Klangbild was closed. */
+    private fun playHereOf(on: Boolean?): PlayHere = if (on == true) PlayHere.ALWAYS else defaults.playHere
 
     /** The constant named [name], or [default] for none or a name this version does not know. */
     private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E =

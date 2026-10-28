@@ -99,7 +99,7 @@ class SettingsMenuTest {
             MenuContext(update = UpdateInfo("2026.10.5", "v2026.10.5", state = UpdateState.FAILED)),
             MenuContext(update = UpdateInfo("2026.10.24 (abc1234)")),
         )
-        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(tvSpeaker = true), withLights, withValues)) {
+        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(playHere = PlayHere.OPEN), withMa.copy(playHere = PlayHere.ALWAYS), withLights, withValues)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
             // (the system keeps it), the update, and the lights and the values until they are set up.
             val needs = setOfNotNull(
@@ -211,7 +211,7 @@ class SettingsMenuTest {
     }
 
     @Test
-    fun `playing here is a setting that needs Music Assistant, and says what keeps it from playing`() {
+    fun `playing here needs Music Assistant, plays while Klangbild is open or always, and says what keeps it from playing`() {
         val row = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.SYSTEM).first { it.entry == MenuEntry.PLAY_HERE }
         assertThat(row.label).isEqualTo("Hier abspielen")
         assertThat(row.value).isEqualTo("Nur mit Music\u00A0Assistant")
@@ -219,23 +219,39 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, configured, +1)).isNull()
         val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
         assertThat(withMa.tvSpeaker).isFalse()
+        // Turned on, it plays while Klangbild is open; a step further, always.
         val on = SettingsMenu.step(MenuEntry.PLAY_HERE, withMa, +1)!!
-        assertThat(on.tvSpeaker).isTrue()
+        assertThat(on.playHere).isEqualTo(PlayHere.OPEN)
         assertThat(on.speakerOn).isTrue()
-        assertThat(SettingsMenu.value(MenuEntry.PLAY_HERE, on, MenuContext(), de)).isEqualTo("An")
+        assertThat(on.speakerRuns(open = true)).isTrue()
+        assertThat(on.speakerRuns(open = false)).isFalse()
+        assertThat(SettingsMenu.value(MenuEntry.PLAY_HERE, on, MenuContext(), de)).isEqualTo("Solange geöffnet")
+        val always = SettingsMenu.step(MenuEntry.PLAY_HERE, on, +1)!!
+        assertThat(always.playHere).isEqualTo(PlayHere.ALWAYS)
+        assertThat(always.speakerRuns(open = false)).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.PLAY_HERE, always, MenuContext(), de)).isEqualTo("Immer")
+        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, always, +1)!!.playHere).isEqualTo(PlayHere.ALWAYS)
+        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, always, +1, wrap = true)!!.playHere).isEqualTo(PlayHere.OFF)
         val en = TestTexts.english()
         assertThat(SettingsMenu.label(MenuEntry.PLAY_HERE, en)).isEqualTo("Play here")
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, on, MenuContext(), en)).contains("never interrupts another app")
+        assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, always, MenuContext(), en)).contains("keeps playing while Klangbild is closed")
         val said = SpeakerLink.entries.associateWith { SettingsMenu.description(MenuEntry.PLAY_HERE, on, MenuContext(speaker = it), en) }
         assertThat(said[SpeakerLink.TOO_OLD]).isNotNull().contains("2.10.7")
         assertThat(said[SpeakerLink.UNREACHABLE]).isNotNull().contains("8927")
         assertThat(said[SpeakerLink.CONNECTED]).isEqualTo(said[SpeakerLink.CONNECTING])
         // What keeps it from playing is said only while it is on.
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, withMa, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).doesNotContain("2.10.7")
-        // While this TV is the speaker followed, it stays on here: OK opens the setup instead.
+        // While this TV is the speaker followed, it stays on here: a step that would turn it off
+        // opens the setup instead, and the others step as ever.
         val followed = on.copy(entityId = EntityId.THIS_TV)
-        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, followed, +1)).isNull()
-        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followed)).isTrue()
-        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, on)).isFalse()
+        assertThat(SettingsMenu.step(MenuEntry.PLAY_HERE, followed, -1)).isNull()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followed, -1, wrap = false)).isTrue()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followed, +1, wrap = true)).isFalse()
+        val followedAlways = SettingsMenu.step(MenuEntry.PLAY_HERE, followed, +1, wrap = true)!!
+        assertThat(followedAlways.playHere).isEqualTo(PlayHere.ALWAYS)
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, followedAlways, +1, wrap = true)).isTrue()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, on, -1, wrap = false)).isFalse()
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(), en)).contains("choose another speaker")
         // What keeps it from playing is still said then.
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, followed, MenuContext(speaker = SpeakerLink.TOO_OLD), en)).contains("2.10.7")
@@ -256,22 +272,24 @@ class SettingsMenuTest {
         assertThat(tv.entityId).isEqualTo(EntityId.THIS_TV)
         assertThat(tv.speakerOn).isTrue()
         assertThat(tv.otherSpeaker).isEqualTo("media_player.wz")
+        // Playing here, which this TV turns on, stays always if it was.
+        assertThat(SettingsMenu.step(MenuEntry.SPEAKER, withMa.copy(playHere = PlayHere.ALWAYS), +1)!!.playHere).isEqualTo(PlayHere.ALWAYS)
         assertThat(SettingsMenu.value(MenuEntry.SPEAKER, tv, MenuContext(speakerName = "Wohnzimmer"), de)).isEqualTo("Dieser Fernseher")
-        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, tv)).isFalse()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, tv, +1, wrap = true)).isFalse()
         // Back again, and this TV still plays as one of the speakers.
         val back = SettingsMenu.step(MenuEntry.SPEAKER, tv, -1)!!
         assertThat(back.entityId).isEqualTo("media_player.wz")
         assertThat(back.tvSpeaker).isTrue()
         // Playing here turned off while this TV is followed goes back too.
-        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, tv)).isFalse()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.PLAY_HERE, tv, -1, wrap = false)).isFalse()
         assertThat(SettingsMenu.description(MenuEntry.PLAY_HERE, tv, MenuContext(), en)).contains("Turned off")
-        val off = SettingsMenu.step(MenuEntry.PLAY_HERE, tv, +1)!!
+        val off = SettingsMenu.step(MenuEntry.PLAY_HERE, tv, -1)!!
         assertThat(off.entityId).isEqualTo("media_player.wz")
         assertThat(off.tvSpeaker).isFalse()
         // This TV chosen on the phone with no speaker before it: another one is chosen there.
-        val only = withMa.copy(entityId = EntityId.THIS_TV, tvSpeaker = true)
+        val only = withMa.copy(entityId = EntityId.THIS_TV, playHere = PlayHere.OPEN)
         assertThat(SettingsMenu.step(MenuEntry.SPEAKER, only, +1)).isNull()
-        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, only)).isTrue()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.SPEAKER, only, +1, wrap = true)).isTrue()
         assertThat(SettingsMenu.description(MenuEntry.SPEAKER, only, MenuContext(), en)).contains("QR")
     }
 }

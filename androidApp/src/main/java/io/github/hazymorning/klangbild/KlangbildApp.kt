@@ -31,6 +31,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.jvm.javaio.copyTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -143,6 +144,9 @@ class KlangbildApp : Application() {
 
     lateinit var graph: AppGraph
         private set
+
+    /** Klangbild's own screen is in sight (MainActivity started). Playing here only while Klangbild is open follows it. */
+    val inSight = MutableStateFlow(false)
 
     /**
      * A new language (chosen in the system's settings, or the system's own), and the system's

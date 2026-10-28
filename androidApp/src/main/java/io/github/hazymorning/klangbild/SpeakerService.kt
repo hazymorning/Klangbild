@@ -32,17 +32,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /**
  * This TV as a speaker in Music Assistant: a foreground service of the media playback kind, so
- * the speaker keeps playing while Klangbild's screen is gone (the screensaver, another app, the
- * app closed). It runs while the setting is on and Music Assistant is set up, from the moment
- * Klangbild is opened (Android lets no media service start by itself after a reboot), and ends
- * itself when the setting goes off.
+ * the speaker can keep playing while Klangbild's screen is gone (the screensaver, another app,
+ * the app closed). It runs while the setting is on and Music Assistant is set up, from the moment
+ * Klangbild is opened (Android lets no media service start by itself after a reboot). It ends
+ * itself when the setting goes off, or, set to play only while Klangbild is open, once Klangbild
+ * is out of sight.
  *
  * While music plays it holds the TV's sound (audio focus): another app taking it for a moment
  * silences the speaker in time underneath, taking it for good makes the speaker leave its group.
@@ -93,7 +94,7 @@ class SpeakerService : Service() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(events, filter, RECEIVER_NOT_EXPORTED) else registerReceiver(events, filter)
         scope.launch {
-            graph.settings.settings.map { s -> if (s.speakerOn) s.maUrl else null }
+            combine(graph.settings.settings, app.inSight) { s, inSight -> if (s.speakerRuns(inSight)) s.maUrl else null }
                 .distinctUntilChanged()
                 .onEach { wanted = it }
                 .collectLatest { url -> speak(url) }
@@ -133,7 +134,8 @@ class SpeakerService : Service() {
                 follow(status)
             }
         } finally {
-            // Switched off: Music Assistant lets the speaker go. Anything else: it keeps it ready.
+            // Switched off, or out of sight while it plays only then: Music Assistant lets the
+            // speaker go. Anything else: it keeps it ready.
             speaker.stop(if (wanted == null) "shutdown" else "restart")
             hub.speaker = null
             hub.publish(SpeakerStatus())

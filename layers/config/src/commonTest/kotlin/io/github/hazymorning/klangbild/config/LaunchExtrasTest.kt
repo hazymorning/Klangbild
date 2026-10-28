@@ -86,13 +86,15 @@ class LaunchExtrasTest {
     @Test
     fun `the TV as a speaker is switched by an extra, never by a link`() {
         val on = LaunchExtras.applyTo(Settings(), mapOf("tv_speaker" to "on"))
-        assertThat(on.tvSpeaker).isTrue()
+        assertThat(on.playHere).isEqualTo(PlayHere.OPEN)
         assertThat(LaunchExtras.applyTo(on, mapOf("tv_speaker" to false)).tvSpeaker).isFalse()
+        // On keeps playing always, where it did.
+        assertThat(LaunchExtras.applyTo(Settings(playHere = PlayHere.ALWAYS), mapOf("tv_speaker" to "on")).playHere).isEqualTo(PlayHere.ALWAYS)
         assertThat(LaunchExtras.hasStoredExtras(mapOf("tv_speaker" to true))).isTrue()
         // A page in the TV's browser cannot make it a speaker.
         assertThat(LaunchExtras.fromLink(mapOf("tv_speaker" to "on"))).doesNotContainKey("tv_speaker")
         // While this TV is the speaker followed, an extra cannot take it away.
-        val followed = Settings(entityId = EntityId.THIS_TV, tvSpeaker = true)
+        val followed = Settings(entityId = EntityId.THIS_TV, playHere = PlayHere.OPEN)
         assertThat(LaunchExtras.applyTo(followed, mapOf("tv_speaker" to false)).tvSpeaker).isTrue()
     }
 

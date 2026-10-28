@@ -63,6 +63,8 @@
     <string name="appearance_dark">Dunkel</string>
     <string name="volume_on_change">Bei Änderung</string>
     <string name="volume_always">Immer</string>
+    <string name="play_here_open">Solange geöffnet</string>
+    <string name="play_here_always">Immer</string>
     <string name="background_plain">Einfarbig</string>
     <string name="background_cover">Coverfarben</string>
     <string name="intensity_strong">Stark</string>
@@ -183,8 +185,9 @@
     <string name="about_speaker_this_tv">Klangbild folgt diesem Fernseher. Um einem anderen Lautsprecher zu folgen, wähle ihn am Handy. OK zeigt den QR-Code.</string>
     <string name="about_play_here_set_up">Mit Music Assistant kann dieser Fernseher Musik synchron mit deinen anderen Lautsprechern spielen. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_play_here_off">Music Assistant kann auch auf diesem Fernseher Musik abspielen, synchron mit deinen anderen Lautsprechern. Schaltest du es ein, erscheint der Fernseher dort unter seinem eigenen Namen.</string>
-    <string name="about_play_here_on">Dieser Fernseher ist einer der Lautsprecher von Music Assistant und spielt weiter, auch wenn Klangbild geschlossen ist. Beginnt hier Musik, zeigt Klangbild sie.</string>
-    <string name="about_play_here_followed">Klangbild folgt diesem Fernseher, deshalb spielt er hier weiter. Um das auszuschalten, wähle zuerst am Handy einen anderen Lautsprecher. OK zeigt den QR-Code.</string>
+    <string name="about_play_here_open">Dieser Fernseher ist einer der Lautsprecher von Music Assistant, solange Klangbild geöffnet ist. Schließt du Klangbild, verabschiedet er sich, damit Musik nie eine andere App unterbricht.</string>
+    <string name="about_play_here_always">Dieser Fernseher ist einer der Lautsprecher von Music Assistant und spielt weiter, auch wenn Klangbild geschlossen ist. Beginnt hier Musik, zeigt Klangbild sie.</string>
+    <string name="about_play_here_followed">Klangbild folgt diesem Fernseher, deshalb spielt er hier weiter. Um das auszuschalten, wähle zuerst am Handy einen anderen Lautsprecher.</string>
     <string name="about_play_here_followed_back">Klangbild folgt diesem Fernseher, deshalb spielt er hier weiter. Ausgeschaltet folgt Klangbild wieder dem Lautsprecher, den du am Handy gewählt hast.</string>
     <string name="about_play_here_unreachable">Music Assistant antwortet gerade nicht auf Port 8927, deshalb kann dieser Fernseher noch nicht spielen. Klangbild versucht es weiter.</string>
     <string name="about_play_here_too_old">Damit dieser Fernseher spielen kann, braucht Music Assistant die Version 2.10.7 oder neuer.</string>
@@ -295,7 +298,7 @@
     <string name="page_ma_token_placeholder">Aus Music Assistant</string>
     <string name="page_ma_token_hint">In Music Assistant unter Einstellungen → Profil ein langlebiges Zugangstoken erstellen. Leer lassen, wenn du es nicht brauchst.</string>
     <string name="page_tv_speaker">Musik von Music Assistant auf diesem Fernseher abspielen</string>
-    <string name="page_tv_speaker_hint">Dieser Fernseher erscheint dann in Music Assistant als Lautsprecher unter seinem Namen und spielt synchron mit deinen anderen Lautsprechern, auch wenn Klangbild geschlossen ist.</string>
+    <string name="page_tv_speaker_hint">Dieser Fernseher erscheint dann in Music Assistant als Lautsprecher unter seinem Namen und spielt synchron mit deinen anderen Lautsprechern, solange Klangbild geöffnet ist. Unter „Hier abspielen“ in den Einstellungen am Fernseher kann er auch spielen, wenn Klangbild geschlossen ist.</string>
     <string name="page_pair_toggle">Kopplungscode</string>
     <string name="page_pair_hint">Nur nötig, wenn Music Assistant verlangt, diesen Fernseher zu koppeln: Gib dort diesen Code ein.</string>
     <string name="page_this_tv">Dieser Fernseher</string>

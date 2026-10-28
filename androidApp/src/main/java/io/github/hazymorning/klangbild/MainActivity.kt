@@ -54,7 +54,8 @@ class MainActivity : ComponentActivity() {
         // The composition lives while the activity is visible (see onStart/onStop).
         setContentView(ComposeView(this).also { view = it })
         // This TV as a speaker: its service starts while Klangbild is in sight (Android lets a
-        // media service start only then) and ends itself when the setting goes off.
+        // media service start only then) and ends itself when the setting goes off, or, while it
+        // plays only with Klangbild open, when Klangbild goes out of sight.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 graph.settings.settings.map { it.speakerOn }.distinctUntilChanged().collect { on ->
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        app.inSight.value = true
         val spec = ScreenSpec.of(resources.displayMetrics)
         controller.attach(spec)
         view?.setContent {
@@ -103,6 +105,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        app.inSight.value = false
         controller.detach()
         // Out of sight nothing is kept: the screens' scenes and bitmaps go with the composition,
         // and coming back fades in from black, built anew.
