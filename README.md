@@ -18,10 +18,6 @@ Home Assistant opens up a lot of possibilities, so there are a few features that
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-> [!NOTE]
-> **This app is being built in two&nbsp;phases.**<br>
-> The first, the now playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind).
-
 ## More
 
 <details>
