@@ -16,7 +16,12 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-Home Assistant opens up a lot of possibilities, so there are a few features that make it useful too. Home Assistant actions can be added as quick settings, sensors can be shown on screen, and lights behind the TV can take on the colors of the album cover. With Sendspin, the TV can play the music as well.
+Home Assistant makes a few extras possible:
+
+✓ Your own buttons in the quick settings<br>
+✓ Sensor values on the screen<br>
+✓ Lights in the colors of the cover<br>
+✓ Music on the TV itself, via Sendspin
 
 ## More
 
