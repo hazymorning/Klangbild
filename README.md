@@ -14,9 +14,9 @@ Klangbild is an Android TV app that shows what's playing, and it's mostly there 
 
 It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the queue, lyrics and audiobook chapters. The music itself still gets picked in whatever app is already in use.
 
-Home Assistant opens up a lot of possibilities, so there are a few features that make it useful too. Home Assistant actions can be added as quick settings, sensors can be shown on screen, and lights behind the TV can take on the colors of the album cover. With Sendspin, the TV can play the music as well.
-
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
+
+Home Assistant opens up a lot of possibilities, so there are a few features that make it useful too. Home Assistant actions can be added as quick settings, sensors can be shown on screen, and lights behind the TV can take on the colors of the album cover. With Sendspin, the TV can play the music as well.
 
 ## More
 
