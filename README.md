@@ -12,7 +12,7 @@ Klangbild is an Android TV app that shows what's playing, and it's mostly there 
 
 ## What it does
 
-It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the queue, lyrics and audiobook chapters. It can show what's playing in a few different ways, the music itself still gets picked in whatever app is already in use.
+It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the [queue](#queue), lyrics and audiobook chapters. It can show what's playing in a few different ways, the music itself still gets picked in whatever app is already in use.
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
@@ -102,7 +102,7 @@ The two entity IDs are only examples, so put in the ones for your own speaker an
 </details>
 
 <details>
-<summary><b>The queue</b></summary>
+<summary><a name="queue"></a><b>The queue</b></summary>
 <br>
 
 <table>
