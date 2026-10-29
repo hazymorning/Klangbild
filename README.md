@@ -19,7 +19,7 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 **A few other things it can do:**
 
 ✓ HA actions as quick settings<br>
-✓ Sensor values on the screen<br>
+✓ HA entity values on the screen<br>
 ✓ Lights in the colors of the cover<br>
 ✓ Music on the TV itself, via Sendspin
 
