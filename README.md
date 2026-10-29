@@ -16,7 +16,7 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-Home Assistant makes a few extras possible:
+A few other things it can do:
 
 ✓ Your own buttons in the quick settings<br>
 ✓ Sensor values on the screen<br>
