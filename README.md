@@ -6,7 +6,7 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild is an Android TV app that shows what's playing, and it's mostly there to look nice. The idea is to have it running in the background when people are over, or on a quiet evening with some music or an audiobook, where it just adds a bit to the mood. The music itself still gets picked in whatever app is already in use.
+Klangbild is an Android TV app that shows what's playing, and it's mostly there to look nice. The idea is to have it running in the background, where it just adds a bit to the mood. The music itself still gets picked in whatever app is already in use.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
@@ -18,7 +18,7 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 
 > [!NOTE]
 > **This app is being built in two&nbsp;phases.**<br>
-> The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind).
+> The first, the now playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind).
 
 ## More
 
