@@ -12,11 +12,11 @@ Klangbild is an Android TV app that shows what's playing, and it's mostly there 
 
 ## What it does
 
-It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the queue, lyrics and audiobook chapters. It can show what's playing in a few different ways, and if you want, it [opens by itself](#setup) when the music starts. The music itself still gets picked in whatever app is already in use.
+It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the queue, lyrics and audiobook chapters. It can show what's playing in a few different ways and [open by itself](#setup) when the music starts. The music itself still gets picked in whatever app is already in use.
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
-A few other things it can do:
+**A few other things it can do:**
 
 ✓ HA actions as quick settings<br>
 ✓ Sensor values on the screen<br>
