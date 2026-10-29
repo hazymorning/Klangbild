@@ -6,18 +6,18 @@
   <img src="docs/screenshots/mockup-now-playing-light.jpg" alt="The album cover on a TV next to the song that's playing">
 </picture>
 
-Klangbild shows the music that’s playing as a calm picture on your TV and it’s made to look nice in a room. Everything on the screen is balanced around the album cover and takes its colors from it. Choosing the music stays in whatever app you already use.
+Klangbild is an Android TV app that shows what's playing, and it's mostly there to look nice. The idea is to have it running in the background when people are over, or on a quiet evening with some music or an audiobook, where it just adds a bit to the mood. The music itself still gets picked in whatever app is already in use.
 
 <a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="236" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
-It works with any media player in Home Assistant. Music Assistant adds the queue, lyrics and audiobook chapters, the lights behind the TV can glow in the cover's colors, and with Sendspin the TV can become a speaker.
+It works with any speaker that's set up in Home Assistant, but it's mostly meant to be used with Music Assistant, since that lets it also show the queue, lyrics and audiobook chapters. Home Assistant opens up a lot of possibilities, so there are a few features that make it useful too. Home Assistant actions can be added as quick settings, sensors can be shown on screen, and lights behind the TV can take on the colors of the album cover. With Sendspin, the TV can play the music as well.
 
 ![The same song twice, on the light background by day and on the dark one at night](docs/screenshots/day-and-night.jpg)
 
 > [!NOTE]
-> **Klangbild is being built in two&nbsp;phases.**<br>
+> **This app is being built in two&nbsp;phases.**<br>
 > The first, the Now Playing screen, is nearly finished. Next comes a music visualizer that reacts to all kinds of things while staying calm and tasteful (so not the psychedelic kind).
 
 ## More
