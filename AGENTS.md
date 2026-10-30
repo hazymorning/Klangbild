@@ -216,8 +216,9 @@ From the bottom up:
   manual run.
 - If Check for updates is on in the menu (it's off by default), the app asks GitHub for the
   newest release (no beta or draft) when it starts, at most once a day (`Updates`). OK on Update
-  asks right away or installs the new version through Android's installer, which asks first. It
-  downloads the release's `klangbild.apk`, so a release must have one.
+  asks right away, or shows the new version's release notes point by point (`ReleaseNotes`), and
+  OK there installs it through Android's installer, which asks first. It downloads the release's
+  `klangbild.apk`, so a release must have one.
 - The "Tidy up" workflow, run by hand after a release, keeps the newest calendar releases (five by
   default) and deletes the older ones with their tags, the drafts a release has overtaken, and the
   branches that are merged or, with no pull request open, older than the newest release.

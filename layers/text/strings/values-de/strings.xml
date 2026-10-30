@@ -9,6 +9,7 @@
     <string name="menu_heading">Einstellungen</string>
     <string name="menu_hint">OK ändert · Zurück zu allen Einstellungen</string>
     <string name="menu_hint_groups">OK öffnet · Zurück schließt</string>
+    <string name="menu_hint_notes">OK installiert · Zurück zu den Einstellungen</string>
     <string name="section_picture">Bild</string>
     <string name="section_info">Informationen</string>
     <string name="section_lights">Licht</string>
@@ -50,6 +51,8 @@
     <string name="entry_other_rooms">Musik in anderen Räumen</string>
     <string name="entry_update">Update</string>
     <string name="entry_update_check">Nach Updates suchen</string>
+    <string name="entry_phone_setup">Am Handy einrichten</string>
+    <string name="phone_setup_qr">QR-Code</string>
     <string name="update_notice">Neue Version</string>
     <string name="update_current">Auf dem neuesten Stand</string>
     <string name="update_checking">Wird geprüft</string>
@@ -121,7 +124,7 @@
     <string name="about_volume_always">Die Lautstärke steht immer neben der Uhrzeit.</string>
     <string name="about_volume_off">Die Lautstärke wird nie angezeigt.</string>
     <string name="about_values_set_up">Werte aus Home Assistant stehen neben der Uhrzeit, etwa die Temperatur draußen. OK zeigt den QR-Code; am Handy wählst du sie aus.</string>
-    <string name="about_values_on">Deine Werte aus Home Assistant stehen neben der Uhrzeit. Ändern kannst du sie am Handy, über Home Assistant weiter unten.</string>
+    <string name="about_values_on">Deine Werte aus Home Assistant stehen neben der Uhrzeit. Andere wählst du unter „Am Handy einrichten“.</string>
     <string name="about_values_off">Deine Werte aus Home Assistant bleiben verborgen. Rechts zeigt sie neben der Uhrzeit.</string>
     <string name="about_notifications_off">Benachrichtigungen aus Home Assistant können neben der Uhrzeit stehen. Sobald du das einschaltest, erscheint dieser Fernseher dort als Gerät, an das du sie senden kannst, wie ein Handy.</string>
     <string name="about_notifications_off_listed">Dieser Fernseher zeigt keine Benachrichtigungen. Home Assistant führt ihn weiter als Gerät, bis du ihn dort löschst.</string>
@@ -188,7 +191,9 @@
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
     <string name="about_update_current">Klangbild %1$s ist die neueste Version. OK fragt noch einmal bei GitHub nach.</string>
     <string name="about_update_unknown">Noch ist nicht bekannt, ob es eine neue Version gibt. OK fragt jetzt bei GitHub nach.</string>
-    <string name="about_update_available">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert.</string>
+    <string name="about_update_available">Klangbild %1$s ist da. OK zeigt, was neu ist.</string>
+    <string name="about_update_install">OK lädt es, und der Fernseher fragt, bevor er es installiert.</string>
+    <string name="notes_heading">Klangbild %1$s</string>
     <string name="about_update_check_on">Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen Version.</string>
     <string name="about_update_check_off">Klangbild sucht nicht von selbst nach neuen Versionen. OK bei Update fragt trotzdem bei GitHub nach.</string>
     <string name="about_update_downloading">Die neue Version wird geladen. Danach fragt der Fernseher, ob er sie installieren soll.</string>
@@ -196,6 +201,7 @@
     <string name="about_update_own">Dieses Klangbild wurde aus seinem Code gebaut und sucht nicht nach neuen Versionen.</string>
     <string name="about_speaker">Der Lautsprecher, den Klangbild zeigt und die Fernbedienung steuert: der am Handy gewählte oder dieser Fernseher, der dann hier spielt.</string>
     <string name="about_speaker_this_tv">Klangbild folgt diesem Fernseher. Um einem anderen Lautsprecher zu folgen, wähle ihn am Handy. OK zeigt den QR-Code.</string>
+    <string name="about_phone_setup">Am Handy wählst du den Lautsprecher, andere Räume, Lichter, Präsenzmelder, Tasten und Werte. OK zeigt den QR-Code.</string>
     <string name="about_other_rooms_set_up">Ist der Lautsprecher in diesem Raum still, kann Klangbild stattdessen die Musik aus anderen Räumen zeigen. OK zeigt den QR-Code; am Handy wählst du die Räume aus.</string>
     <string name="about_other_rooms_on">Ist der Lautsprecher in diesem Raum still, zeigt Klangbild die Musik aus den anderen Räumen, die du gewählt hast, mit dem Namen des Raums neben der Uhrzeit. Musik hier hat immer Vorrang.</string>
     <string name="about_other_rooms_off">Klangbild zeigt nur den Lautsprecher in diesem Raum, auch wenn in den anderen Räumen, die du gewählt hast, Musik läuft. Rechts zeigt diese Räume wieder.</string>
@@ -269,9 +275,10 @@
 
     <string name="setup_first_run">Einrichten mit dem Handy</string>
     <string name="setup_rejected">Home Assistant hat den Zugang abgelehnt.</string>
-    <string name="setup_change">Verbindung ändern</string>
+    <string name="setup_change">Am Handy einrichten</string>
     <string name="setup_text">Scanne den Code mit der Kamera. Auf der Seite meldest du dich bei Home Assistant an und wählst den Lautsprecher.</string>
     <string name="setup_text_rejected">Scanne den Code und melde dich auf der Seite neu bei Home Assistant an.</string>
+    <string name="setup_text_requested">Scanne den Code mit der Kamera. Auf der Seite änderst du die Verbindung und den Lautsprecher und wählst andere Räume, Lichter, Präsenzmelder, Tasten und Werte.</string>
     <string name="setup_back">Zurück schließt</string>
     <string name="setup_code">Code</string>
     <string name="setup_in_browser">oder im Browser:</string>
@@ -374,7 +381,7 @@
     <string name="page_failed">Das hat nicht geklappt.</string>
     <string name="page_connected">Verbunden. Bitte den Lautsprecher wählen.</string>
     <string name="page_tv_unreachable">Der Fernseher ist nicht erreichbar.</string>
-    <string name="page_saved">Gespeichert.</string>
+    <string name="page_saved">Gespeichert. Um später etwas zu ändern, öffne am Fernseher die Einstellungen und wähle „Am Handy einrichten“.</string>
     <string name="page_token_kept">Gespeichertes Token bleibt erhalten, nur zum Ändern neu einfügen</string>
     <string name="page_signing_in">Anmeldeseite von Home Assistant wird geöffnet …</string>
     <string name="page_signed_in">Bei Home Assistant angemeldet.</string>
@@ -400,7 +407,7 @@
     <string name="setup_error_lights">Bitte nur Lichter wählen.</string>
     <string name="setup_error_actions">Jede Taste braucht ein Skript, eine Szene, eine Automatisierung, eine Taste oder einen Schalter, und eine Bedingung einen Wert.</string>
     <string name="setup_error_values">Jeder Wert braucht eine Entität.</string>
-    <string name="setup_saved">Gespeichert. Der Fernseher verbindet sich jetzt mit Home Assistant.</string>
+    <string name="setup_saved">Gespeichert. Der Fernseher verbindet sich jetzt mit Home Assistant. Um später etwas zu ändern, öffne am Fernseher die Einstellungen und wähle „Am Handy einrichten“.</string>
     <string name="discover_rejected">Home Assistant hat den Zugang abgelehnt.</string>
     <string name="discover_unexpected">Home Assistant antwortet nicht wie erwartet (HTTP %d).</string>
     <string name="discover_cleartext">Unverschlüsseltes http:// ist nur im Heimnetz erlaubt. Bitte https:// verwenden.</string>

@@ -123,6 +123,22 @@ class LyricsTest {
     }
 
     @Test
+    fun `the last line dims once it is sung, so a long outro is quiet`() {
+        // Lines four seconds apart: the last one is sung as long.
+        val l = Lrc.parse("[00:05.00]Eins\n[00:09.00]Zwei\n[00:13.00]Drei\n[00:17.00]Vier")!!
+        assertThat(l.placeAt(20_999)).isEqualTo(LyricPlace(3, lit = true))
+        assertThat(l.placeAt(21_000)).isEqualTo(LyricPlace(3, lit = false))
+        assertThat(l.placeAt(200_000)).isEqualTo(LyricPlace(3, lit = false))
+        // In a fast song a little longer, and in a slow one not for the whole outro.
+        val fast = Lrc.parse("[00:05.00]Eins\n[00:06.00]Zwei\n[00:07.00]Drei")!!
+        assertThat(fast.placeAt(9_999).lit).isTrue()
+        assertThat(fast.placeAt(10_000).lit).isFalse()
+        val slow = Lrc.parse("[00:05.00]Eins\n[00:25.00]Zwei\n[00:45.00]Drei")!!
+        assertThat(slow.placeAt(52_999).lit).isTrue()
+        assertThat(slow.placeAt(53_000).lit).isFalse()
+    }
+
+    @Test
     fun `a line comes a little early, so it lands with the voice`() {
         val l = Lrc.parse("[00:05.00]Eins\n[00:09.00]Zwei")!!
         val cursor = LyricsCursor(l)

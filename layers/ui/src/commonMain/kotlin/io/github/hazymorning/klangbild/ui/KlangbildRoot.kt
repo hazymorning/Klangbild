@@ -308,6 +308,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 durationMs = chapterPlace?.let { it.endMs - it.startMs } ?: s.track.durationMs,
                 // Read for this song by name: the player reports the next a moment before the screen shows it.
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
+                current = plays,
                 statusLine = statusLine,
                 year = s.track.year.takeIf { display.album },
                 barShown = barWanted(lyrics),

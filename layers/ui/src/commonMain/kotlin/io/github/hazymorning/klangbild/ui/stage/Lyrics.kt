@@ -298,15 +298,18 @@ internal fun LyricsText(
     val states = LocalLyricsStates.current
     val state = states?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
+    val current by rememberUpdatedState(model.current)
+    // Where the track is; nothing is sung any more once the player reports the next track.
+    fun place() = state.cursor.at(position()).let { if (current) it else it.copy(lit = false) }
     // The lyrics first stand where the track is.
-    val plan = rememberLyricsPlan(state, layout, room.around()) { state.cursor.at(position()) }
+    val plan = rememberLyricsPlan(state, layout, room.around()) { place() }
     // The place follows the position on the stage's tick (in a still, once).
     val tick = rememberTick(fast = model.playing)
     if (plan != null) {
         LaunchedEffect(state, plan) {
             snapshotFlow {
                 tick.value
-                state.cursor.at(position())
+                place()
             }.distinctUntilChanged().collect { place -> state.moveTo(place, plan, this) }
         }
     }
