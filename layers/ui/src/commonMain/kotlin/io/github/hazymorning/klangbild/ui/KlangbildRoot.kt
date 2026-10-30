@@ -395,7 +395,9 @@ private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs
     val display = ui.display
     val player = ui.source.player
     val clock = if (display.clock || peek) t.clock(nowMs) else null
-    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
+    // Music from another room is always named by it, since the screen doesn't hang there.
+    val room = player?.friendlyName?.let(SpeakerLabel::roomName)?.takeIf { ui.source.elsewhere }
+    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek } ?: room
     val volume = SpeakerLabel.volume(player?.volume, t)
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = (ui.screen as? Screen.Stage)?.track?.kind?.spoken == true

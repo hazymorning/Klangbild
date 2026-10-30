@@ -20,7 +20,7 @@
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
     <string name="about_section_timer">Der Sleep-Timer und wann sich Klangbild ausschaltet.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant, die Wiedergabe hier, die Sprache und Updates.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, die Lautsprecher, die Wiedergabe hier, die Sprache und Updates.</string>
 
     <string name="entry_queue">Warteschlange</string>
     <string name="entry_appearance">Erscheinungsbild</string>
@@ -45,6 +45,7 @@
     <string name="entry_sleep_action">Beim Ausschalten</string>
     <string name="entry_language">Sprache</string>
     <string name="entry_speaker">Lautsprecher</string>
+    <string name="entry_other_rooms">Musik in anderen Räumen</string>
     <string name="entry_update">Update</string>
     <string name="entry_update_check">Nach Updates suchen</string>
     <string name="update_notice">Neue Version</string>
@@ -183,6 +184,9 @@
     <string name="about_update_own">Dieses Klangbild wurde aus seinem Code gebaut und sucht nicht nach neuen Versionen.</string>
     <string name="about_speaker">Der Lautsprecher, den Klangbild zeigt und die Fernbedienung steuert: der am Handy gewählte oder dieser Fernseher, der dann hier spielt.</string>
     <string name="about_speaker_this_tv">Klangbild folgt diesem Fernseher. Um einem anderen Lautsprecher zu folgen, wähle ihn am Handy. OK zeigt den QR-Code.</string>
+    <string name="about_other_rooms_set_up">Läuft hier nichts, kann Klangbild Musik von Lautsprechern in anderen Räumen zeigen. OK zeigt den QR-Code; am Handy wählst du sie aus.</string>
+    <string name="about_other_rooms_on">Läuft hier nichts, zeigt Klangbild Musik aus den anderen Räumen, die du gewählt hast, mit dem Namen des Raums neben der Uhrzeit.</string>
+    <string name="about_other_rooms_off">Klangbild zeigt nur den Lautsprecher in diesem Raum. Rechts zeigt auch die anderen Räume, die du gewählt hast.</string>
     <string name="about_play_here_set_up">Mit Music Assistant kann dieser Fernseher Musik synchron mit deinen anderen Lautsprechern spielen. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_play_here_off">Music Assistant kann auch auf diesem Fernseher Musik abspielen, synchron mit deinen anderen Lautsprechern. Schaltest du es ein, erscheint der Fernseher dort unter seinem eigenen Namen.</string>
     <string name="about_play_here_open">Dieser Fernseher ist einer der Lautsprecher von Music Assistant, solange Klangbild geöffnet ist. Schließt du Klangbild, verabschiedet er sich, damit Musik nie eine andere App unterbricht.</string>
@@ -286,6 +290,8 @@
     <string name="page_entity_label">oder Entität direkt eingeben</string>
     <string name="page_entity_placeholder">media_player.wohnzimmer</string>
     <string name="page_no_speakers">Keine media_player-Entitäten gefunden.</string>
+    <string name="page_other_rooms">Musik in anderen Räumen (optional)</string>
+    <string name="page_other_rooms_hint">Läuft auf dem Lautsprecher oben nichts, zeigt der Fernseher Musik von den Lautsprechern, die du hier ankreuzt, mit dem Namen des Raums neben der Uhrzeit.</string>
     <string name="page_general_heading">3 · Allgemein</string>
     <string name="page_sleep_before">Ausschalten nach</string>
     <string name="page_sleep_after">Minuten ohne Musik, dann:</string>
@@ -370,6 +376,7 @@
     <string name="setup_error_ma_unreachable">Music Assistant antwortet nicht unter dieser Adresse. Bitte prüfen oder die Adresse leeren, dann geht es ohne.</string>
     <string name="setup_error_this_tv">Dieser Fernseher kann nur mit Music Assistant der Lautsprecher sein.</string>
     <string name="setup_error_speaker">Bitte einen Lautsprecher auswählen.</string>
+    <string name="setup_error_other_rooms">Bitte kreuze nur Lautsprecher an.</string>
     <string name="setup_error_sleep">Die Ruhezeit muss zwischen 1 und 720 Minuten liegen.</string>
     <string name="setup_error_lights">Bitte nur Lichter wählen.</string>
     <string name="setup_error_actions">Jede Taste braucht ein Skript, eine Szene, eine Automatisierung, eine Taste oder einen Schalter, und eine Bedingung einen Wert.</string>

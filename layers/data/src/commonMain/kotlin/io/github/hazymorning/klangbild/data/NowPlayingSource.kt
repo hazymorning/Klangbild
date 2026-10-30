@@ -27,6 +27,9 @@ interface NowPlayingSource {
     /** Follows the entities of one's own (the buttons', their conditions', the values'), for [SourceState.entities]. */
     fun followEntities(ids: Set<String>) = Unit
 
+    /** Follows the speakers of other rooms, whose music shows while nothing plays here ([SourceState.elsewhere]). */
+    fun followOthers(ids: List<String>) = Unit
+
     /** Does what [action] says in Home Assistant; whether Home Assistant took it. */
     suspend fun run(action: QuickAction): Boolean = false
 

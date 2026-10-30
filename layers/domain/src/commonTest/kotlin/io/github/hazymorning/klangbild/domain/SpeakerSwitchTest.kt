@@ -34,6 +34,16 @@ class SpeakerSwitchTest {
     }
 
     @Test
+    fun `a paused song gives way to another room's music once a paused stage would`() {
+        val s = SpeakerSwitch(backMs = 4_000, pauseMs = 180_000)
+        s.update(player(PlayerStatus.PLAYING), player(PlayerStatus.IDLE), 0)
+        assertThat(s.update(player(PlayerStatus.PAUSED), player(PlayerStatus.IDLE), 1_000, elsewhere = player(PlayerStatus.PLAYING))).isTrue()
+        assertThat(s.backAt).isEqualTo(181_000)
+        assertThat(s.update(player(PlayerStatus.PAUSED), player(PlayerStatus.IDLE), 180_999, elsewhere = player(PlayerStatus.PLAYING))).isTrue()
+        assertThat(s.update(player(PlayerStatus.PAUSED), player(PlayerStatus.IDLE), 181_000, elsewhere = player(PlayerStatus.PLAYING))).isFalse()
+    }
+
+    @Test
     fun `stopped music gives the screen back after a moment, and music in between keeps it`() {
         val s = SpeakerSwitch(backMs = 4_000)
         s.update(player(PlayerStatus.PLAYING), null, 0)

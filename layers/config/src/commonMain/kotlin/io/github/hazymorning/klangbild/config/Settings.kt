@@ -148,6 +148,10 @@ data class Settings(
     val entityId: String? = null,
     /** The last speaker followed other than "This TV": the menu's Speaker goes back to it. */
     val otherSpeaker: String? = null,
+    /** Speakers in other rooms, chosen on the phone, whose music shows while nothing plays here. */
+    val otherRooms: List<String> = emptyList(),
+    /** The music of [otherRooms] shows (the menu's "Music in other rooms"). */
+    val showOtherRooms: Boolean = true,
     val sunEntity: String = "sun.sun",
     val sleepAfterMinutes: Int = 10,
     val sleepAction: SleepAction = SleepAction.RELEASE,
@@ -193,7 +197,13 @@ data class Settings(
     companion object {
         /** "Turn off after" goes up to this many minutes (twelve hours). */
         const val MAX_SLEEP_MINUTES = 720
+
+        /** At most this many speakers in other rooms. */
+        const val MAX_OTHER_ROOMS = 16
     }
+
+    /** The speakers in other rooms whose music shows now: none while the menu hides them. */
+    val shownOtherRooms: List<String> get() = if (showOtherRooms) otherRooms else emptyList()
 
     /** How Klangbild signs in to Home Assistant: a sign-in wins over a long-lived token. */
     val haCredentials: HaCredentials?

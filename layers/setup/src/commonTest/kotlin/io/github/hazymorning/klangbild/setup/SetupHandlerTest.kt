@@ -371,6 +371,21 @@ class SetupHandlerTest {
     }
 
     @Test
+    fun `the speakers in other rooms are stored when the page showed them, without the one chosen`() = runTest {
+        val base = """"code":"${handler.code}","url":"192.168.1.5:8123","entity":"media_player.wz""""
+        val rooms = """["media_player.kitchen","media_player.wz","media_player.study","media_player.kitchen"]"""
+        assertThat(post("/api/save", """{$base,"otherRooms":$rooms}""").status).isEqualTo(200)
+        assertThat(stored.otherRooms).containsExactly("media_player.kitchen", "media_player.study")
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["otherRooms"].toString())
+            .isEqualTo("""["media_player.kitchen","media_player.study"]""")
+        assertThat(post("/api/save", """{$base}""").status).isEqualTo(200)
+        assertThat(stored.otherRooms).hasSize(2)
+        assertThat(post("/api/save", """{$base,"otherRooms":["light.kitchen"]}""").status).isEqualTo(400)
+        assertThat(post("/api/save", """{$base,"otherRooms":[]}""").status).isEqualTo(200)
+        assertThat(stored.otherRooms).isEmpty()
+    }
+
+    @Test
     fun `every entity is offered for values and conditions, without what only describes it`() = runTest {
         val r = SetupServer.parseSpeakers(
             """[{"entity_id":"sensor.outside","state":"12.345","attributes":{"friendly_name":"Outside","unit_of_measurement":"°C","device_class":"temperature"}},

@@ -68,6 +68,8 @@ object SetupPage {
         "speakersTwice" to Strings.pageSpeakersTwice,
         "entityLabel" to Strings.pageEntityLabel,
         "entityPlaceholder" to Strings.pageEntityPlaceholder,
+        "otherRooms" to Strings.pageOtherRooms,
+        "otherRoomsHint" to Strings.pageOtherRoomsHint,
         "generalHeading" to Strings.pageGeneralHeading,
         "sleepBefore" to Strings.pageSleepBefore,
         "sleepAfter" to Strings.pageSleepAfter,
@@ -172,6 +174,7 @@ object SetupPage {
   .sub { color: var(--muted); margin: 0 0 28px; }
   section { border-top: 1px solid var(--line); padding: 22px 0 8px; }
   h2 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 0 0 6px; }
+  h3 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 28px 0 6px; }
   label { display: block; color: var(--muted); font-size: 15px; margin: 14px 0 6px; }
   input[type=text], input[type=url], input[type=number], textarea, select {
     width: 100%; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
@@ -250,6 +253,9 @@ object SetupPage {
     <div class="speakers" id="speakers"><p class="hint">{{speakersEmpty}}</p></div>
     <label for="entity">{{entityLabel}}</label>
     <input id="entity" type="text" placeholder="{{entityPlaceholder}}" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <h3>{{otherRooms}}</h3>
+    <p class="hint">{{otherRoomsHint}}</p>
+    <div class="speakers" id="otherRooms"><p class="hint">{{speakersEmpty}}</p></div>
   </section>
 
   <section>
@@ -310,6 +316,10 @@ object SetupPage {
   let hasToken = false;
   // The speakers Home Assistant offers, once found; "This TV" goes before them while the TV plays for Music Assistant.
   let speakers = null;
+  // The speakers in other rooms whose music shows while nothing plays on the one chosen: as
+  // stored, and whether the page has shown them.
+  let otherRooms = [];
+  let otherRoomsShown = false;
   const THIS_TV = '__THIS_TV__';
   let lights = { lightsLeft: '', lightsCenter: '', lightsRight: '' };
   let lightsShown = false;
@@ -348,16 +358,34 @@ object SetupPage {
     ${'$'}('speakersTwice').hidden = !(speakers || []).some((sp) => sp.ma);
     if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
     list.forEach((sp) => {
-      const row = document.createElement('label'); row.className = 'speaker';
       const r = document.createElement('input'); r.type = 'radio'; r.name = 'speaker'; r.value = sp.id;
       r.checked = sp.id === selected;
-      r.onchange = () => { ${'$'}('entity').value = sp.id; if (sp.id === THIS_TV) ${'$'}('tvSpeaker').checked = true; };
-      const text = document.createElement('div');
-      const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
-      const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = sp.meta || (sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state);
-      text.append(name, meta); row.append(r, text); box.append(row);
+      r.onchange = () => { ${'$'}('entity').value = sp.id; if (sp.id === THIS_TV) ${'$'}('tvSpeaker').checked = true; renderOtherRooms(); };
+      box.append(speakerRow(sp, r));
     });
+  }
+  // The speakers of other rooms to tick: every one but the speaker chosen above.
+  function renderOtherRooms() {
+    if (!speakers) return;
+    const box = ${'$'}('otherRooms'); box.textContent = '';
+    const list = speakers.filter((sp) => sp.id !== ${'$'}('entity').value.trim());
+    if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
+    list.forEach((sp) => {
+      const c = document.createElement('input'); c.type = 'checkbox'; c.value = sp.id;
+      c.checked = otherRooms.includes(sp.id);
+      c.onchange = () => { otherRooms = otherRooms.filter((id) => id !== sp.id).concat(c.checked ? [sp.id] : []); };
+      box.append(speakerRow(sp, c));
+    });
+    otherRoomsShown = true;
+  }
+  function speakerRow(sp, input) {
+    const row = document.createElement('label'); row.className = 'speaker';
+    const text = document.createElement('div');
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = sp.meta || (sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state);
+    text.append(name, meta); row.append(input, text);
+    return row;
   }
   function renderLights(list) {
     const box = ${'$'}('lights'); box.textContent = '';
@@ -584,6 +612,7 @@ object SetupPage {
     hasToken = s.auth === 'token';
     if (hasToken) ${'$'}('token').placeholder = T.tokenKept;
     ${'$'}('entity').value = s.entity || '';
+    otherRooms = s.otherRooms || [];
     ${'$'}('sleep').value = s.sleepMinutes || 10;
     document.querySelectorAll('input[name=action]').forEach((r) => r.checked = (r.value === s.sleepAction));
     ${'$'}('clock').checked = !!s.clock; ${'$'}('remote').checked = !!s.remote;
@@ -618,6 +647,7 @@ object SetupPage {
       ${'$'}('url').value = r.url;
       speakers = r.speakers;
       renderSpeakers(${'$'}('entity').value);
+      renderOtherRooms();
       renderLights(r.lights || []);
       actionOptions = r.actions || [];
       entityOptions = r.entities || [];
@@ -648,6 +678,8 @@ object SetupPage {
           variables: a.entity.startsWith('script.') && Object.keys(a.variables).length ? a.variables : undefined,
           when: a.when && a.when.entity ? { entity: a.when.entity, attribute: a.when.attribute || undefined, test: a.when.test, value: String(a.when.value) } : undefined }));
       }
+      // The speakers in other rooms, as far as Home Assistant still has them.
+      if (otherRoomsShown) body.otherRooms = otherRooms.filter((id) => id !== body.entity && speakers.some((sp) => sp.id === id));
       // The values in the status line, likewise.
       if (valuesShown) body.values = values.filter((v) => v.entity).map((v) => ({ name: v.name.trim(), entity: v.entity, attribute: v.attribute || undefined }));
       const r = await api('/api/save', body);
@@ -666,6 +698,7 @@ object SetupPage {
     if (speakers) renderSpeakers(${'$'}('entity').value);
   };
   ${'$'}('maUrl').oninput = () => { if (speakers) renderSpeakers(${'$'}('entity').value); };
+  ${'$'}('entity').onchange = renderOtherRooms;
   ${'$'}('code').oninput = () => { if (code().length === 6) load(); };
   if (params.has('signin')) history.replaceState(null, '', '/');
   load();

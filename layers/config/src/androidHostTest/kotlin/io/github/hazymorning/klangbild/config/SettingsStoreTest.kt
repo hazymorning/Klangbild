@@ -77,6 +77,8 @@ class SettingsStoreTest {
             haRefused = true,
             entityId = "media_player.kitchen",
             otherSpeaker = "media_player.living_room",
+            otherRooms = listOf("media_player.study", "media_player.bath"),
+            showOtherRooms = false,
             sunEntity = "sun.home",
             sleepAfterMinutes = 45,
             sleepAction = SleepAction.CLOSE,

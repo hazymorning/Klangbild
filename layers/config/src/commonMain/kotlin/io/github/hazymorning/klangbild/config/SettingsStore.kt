@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.config
 
+import io.github.hazymorning.klangbild.domain.EntityId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -43,6 +44,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         /** Play here of versions before it could play only while Klangbild is open: on or off. Read once, then removed. */
         val formerTvSpeaker = booleanKey("tv_speaker")
         val otherSpeaker = stringKey("other_speaker")
+
+        /** The speakers in other rooms, their entity ids separated by commas. */
+        val otherRooms = stringKey("other_rooms")
+        val showOtherRooms = booleanKey("show_other_rooms")
         val background = stringKey("background")
         val motion = stringKey("motion")
         val lightsLeft = stringKey("bars_left")
@@ -106,6 +111,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             haRefused = p[Keys.refused] ?: defaults.haRefused,
             entityId = p[Keys.entity],
             otherSpeaker = p[Keys.otherSpeaker],
+            otherRooms = p[Keys.otherRooms]?.split(',')?.filter(EntityId::isValid).orEmpty(),
+            showOtherRooms = p[Keys.showOtherRooms] ?: defaults.showOtherRooms,
             sunEntity = p[Keys.sun] ?: defaults.sunEntity,
             sleepAfterMinutes = p[Keys.sleepMinutes] ?: defaults.sleepAfterMinutes,
             sleepAction = enumOr(p[Keys.sleepAction], defaults.sleepAction),
@@ -149,6 +156,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.refused] = s.haRefused
         putOrRemove(Keys.entity, s.entityId)
         putOrRemove(Keys.otherSpeaker, s.otherSpeaker)
+        putOrRemove(Keys.otherRooms, s.otherRooms.joinToString(","))
+        p[Keys.showOtherRooms] = s.showOtherRooms
         p[Keys.sun] = s.sunEntity
         p[Keys.sleepMinutes] = s.sleepAfterMinutes
         p[Keys.sleepAction] = s.sleepAction.name

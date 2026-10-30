@@ -235,6 +235,7 @@ class SetupHandler(
                 put("url", url ?: "")
                 put("auth", auth)
                 put("entity", s.entityId ?: "")
+                put("otherRooms", buildJsonArray { s.otherRooms.forEach { add(JsonPrimitive(it)) } })
                 put("sleepMinutes", s.sleepAfterMinutes)
                 put("sleepAction", s.sleepAction.name.lowercase())
                 put("clock", s.showClock)
@@ -438,6 +439,15 @@ class SetupHandler(
             }
             else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
         }
+        // The speakers in other rooms, likewise; the one chosen above is this room's.
+        val otherRooms = when (val list = body["otherRooms"]) {
+            null -> current.otherRooms
+            is JsonArray -> list.map { e ->
+                (e as? JsonPrimitive)?.content?.takeIf { it.startsWith("media_player.") && EntityId.isValid(it) }
+                    ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
+            }
+            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
+        }.filter { it != entity }.distinct().take(Settings.MAX_OTHER_ROOMS)
         val updated = withMa.following(entity).withPlayHere(tvSpeaker).copy(
             sleepAfterMinutes = minutes,
             sleepAction = action,
@@ -446,6 +456,7 @@ class SetupHandler(
             roomLights = roomLights,
             quickActions = actions,
             ownValues = values,
+            otherRooms = otherRooms,
         )
         // The sign-in becomes the connection's: it is no longer waiting, before saving ends the
         // setup (whose reset revokes a sign-in still waiting). One it replaced is revoked.

@@ -51,6 +51,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
     SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
+    OTHER_ROOMS(MenuSection.SYSTEM, Strings.entryOtherRooms),
     PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
     UPDATE(MenuSection.SYSTEM, Strings.entryUpdate),
@@ -123,13 +124,14 @@ object SettingsMenu {
 
     /**
      * Whether [e] cannot work until something is set up on the phone: lyrics and playing here
-     * without Music Assistant, the lights and the values while none are chosen. OK opens the
-     * setup.
+     * without Music Assistant, the lights, the values and the other rooms while none are chosen.
+     * OK opens the setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
         MenuEntry.LYRICS, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
+        MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
         else -> false
     }
 
@@ -247,6 +249,7 @@ object SettingsMenu {
             s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
             else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
         }
+        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) t[Strings.setUp] else onOff(s.showOtherRooms, t)
         MenuEntry.PLAY_HERE -> t[
             when {
                 !s.hasMusicAssistant -> Strings.needsMusicAssistant
@@ -348,6 +351,13 @@ object SettingsMenu {
                 !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
                 followsThisTv(s) && s.otherSpeaker == null -> Strings.aboutSpeakerThisTv
                 else -> Strings.aboutSpeaker
+            },
+        ]
+        MenuEntry.OTHER_ROOMS -> t[
+            when {
+                s.otherRooms.isEmpty() -> Strings.aboutOtherRoomsSetUp
+                s.showOtherRooms -> Strings.aboutOtherRoomsOn
+                else -> Strings.aboutOtherRoomsOff
             },
         ]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
@@ -458,6 +468,7 @@ object SettingsMenu {
             s.entityId == EntityId.THIS_TV -> s.otherSpeaker?.let(s::following)
             else -> s.following(EntityId.THIS_TV).withPlayHere(true)
         }
+        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) null else s.copy(showOtherRooms = !s.showOtherRooms)
         MenuEntry.PLAY_HERE -> {
             val next = move(PLAY_HERE_ORDER, s.playHere, direction, wrap)
             when {

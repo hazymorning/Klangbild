@@ -426,6 +426,8 @@ class NowPlayingController(
         // The quick settings' own buttons show only while their entities are there (and their
         // conditions hold); the values in the status line follow their entities.
         source?.followEntities(QuickActions.entities(s.quickActions) + s.ownValues.map { it.entity })
+        // Music from other rooms shows while nothing plays here.
+        source?.followOthers(s.shownOtherRooms)
         recompute()
     }
 

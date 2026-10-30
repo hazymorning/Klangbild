@@ -62,8 +62,10 @@ data class SourceState(
     val lyrics: SongLyrics? = null,
     /** A party of Music Assistant's Party plugin plays to this speaker, and its guests may join. */
     val party: Boolean = false,
-    /** The entity of the speaker shown: the one chosen, or this TV's own while music plays on it. */
+    /** The entity of the speaker shown: the one chosen, this TV's own while music plays on it, or another room's. */
     val speaker: String? = null,
     /** This TV's own speaker in Home Assistant, once it plays for Music Assistant and Home Assistant has it. */
     val ownSpeaker: String? = null,
+    /** The speaker shown is another room's, whose music shows while nothing plays here ([OtherRooms]). */
+    val elsewhere: Boolean = false,
 )

@@ -11,7 +11,8 @@ import kotlin.math.roundToInt
  * Where the music plays and how loud. A group is named the way music apps commonly do it: this
  * speaker plus the number of the others ("Living room + 2"), both names when there is just
  * one more, "Everywhere" when every speaker of the house plays. A speaker playing alone needs
- * no label: the screen hangs in its room.
+ * no label: the screen hangs in its room. Another room's, whose music shows while nothing plays
+ * here, is named by its room ([roomName]).
  */
 object SpeakerLabel {
 

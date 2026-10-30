@@ -27,7 +27,7 @@
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when Klangbild turns off.</string>
-    <string name="about_section_system">Home Assistant, Music Assistant, playing here, the language and updates.</string>
+    <string name="about_section_system">Home Assistant, Music Assistant, the speakers, playing here, the language and updates.</string>
 
     <!-- Settings menu: lines -->
     <string name="entry_queue">Queue</string>
@@ -53,6 +53,7 @@
     <string name="entry_sleep_action">When turning off</string>
     <string name="entry_language">Language</string>
     <string name="entry_speaker">Speaker</string>
+    <string name="entry_other_rooms">Music in other rooms</string>
     <string name="entry_update">Update</string>
     <string name="entry_update_check">Check for updates</string>
     <string name="update_notice">New version</string>
@@ -195,6 +196,9 @@
     <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>
     <string name="about_speaker">The speaker Klangbild shows and the remote controls: the one chosen on your phone, or this TV, which then plays here.</string>
     <string name="about_speaker_this_tv">Klangbild follows this TV. To follow another speaker, choose it on your phone. OK shows the QR code.</string>
+    <string name="about_other_rooms_set_up">When nothing plays here, Klangbild can show music from speakers in other rooms. OK shows the QR code; choose them on your phone.</string>
+    <string name="about_other_rooms_on">When nothing plays here, Klangbild shows music from the other rooms you chose, with the room’s name next to the time.</string>
+    <string name="about_other_rooms_off">Klangbild shows only this room’s speaker. Right also shows the other rooms you chose.</string>
     <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>
     <string name="about_play_here_off">Music Assistant can play music on this TV too, in time with your other speakers. Once you turn it on, this TV shows up there under its own name.</string>
     <string name="about_play_here_open">This TV is one of Music Assistant’s speakers while Klangbild is open. When you close Klangbild, it leaves, so music never interrupts another app.</string>
@@ -308,6 +312,8 @@
     <string name="page_entity_label">or enter the entity directly</string>
     <string name="page_entity_placeholder">media_player.living_room</string>
     <string name="page_no_speakers">No media players found.</string>
+    <string name="page_other_rooms">Music in other rooms (optional)</string>
+    <string name="page_other_rooms_hint">When nothing plays on the speaker above, the TV shows music from the speakers you tick here, with the room’s name next to the time.</string>
     <string name="page_general_heading">3 · General</string>
     <string name="page_sleep_before">Turn off after</string>
     <string name="page_sleep_after">minutes of silence, then:</string>
@@ -393,6 +399,7 @@
     <string name="setup_error_ma_unreachable">Music Assistant doesn’t answer at this address. Please check it, or clear the address to go without.</string>
     <string name="setup_error_this_tv">This TV can be the speaker only with Music Assistant.</string>
     <string name="setup_error_speaker">Please choose a speaker.</string>
+    <string name="setup_error_other_rooms">Please tick only speakers.</string>
     <string name="setup_error_sleep">The time must be between 1 and 720 minutes.</string>
     <string name="setup_error_lights">Please pick only lights.</string>
     <string name="setup_error_actions">Each button needs a script, a scene, an automation, a button or a switch, and a condition needs a value.</string>
