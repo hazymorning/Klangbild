@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.data.ha
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.data.NowPlayingSource
+import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaClient
@@ -11,6 +12,7 @@ import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.OtherRooms
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
@@ -27,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +50,9 @@ import kotlin.time.Clock
  *
  * While this TV plays as a speaker ([speaker]), its own entity ([OwnSpeaker]) is followed too,
  * and music that starts on it shows instead of the chosen speaker until it has stopped
- * ([SpeakerSwitch]), on the same connection.
+ * ([SpeakerSwitch]), on the same connection. So are the speakers of other rooms chosen on the
+ * setup page ([followOthers]), whose music shows while nothing plays here ([OtherRooms]). The
+ * notifications sent to this TV come on it as well ([notifyTo]).
  */
 class HaSource(
     http: HttpClient,
@@ -72,6 +77,7 @@ class HaSource(
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
+    private val rest = HaRest(http, auth)
 
     /** What changes together changes under this lock, the queue's reader's too. */
     private val lock = SynchronizedObject()
@@ -93,9 +99,19 @@ class HaSource(
         null
     }
     private val switch = SpeakerSwitch(ownBackMs)
+    private val rooms = OtherRooms(ownBackMs)
 
-    /** The speaker shown: the one chosen, or this TV's own while music plays on it; none while "This TV" is chosen and not found. */
+    /** The speakers of other rooms whose music shows while nothing plays here ([followOthers]). */
+    @Volatile private var otherIds: List<String> = emptyList()
+
+    /**
+     * The speaker shown: the one chosen, this TV's own while music plays on it, or another room's
+     * while only that one plays; none while "This TV" is chosen and not found.
+     */
     @Volatile private var speakerShown: String? = playerEntity.takeIf { it != EntityId.THIS_TV }
+
+    /** The speaker shown is another room's. */
+    private var elsewhere = false
 
     /** Publishes once more when this TV's own speaker gives the screen back. */
     private var backJob: Job? = null
@@ -131,6 +147,12 @@ class HaSource(
     override fun followEntities(ids: Set<String>) {
         if (ids == ownIds) return
         ownIds = ids
+        publish()
+    }
+
+    override fun followOthers(ids: List<String>) {
+        if (ids == otherIds) return
+        otherIds = ids
         publish()
     }
 
@@ -216,6 +238,12 @@ class HaSource(
     }
 
     override suspend fun partyUrl(): String? = orNull { ma?.partyUrl() }
+
+    override suspend fun register(device: HaDevice, deviceId: String): String = rest.register(device, deviceId)
+
+    override fun notifyTo(webhookId: String?) = connection.pushTo(webhookId)
+
+    override val notifications: Flow<Push> get() = connection.pushes
 
     /** The network came back: do not wait for the backoff timer. */
     fun networkAvailable() = connection.retryNow()
@@ -314,7 +342,8 @@ class HaSource(
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
         val others = player?.groupMembers.orEmpty()
-        val followed = others.toSet() + lightIds + ownIds + setOfNotNull(own?.entity) + (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
+        val followed = others.toSet() + lightIds + ownIds + otherIds + setOfNotNull(own?.entity) +
+            (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
         if (followed != alsoFollowed) {
             alsoFollowed = followed
             connection.followAlso(followed)
@@ -347,30 +376,36 @@ class HaSource(
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
             speaker = speakerShown,
             ownSpeaker = own?.entity,
+            elsewhere = elsewhere,
         )
         // Until the new song is described, what was shown stays: the song before it, all of it.
         _state.value = if (player != null && key != null && queue.awaitsDetails(player, key, t)) fresh.showing(_state.value) else fresh
     }
 
     /**
-     * Which speaker shows ([speakerShown]): the one chosen, or this TV's own while music plays on it
-     * ([SpeakerSwitch]). Another one starts afresh: its own snapshot, its own queue. Returns what
-     * the speaker shown plays.
+     * Which speaker shows ([speakerShown]): the one chosen, this TV's own while music plays on it
+     * ([SpeakerSwitch]), or another room's while only that one plays ([OtherRooms]). Another one
+     * starts afresh: its own snapshot, its own queue. Returns what the speaker shown plays.
      */
     private fun chooseSpeaker(entities: Map<String, EntityState>, t: Long): PlayerSnapshot? {
         val ownId = own?.entity
         val chosen = if (playerEntity == EntityId.THIS_TV) ownId else playerEntity
         val here = ownId?.takeIf { it != chosen }
-        val chosenPlayer = chosen?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
-        val herePlayer = here?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
+        fun playerOf(id: String?) = id?.let { entities[it] }?.let { PlayerParser.player(it, auth.baseUrl) }
+        val chosenPlayer = playerOf(chosen)
+        val herePlayer = playerOf(here)
+        val others = otherIds.filter { it != chosen && it != ownId }.associateWith(::playerOf)
+        if (others.isEmpty()) rooms.reset()
+        val room = if (others.isEmpty()) null else rooms.update(chosenPlayer, others, t)
+        val roomPlayer = room?.let { others[it] }
         val showsOwn = if (here == null) {
             switch.reset()
             false
         } else {
-            switch.update(herePlayer, chosenPlayer, t)
+            switch.update(herePlayer, chosenPlayer, t, elsewhere = roomPlayer)
         }
-        // Stopped, it stays a moment: the state is published once more when that is over.
-        val back = switch.backAt
+        // Gone quiet, a speaker stays a while: the state is published once more when that is over.
+        val back = listOfNotNull(switch.backAt, rooms.changeAt).minOrNull()
         if (back != backAt) {
             backAt = back
             backJob?.cancel()
@@ -381,13 +416,22 @@ class HaSource(
                 }
             }
         }
-        val next = if (showsOwn) here else chosen
+        val next = when {
+            showsOwn -> here
+            room != null -> room
+            else -> chosen
+        }
+        elsewhere = !showsOwn && room != null
         if (next != speakerShown) {
             speakerShown = next
             lastSnapshot = null
             queue.retarget()
         }
-        return if (showsOwn) herePlayer else chosenPlayer
+        return when {
+            showsOwn -> herePlayer
+            room != null -> roomPlayer
+            else -> chosenPlayer
+        }
     }
 
     /** This state with the player, its queue and its time as [shown] has them, and the speaker they belong to. */

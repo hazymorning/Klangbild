@@ -5,6 +5,7 @@ import assertk.assertions.contains
 import assertk.assertions.containsExactly
 import assertk.assertions.doesNotContain
 import assertk.assertions.endsWith
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotEmpty
@@ -87,6 +88,8 @@ class SettingsMenuTest {
         val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
         val withLights = configured.copy(roomLights = RoomLights(left = "light.links", right = "light.rechts"))
         val withValues = configured.copy(ownValues = listOf(OwnValue("Außen", "sensor.outside")))
+        val withRooms = configured.copy(otherRooms = listOf("media_player.kitchen"))
+        val withSensors = configured.copy(presenceSensors = listOf("binary_sensor.couch"))
         val contexts = listOf(
             MenuContext(),
             MenuContext(LinkState.CONNECTED, ma = MaLink.CONNECTED),
@@ -99,13 +102,16 @@ class SettingsMenuTest {
             MenuContext(update = UpdateInfo("2026.10.5", "v2026.10.5", state = UpdateState.FAILED)),
             MenuContext(update = UpdateInfo("2026.10.24 (abc1234)")),
         )
-        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(playHere = PlayHere.OPEN), withMa.copy(playHere = PlayHere.ALWAYS), withLights, withValues)) {
+        for (s in listOf(Settings(), configured, configured.copy(intensity = Intensity.OFF, volumeKeys = true), withMa, withMa.copy(playHere = PlayHere.OPEN), withMa.copy(playHere = PlayHere.ALWAYS), withLights, withValues, withRooms, withSensors)) {
             // The lines that are no stored setting: the connections, the sleep timer, the language
-            // (the system keeps it), the update, and the lights and the values until they are set up.
+            // (the system keeps it), the update, and the lights, the values, the other rooms and
+            // the presence sensors until they are set up.
             val needs = setOfNotNull(
                 MenuEntry.BRIGHTNESS.takeIf { !s.roomLights.isSet },
                 MenuEntry.OFF_LIGHTS.takeIf { !s.roomLights.isSet },
                 MenuEntry.VALUES.takeIf { s.ownValues.isEmpty() },
+                MenuEntry.OTHER_ROOMS.takeIf { s.otherRooms.isEmpty() },
+                MenuEntry.SCREEN_OFF.takeIf { s.presenceSensors.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
@@ -133,6 +139,28 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.VALUES, configured, MenuContext(), de)).isEqualTo("Einrichten")
         assertThat(SettingsMenu.value(MenuEntry.VALUES, withValues, MenuContext(), de)).isEqualTo("An")
         assertThat(SettingsMenu.step(MenuEntry.VALUES, withValues, +1)!!.showValues).isFalse()
+        // The other rooms likewise; hidden, none shows.
+        assertThat(SettingsMenu.value(MenuEntry.OTHER_ROOMS, configured, MenuContext(), de)).isEqualTo("Einrichten")
+        assertThat(SettingsMenu.value(MenuEntry.OTHER_ROOMS, withRooms, MenuContext(), de)).isEqualTo("An")
+        assertThat(withRooms.shownOtherRooms).containsExactly("media_player.kitchen")
+        assertThat(SettingsMenu.step(MenuEntry.OTHER_ROOMS, withRooms, +1)!!.shownOtherRooms).isEmpty()
+        // The screen goes dark while no one is in the room once there is a sensor to tell, and
+        // "Turn off after" then counts that time too.
+        assertThat(SettingsMenu.value(MenuEntry.SCREEN_OFF, configured, MenuContext(), de)).isEqualTo("Einrichten")
+        assertThat(SettingsMenu.value(MenuEntry.SCREEN_OFF, withSensors, MenuContext(), de)).isEqualTo("Wenn niemand da ist")
+        assertThat(withSensors.darkWhenNobody).isTrue()
+        assertThat(SettingsMenu.description(MenuEntry.SLEEP_AFTER, withSensors, MenuContext(), de)).contains("niemand")
+        val never = SettingsMenu.step(MenuEntry.SCREEN_OFF, withSensors, +1)!!
+        assertThat(SettingsMenu.value(MenuEntry.SCREEN_OFF, never, MenuContext(), de)).isEqualTo("Nie")
+        assertThat(never.darkWhenNobody).isFalse()
+        assertThat(SettingsMenu.description(MenuEntry.SLEEP_AFTER, never, MenuContext(), de)).doesNotContain("niemand")
+        // Notifications are a switch, off at first. Turned off after a registration, the TV stays
+        // listed in Home Assistant; a registration Home Assistant didn't take says so.
+        assertThat(SettingsMenu.value(MenuEntry.NOTIFICATIONS, configured, MenuContext(), de)).isEqualTo("Aus")
+        val notifying = SettingsMenu.step(MenuEntry.NOTIFICATIONS, configured, +1)!!
+        assertThat(notifying.notifications).isTrue()
+        assertThat(SettingsMenu.description(MenuEntry.NOTIFICATIONS, notifying, MenuContext(notifyFailed = true), de)).contains("nicht")
+        assertThat(SettingsMenu.description(MenuEntry.NOTIFICATIONS, configured.copy(notifyWebhook = "hook"), MenuContext(), de)).contains("löschst")
     }
 
     @Test
@@ -155,7 +183,7 @@ class SettingsMenuTest {
             MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
-            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
+            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
             MenuEntry.UPDATE_CHECK,
         )
     }

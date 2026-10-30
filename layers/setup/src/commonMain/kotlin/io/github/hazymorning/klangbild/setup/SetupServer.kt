@@ -150,8 +150,17 @@ interface SetupServer {
                 val id = o.id() ?: return@mapNotNull null
                 entityOption(id, o.name() ?: id, o.state(), o.attrs())
             }.sortedBy { it.name.lowercase() }
-            return DiscoverResult.Ok(speakers, lights, actions, entities)
+            // Every binary sensor can tell whether someone is in the room; presence sensors first, then motion sensors.
+            val sensors = states.mapNotNull { o ->
+                val id = o.id()?.takeIf { it.startsWith("binary_sensor.") } ?: return@mapNotNull null
+                val rank = PRESENCE_CLASSES.indexOf(o.attrs()?.string("device_class")).let { if (it < 0) PRESENCE_CLASSES.size else it }
+                rank to SensorOption(id, o.name() ?: id, stateWord(o.state(), t))
+            }.sortedWith(compareBy<Pair<Int, SensorOption>> { it.first }.thenBy { it.second.name.lowercase() }).map { it.second }
+            return DiscoverResult.Ok(speakers, lights, actions, entities, sensors)
         }
+
+        /** The device classes of sensors that see someone in a room, the likeliest first. */
+        private val PRESENCE_CLASSES = listOf("presence", "occupancy", "motion")
 
         /**
          * An entity as the page offers it: its raw state and unit, and the attributes worth

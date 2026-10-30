@@ -139,6 +139,7 @@ class LanguageTest {
             configured,
             configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t"),
             configured.copy(roomLights = RoomLights("light.left", "light.middle", "light.right")),
+            configured.copy(otherRooms = listOf("media_player.kitchen"), presenceSensors = listOf("binary_sensor.couch"), notifyWebhook = "hook"),
         )
         val contexts = buildList {
             for (link in LinkState.entries + null) for (ma in MaLink.entries + null) add(MenuContext(link, ma = ma))
@@ -151,6 +152,7 @@ class LanguageTest {
                 add(MenuContext(LinkState.CONNECTED, update = UpdateInfo("2026.10.5", latest, state = state)))
             }
             add(MenuContext(LinkState.CONNECTED, update = UpdateInfo("2026.10.24 (abc1234)")))
+            add(MenuContext(LinkState.CONNECTED, notifyFailed = true))
         }
         val out = LinkedHashSet<MenuRow>(SettingsMenu.groups(Settings(), MenuContext(), t))
         out += SettingsMenu.groups(Settings(), MenuContext(update = UpdateInfo("2026.10.5", "v2026.11.0")), t)

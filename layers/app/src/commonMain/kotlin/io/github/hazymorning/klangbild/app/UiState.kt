@@ -75,8 +75,13 @@ data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 data class UiState(
     /** What shows. While a song that came after the clock waits for its first scene, still the clock ([HeldStage]). */
     val screen: Screen = Screen.Rest(RestReason.CONNECTING),
-    /** Nothing has played for the sleep timeout and no menu is open: the screen may turn off, or the app close. */
+    /**
+     * Nothing has played, or no one has been in the room, for the sleep timeout and no menu is
+     * open: the screen may turn off, or the app close.
+     */
     val asleep: Boolean = false,
+    /** No one is in the room, as the presence sensors chosen on the phone tell: the screen is dark while the music plays on. */
+    val dark: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**
      * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays
@@ -118,6 +123,8 @@ data class UiState(
     val texts: Texts? = null,
     /** The values of one's own in words, as far as Home Assistant can tell them ("Outside 12 °C"). */
     val values: List<String> = emptyList(),
+    /** A notification from Home Assistant ("Laundry · Done"), while the status line or the rest screen's line shows it. */
+    val message: String? = null,
     /** The link of the party playing here, while its code shows where the cover stands (the quick settings' Party code). */
     val partyCode: String? = null,
     /** The quick settings have never been opened: the stage may tell how (arrow down) for a moment. */

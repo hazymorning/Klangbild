@@ -29,6 +29,9 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
     /** The keys that went down here and are not let go yet. */
     private val pressed = mutableSetOf<RemoteKey>()
 
+    /** The key that brought the dark screen back (no one was in the room): until it is let go it does nothing else. */
+    private var waking: RemoteKey? = null
+
     private var centerLongPressed = false
     private var sideLongPressed = false
 
@@ -44,6 +47,9 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /** [key] going down, [repeat] times repeated while held. True asks the platform to follow it for a long press and its release. */
     fun down(key: RemoteKey, repeat: Int): Boolean {
+        // Someone is in the room; on the dark screen the key only brings the picture back.
+        if (repeat == 0 && controller.keyPressed()) waking = key
+        if (key == waking) return false
         if (repeat == 0) pressed += key
         // The quick settings take their keys first.
         if (quick.isOpen && quickKey(key)) return false
@@ -178,6 +184,7 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
      * screensaver, say).
      */
     fun up(key: RemoteKey, followed: Boolean, canceled: Boolean) {
+        if (key == waking) waking = null
         if (!pressed.remove(key)) return
         if (key == RemoteKey.OK) {
             if (!centerLongPressed && !canceled) onCenterPressed()
@@ -229,9 +236,11 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /**
      * Back closes just what lies on top of the music: the settings (a group goes back to the
-     * groups first), the quick menu, the setup code. False when nothing does, and the app closes.
+     * groups first), the quick menu, the setup code. On the dark screen it only brings the
+     * picture back. False when nothing does, and the app closes.
      */
     fun back(): Boolean {
+        if (controller.keyPressed()) return true
         val s = controller.ui.value.screen
         when {
             menu.isOpen -> menu.back()

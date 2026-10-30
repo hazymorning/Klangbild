@@ -158,6 +158,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     speaker = c.speaker?.let { name -> SpeakerLabel.group(ui.source.group, t).takeIf { ui.display.group } ?: name },
                     entityId = ui.entityId,
                     nowMs = wall.value,
+                    message = ui.message,
                     intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
@@ -344,11 +345,11 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
     // The bar moves when its length is known and nothing stands in its place.
     val barMoves = barWanted(stage.lyrics) && !linkDown && (chapter != null || stage.track.durationMs != null)
-    // The stage's tick: fast while music plays. With nothing to redraw, or with the settings
-    // covering the stage, it stops.
+    // The stage's tick: fast while music plays. With nothing to redraw, with the settings
+    // covering the stage, or with the screen going dark for no one in the room, it stops.
     val tick = rememberTickLoop(
         fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
-        running = (moving || barMoves || stage.lyrics != null) && ui.menu == null,
+        running = (moving || barMoves || stage.lyrics != null) && ui.menu == null && !ui.dark,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
         theater(status, modelFor, { intensity }, linkDown)
@@ -390,19 +391,23 @@ private fun rememberHint(downHint: Boolean): Boolean {
     return if (still) downHint else hinting
 }
 
-/** The status line for [ui]: the clock at [nowMs], the custom values and the lead, the hidden parts back while [peek]. */
+/** The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a notification), the hidden parts back while [peek]. */
 private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts): StatusLine {
     val display = ui.display
     val player = ui.source.player
     val clock = if (display.clock || peek) t.clock(nowMs) else null
-    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek }
+    // Music from another room is always named by it, since the screen doesn't hang there.
+    val room = player?.friendlyName?.let(SpeakerLabel::roomName)?.takeIf { ui.source.elsewhere }
+    val group = SpeakerLabel.group(ui.source.group, t).takeIf { display.group || peek } ?: room
     val volume = SpeakerLabel.volume(player?.volume, t)
     // How it plays: when the sleep timer pauses it, else a book's or an episode's speed.
     val spoken = (ui.screen as? Screen.Stage)?.track?.kind?.spoken == true
     val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
     val own = ui.source.speaker != null && ui.source.speaker == ui.source.ownSpeaker
     val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
-    val lead = StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
+    // A notification takes the lead's place while it shows; a volume change still shows for its moment.
+    val lead = ui.message?.takeUnless { ui.volumeFlash }
+        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     return StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
 }

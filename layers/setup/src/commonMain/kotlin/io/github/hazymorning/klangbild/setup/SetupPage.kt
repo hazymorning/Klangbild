@@ -29,6 +29,7 @@ object SetupPage {
             .replace("__MAX_VALUES__", OwnValues.MAX.toString())
             .replace("__MAX_VALUE_NAME__", OwnValues.MAX_NAME.toString())
             .replace("__MAX_SLEEP__", Settings.MAX_SLEEP_MINUTES.toString())
+            .replace("__MAX_SENSORS__", Settings.MAX_PRESENCE_SENSORS.toString())
             .replace("__THIS_TV__", EntityId.THIS_TV)
             .replace("__SCRIPT_TEXTS__", script)
         for ((key, value) in words) page = page.replace("{{$key}}", escape(value))
@@ -68,6 +69,8 @@ object SetupPage {
         "speakersTwice" to Strings.pageSpeakersTwice,
         "entityLabel" to Strings.pageEntityLabel,
         "entityPlaceholder" to Strings.pageEntityPlaceholder,
+        "otherRooms" to Strings.pageOtherRooms,
+        "otherRoomsHint" to Strings.pageOtherRoomsHint,
         "generalHeading" to Strings.pageGeneralHeading,
         "sleepBefore" to Strings.pageSleepBefore,
         "sleepAfter" to Strings.pageSleepAfter,
@@ -75,6 +78,10 @@ object SetupPage {
         "close" to Strings.pageClose,
         "clock" to Strings.pageClock,
         "remote" to Strings.pageRemote,
+        "presenceHeading" to Strings.pagePresenceHeading,
+        "presenceHint" to Strings.pagePresenceHint,
+        "presenceEmpty" to Strings.pagePresenceEmpty,
+        "sensorAdd" to Strings.pageSensorAdd,
         "maHeading" to Strings.pageMaHeading,
         "maHint" to Strings.pageMaHint,
         "maTokenPlaceholder" to Strings.pageMaTokenPlaceholder,
@@ -103,6 +110,8 @@ object SetupPage {
         "thisTv" to Strings.pageThisTv,
         "thisTvMeta" to Strings.pageThisTvMeta,
         "noLights" to Strings.pageNoLights,
+        "noSensors" to Strings.pageNoSensors,
+        "sensor" to Strings.pageSensor,
         "left" to Strings.pageLightLeft,
         "center" to Strings.pageLightCenter,
         "right" to Strings.pageLightRight,
@@ -172,6 +181,7 @@ object SetupPage {
   .sub { color: var(--muted); margin: 0 0 28px; }
   section { border-top: 1px solid var(--line); padding: 22px 0 8px; }
   h2 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 0 0 6px; }
+  h3 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 28px 0 6px; }
   label { display: block; color: var(--muted); font-size: 15px; margin: 14px 0 6px; }
   input[type=text], input[type=url], input[type=number], textarea, select {
     width: 100%; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
@@ -250,6 +260,9 @@ object SetupPage {
     <div class="speakers" id="speakers"><p class="hint">{{speakersEmpty}}</p></div>
     <label for="entity">{{entityLabel}}</label>
     <input id="entity" type="text" placeholder="{{entityPlaceholder}}" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <h3>{{otherRooms}}</h3>
+    <p class="hint">{{otherRoomsHint}}</p>
+    <div class="speakers" id="otherRooms"><p class="hint">{{speakersEmpty}}</p></div>
   </section>
 
   <section>
@@ -259,6 +272,10 @@ object SetupPage {
     <label class="row"><input type="radio" name="action" value="close"> {{close}}</label>
     <label class="row"><input id="clock" type="checkbox" checked> {{clock}}</label>
     <label class="row"><input id="remote" type="checkbox" checked> {{remote}}</label>
+    <h3>{{presenceHeading}}</h3>
+    <p class="hint">{{presenceHint}}</p>
+    <div id="presence"><p class="hint">{{presenceEmpty}}</p></div>
+    <button id="addSensor" class="hidden">{{sensorAdd}}</button>
   </section>
 
   <section>
@@ -310,6 +327,10 @@ object SetupPage {
   let hasToken = false;
   // The speakers Home Assistant offers, once found; "This TV" goes before them while the TV plays for Music Assistant.
   let speakers = null;
+  // The speakers in other rooms whose music shows while nothing plays on the one chosen: as
+  // stored, and whether the page has shown them.
+  let otherRooms = [];
+  let otherRoomsShown = false;
   const THIS_TV = '__THIS_TV__';
   let lights = { lightsLeft: '', lightsCenter: '', lightsRight: '' };
   let lightsShown = false;
@@ -321,6 +342,11 @@ object SetupPage {
   let values = [];
   let entityOptions = [];
   let valuesShown = false;
+  // The presence sensors in this room: as stored, what Home Assistant offers, and whether the page has shown them.
+  let presence = [];
+  let sensorOptions = [];
+  let presenceShown = false;
+  const MAX_SENSORS = __MAX_SENSORS__;
   const MAX_ACTIONS = __MAX_ACTIONS__;
   const MAX_VALUES = __MAX_VALUES__;
   const MAX_RESULTS = 30;
@@ -348,16 +374,34 @@ object SetupPage {
     ${'$'}('speakersTwice').hidden = !(speakers || []).some((sp) => sp.ma);
     if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
     list.forEach((sp) => {
-      const row = document.createElement('label'); row.className = 'speaker';
       const r = document.createElement('input'); r.type = 'radio'; r.name = 'speaker'; r.value = sp.id;
       r.checked = sp.id === selected;
-      r.onchange = () => { ${'$'}('entity').value = sp.id; if (sp.id === THIS_TV) ${'$'}('tvSpeaker').checked = true; };
-      const text = document.createElement('div');
-      const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
-      const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = sp.meta || (sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state);
-      text.append(name, meta); row.append(r, text); box.append(row);
+      r.onchange = () => { ${'$'}('entity').value = sp.id; if (sp.id === THIS_TV) ${'$'}('tvSpeaker').checked = true; renderOtherRooms(); };
+      box.append(speakerRow(sp, r));
     });
+  }
+  // The speakers of other rooms to tick: every one but the speaker chosen above.
+  function renderOtherRooms() {
+    if (!speakers) return;
+    const box = ${'$'}('otherRooms'); box.textContent = '';
+    const list = speakers.filter((sp) => sp.id !== ${'$'}('entity').value.trim());
+    if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
+    list.forEach((sp) => {
+      const c = document.createElement('input'); c.type = 'checkbox'; c.value = sp.id;
+      c.checked = otherRooms.includes(sp.id);
+      c.onchange = () => { otherRooms = otherRooms.filter((id) => id !== sp.id).concat(c.checked ? [sp.id] : []); };
+      box.append(speakerRow(sp, c));
+    });
+    otherRoomsShown = true;
+  }
+  function speakerRow(sp, input) {
+    const row = document.createElement('label'); row.className = 'speaker';
+    const text = document.createElement('div');
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = sp.name;
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = sp.meta || (sp.id + (sp.ma ? ' · Music Assistant' : '') + ' · ' + sp.state);
+    text.append(name, meta); row.append(input, text);
+    return row;
   }
   function renderLights(list) {
     const box = ${'$'}('lights'); box.textContent = '';
@@ -574,6 +618,31 @@ object SetupPage {
     renderValues();
     const last = ${'$'}('valueEntity' + (values.length - 1)); if (last) last.focus();
   }
+  function renderPresence() {
+    const box = ${'$'}('presence'); box.textContent = '';
+    presenceShown = true;
+    if (!sensorOptions.length && !presence.length) {
+      box.append(hint(T.noSensors));
+      ${'$'}('addSensor').classList.add('hidden');
+      return;
+    }
+    const choices = sensorOptions.map((o) => ({ id: o.id, name: o.name, meta: o.id + ' · ' + o.state }));
+    presence.forEach((id, i) => {
+      const row = document.createElement('div'); row.className = 'action';
+      const pick = picker('sensor' + i, choices, id, (picked) => { presence[i] = picked; });
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet'; remove.textContent = T.actionRemove;
+      remove.onclick = () => { presence.splice(i, 1); renderPresence(); };
+      row.append(label('sensor' + i, T.sensor), pick, remove);
+      box.append(row);
+    });
+    ${'$'}('addSensor').classList.toggle('hidden', presence.length >= MAX_SENSORS);
+  }
+  function addSensor() {
+    if (presence.length >= MAX_SENSORS) return;
+    presence.push('');
+    renderPresence();
+    const last = ${'$'}('sensor' + (presence.length - 1)); if (last) last.focus();
+  }
   async function load() {
     if (code().length !== 6) return;
     sessionStorage.setItem('klangbild-code', code());
@@ -584,6 +653,8 @@ object SetupPage {
     hasToken = s.auth === 'token';
     if (hasToken) ${'$'}('token').placeholder = T.tokenKept;
     ${'$'}('entity').value = s.entity || '';
+    otherRooms = s.otherRooms || [];
+    presence = s.presence || [];
     ${'$'}('sleep').value = s.sleepMinutes || 10;
     document.querySelectorAll('input[name=action]').forEach((r) => r.checked = (r.value === s.sleepAction));
     ${'$'}('clock').checked = !!s.clock; ${'$'}('remote').checked = !!s.remote;
@@ -618,11 +689,14 @@ object SetupPage {
       ${'$'}('url').value = r.url;
       speakers = r.speakers;
       renderSpeakers(${'$'}('entity').value);
+      renderOtherRooms();
       renderLights(r.lights || []);
       actionOptions = r.actions || [];
       entityOptions = r.entities || [];
+      sensorOptions = r.sensors || [];
       renderActions();
       renderValues();
+      renderPresence();
       status(T.connected, 'good');
     } catch (e) { status(T.tvUnreachable, 'bad'); }
     finally { ${'$'}('find').disabled = false; }
@@ -648,6 +722,10 @@ object SetupPage {
           variables: a.entity.startsWith('script.') && Object.keys(a.variables).length ? a.variables : undefined,
           when: a.when && a.when.entity ? { entity: a.when.entity, attribute: a.when.attribute || undefined, test: a.when.test, value: String(a.when.value) } : undefined }));
       }
+      // The presence sensors chosen.
+      if (presenceShown) body.presence = presence.filter((id) => id);
+      // The speakers in other rooms, as far as Home Assistant still has them.
+      if (otherRoomsShown) body.otherRooms = otherRooms.filter((id) => id !== body.entity && speakers.some((sp) => sp.id === id));
       // The values in the status line, likewise.
       if (valuesShown) body.values = values.filter((v) => v.entity).map((v) => ({ name: v.name.trim(), entity: v.entity, attribute: v.attribute || undefined }));
       const r = await api('/api/save', body);
@@ -661,11 +739,13 @@ object SetupPage {
   ${'$'}('save').onclick = save;
   ${'$'}('addAction').onclick = addAction;
   ${'$'}('addValue').onclick = addValue;
+  ${'$'}('addSensor').onclick = addSensor;
   ${'$'}('tvSpeaker').onchange = () => {
     if (!${'$'}('tvSpeaker').checked && ${'$'}('entity').value.trim() === THIS_TV) ${'$'}('entity').value = '';
     if (speakers) renderSpeakers(${'$'}('entity').value);
   };
   ${'$'}('maUrl').oninput = () => { if (speakers) renderSpeakers(${'$'}('entity').value); };
+  ${'$'}('entity').onchange = renderOtherRooms;
   ${'$'}('code').oninput = () => { if (code().length === 6) load(); };
   if (params.has('signin')) history.replaceState(null, '', '/');
   load();

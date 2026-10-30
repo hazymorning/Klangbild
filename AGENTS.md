@@ -42,7 +42,11 @@ release notes, commits, pull requests, issues, discussions and code comments.
   recognize them, like the words in `SpeakerLabel`, is fine.
 - The UI is in English, with German in `values-de`. No English sentence in the UI is longer than
   its German translation (`LanguageTest`). Menu labels use the words people know from TVs and
-  phones, and their values are plain words. Everything else in the repository is in English.
+  phones, and their values are plain words. Name a setting by what the viewer sees or does, never
+  by how it works ("Screen off: When no one’s here"), and make sure it reads naturally in German
+  too. Its explanation says in plain, whole sentences what the viewer will notice, like "A minute
+  after everyone has left the room, the screen goes black while the music keeps playing."
+  Everything else in the repository is in English.
 - Music metadata keeps its own typography (`TrackText`). Dashes in string literals and test data
   are data, so never change them with find and replace.
 
@@ -55,10 +59,18 @@ By kind:
   when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
   every release's APK must be named `klangbild.apk`.
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better`, `### Gone` and
-  `### Bug fixes` as needed. Each file has a few short points in everyday words about what changed,
-  without addressing the reader. Leave out technical details and precise-sounding claims like "to a
-  fraction of a second", include only what's known to work, and keep it as short as the release
-  allows.
+  `### Bug fixes` as needed. Each point says plainly what changed, so that someone who has never
+  seen the feature understands it. A point under New starts with the feature's name in bold,
+  followed by a sentence or two on what it does and when, like "**Screen off when no one's
+  there.** With presence sensors from Home Assistant, Klangbild can now turn the screen black
+  once everyone has left the room, while the music keeps playing." A feature that has to be set
+  up or turned on says "can" and how to get it, so it never reads as what every TV now does.
+  Describe what happens rather than where the setting is, and don't reuse the menu's
+  explanations, which assume the reader is already looking at the setting. Use everyday words
+  without addressing the reader, leave out technical details and precise-sounding claims like "to
+  a fraction of a second", and include only what's known to work. Never claim more than that and
+  stay modest: a bug fix says the problem should no longer happen, never that it's fixed or can't
+  happen anymore.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
   characters.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
@@ -256,6 +268,8 @@ are in the code, and the tests named here check them.
   never tried again, since Home Assistant counts every attempt as a failed login. The app logs its
   connection steps under the tag `Klangbild` and never logs a token.
 - Music Assistant is optional, and everything works with Home Assistant alone.
+- Notifications are off by default, since turning them on adds this TV to Home Assistant as a
+  device (a mobile app registration), which stays until someone deletes it there.
 - The "Play here" setting, which makes the TV a speaker, is off by default. While it's off, none
   of it runs: no service, thread or connection (`SpeakerServiceTest`). Its key is generated once
   and kept, because a new key would show up as a new speaker in Music Assistant and a new entity

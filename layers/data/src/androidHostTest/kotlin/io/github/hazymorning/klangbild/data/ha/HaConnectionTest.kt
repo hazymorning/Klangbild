@@ -10,9 +10,11 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.single
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.httpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -151,6 +154,11 @@ class HaConnectionTest {
                 }
                 "subscribe_events" -> ok()
                 "unsubscribe_events" -> ok()
+                "mobile_app/push_notification_channel" -> if (msg["webhook_id"]?.jsonPrimitive?.content == "hook") {
+                    ok()
+                } else {
+                    webSocket.send("""{"id":$id,"type":"result","success":false,"error":{"code":"not_found","message":"Webhook ID not found"}}""")
+                }
                 "get_config" -> ok("""{"unit_system":{"length":"km","temperature":"°C"},"time_zone":"Europe/Berlin"}""")
                 "config/entity_registry/list_for_display" -> ok(
                     """{"entity_categories":{},"entities":[{"ei":"button.wz_favorite","pl":"music_assistant","di":"d1","tk":"favorite_now_playing"},{"ei":"light.x"}]}""",
@@ -244,6 +252,33 @@ class HaConnectionTest {
         withTimeout(5_000) { conn.entities.first { it.isEmpty() } }
         // A call's result comes through, though it names none of them.
         assertThat(conn.callServiceForContext("light", "turn_on", "light.flur")).isEqualTo("c")
+        conn.stop()
+    }
+
+    @Test
+    fun `notifications arrive on a push channel, opened again after a reconnect, and a refused one says so`() = runBlocking {
+        // The events feed: a notification names no followed entity, and comes through all the same.
+        admin = false
+        val conn = connection()
+        val pushes = CopyOnWriteArrayList<Push>()
+        val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { conn.pushes.collect { pushes += it } }
+        conn.pushTo("hook")
+        conn.start(auth(), listOf("media_player.wz"))
+        withTimeout(5_000) { conn.entities.first { it.containsKey("media_player.wz") } }
+        val channels = { ofType("mobile_app/push_notification_channel") }
+        withTimeout(5_000) { while (channels().isEmpty()) delay(20) }
+        assertThat(channels().last()["webhook_id"]).isEqualTo(JsonPrimitive("hook"))
+        val subId = channels().last()["id"]!!.jsonPrimitive.content
+        sockets.last().send("""{"id":$subId,"type":"event","event":{"message":"Done","title":"Laundry"}}""")
+        withTimeout(5_000) { while (pushes.isEmpty()) delay(20) }
+        assertThat(pushes.single()).isEqualTo(Push.Message("Laundry", "Done"))
+        // A new connection opens it again.
+        sockets.last().close(1001, "restart")
+        withTimeout(5_000) { while (channels().size < 2) delay(20) }
+        // A registration Home Assistant doesn't know is refused.
+        conn.pushTo("gone")
+        withTimeout(5_000) { while (Push.Refused !in pushes) delay(20) }
+        collector.cancel()
         conn.stop()
     }
 

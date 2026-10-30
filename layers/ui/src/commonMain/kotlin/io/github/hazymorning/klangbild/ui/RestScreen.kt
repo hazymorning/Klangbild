@@ -143,7 +143,8 @@ private object RestLight {
  * Nothing is playing: a quiet clock, the date, and one line that says why (never an error code),
  * in a lamp's light on the dark background. The clock stands exactly in the screen's middle,
  * measured on what is seen (from the top of the figures to their baseline); the lines hang
- * under it.
+ * under it. A notification from Home Assistant ([message]) takes the short line's place while it
+ * shows.
  */
 @Composable
 fun RestScreen(
@@ -156,6 +157,7 @@ fun RestScreen(
     /** The lamp's strength from the settings (0 = off). */
     intensity: Float = 1f,
     appearance: Appearance = Appearance.DARK,
+    message: String? = null,
 ) {
     val colors = remember(appearance) { RestColors.of(appearance) }
     val t = texts()
@@ -180,7 +182,7 @@ fun RestScreen(
         RestBlock(
             time = t.clockFigures(nowMs, zone),
             date = t.date(nowMs, zone),
-            label = lines.label,
+            label = message ?: lines.label,
             sentence = lines.sentence,
             colors = colors,
         )
@@ -204,7 +206,10 @@ private fun RestBlock(time: String, date: String, label: String?, sentence: Stri
             }
             BasicText(date, Modifier.layoutId(DATE), style = faces.textType(DATE_SP, 420, colors.inkMuted).merge(TextStyle(textAlign = TextAlign.Center)))
             if (label != null) {
-                BasicText(label, Modifier.layoutId(LABEL), style = faces.textType(LABEL_SP, 500, colors.inkQuiet).merge(TextStyle(textAlign = TextAlign.Center)))
+                // A new line (a notification coming or going) dissolves in, like the minute.
+                Crossfade(targetState = label, Modifier.layoutId(LABEL), animationSpec = tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "rest-label") { l ->
+                    BasicText(l, style = faces.textType(LABEL_SP, 500, colors.inkQuiet).merge(TextStyle(textAlign = TextAlign.Center)))
+                }
             }
             if (sentence != null) {
                 BalancedText(

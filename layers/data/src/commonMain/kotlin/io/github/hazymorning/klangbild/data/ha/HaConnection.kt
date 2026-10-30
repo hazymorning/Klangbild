@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data.ha
 
 import io.github.hazymorning.klangbild.data.Backoff
+import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.WebSocketLink
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.domain.EntityState
@@ -19,8 +20,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
@@ -87,6 +91,9 @@ data class RegistryEntry(
  * fires on attribute changes too). That command needs an administrator; for other users the
  * connection falls back to `subscribe_events` for `state_changed` and keeps only the followed
  * entities. A new subscription starts from each entity's state as the REST API gives it.
+ *
+ * Notifications sent to this TV arrive on a push channel of their own
+ * (`mobile_app/push_notification_channel`, [pushTo]), opened again after a reconnect.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HaConnection(
@@ -130,6 +137,12 @@ class HaConnection(
 
     @Volatile private var session: Session? = null
 
+    private val pushWebhook = MutableStateFlow<String?>(null)
+    private val _pushes = MutableSharedFlow<Push>(extraBufferCapacity = PUSH_BUFFER)
+
+    /** The notifications sent to the registration [pushTo] names, and Home Assistant refusing it. */
+    val pushes: SharedFlow<Push> = _pushes.asSharedFlow()
+
     /** Connects with [auth] and follows [entityIds], until [stop]. */
     fun start(auth: HaAuth, entityIds: List<String>) {
         stop()
@@ -142,6 +155,11 @@ class HaConnection(
      */
     fun followAlso(ids: Set<String>) {
         extraIds.value = ids
+    }
+
+    /** Receives the notifications Home Assistant sends to the registration [webhookId] ([pushes]); null receives none. */
+    fun pushTo(webhookId: String?) {
+        pushWebhook.value = webhookId
     }
 
     fun stop() {
@@ -396,6 +414,12 @@ class HaConnection(
         private val restResults = Channel<RestStates>(Channel.UNLIMITED)
         private val extraChanges = Channel<Set<String>>(Channel.CONFLATED)
 
+        /** The push channel for the registration [pushId], and how its messages are told apart in the events feed. */
+        private var pushSub: Int? = null
+        private var pushId: String? = null
+        private var pushPattern: Regex? = null
+        private val pushChanges = Channel<String?>(Channel.CONFLATED)
+
         /** Subscribes, then handles what arrives until the connection ends; how it ended. */
         suspend fun run(events: ReceiveChannel<WsEvent>): SessionEnd {
             session = s
@@ -414,6 +438,7 @@ class HaConnection(
             }
             val pinger = sessionScope.launch { ping() }
             val extraWatcher = sessionScope.launch { extraIds.collect { extraChanges.send(it) } }
+            val pushWatcher = sessionScope.launch { pushWebhook.collect { pushChanges.send(it) } }
             try {
                 while (true) {
                     val end = select<SessionEnd?> {
@@ -428,12 +453,17 @@ class HaConnection(
                                 null
                             }
                         }
+                        pushChanges.onReceive { id ->
+                            if (id != pushId) openPush(id)
+                            null
+                        }
                     }
                     if (end != null) return end
                 }
             } finally {
                 pinger.cancel()
                 extraWatcher.cancel()
+                pushWatcher.cancel()
                 s.cancelAll()
             }
         }
@@ -461,11 +491,15 @@ class HaConnection(
         private fun onText(text: String): SessionEnd? {
             // The events feed carries every state change in the house. Skip messages that name no
             // followed entity, unless they answer a command or a ping.
-            if (feed == Feed.EVENTS && subscribed && followed.none { text.contains("\"$it\"") } && !ANSWER.containsMatchIn(text)) return null
+            if (feed == Feed.EVENTS && subscribed && followed.none { text.contains("\"$it\"") } && !ANSWER.containsMatchIn(text) &&
+                pushPattern?.containsMatchIn(text) != true
+            ) {
+                return null
+            }
             for (msg in parseMessages(text)) {
                 val id = (msg["id"] as? JsonPrimitive)?.intOrNull
                 when (msg.type()) {
-                    "event" -> if (id != null && (id == mainSub || id == extraSub)) onEvent(msg)
+                    "event" -> if (id != null && id == pushSub) onPush(msg) else if (id != null && (id == mainSub || id == extraSub)) onEvent(msg)
                     "result" -> onResult(id, msg)?.let { return it }
                     "pong" -> s.lastPong = now()
                 }
@@ -517,8 +551,40 @@ class HaConnection(
                 }
                 id == mainSub -> return SessionEnd.Lost
                 id != null && id == extraSub && !ok -> extraSub = null
+                // The registration is gone, or another user's: no channel until another one is named.
+                id != null && id == pushSub && !ok -> {
+                    pushSub = null
+                    pushPattern = null
+                    _pushes.tryEmit(Push.Refused)
+                }
             }
             return null
+        }
+
+        /** Receives the notifications of the registration [id] (none for null) on a push channel of its own. */
+        private fun openPush(id: String?) {
+            pushSub?.let { old -> s.send(unsubscribe(s.nextId(), old)) }
+            pushId = id
+            pushSub = null
+            pushPattern = null
+            if (id == null) return
+            val sub = s.nextId()
+            pushSub = sub
+            pushPattern = Regex("\"id\"\\s*:\\s*$sub[^0-9]")
+            s.send(
+                buildJsonObject {
+                    put("id", sub)
+                    put("type", "mobile_app/push_notification_channel")
+                    put("webhook_id", id)
+                },
+            )
+        }
+
+        /** A notification on the push channel: its message, and its title if it has one. */
+        private fun onPush(msg: JsonObject) {
+            val event = msg["event"] as? JsonObject ?: return
+            val message = event.string("message")?.takeIf { it.isNotBlank() } ?: return
+            _pushes.tryEmit(Push.Message(event.string("title")?.takeIf { it.isNotBlank() }, message))
         }
 
         /** States read over REST. An event may have overtaken them; an entity Home Assistant doesn't have is missing. */
@@ -649,6 +715,9 @@ class HaConnection(
     private companion object {
         /** How long a service call may take to be answered. */
         const val CALL_TIMEOUT_MS = 10_000L
+
+        /** Notifications that arrive at once wait for whoever shows them, this many at most. */
+        const val PUSH_BUFFER = 16
 
         /** A message that answers a command or a ping, however Home Assistant spaces its JSON. */
         val ANSWER = Regex("\"type\"\\s*:\\s*\"(result|pong)\"")

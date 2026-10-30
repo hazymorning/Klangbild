@@ -163,6 +163,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             speaker = host.speaker,
             speakerName = host.ui.source.player?.friendlyName?.takeIf { host.ui.source.speaker == s.entityId },
             update = host.update,
+            notifyFailed = host.notifyFailed,
         )
         val group = section
         val rows = if (group == null) SettingsMenu.groups(s, ctx, host.texts) else SettingsMenu.rows(s, ctx, host.texts, group)

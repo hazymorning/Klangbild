@@ -40,6 +40,9 @@ data class SpeakerOption(val entityId: String, val name: String, val state: Stri
 /** One light offered to join in. */
 data class LightOption(val entityId: String, val name: String, val state: String)
 
+/** One sensor offered to tell whether someone is in the room. */
+data class SensorOption(val entityId: String, val name: String, val state: String)
+
 /**
  * One entity a button of one's own can work (a script, a scene, an automation, a button, a
  * switch); a script with the [fields] it declares.
@@ -89,6 +92,7 @@ sealed interface DiscoverResult {
         val lights: List<LightOption> = emptyList(),
         val actions: List<ActionOption> = emptyList(),
         val entities: List<EntityOption> = emptyList(),
+        val sensors: List<SensorOption> = emptyList(),
     ) : DiscoverResult
 
     /** [refused]: Home Assistant refused the credentials. */
@@ -235,6 +239,8 @@ class SetupHandler(
                 put("url", url ?: "")
                 put("auth", auth)
                 put("entity", s.entityId ?: "")
+                put("otherRooms", buildJsonArray { s.otherRooms.forEach { add(JsonPrimitive(it)) } })
+                put("presence", buildJsonArray { s.presenceSensors.forEach { add(JsonPrimitive(it)) } })
                 put("sleepMinutes", s.sleepAfterMinutes)
                 put("sleepAction", s.sleepAction.name.lowercase())
                 put("clock", s.showClock)
@@ -348,6 +354,15 @@ class SetupHandler(
                         })
                     }
                 })
+                put("sensors", buildJsonArray {
+                    r.sensors.forEach { o ->
+                        add(buildJsonObject {
+                            put("id", o.entityId)
+                            put("name", o.name)
+                            put("state", o.state)
+                        })
+                    }
+                })
                 put("entities", buildJsonArray {
                     r.entities.forEach { e ->
                         add(buildJsonObject {
@@ -438,6 +453,24 @@ class SetupHandler(
             }
             else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
         }
+        // The speakers in other rooms, likewise; the one chosen above is this room's.
+        val otherRooms = when (val list = body["otherRooms"]) {
+            null -> current.otherRooms
+            is JsonArray -> list.map { e ->
+                (e as? JsonPrimitive)?.content?.takeIf { it.startsWith("media_player.") && EntityId.isValid(it) }
+                    ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
+            }
+            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
+        }.filter { it != entity }.distinct().take(Settings.MAX_OTHER_ROOMS)
+        // The presence sensors, likewise: sensors that are on or off.
+        val presence = when (val list = body["presence"]) {
+            null -> current.presenceSensors
+            is JsonArray -> list.map { e ->
+                (e as? JsonPrimitive)?.content?.takeIf { it.startsWith("binary_sensor.") && EntityId.isValid(it) }
+                    ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorPresence]))
+            }
+            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorPresence]))
+        }.distinct().take(Settings.MAX_PRESENCE_SENSORS)
         val updated = withMa.following(entity).withPlayHere(tvSpeaker).copy(
             sleepAfterMinutes = minutes,
             sleepAction = action,
@@ -446,6 +479,8 @@ class SetupHandler(
             roomLights = roomLights,
             quickActions = actions,
             ownValues = values,
+            otherRooms = otherRooms,
+            presenceSensors = presence,
         )
         // The sign-in becomes the connection's: it is no longer waiting, before saving ends the
         // setup (whose reset revokes a sign-in still waiting). One it replaced is revoked.

@@ -39,6 +39,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     GROUP(MenuSection.INFO, Strings.entryGroup),
     VOLUME(MenuSection.INFO, Strings.entryVolume),
     VALUES(MenuSection.INFO, Strings.entryValues),
+    NOTIFICATIONS(MenuSection.INFO, Strings.entryNotifications),
     LYRICS(MenuSection.INFO, Strings.entryLyrics),
     BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
     OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
@@ -48,9 +49,11 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     SLEEP_TIMER(MenuSection.TIMER, Strings.entrySleepTimer),
     SLEEP_AFTER(MenuSection.TIMER, Strings.entrySleepAfter),
     SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
+    SCREEN_OFF(MenuSection.TIMER, Strings.entryScreenOff),
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
     SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
+    OTHER_ROOMS(MenuSection.SYSTEM, Strings.entryOtherRooms),
     PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
     UPDATE(MenuSection.SYSTEM, Strings.entryUpdate),
@@ -60,7 +63,8 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
 /**
  * What the menu needs to know besides the settings: the connections and the wall as they are
  * now, the sleep timer ([sleep], pausing at [sleepAt]), what kind of thing plays, the language
- * chosen, how this TV stands as a speaker ([speaker]), and Klangbild's own new versions.
+ * chosen, how this TV stands as a speaker ([speaker]), Klangbild's own new versions, and whether
+ * Home Assistant let this TV sign up for notifications.
  */
 data class MenuContext(
     val link: LinkState? = null,
@@ -74,6 +78,8 @@ data class MenuContext(
     /** The name of the speaker followed, once Home Assistant has told it. */
     val speakerName: String? = null,
     val update: UpdateInfo = UpdateInfo(),
+    /** Home Assistant didn't take this TV's registration for notifications. */
+    val notifyFailed: Boolean = false,
 )
 
 /**
@@ -123,13 +129,15 @@ object SettingsMenu {
 
     /**
      * Whether [e] cannot work until something is set up on the phone: lyrics and playing here
-     * without Music Assistant, the lights and the values while none are chosen. OK opens the
-     * setup.
+     * without Music Assistant, the lights, the values, the other rooms and the presence sensors
+     * while none are chosen. OK opens the setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
         MenuEntry.LYRICS, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
+        MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
+        MenuEntry.SCREEN_OFF -> s.presenceSensors.isEmpty()
         else -> false
     }
 
@@ -182,6 +190,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[Strings.setUp] else onOff(s.showValues, t)
+        MenuEntry.NOTIFICATIONS -> onOff(s.notifications, t)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.lyrics, t)
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
@@ -225,6 +234,13 @@ object SettingsMenu {
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.sleepActionClose else Strings.sleepActionRelease]
+        MenuEntry.SCREEN_OFF -> t[
+            when {
+                s.presenceSensors.isEmpty() -> Strings.setUp
+                s.screenOff -> Strings.screenOffNobody
+                else -> Strings.screenOffNever
+            },
+        ]
         MenuEntry.CONNECTION -> t[
             when {
                 !s.isConfigured -> Strings.setUp
@@ -247,6 +263,7 @@ object SettingsMenu {
             s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
             else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
         }
+        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) t[Strings.setUp] else onOff(s.showOtherRooms, t)
         MenuEntry.PLAY_HERE -> t[
             when {
                 !s.hasMusicAssistant -> Strings.needsMusicAssistant
@@ -294,6 +311,14 @@ object SettingsMenu {
                 else -> Strings.aboutValuesOff
             },
         ]
+        MenuEntry.NOTIFICATIONS -> t[
+            when {
+                s.notifications && ctx.notifyFailed -> Strings.aboutNotificationsFailed
+                s.notifications -> Strings.aboutNotificationsOn
+                s.notifyWebhook != null -> Strings.aboutNotificationsOffListed
+                else -> Strings.aboutNotificationsOff
+            },
+        ]
         MenuEntry.LYRICS -> t[
             when {
                 !s.hasMusicAssistant -> Strings.aboutLyricsSetUp
@@ -339,8 +364,15 @@ object SettingsMenu {
             ctx.sleepAt != null -> t.format(Strings.aboutSleepTimerAt, t.clock(ctx.sleepAt))
             else -> t.format(Strings.aboutSleepTimerEnd, t[endPhrase(ctx.sleep, ctx.kind)])
         }
-        MenuEntry.SLEEP_AFTER -> t[Strings.aboutSleepAfter]
+        MenuEntry.SLEEP_AFTER -> t[if (s.darkWhenNobody) Strings.aboutSleepAfterNobody else Strings.aboutSleepAfter]
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.aboutSleepActionClose else Strings.aboutSleepActionRelease]
+        MenuEntry.SCREEN_OFF -> t[
+            when {
+                s.presenceSensors.isEmpty() -> Strings.aboutScreenOffSetUp
+                s.screenOff -> Strings.aboutScreenOffOn
+                else -> Strings.aboutScreenOffOff
+            },
+        ]
         MenuEntry.CONNECTION -> t[if (!s.isConfigured) Strings.aboutConnectionSetUp else Strings.aboutConnection]
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
         MenuEntry.SPEAKER -> t[
@@ -348,6 +380,13 @@ object SettingsMenu {
                 !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
                 followsThisTv(s) && s.otherSpeaker == null -> Strings.aboutSpeakerThisTv
                 else -> Strings.aboutSpeaker
+            },
+        ]
+        MenuEntry.OTHER_ROOMS -> t[
+            when {
+                s.otherRooms.isEmpty() -> Strings.aboutOtherRoomsSetUp
+                s.showOtherRooms -> Strings.aboutOtherRoomsOn
+                else -> Strings.aboutOtherRoomsOff
             },
         ]
         MenuEntry.PLAY_HERE -> t[playHere(s, ctx.speaker)]
@@ -451,6 +490,7 @@ object SettingsMenu {
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
+        MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
         MenuEntry.SPEAKER -> when {
@@ -458,6 +498,7 @@ object SettingsMenu {
             s.entityId == EntityId.THIS_TV -> s.otherSpeaker?.let(s::following)
             else -> s.following(EntityId.THIS_TV).withPlayHere(true)
         }
+        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) null else s.copy(showOtherRooms = !s.showOtherRooms)
         MenuEntry.PLAY_HERE -> {
             val next = move(PLAY_HERE_ORDER, s.playHere, direction, wrap)
             when {
@@ -480,6 +521,7 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> s.copy(
             sleepAction = if (s.sleepAction == SleepAction.CLOSE) SleepAction.RELEASE else SleepAction.CLOSE,
         )
+        MenuEntry.SCREEN_OFF -> if (s.presenceSensors.isEmpty()) null else s.copy(screenOff = !s.screenOff)
         MenuEntry.UPDATE_CHECK -> s.copy(updateCheck = !s.updateCheck)
         // OK on Update installs a new version or asks for one (MenuControl).
         MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null

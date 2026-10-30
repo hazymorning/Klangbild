@@ -188,7 +188,7 @@ class MenuControlTest {
         repeat(6) { menu.move(+1) }
         menu.change(+1, wrap = true)
         assertThat(state().section).isEqualTo(MenuSection.SYSTEM)
-        repeat(5) { menu.move(+1) }
+        repeat(6) { menu.move(+1) }
         assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
         // OK installs it, a held OK only once; left and right change nothing there.

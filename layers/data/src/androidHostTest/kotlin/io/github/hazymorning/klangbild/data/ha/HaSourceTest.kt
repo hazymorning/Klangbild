@@ -100,6 +100,10 @@ class HaSourceTest {
                     path == "/api/websocket" -> MockResponse.Builder().webSocketUpgrade(FakeHa()).build()
                     path == "/api/states/media_player.wz" -> MockResponse.Builder().body(playerState(Json.parseToJsonElement(player).jsonObject)).build()
                     path == "/api/states/media_player.tv" -> MockResponse.Builder().body(tvJson()).build()
+                    path == "/api/states/media_player.kitchen" -> MockResponse.Builder().body(
+                        """{"entity_id":"media_player.kitchen","state":"playing","attributes":{"friendly_name":"Küche","media_title":"Küchenlied"},
+                            "last_changed":"2026-10-10T18:00:00+00:00","last_updated":"2026-10-10T18:00:00+00:00","context":{"id":"k","parent_id":null,"user_id":null}}""",
+                    ).build()
                     path == "/api/states/input_boolean.party" -> MockResponse.Builder().body(
                         """{"entity_id":"input_boolean.party","state":"on","attributes":{},"last_changed":"2026-10-10T18:00:00+00:00",
                             "last_updated":"2026-10-10T18:00:00+00:00","context":{"id":"y","parent_id":null,"user_id":null}}""",
@@ -597,6 +601,32 @@ class HaSourceTest {
         s.followEntities(setOf("input_boolean.party", "script.gone"))
         val state = withTimeout(5_000) { s.state.first { it.entities["input_boolean.party"]?.state == "on" } }
         assertThat(state.entities).doesNotContainKey("script.gone")
+        s.stop()
+    }
+
+    @Test
+    fun `music in another room shows while nothing plays here, and the chosen speaker takes the screen back`() = runBlocking {
+        playerStatus = "idle"
+        val s = source()
+        s.start()
+        withTimeout(5_000) { s.state.first { it.player != null } }
+        assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
+        s.followOthers(listOf("media_player.kitchen"))
+        val elsewhere = withTimeout(5_000) { s.state.first { it.speaker == "media_player.kitchen" } }
+        assertThat(elsewhere.elsewhere).isTrue()
+        assertThat(elsewhere.player?.track?.title).isEqualTo("Küchenlied")
+        // The remote controls what shows.
+        s.send(io.github.hazymorning.klangbild.data.RemoteCommand.PLAY_PAUSE)
+        withTimeout(5_000) { while (calls.none { it["service"]?.jsonPrimitive?.content == "media_play_pause" }) delay(20) }
+        assertThat(calls.first { it["service"]?.jsonPrimitive?.content == "media_play_pause" }["target"].toString())
+            .isEqualTo("""{"entity_id":"media_player.kitchen"}""")
+        // Music here takes the screen back at once.
+        playerStatus = "playing"
+        play("Zweites Lied")
+        val back = withTimeout(5_000) { s.state.first { it.speaker == "media_player.wz" } }
+        assertThat(back.elsewhere).isFalse()
+        assertThat(back.player?.track?.title).isEqualTo("Zweites Lied")
+        assertThat(sockets).hasSize(1)
         s.stop()
     }
 
