@@ -94,7 +94,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
 
     /**
      * OK or right on a group opens it, on its first line. On a setting, changes it: left (-1) or
-     * right (+1) along its scale; OK goes round ([wrap]). The connection lines, and the lines that
+     * right (+1) along its scale; OK goes round ([wrap]). Set up on phone, the connection lines and the lines that
      * need something set up first, open the setup code. A held key ([repeat]) runs along a scale,
      * but never opens a group, nor goes on into the group it has just opened.
      */
@@ -121,9 +121,10 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         val entry = SettingsMenu.entriesOf(group).getOrNull(c) ?: return
         val s = host.settings
         when {
-            // The connections, what needs them or lights or values first, and another speaker
-            // than this TV are set up on the phone.
-            entry == MenuEntry.CONNECTION || entry == MenuEntry.MUSIC_ASSISTANT || SettingsMenu.opensSetup(entry, s, direction, wrap) -> {
+            // Set up on phone, the connections, what needs them or lights or values first, and
+            // another speaker than this TV are set up on the phone.
+            entry == MenuEntry.PHONE_SETUP || entry == MenuEntry.CONNECTION || entry == MenuEntry.MUSIC_ASSISTANT ||
+                SettingsMenu.opensSetup(entry, s, direction, wrap) -> {
                 synchronized(host.lock) {
                     cursor = null
                     section = null

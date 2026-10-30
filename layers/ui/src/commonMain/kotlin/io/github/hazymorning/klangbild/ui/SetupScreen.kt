@@ -89,7 +89,13 @@ fun SetupScreen(
             SetupReason.REQUESTED -> Strings.setupChange
         },
     ]
-    val text = t[if (reason == SetupReason.AUTH_FAILED) Strings.setupTextRejected else Strings.setupText]
+    val text = t[
+        when (reason) {
+            SetupReason.FIRST_RUN -> Strings.setupText
+            SetupReason.AUTH_FAILED -> Strings.setupTextRejected
+            SetupReason.REQUESTED -> Strings.setupTextRequested
+        },
+    ]
     val hint = if (reason == SetupReason.REQUESTED) t[Strings.setupBack] else null
     val address = info?.url?.let { url ->
         buildAnnotatedString {

@@ -58,6 +58,8 @@
     <string name="entry_other_rooms">Music in other rooms</string>
     <string name="entry_update">Update</string>
     <string name="entry_update_check">Check for updates</string>
+    <string name="entry_phone_setup">Set up on phone</string>
+    <string name="phone_setup_qr">QR code</string>
     <string name="update_notice">New version</string>
     <string name="update_current">Up to date</string>
     <string name="update_checking">Checking</string>
@@ -133,7 +135,7 @@
     <string name="about_volume_always">The volume always shows next to the clock.</string>
     <string name="about_volume_off">The volume never shows.</string>
     <string name="about_values_set_up">Values from Home Assistant next to the time, like the outside temperature. OK shows the QR code; choose them on your phone.</string>
-    <string name="about_values_on">Your values from Home Assistant stand next to the time. You change them on your phone, through Home Assistant below.</string>
+    <string name="about_values_on">Your values from Home Assistant stand next to the time. To choose others, use Set up on phone.</string>
     <string name="about_values_off">Your values from Home Assistant stay hidden. Right shows them next to the time.</string>
     <string name="about_notifications_off">Notifications from Home Assistant can show next to the time. Once you turn this on, this TV appears there as a device to send them to, like a phone.</string>
     <string name="about_notifications_off_listed">This TV doesn’t show notifications. Home Assistant still lists it as a device until you delete it there.</string>
@@ -208,6 +210,7 @@
     <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>
     <string name="about_speaker">The speaker Klangbild shows and the remote controls: the one chosen on your phone, or this TV, which then plays here.</string>
     <string name="about_speaker_this_tv">Klangbild follows this TV. To follow another speaker, choose it on your phone. OK shows the QR code.</string>
+    <string name="about_phone_setup">On your phone you choose the speaker, other rooms, lights, sensors, buttons and values. OK shows the QR code.</string>
     <string name="about_other_rooms_set_up">When the speaker in this room is quiet, Klangbild can show the music playing in other rooms instead. OK shows the QR code; choose the rooms on your phone.</string>
     <string name="about_other_rooms_on">When the speaker in this room is quiet, Klangbild shows the music in the other rooms you chose, with the room’s name next to the time. Music here always comes first.</string>
     <string name="about_other_rooms_off">Klangbild shows only the speaker in this room, even while music plays in the other rooms you chose. Right shows those rooms again.</string>
@@ -287,9 +290,10 @@
     <!-- Setup on the TV -->
     <string name="setup_first_run">Set up with your phone</string>
     <string name="setup_rejected">Home Assistant rejected the access.</string>
-    <string name="setup_change">Change connection</string>
+    <string name="setup_change">Set up on phone</string>
     <string name="setup_text">Scan the code with your camera. On the page you sign in to Home Assistant and choose the speaker.</string>
     <string name="setup_text_rejected">Scan the code and sign in to Home Assistant again on the page.</string>
+    <string name="setup_text_requested">Scan the code with your camera. On the page you change the connection and the speaker, and choose other rooms, lights, sensors, buttons and values.</string>
     <string name="setup_back">Back closes</string>
     <string name="setup_code">Code</string>
     <string name="setup_in_browser">or in a browser:</string>
@@ -396,7 +400,7 @@
     <string name="page_failed">That didn’t work.</string>
     <string name="page_connected">Connected. Please choose the speaker.</string>
     <string name="page_tv_unreachable">The TV can’t be reached.</string>
-    <string name="page_saved">Saved.</string>
+    <string name="page_saved">Saved. To change anything later, open the settings on the TV and choose Set up on phone.</string>
     <string name="page_token_kept">The saved token stays; paste one only to change it</string>
     <string name="page_signing_in">Opening Home Assistant’s sign-in…</string>
     <string name="page_signed_in">Signed in to Home Assistant.</string>
@@ -423,7 +427,7 @@
     <string name="setup_error_lights">Please pick only lights.</string>
     <string name="setup_error_actions">Each button needs a script, a scene, an automation, a button or a switch, and a condition needs a value.</string>
     <string name="setup_error_values">Each value needs an entity.</string>
-    <string name="setup_saved">Saved. The TV connects to Home Assistant now.</string>
+    <string name="setup_saved">Saved. The TV connects to Home Assistant now. To change anything later, open the settings on the TV and choose Set up on phone.</string>
     <string name="discover_rejected">Home Assistant rejected the access.</string>
     <string name="discover_unexpected">Home Assistant doesn’t answer as expected (HTTP %d).</string>
     <string name="discover_cleartext">Unencrypted http:// is only allowed in the home network. Please use https://.</string>

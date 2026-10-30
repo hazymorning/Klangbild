@@ -181,6 +181,18 @@ class MenuControlTest {
     }
 
     @Test
+    fun `Set up on phone, the first line of System, opens the setup`() {
+        settings = Settings(haUrl = "http://192.168.1.10:8123", haToken = "t", entityId = "media_player.living_room")
+        menu.open()
+        repeat(6) { menu.move(+1) }
+        menu.change(+1, wrap = true)
+        assertThat(state().rows[state().cursor].label).isEqualTo("Set up on phone")
+        menu.change(+1, wrap = true)
+        assertThat(setup).isEqualTo(1)
+        assertThat(menu.isOpen).isFalse()
+    }
+
+    @Test
     fun `the system group tells of a new version, OK on its line installs it, and a switch below turns looking off`() {
         settings = Settings(updateCheck = true)
         menu.open()
@@ -188,7 +200,7 @@ class MenuControlTest {
         repeat(6) { menu.move(+1) }
         menu.change(+1, wrap = true)
         assertThat(state().section).isEqualTo(MenuSection.SYSTEM)
-        repeat(6) { menu.move(+1) }
+        repeat(7) { menu.move(+1) }
         assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
         // OK installs it, a held OK only once; left and right change nothing there.
