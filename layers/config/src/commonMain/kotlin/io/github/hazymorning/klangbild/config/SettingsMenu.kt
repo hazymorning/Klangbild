@@ -48,6 +48,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     SLEEP_TIMER(MenuSection.TIMER, Strings.entrySleepTimer),
     SLEEP_AFTER(MenuSection.TIMER, Strings.entrySleepAfter),
     SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
+    SCREEN_OFF(MenuSection.TIMER, Strings.entryScreenOff),
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
     SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
@@ -124,14 +125,15 @@ object SettingsMenu {
 
     /**
      * Whether [e] cannot work until something is set up on the phone: lyrics and playing here
-     * without Music Assistant, the lights, the values and the other rooms while none are chosen.
-     * OK opens the setup.
+     * without Music Assistant, the lights, the values, the other rooms and the presence sensors
+     * while none are chosen. OK opens the setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
         MenuEntry.LYRICS, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
+        MenuEntry.SCREEN_OFF -> s.presenceSensors.isEmpty()
         else -> false
     }
 
@@ -227,6 +229,13 @@ object SettingsMenu {
         MenuEntry.SLEEP_TIMER -> sleepValue(ctx.sleep, ctx.kind, t)
         MenuEntry.SLEEP_AFTER -> duration(s.sleepAfterMinutes, t)
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.sleepActionClose else Strings.sleepActionRelease]
+        MenuEntry.SCREEN_OFF -> t[
+            when {
+                s.presenceSensors.isEmpty() -> Strings.setUp
+                s.screenOff -> Strings.screenOffNobody
+                else -> Strings.screenOffNever
+            },
+        ]
         MenuEntry.CONNECTION -> t[
             when {
                 !s.isConfigured -> Strings.setUp
@@ -342,8 +351,15 @@ object SettingsMenu {
             ctx.sleepAt != null -> t.format(Strings.aboutSleepTimerAt, t.clock(ctx.sleepAt))
             else -> t.format(Strings.aboutSleepTimerEnd, t[endPhrase(ctx.sleep, ctx.kind)])
         }
-        MenuEntry.SLEEP_AFTER -> t[Strings.aboutSleepAfter]
+        MenuEntry.SLEEP_AFTER -> t[if (s.darkWhenNobody) Strings.aboutSleepAfterNobody else Strings.aboutSleepAfter]
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.aboutSleepActionClose else Strings.aboutSleepActionRelease]
+        MenuEntry.SCREEN_OFF -> t[
+            when {
+                s.presenceSensors.isEmpty() -> Strings.aboutScreenOffSetUp
+                s.screenOff -> Strings.aboutScreenOffOn
+                else -> Strings.aboutScreenOffOff
+            },
+        ]
         MenuEntry.CONNECTION -> t[if (!s.isConfigured) Strings.aboutConnectionSetUp else Strings.aboutConnection]
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
         MenuEntry.SPEAKER -> t[
@@ -491,6 +507,7 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> s.copy(
             sleepAction = if (s.sleepAction == SleepAction.CLOSE) SleepAction.RELEASE else SleepAction.CLOSE,
         )
+        MenuEntry.SCREEN_OFF -> if (s.presenceSensors.isEmpty()) null else s.copy(screenOff = !s.screenOff)
         MenuEntry.UPDATE_CHECK -> s.copy(updateCheck = !s.updateCheck)
         // OK on Update installs a new version or asks for one (MenuControl).
         MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null

@@ -152,6 +152,10 @@ data class Settings(
     val otherRooms: List<String> = emptyList(),
     /** The music of [otherRooms] shows (the menu's "Music in other rooms"). */
     val showOtherRooms: Boolean = true,
+    /** Presence sensors in this room, chosen on the phone: on while they see someone. */
+    val presenceSensors: List<String> = emptyList(),
+    /** The screen goes dark while [presenceSensors] see no one (the menu's "Screen off"). */
+    val screenOff: Boolean = true,
     val sunEntity: String = "sun.sun",
     val sleepAfterMinutes: Int = 10,
     val sleepAction: SleepAction = SleepAction.RELEASE,
@@ -200,10 +204,16 @@ data class Settings(
 
         /** At most this many speakers in other rooms. */
         const val MAX_OTHER_ROOMS = 16
+
+        /** At most this many presence sensors. */
+        const val MAX_PRESENCE_SENSORS = 4
     }
 
     /** The speakers in other rooms whose music shows now: none while the menu hides them. */
     val shownOtherRooms: List<String> get() = if (showOtherRooms) otherRooms else emptyList()
+
+    /** The screen goes dark while no one is in the room: switched on, with sensors to tell. */
+    val darkWhenNobody: Boolean get() = screenOff && presenceSensors.isNotEmpty()
 
     /** How Klangbild signs in to Home Assistant: a sign-in wins over a long-lived token. */
     val haCredentials: HaCredentials?

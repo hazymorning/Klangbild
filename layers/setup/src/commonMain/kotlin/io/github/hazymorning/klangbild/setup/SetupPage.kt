@@ -29,6 +29,7 @@ object SetupPage {
             .replace("__MAX_VALUES__", OwnValues.MAX.toString())
             .replace("__MAX_VALUE_NAME__", OwnValues.MAX_NAME.toString())
             .replace("__MAX_SLEEP__", Settings.MAX_SLEEP_MINUTES.toString())
+            .replace("__MAX_SENSORS__", Settings.MAX_PRESENCE_SENSORS.toString())
             .replace("__THIS_TV__", EntityId.THIS_TV)
             .replace("__SCRIPT_TEXTS__", script)
         for ((key, value) in words) page = page.replace("{{$key}}", escape(value))
@@ -77,6 +78,10 @@ object SetupPage {
         "close" to Strings.pageClose,
         "clock" to Strings.pageClock,
         "remote" to Strings.pageRemote,
+        "presenceHeading" to Strings.pagePresenceHeading,
+        "presenceHint" to Strings.pagePresenceHint,
+        "presenceEmpty" to Strings.pagePresenceEmpty,
+        "sensorAdd" to Strings.pageSensorAdd,
         "maHeading" to Strings.pageMaHeading,
         "maHint" to Strings.pageMaHint,
         "maTokenPlaceholder" to Strings.pageMaTokenPlaceholder,
@@ -105,6 +110,8 @@ object SetupPage {
         "thisTv" to Strings.pageThisTv,
         "thisTvMeta" to Strings.pageThisTvMeta,
         "noLights" to Strings.pageNoLights,
+        "noSensors" to Strings.pageNoSensors,
+        "sensor" to Strings.pageSensor,
         "left" to Strings.pageLightLeft,
         "center" to Strings.pageLightCenter,
         "right" to Strings.pageLightRight,
@@ -265,6 +272,10 @@ object SetupPage {
     <label class="row"><input type="radio" name="action" value="close"> {{close}}</label>
     <label class="row"><input id="clock" type="checkbox" checked> {{clock}}</label>
     <label class="row"><input id="remote" type="checkbox" checked> {{remote}}</label>
+    <h3>{{presenceHeading}}</h3>
+    <p class="hint">{{presenceHint}}</p>
+    <div id="presence"><p class="hint">{{presenceEmpty}}</p></div>
+    <button id="addSensor" class="hidden">{{sensorAdd}}</button>
   </section>
 
   <section>
@@ -331,6 +342,11 @@ object SetupPage {
   let values = [];
   let entityOptions = [];
   let valuesShown = false;
+  // The presence sensors in this room: as stored, what Home Assistant offers, and whether the page has shown them.
+  let presence = [];
+  let sensorOptions = [];
+  let presenceShown = false;
+  const MAX_SENSORS = __MAX_SENSORS__;
   const MAX_ACTIONS = __MAX_ACTIONS__;
   const MAX_VALUES = __MAX_VALUES__;
   const MAX_RESULTS = 30;
@@ -602,6 +618,31 @@ object SetupPage {
     renderValues();
     const last = ${'$'}('valueEntity' + (values.length - 1)); if (last) last.focus();
   }
+  function renderPresence() {
+    const box = ${'$'}('presence'); box.textContent = '';
+    presenceShown = true;
+    if (!sensorOptions.length && !presence.length) {
+      box.append(hint(T.noSensors));
+      ${'$'}('addSensor').classList.add('hidden');
+      return;
+    }
+    const choices = sensorOptions.map((o) => ({ id: o.id, name: o.name, meta: o.id + ' · ' + o.state }));
+    presence.forEach((id, i) => {
+      const row = document.createElement('div'); row.className = 'action';
+      const pick = picker('sensor' + i, choices, id, (picked) => { presence[i] = picked; });
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet'; remove.textContent = T.actionRemove;
+      remove.onclick = () => { presence.splice(i, 1); renderPresence(); };
+      row.append(label('sensor' + i, T.sensor), pick, remove);
+      box.append(row);
+    });
+    ${'$'}('addSensor').classList.toggle('hidden', presence.length >= MAX_SENSORS);
+  }
+  function addSensor() {
+    if (presence.length >= MAX_SENSORS) return;
+    presence.push('');
+    renderPresence();
+    const last = ${'$'}('sensor' + (presence.length - 1)); if (last) last.focus();
+  }
   async function load() {
     if (code().length !== 6) return;
     sessionStorage.setItem('klangbild-code', code());
@@ -613,6 +654,7 @@ object SetupPage {
     if (hasToken) ${'$'}('token').placeholder = T.tokenKept;
     ${'$'}('entity').value = s.entity || '';
     otherRooms = s.otherRooms || [];
+    presence = s.presence || [];
     ${'$'}('sleep').value = s.sleepMinutes || 10;
     document.querySelectorAll('input[name=action]').forEach((r) => r.checked = (r.value === s.sleepAction));
     ${'$'}('clock').checked = !!s.clock; ${'$'}('remote').checked = !!s.remote;
@@ -651,8 +693,10 @@ object SetupPage {
       renderLights(r.lights || []);
       actionOptions = r.actions || [];
       entityOptions = r.entities || [];
+      sensorOptions = r.sensors || [];
       renderActions();
       renderValues();
+      renderPresence();
       status(T.connected, 'good');
     } catch (e) { status(T.tvUnreachable, 'bad'); }
     finally { ${'$'}('find').disabled = false; }
@@ -678,6 +722,8 @@ object SetupPage {
           variables: a.entity.startsWith('script.') && Object.keys(a.variables).length ? a.variables : undefined,
           when: a.when && a.when.entity ? { entity: a.when.entity, attribute: a.when.attribute || undefined, test: a.when.test, value: String(a.when.value) } : undefined }));
       }
+      // The presence sensors chosen.
+      if (presenceShown) body.presence = presence.filter((id) => id);
       // The speakers in other rooms, as far as Home Assistant still has them.
       if (otherRoomsShown) body.otherRooms = otherRooms.filter((id) => id !== body.entity && speakers.some((sp) => sp.id === id));
       // The values in the status line, likewise.
@@ -693,6 +739,7 @@ object SetupPage {
   ${'$'}('save').onclick = save;
   ${'$'}('addAction').onclick = addAction;
   ${'$'}('addValue').onclick = addValue;
+  ${'$'}('addSensor').onclick = addSensor;
   ${'$'}('tvSpeaker').onchange = () => {
     if (!${'$'}('tvSpeaker').checked && ${'$'}('entity').value.trim() === THIS_TV) ${'$'}('entity').value = '';
     if (speakers) renderSpeakers(${'$'}('entity').value);

@@ -19,7 +19,7 @@
     <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt und der Songtext.</string>
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
-    <string name="about_section_timer">Der Sleep-Timer und wann sich Klangbild ausschaltet.</string>
+    <string name="about_section_timer">Der Sleep-Timer und wann sich der Bildschirm und Klangbild ausschalten.</string>
     <string name="about_section_system">Home Assistant, Music Assistant, die Lautsprecher, die Wiedergabe hier, die Sprache und Updates.</string>
 
     <string name="entry_queue">Warteschlange</string>
@@ -43,6 +43,7 @@
     <string name="entry_sleep_timer">Sleep-Timer</string>
     <string name="entry_sleep_after">Ausschalten nach</string>
     <string name="entry_sleep_action">Beim Ausschalten</string>
+    <string name="entry_screen_off">Bildschirm aus</string>
     <string name="entry_language">Sprache</string>
     <string name="entry_speaker">Lautsprecher</string>
     <string name="entry_other_rooms">Musik in anderen Räumen</string>
@@ -86,6 +87,8 @@
     <string name="sleep_track_end">Ende des Titels</string>
     <string name="sleep_action_close">App schließen</string>
     <string name="sleep_action_release">Bildschirmschoner</string>
+    <string name="screen_off_never">Nie</string>
+    <string name="screen_off_nobody">Wenn niemand da ist</string>
     <string name="link_rejected">Zugang abgelehnt</string>
     <string name="ma_not_set_up">Nicht eingerichtet</string>
     <string name="needs_music_assistant">Nur mit Music Assistant</string>
@@ -167,8 +170,12 @@
     <string name="about_sleep_timer_end_book">das Ende des Hörbuchs</string>
     <string name="about_sleep_timer_end_track">das Ende des Titels</string>
     <string name="about_sleep_after">Läuft keine Musik mehr, schaltet Klangbild nach dieser Zeit aus.</string>
+    <string name="about_sleep_after_nobody">Läuft keine Musik mehr oder ist niemand im Raum, schaltet Klangbild nach dieser Zeit aus.</string>
     <string name="about_sleep_action_close">Klangbild schließt sich, zurück zum Startbildschirm.</string>
     <string name="about_sleep_action_release">Der Fernseher übernimmt: sein Bildschirmschoner oder Standby.</string>
+    <string name="about_screen_off_set_up">Mit einem Präsenzmelder aus Home Assistant wird der Bildschirm dunkel, solange niemand im Raum ist. OK zeigt den QR-Code; am Handy wählst du den Melder aus.</string>
+    <string name="about_screen_off_on">Eine Minute, nachdem deine Melder niemanden mehr sehen, wird der Bildschirm dunkel, und die Musik spielt weiter. Kommt jemand herein oder drückt eine Taste, geht er wieder an.</string>
+    <string name="about_screen_off_off">Der Bildschirm bleibt an, ob jemand im Raum ist oder nicht.</string>
     <string name="about_connection_set_up">OK zeigt den QR-Code. Am Handy meldest du dich bei Home Assistant an und wählst den Lautsprecher.</string>
     <string name="about_connection">OK zeigt den QR-Code. Am Handy änderst du Adresse, Anmeldung und Lautsprecher.</string>
     <string name="about_ma_set_up">Freiwillig. Mit Music Assistant zeigt die Liste die nächsten Titel, Cover Flow die ganze Warteschlange, und bei Hörbüchern stehen die Kapitel da. OK zeigt den QR-Code zum Einrichten.</string>
@@ -299,6 +306,12 @@
     <string name="page_close">App schließen</string>
     <string name="page_clock">Uhrzeit anzeigen</string>
     <string name="page_remote">Fernbedienung steuert die Musik (OK: Pause, ◀ ▶: Titel)</string>
+    <string name="page_presence_heading">Bildschirm aus, wenn niemand da ist (optional)</string>
+    <string name="page_presence_hint">Wähle die Präsenzmelder in diesem Raum. Eine Minute, nachdem keiner von ihnen jemanden sieht, wird der Bildschirm dunkel, und die Musik spielt weiter.</string>
+    <string name="page_presence_empty">Erst Home Assistant verbinden, dann erscheinen hier die Melder.</string>
+    <string name="page_no_sensors">Keine Melder gefunden.</string>
+    <string name="page_sensor">Melder</string>
+    <string name="page_sensor_add">Melder hinzufügen</string>
     <string name="page_ma_heading">4 · Music Assistant (freiwillig)</string>
     <string name="page_ma_hint">Für die Warteschlange: Mit Music Assistant zeigt die Liste, was als Nächstes kommt, und Cover Flow alles, was lief und was kommt.</string>
     <string name="page_ma_token_placeholder">Aus Music Assistant</string>
@@ -377,6 +390,7 @@
     <string name="setup_error_this_tv">Dieser Fernseher kann nur mit Music Assistant der Lautsprecher sein.</string>
     <string name="setup_error_speaker">Bitte einen Lautsprecher auswählen.</string>
     <string name="setup_error_other_rooms">Bitte kreuze nur Lautsprecher an.</string>
+    <string name="setup_error_presence">Bitte nur Melder wählen, die an oder aus sind.</string>
     <string name="setup_error_sleep">Die Ruhezeit muss zwischen 1 und 720 Minuten liegen.</string>
     <string name="setup_error_lights">Bitte nur Lichter wählen.</string>
     <string name="setup_error_actions">Jede Taste braucht ein Skript, eine Szene, eine Automatisierung, eine Taste oder einen Schalter, und eine Bedingung einen Wert.</string>

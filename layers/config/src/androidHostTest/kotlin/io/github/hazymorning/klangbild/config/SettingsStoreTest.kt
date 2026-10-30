@@ -79,6 +79,8 @@ class SettingsStoreTest {
             otherSpeaker = "media_player.living_room",
             otherRooms = listOf("media_player.study", "media_player.bath"),
             showOtherRooms = false,
+            presenceSensors = listOf("binary_sensor.couch", "binary_sensor.door"),
+            screenOff = false,
             sunEntity = "sun.home",
             sleepAfterMinutes = 45,
             sleepAction = SleepAction.CLOSE,

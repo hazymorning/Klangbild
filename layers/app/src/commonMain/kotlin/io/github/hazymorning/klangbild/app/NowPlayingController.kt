@@ -27,6 +27,7 @@ import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.FlipGuard
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.Presence
 import io.github.hazymorning.klangbild.domain.Progress
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.Screen
@@ -130,6 +131,9 @@ class NowPlayingController(
     private var ticker: Job? = null
     private var settingsJob: Job? = null
     private var machine = ScreenStateMachine()
+
+    /** Whether someone is in the room, by the presence sensors chosen on the phone and the keys pressed. */
+    private var presence = Presence()
     private val smooth = SmoothedPosition()
     private val volumeFlash = VolumeFlash(now)
     private var lastReportKey: Any? = null
@@ -292,6 +296,7 @@ class NowPlayingController(
         // sleep (or close it) before the music has been heard of.
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
+        presence = Presence()
         lastReportKey = null
         volumeFlash.reset()
         _ui.value = _ui.value.copy(
@@ -301,6 +306,7 @@ class NowPlayingController(
             flow = null,
             queuePending = null,
             asleep = false,
+            dark = false,
             chapter = null,
             sleepAt = null,
         )
@@ -329,6 +335,17 @@ class NowPlayingController(
     fun requestSetup(show: Boolean): Unit = synchronized(lock) {
         machine.requestSetup(show)
         recompute()
+    }
+
+    /**
+     * A key was pressed: someone is in the room. True while the screen was dark for no one being
+     * there: then the key only brings the picture back.
+     */
+    fun keyPressed(): Boolean = synchronized(lock) {
+        val dark = _ui.value.dark
+        presence.keyPressed(now())
+        if (dark) recompute()
+        dark
     }
 
     fun networkAvailable() {
@@ -425,7 +442,7 @@ class NowPlayingController(
         reconcileSource()
         // The quick settings' own buttons show only while their entities are there (and their
         // conditions hold); the values in the status line follow their entities.
-        source?.followEntities(QuickActions.entities(s.quickActions) + s.ownValues.map { it.entity })
+        source?.followEntities(QuickActions.entities(s.quickActions) + s.ownValues.map { it.entity } + s.presenceSensors)
         // Music from other rooms shows while nothing plays here.
         source?.followOthers(s.shownOtherRooms)
         recompute()
@@ -576,12 +593,20 @@ class NowPlayingController(
         val previous = _ui.value
         val menuState = menu.state(s, appearance, stage?.track)
         val quickState = quick.state(decision.screen)
+        // No one in the room, as the presence sensors tell: the screen goes dark and the music
+        // plays on, never on the setup screen or under a menu. An empty room lets the screen
+        // sleep as no music does, after the same time.
+        val sensors = if (s.darkWhenNobody) s.presenceSensors.map { src.entities[it]?.state } else emptyList()
+        val nobody = presence.nobodyThere(sensors, t)
+        val dark = nobody && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val nobodyLong = presence.nobodySince?.let { t - it >= machine.timing.sleepAfterMs } == true
         // After the clock or the setup page, another song (or the same one on a new wall, or to or
         // from Cover Flow) waits for its own scene.
         val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage)
         val decided = previous.copy(
             screen = decision.screen,
-            asleep = decision.asleep && menuState == null && quickState == null,
+            asleep = (decision.asleep || nobodyLong) && menuState == null && quickState == null,
+            dark = dark,
             sleepAction = s.sleepAction,
             appearance = appearance,
             display = s.display,
@@ -614,9 +639,9 @@ class NowPlayingController(
         // settings and the menu, until this state shows it.
         _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
-        // chosen, or switched off, go back at once.
-        val chosen = if (s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
-        lightSync.update(lightTargets.target(s, _ui.value, stage, playing), chosen)
+        // chosen, or switched off, go back at once, and so do all of them while the screen is dark.
+        val chosen = if (dark || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
+        lightSync.update(lightTargets.target(s, _ui.value, stage, playing).takeUnless { dark }, chosen)
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()
     }

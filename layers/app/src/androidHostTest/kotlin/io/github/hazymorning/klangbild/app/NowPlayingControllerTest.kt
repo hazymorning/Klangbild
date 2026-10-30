@@ -2,6 +2,8 @@ package io.github.hazymorning.klangbild.app
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.SecretBox
 import io.github.hazymorning.klangbild.config.SettingsStore
@@ -30,14 +32,22 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
 /**
  * The settings the controller owns: read from the store once and written on every change, without
- * the credentials Home Assistant refused.
+ * the credentials Home Assistant refused. And the screen that goes dark while no one is in the room.
  */
 class NowPlayingControllerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -97,8 +107,80 @@ class NowPlayingControllerTest {
         }
     }
 
-    private fun controller(values: ValueStore) = NowPlayingController(
-        scope, http, http, SettingsStore(values, PlainBox), Localizer(English), { null }, { _, _ -> NoSetupPage }, QuietLog,
+    @Test
+    fun `the screen goes dark while no one is in the room, a key brings it back, and a long while lets it sleep`() = runBlocking {
+        MockWebServer().use { ha ->
+            ha.dispatcher = QuietRoom
+            ha.start()
+            val stored = MemoryValues(
+                mapOf(
+                    "ha_url" to ha.url("/").toString().trimEnd('/'),
+                    "ha_token" to "good",
+                    "entity_id" to "media_player.wz",
+                    "presence_sensors" to "binary_sensor.couch",
+                ),
+            )
+            var clock = 1_800_000_000_000L
+            val controller = controller(stored) { clock }
+            controller.attach(screen)
+            // The sensor has seen no one since it was first read; a minute later the screen goes dark.
+            withTimeout(5_000) { controller.ui.first { it.source.entities["binary_sensor.couch"]?.state == "off" } }
+            assertThat(controller.ui.value.dark).isFalse()
+            clock += 61_000
+            withTimeout(5_000) { controller.ui.first { it.dark } }
+            // A key only brings the picture back, and keeps it for another minute.
+            assertThat(controller.keyPressed()).isTrue()
+            assertThat(controller.ui.value.dark).isFalse()
+            assertThat(controller.keyPressed()).isFalse()
+            clock += 61_000
+            withTimeout(5_000) { controller.ui.first { it.dark } }
+            assertThat(controller.ui.value.asleep).isFalse()
+            // No one for as long as "Turn off after": the screen may sleep.
+            clock += 10 * 60_000L
+            withTimeout(5_000) { controller.ui.first { it.asleep } }
+            controller.detach()
+        }
+    }
+
+    /** A Home Assistant whose speaker plays in a room where the presence sensor sees no one. */
+    private object QuietRoom : Dispatcher() {
+        override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+            "/api/websocket" -> MockResponse.Builder().webSocketUpgrade(Socket).build()
+            "/api/states/media_player.wz" -> state("media_player.wz", "playing", """{"friendly_name":"Wohnzimmer","media_title":"Lied"}""")
+            "/api/states/binary_sensor.couch" -> state("binary_sensor.couch", "off", """{"device_class":"presence"}""")
+            else -> MockResponse.Builder().code(404).body("""{"message":"Entity not found."}""").build()
+        }
+
+        private fun state(id: String, state: String, attributes: String) = MockResponse.Builder().body(
+            """{"entity_id":"$id","state":"$state","attributes":$attributes,"last_changed":"2026-10-10T18:00:00+00:00",
+                "last_updated":"2026-10-10T18:00:00+00:00","context":{"id":"x","parent_id":null,"user_id":null}}""",
+        ).build()
+
+        /** Signs in and takes every command, reporting nothing on its own. */
+        private object Socket : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                webSocket.send("""{"type":"auth_required","ha_version":"2026.10.0"}""")
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                val msg = Json.parseToJsonElement(text).jsonObject
+                val id = msg["id"]?.jsonPrimitive?.content
+                when (msg["type"]?.jsonPrimitive?.content) {
+                    "auth" -> webSocket.send("""{"type":"auth_ok","ha_version":"2026.10.0"}""")
+                    "ping" -> webSocket.send("""{"id":$id,"type":"pong"}""")
+                    "config/entity_registry/list_for_display" -> webSocket.send("""{"id":$id,"type":"result","success":true,"result":{"entity_categories":{},"entities":[]}}""")
+                    else -> webSocket.send("""{"id":$id,"type":"result","success":true,"result":null}""")
+                }
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
+        }
+    }
+
+    private fun controller(values: ValueStore, now: () -> Long = { System.currentTimeMillis() }) = NowPlayingController(
+        scope, http, http, SettingsStore(values, PlainBox), Localizer(English), { null }, { _, _ -> NoSetupPage }, QuietLog, now,
     )
 
     /** Keeps secrets as they are. */

@@ -386,6 +386,32 @@ class SetupHandlerTest {
     }
 
     @Test
+    fun `the presence sensors are stored when the page showed them, and only sensors that are on or off`() = runTest {
+        val base = """"code":"${handler.code}","url":"192.168.1.5:8123","entity":"media_player.wz""""
+        assertThat(post("/api/save", """{$base,"presence":["binary_sensor.couch","binary_sensor.couch","binary_sensor.door"]}""").status).isEqualTo(200)
+        assertThat(stored.presenceSensors).containsExactly("binary_sensor.couch", "binary_sensor.door")
+        assertThat(json(post("/api/state", """{"code":"${handler.code}"}"""))["presence"].toString())
+            .isEqualTo("""["binary_sensor.couch","binary_sensor.door"]""")
+        assertThat(post("/api/save", """{$base}""").status).isEqualTo(200)
+        assertThat(stored.presenceSensors).hasSize(2)
+        assertThat(post("/api/save", """{$base,"presence":["sensor.lux"]}""").status).isEqualTo(400)
+        assertThat(post("/api/save", """{$base,"presence":[]}""").status).isEqualTo(200)
+        assertThat(stored.presenceSensors).isEmpty()
+    }
+
+    @Test
+    fun `binary sensors are offered for presence, presence sensors first`() = runTest {
+        val found = SetupServer.parseSpeakers(
+            """[{"entity_id":"binary_sensor.door","state":"off","attributes":{"friendly_name":"Door","device_class":"door"}},
+               {"entity_id":"binary_sensor.hall","state":"on","attributes":{"friendly_name":"Hall","device_class":"motion"}},
+               {"entity_id":"binary_sensor.couch","state":"off","attributes":{"friendly_name":"Couch","device_class":"occupancy"}},
+               {"entity_id":"sensor.lux","state":"12","attributes":{}}]""",
+            texts,
+        ) as DiscoverResult.Ok
+        assertThat(found.sensors.map { it.entityId }).containsExactly("binary_sensor.couch", "binary_sensor.hall", "binary_sensor.door")
+    }
+
+    @Test
     fun `every entity is offered for values and conditions, without what only describes it`() = runTest {
         val r = SetupServer.parseSpeakers(
             """[{"entity_id":"sensor.outside","state":"12.345","attributes":{"friendly_name":"Outside","unit_of_measurement":"°C","device_class":"temperature"}},

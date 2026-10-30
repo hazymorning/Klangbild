@@ -48,6 +48,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         /** The speakers in other rooms, their entity ids separated by commas. */
         val otherRooms = stringKey("other_rooms")
         val showOtherRooms = booleanKey("show_other_rooms")
+
+        /** The presence sensors, their entity ids separated by commas. */
+        val presenceSensors = stringKey("presence_sensors")
+        val screenOff = booleanKey("screen_off")
         val background = stringKey("background")
         val motion = stringKey("motion")
         val lightsLeft = stringKey("bars_left")
@@ -113,6 +117,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             otherSpeaker = p[Keys.otherSpeaker],
             otherRooms = p[Keys.otherRooms]?.split(',')?.filter(EntityId::isValid).orEmpty(),
             showOtherRooms = p[Keys.showOtherRooms] ?: defaults.showOtherRooms,
+            presenceSensors = p[Keys.presenceSensors]?.split(',')?.filter(EntityId::isValid).orEmpty(),
+            screenOff = p[Keys.screenOff] ?: defaults.screenOff,
             sunEntity = p[Keys.sun] ?: defaults.sunEntity,
             sleepAfterMinutes = p[Keys.sleepMinutes] ?: defaults.sleepAfterMinutes,
             sleepAction = enumOr(p[Keys.sleepAction], defaults.sleepAction),
@@ -158,6 +164,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         putOrRemove(Keys.otherSpeaker, s.otherSpeaker)
         putOrRemove(Keys.otherRooms, s.otherRooms.joinToString(","))
         p[Keys.showOtherRooms] = s.showOtherRooms
+        putOrRemove(Keys.presenceSensors, s.presenceSensors.joinToString(","))
+        p[Keys.screenOff] = s.screenOff
         p[Keys.sun] = s.sunEntity
         p[Keys.sleepMinutes] = s.sleepAfterMinutes
         p[Keys.sleepAction] = s.sleepAction.name

@@ -75,8 +75,13 @@ data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 data class UiState(
     /** What shows. While a song that came after the clock waits for its first scene, still the clock ([HeldStage]). */
     val screen: Screen = Screen.Rest(RestReason.CONNECTING),
-    /** Nothing has played for the sleep timeout and no menu is open: the screen may turn off, or the app close. */
+    /**
+     * Nothing has played, or no one has been in the room, for the sleep timeout and no menu is
+     * open: the screen may turn off, or the app close.
+     */
     val asleep: Boolean = false,
+    /** No one is in the room, as the presence sensors chosen on the phone tell: the screen is dark while the music plays on. */
+    val dark: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**
      * The latest scene that is ready; may lag behind [screen] while a new cover loads. It stays

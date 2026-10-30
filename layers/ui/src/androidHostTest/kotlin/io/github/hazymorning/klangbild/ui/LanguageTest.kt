@@ -139,6 +139,7 @@ class LanguageTest {
             configured,
             configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t"),
             configured.copy(roomLights = RoomLights("light.left", "light.middle", "light.right")),
+            configured.copy(otherRooms = listOf("media_player.kitchen"), presenceSensors = listOf("binary_sensor.couch")),
         )
         val contexts = buildList {
             for (link in LinkState.entries + null) for (ma in MaLink.entries + null) add(MenuContext(link, ma = ma))
