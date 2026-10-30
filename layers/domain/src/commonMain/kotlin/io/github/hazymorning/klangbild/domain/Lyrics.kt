@@ -18,15 +18,25 @@ class Lyrics(val lines: List<LyricLine>, val breaks: List<Long> = emptyList()) {
     }
 
     /**
+     * How long the last line is sung when no rest ends it: as long as a line usually takes in
+     * these lyrics (the middle of the times between two lines), within [LAST_LINE_MIN_MS] and
+     * [LAST_LINE_MAX_MS].
+     */
+    private val lastLineMs = lines.zipWithNext { a, b -> b.startMs - a.startMs }.sorted()
+        .let { if (it.isEmpty()) LAST_LINE_MAX_MS else it[it.size / 2] }
+        .coerceIn(LAST_LINE_MIN_MS, LAST_LINE_MAX_MS)
+
+    /**
      * Where the lyrics are at [positionMs]: the line sung last is in the middle, highlighted
      * while it is sung. Before the first line the first one waits there without the highlight,
-     * and so does the last line sung before a break.
+     * and so does the last line sung before a break, and the last line of all once it is sung.
      */
     fun placeAt(positionMs: Long): LyricPlace {
         val i = lines.indexOfLast { it.startMs <= positionMs }
         if (i < 0) return LyricPlace(0, lit = false)
         val start = lines[i].startMs
-        return LyricPlace(i, lit = breaks.none { it in (start + 1)..positionMs })
+        val over = i == lines.lastIndex && positionMs - start >= lastLineMs
+        return LyricPlace(i, lit = !over && breaks.none { it in (start + 1)..positionMs })
     }
 
     /**
@@ -40,6 +50,12 @@ class Lyrics(val lines: List<LyricLine>, val breaks: List<Long> = emptyList()) {
     companion object {
         /** Music Assistant takes two copies of a recording for one when their lengths are this close. */
         private const val FIT_SLACK_MS = 8_000L
+
+        /** The last line is sung at least this long, even in a fast song. */
+        private const val LAST_LINE_MIN_MS = 3_000L
+
+        /** And at most this long, so that a long outro after it is quiet. */
+        private const val LAST_LINE_MAX_MS = 8_000L
     }
 }
 
