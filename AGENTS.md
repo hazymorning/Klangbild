@@ -67,7 +67,8 @@ By kind:
   not where the setting is, and don't reuse the menu's explanations, which assume the reader is
   already looking at the setting. Use everyday words without addressing the reader, leave out
   technical details and precise-sounding claims like "to a fraction of a second", and include only
-  what's known to work.
+  what's known to work. Never claim more than that and stay modest: a bug fix says the problem
+  should no longer happen, never that it's fixed or can't happen anymore.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
   characters.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
