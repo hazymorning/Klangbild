@@ -16,7 +16,7 @@
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
     <string name="about_section_picture">Wie das Bild aussieht: Warteschlange, hell oder dunkel, Farben und Bewegung.</string>
-    <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt und der Songtext.</string>
+    <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt, der Songtext und Benachrichtigungen.</string>
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
     <string name="about_section_timer">Der Sleep-Timer und wann sich der Bildschirm und Klangbild ausschalten.</string>
@@ -31,6 +31,7 @@
     <string name="entry_group">Lautsprechergruppe</string>
     <string name="entry_volume">Lautstärke</string>
     <string name="entry_values">Werte</string>
+    <string name="entry_notifications">Benachrichtigungen</string>
     <string name="entry_lyrics">Songtext</string>
     <string name="entry_background">Hintergrund</string>
     <string name="entry_intensity">Intensität</string>
@@ -122,6 +123,10 @@
     <string name="about_values_set_up">Werte aus Home Assistant stehen neben der Uhrzeit, etwa die Temperatur draußen. OK zeigt den QR-Code; am Handy wählst du sie aus.</string>
     <string name="about_values_on">Deine Werte aus Home Assistant stehen neben der Uhrzeit. Ändern kannst du sie am Handy, über Home Assistant weiter unten.</string>
     <string name="about_values_off">Deine Werte aus Home Assistant bleiben verborgen. Rechts zeigt sie neben der Uhrzeit.</string>
+    <string name="about_notifications_off">Home Assistant kann hier kurze Benachrichtigungen neben der Uhrzeit zeigen. Eingeschaltet erscheint dieser Fernseher dort als Gerät, an das du sie senden kannst, wie an ein Handy.</string>
+    <string name="about_notifications_off_listed">Dieser Fernseher zeigt keine Benachrichtigungen. In Home Assistant bleibt er aufgeführt, bis du ihn dort löschst.</string>
+    <string name="about_notifications_on">Benachrichtigungen aus Home Assistant stehen ein paar Sekunden neben der Uhrzeit. Sende sie an diesen Fernseher wie an ein Handy: Er steht dort unter seinem eigenen Namen.</string>
+    <string name="about_notifications_failed">Home Assistant hat diesen Fernseher nicht für Benachrichtigungen angemeldet. Klangbild versucht es bei der nächsten Verbindung wieder.</string>
     <string name="about_lyrics_on">Der Songtext neben dem Cover, die Zeile, die gerade gesungen wird, in der Mitte.</string>
     <string name="about_lyrics_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt den Songtext, wo Music Assistant ihn hat.</string>
     <string name="about_lyrics_set_up">Der Songtext kommt von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>

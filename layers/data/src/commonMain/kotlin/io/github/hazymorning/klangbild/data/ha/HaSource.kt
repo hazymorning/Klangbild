@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.data.ha
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.data.NowPlayingSource
+import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaClient
@@ -28,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,7 +51,8 @@ import kotlin.time.Clock
  * While this TV plays as a speaker ([speaker]), its own entity ([OwnSpeaker]) is followed too,
  * and music that starts on it shows instead of the chosen speaker until it has stopped
  * ([SpeakerSwitch]), on the same connection. So are the speakers of other rooms chosen on the
- * setup page ([followOthers]), whose music shows while nothing plays here ([OtherRooms]).
+ * setup page ([followOthers]), whose music shows while nothing plays here ([OtherRooms]). The
+ * notifications sent to this TV come on it as well ([notifyTo]).
  */
 class HaSource(
     http: HttpClient,
@@ -74,6 +77,7 @@ class HaSource(
 ) : NowPlayingSource, LightBridge {
 
     private val connection = HaConnection(http, scope)
+    private val rest = HaRest(http, auth)
 
     /** What changes together changes under this lock, the queue's reader's too. */
     private val lock = SynchronizedObject()
@@ -234,6 +238,12 @@ class HaSource(
     }
 
     override suspend fun partyUrl(): String? = orNull { ma?.partyUrl() }
+
+    override suspend fun register(device: HaDevice, deviceId: String): String = rest.register(device, deviceId)
+
+    override fun notifyTo(webhookId: String?) = connection.pushTo(webhookId)
+
+    override val notifications: Flow<Push> get() = connection.pushes
 
     /** The network came back: do not wait for the backoff timer. */
     fun networkAvailable() = connection.retryNow()

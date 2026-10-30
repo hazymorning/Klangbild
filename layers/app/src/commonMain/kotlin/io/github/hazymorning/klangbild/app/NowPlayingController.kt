@@ -16,9 +16,11 @@ import io.github.hazymorning.klangbild.data.LightBridge
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.PictureDecoder
+import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.data.ha.HaAuth
 import io.github.hazymorning.klangbild.data.ha.HaCredentials
+import io.github.hazymorning.klangbild.data.ha.HaDevice
 import io.github.hazymorning.klangbild.data.ha.HaSource
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MilkdropSound
@@ -37,6 +39,7 @@ import io.github.hazymorning.klangbild.domain.SmoothedPosition
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
+import io.github.hazymorning.klangbild.domain.StatusMessage
 import io.github.hazymorning.klangbild.domain.SunClock
 import io.github.hazymorning.klangbild.domain.Timing
 import io.github.hazymorning.klangbild.domain.UpdateInfo
@@ -54,6 +57,7 @@ import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -70,6 +74,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
 import kotlin.concurrent.Volatile
+import kotlin.random.Random
 import kotlin.time.Clock
 
 /**
@@ -102,6 +107,8 @@ class NowPlayingController(
     ownSound: () -> SoundFeed? = { null },
     /** Klangbild's own new versions; none where nothing looks for them. */
     private val updates: Updates? = null,
+    /** This TV as Home Assistant lists it once it is sent notifications; none where it can't be. */
+    private val device: HaDevice? = null,
 ) {
     // In the language shown from the first frame, the clock as the system has it.
     private val _ui = MutableStateFlow(UiState(texts = localizer.texts.value))
@@ -134,6 +141,14 @@ class NowPlayingController(
 
     /** Whether someone is in the room, by the presence sensors chosen on the phone and the keys pressed. */
     private var presence = Presence()
+
+    /** The notification the status line shows, from Home Assistant. */
+    private val messages = StatusMessage()
+    private var pushJob: Job? = null
+
+    /** The connection this TV last registered for notifications with: once per connection. */
+    private var registeredWith: NowPlayingSource? = null
+    @Volatile private var notifyFailed = false
     private val smooth = SmoothedPosition()
     private val volumeFlash = VolumeFlash(now)
     private var lastReportKey: Any? = null
@@ -159,6 +174,7 @@ class NowPlayingController(
         override val log: Log get() = this@NowPlayingController.log
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
         override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
+        override val notifyFailed: Boolean get() = this@NowPlayingController.notifyFailed
         override fun update() {
             updates?.ok()
         }
@@ -277,6 +293,7 @@ class NowPlayingController(
         setupJob?.cancel()
         setupServer.stop()
         sourceJob?.cancel()
+        pushJob?.cancel()
         // A report held back belongs to the source that sent it.
         heldJob?.cancel()
         heldJob = null
@@ -445,7 +462,53 @@ class NowPlayingController(
         source?.followEntities(QuickActions.entities(s.quickActions) + s.ownValues.map { it.entity } + s.presenceSensors)
         // Music from other rooms shows while nothing plays here.
         source?.followOthers(s.shownOtherRooms)
+        notify(s)
         recompute()
+    }
+
+    /**
+     * Notifications: received with the stored registration while they are on; without one, this
+     * TV registers once the connection stands, once per connection.
+     */
+    private fun notify(s: Settings) {
+        val src = source ?: return
+        src.notifyTo(s.notifyWebhook.takeIf { s.notifications })
+        if (!s.notifications || s.notifyWebhook != null || registeredWith === src || _ui.value.source.link != LinkState.CONNECTED) return
+        val me = device ?: return
+        registeredWith = src
+        val id = s.notifyDeviceId ?: Random.nextBytes(DEVICE_ID_BYTES).joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+        scope.launch {
+            try {
+                val webhook = src.register(me, id)
+                notifyFailed = false
+                log.info("Notifications: registered")
+                take("notifications") { it.copy(notifyWebhook = webhook, notifyDeviceId = id) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("Notifications: not registered (${e::class.simpleName})")
+                notifyFailed = true
+                recompute()
+            }
+        }
+    }
+
+    /** What arrives for this TV's notifications. */
+    private fun onPush(push: Push): Unit = synchronized(lock) {
+        when (push) {
+            is Push.Message -> if (settings.value.notifications) {
+                messages.arrive(push.title, push.message, now())
+                recompute()
+            }
+            // The registration is gone (deleted in Home Assistant, or another user's): it is made
+            // anew, unless it was made on this connection already.
+            Push.Refused -> {
+                log.info("Notifications: Home Assistant refused the registration")
+                if (registeredWith === source) notifyFailed = true
+                val s = settings.value
+                if (s.notifyWebhook != null) save(s.copy(notifyWebhook = null))
+            }
+        }
     }
 
     /**
@@ -494,6 +557,8 @@ class NowPlayingController(
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
         }
+        pushJob?.cancel()
+        pushJob = scope.launch { newSource.notifications.collect { onPush(it) } }
     }
 
     /**
@@ -533,12 +598,15 @@ class NowPlayingController(
             smooth.onReport(p?.track?.key, seeking.onReport(st, raw, t), t)
         }
         volumeFlash.reported(st, _ui.value.source.speaker, t)
-        if (st.link != _ui.value.source.link) {
+        val linked = st.link != _ui.value.source.link
+        if (linked) {
             log.info("Link: ${st.link}")
             // Dropped after this report is taken in, since dropping them stops the source that sent it.
             if (st.link == LinkState.AUTH_FAILED) auth?.credentials?.let { scope.launch { refused(it) } }
         }
         _ui.value = _ui.value.copy(source = st)
+        // Connected: this TV may register for notifications now.
+        if (linked && st.link == LinkState.CONNECTED) notify(settings.value)
         soundSelection.update(st, speaker.value)
         recompute()
     }
@@ -600,6 +668,9 @@ class NowPlayingController(
         val nobody = presence.nobodyThere(sensors, t)
         val dark = nobody && decision.screen !is Screen.Setup && menuState == null && quickState == null
         val nobodyLong = presence.nobodySince?.let { t - it >= machine.timing.sleepAfterMs } == true
+        // A notification shows where it can be seen: on the stage or the rest screen, with no menu over it.
+        val seen = !dark && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val message = messages.line(seen && s.notifications, t)
         // After the clock or the setup page, another song (or the same one on a new wall, or to or
         // from Cover Flow) waits for its own scene.
         val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage)
@@ -607,6 +678,7 @@ class NowPlayingController(
             screen = decision.screen,
             asleep = (decision.asleep || nobodyLong) && menuState == null && quickState == null,
             dark = dark,
+            message = message,
             sleepAction = s.sleepAction,
             appearance = appearance,
             display = s.display,
@@ -680,5 +752,8 @@ class NowPlayingController(
 
         /** How long a closing connection waits for the lights to be given back. */
         const val LIGHTS_RELEASE_MS = 4_000L
+
+        /** How long the id is that Home Assistant knows this TV by (bytes, written in hex). */
+        const val DEVICE_ID_BYTES = 8
     }
 }

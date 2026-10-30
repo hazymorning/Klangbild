@@ -158,6 +158,7 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
                     speaker = c.speaker?.let { name -> SpeakerLabel.group(ui.source.group, t).takeIf { ui.display.group } ?: name },
                     entityId = ui.entityId,
                     nowMs = wall.value,
+                    message = ui.message,
                     intensity = ui.display.intensity.factor,
                     appearance = c.appearance,
                 )
@@ -390,7 +391,7 @@ private fun rememberHint(downHint: Boolean): Boolean {
     return if (still) downHint else hinting
 }
 
-/** The status line for [ui]: the clock at [nowMs], the custom values and the lead, the hidden parts back while [peek]. */
+/** The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a notification), the hidden parts back while [peek]. */
 private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts): StatusLine {
     val display = ui.display
     val player = ui.source.player
@@ -404,7 +405,9 @@ private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs
     val pace = ui.sleepAt?.let { StageTexts.sleep(it, t) } ?: TimeText.speed(player?.speed ?: 1f, t)?.takeIf { spoken }
     val own = ui.source.speaker != null && ui.source.speaker == ui.source.ownSpeaker
     val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
-    val lead = StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
+    // A notification takes the lead's place while it shows; a volume change still shows for its moment.
+    val lead = ui.message?.takeUnless { ui.volumeFlash }
+        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     return StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
 }

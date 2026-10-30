@@ -52,6 +52,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         /** The presence sensors, their entity ids separated by commas. */
         val presenceSensors = stringKey("presence_sensors")
         val screenOff = booleanKey("screen_off")
+        val notifications = booleanKey("notifications")
+        val notifyWebhook = stringKey("notify_webhook")
+        val notifyDeviceId = stringKey("notify_device_id")
         val background = stringKey("background")
         val motion = stringKey("motion")
         val lightsLeft = stringKey("bars_left")
@@ -92,7 +95,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
      * would open the sealed tokens, and one that cannot be opened at that moment would be lost.
      */
     internal fun migrate(p: MutableMap<String, Any>) {
-        val plain = listOf(Keys.token, Keys.refreshToken, Keys.maToken).any { k -> p[k]?.let(secrets::isPlain) == true }
+        val plain = listOf(Keys.token, Keys.refreshToken, Keys.maToken, Keys.notifyWebhook).any { k -> p[k]?.let(secrets::isPlain) == true }
         if (plain) write(p, read(p))
         Keys.gone.forEach { p.remove(it) }
         p[Keys.formerView]?.let { view ->
@@ -119,6 +122,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             showOtherRooms = p[Keys.showOtherRooms] ?: defaults.showOtherRooms,
             presenceSensors = p[Keys.presenceSensors]?.split(',')?.filter(EntityId::isValid).orEmpty(),
             screenOff = p[Keys.screenOff] ?: defaults.screenOff,
+            notifications = p[Keys.notifications] ?: defaults.notifications,
+            notifyWebhook = p[Keys.notifyWebhook]?.let(secrets::open),
+            notifyDeviceId = p[Keys.notifyDeviceId],
             sunEntity = p[Keys.sun] ?: defaults.sunEntity,
             sleepAfterMinutes = p[Keys.sleepMinutes] ?: defaults.sleepAfterMinutes,
             sleepAction = enumOr(p[Keys.sleepAction], defaults.sleepAction),
@@ -166,6 +172,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.showOtherRooms] = s.showOtherRooms
         putOrRemove(Keys.presenceSensors, s.presenceSensors.joinToString(","))
         p[Keys.screenOff] = s.screenOff
+        p[Keys.notifications] = s.notifications
+        putSecret(Keys.notifyWebhook, s.notifyWebhook)
+        putOrRemove(Keys.notifyDeviceId, s.notifyDeviceId)
         p[Keys.sun] = s.sunEntity
         p[Keys.sleepMinutes] = s.sleepAfterMinutes
         p[Keys.sleepAction] = s.sleepAction.name

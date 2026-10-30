@@ -154,6 +154,13 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.SCREEN_OFF, never, MenuContext(), de)).isEqualTo("Nie")
         assertThat(never.darkWhenNobody).isFalse()
         assertThat(SettingsMenu.description(MenuEntry.SLEEP_AFTER, never, MenuContext(), de)).doesNotContain("niemand")
+        // Notifications are a switch, off at first. Turned off after a registration, the TV stays
+        // listed in Home Assistant; a registration Home Assistant didn't take says so.
+        assertThat(SettingsMenu.value(MenuEntry.NOTIFICATIONS, configured, MenuContext(), de)).isEqualTo("Aus")
+        val notifying = SettingsMenu.step(MenuEntry.NOTIFICATIONS, configured, +1)!!
+        assertThat(notifying.notifications).isTrue()
+        assertThat(SettingsMenu.description(MenuEntry.NOTIFICATIONS, notifying, MenuContext(notifyFailed = true), de)).contains("nicht")
+        assertThat(SettingsMenu.description(MenuEntry.NOTIFICATIONS, configured.copy(notifyWebhook = "hook"), MenuContext(), de)).contains("löschst")
     }
 
     @Test

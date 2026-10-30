@@ -39,6 +39,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     GROUP(MenuSection.INFO, Strings.entryGroup),
     VOLUME(MenuSection.INFO, Strings.entryVolume),
     VALUES(MenuSection.INFO, Strings.entryValues),
+    NOTIFICATIONS(MenuSection.INFO, Strings.entryNotifications),
     LYRICS(MenuSection.INFO, Strings.entryLyrics),
     BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
     OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
@@ -62,7 +63,8 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
 /**
  * What the menu needs to know besides the settings: the connections and the wall as they are
  * now, the sleep timer ([sleep], pausing at [sleepAt]), what kind of thing plays, the language
- * chosen, how this TV stands as a speaker ([speaker]), and Klangbild's own new versions.
+ * chosen, how this TV stands as a speaker ([speaker]), Klangbild's own new versions, and whether
+ * Home Assistant let this TV sign up for notifications.
  */
 data class MenuContext(
     val link: LinkState? = null,
@@ -76,6 +78,8 @@ data class MenuContext(
     /** The name of the speaker followed, once Home Assistant has told it. */
     val speakerName: String? = null,
     val update: UpdateInfo = UpdateInfo(),
+    /** Home Assistant didn't take this TV's registration for notifications. */
+    val notifyFailed: Boolean = false,
 )
 
 /**
@@ -186,6 +190,7 @@ object SettingsMenu {
             },
         ]
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[Strings.setUp] else onOff(s.showValues, t)
+        MenuEntry.NOTIFICATIONS -> onOff(s.notifications, t)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.lyrics, t)
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
@@ -304,6 +309,14 @@ object SettingsMenu {
                 s.ownValues.isEmpty() -> Strings.aboutValuesSetUp
                 s.showValues -> Strings.aboutValuesOn
                 else -> Strings.aboutValuesOff
+            },
+        ]
+        MenuEntry.NOTIFICATIONS -> t[
+            when {
+                s.notifications && ctx.notifyFailed -> Strings.aboutNotificationsFailed
+                s.notifications -> Strings.aboutNotificationsOn
+                s.notifyWebhook != null -> Strings.aboutNotificationsOffListed
+                else -> Strings.aboutNotificationsOff
             },
         ]
         MenuEntry.LYRICS -> t[
@@ -477,6 +490,7 @@ object SettingsMenu {
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
+        MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
         MenuEntry.SPEAKER -> when {

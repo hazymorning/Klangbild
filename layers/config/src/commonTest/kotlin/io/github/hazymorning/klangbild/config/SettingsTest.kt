@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.config
 
 import assertk.assertThat
+import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
@@ -21,5 +22,15 @@ class SettingsTest {
         // New credentials, or another Home Assistant, start afresh.
         assertThat(refused.withHa(url, HaCredentials.LongLived("new")).haRefused).isFalse()
         assertThat(refused.withHa("http://192.168.1.6:8123", null).haRefused).isFalse()
+    }
+
+    @Test
+    fun `a registration for notifications belongs to the Home Assistant it was made with`() {
+        val registered = set.copy(notifyWebhook = "hook", notifyDeviceId = "a1b2")
+        assertThat(registered.withHa(url, HaCredentials.LongLived("new")).notifyWebhook).isEqualTo("hook")
+        val moved = registered.withHa("http://192.168.1.6:8123", HaCredentials.LongLived("other"))
+        assertThat(moved.notifyWebhook).isNull()
+        // Registered there, this TV stays the same device.
+        assertThat(moved.notifyDeviceId).isEqualTo("a1b2")
     }
 }

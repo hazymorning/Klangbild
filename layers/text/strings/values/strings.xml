@@ -23,7 +23,7 @@
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
     <string name="about_section_picture">How the picture looks: the queue, light or dark, colors and motion.</string>
-    <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next and the lyrics.</string>
+    <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next, the lyrics and notifications.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when the screen and Klangbild turn off.</string>
@@ -39,6 +39,7 @@
     <string name="entry_group">Speaker group</string>
     <string name="entry_volume">Volume</string>
     <string name="entry_values">Values</string>
+    <string name="entry_notifications">Notifications</string>
     <string name="entry_lyrics">Lyrics</string>
     <string name="entry_background">Background</string>
     <string name="entry_intensity">Intensity</string>
@@ -134,6 +135,10 @@
     <string name="about_values_set_up">Values from Home Assistant next to the time, like the outside temperature. OK shows the QR code; choose them on your phone.</string>
     <string name="about_values_on">Your values from Home Assistant stand next to the time. You change them on your phone, through Home Assistant below.</string>
     <string name="about_values_off">Your values from Home Assistant stay hidden. Right shows them next to the time.</string>
+    <string name="about_notifications_off">Home Assistant can show short notifications here, next to the time. Turned on, this TV shows up there as a device to send them to, like a phone.</string>
+    <string name="about_notifications_off_listed">This TV doesn’t show notifications. It stays listed in Home Assistant until you delete it there.</string>
+    <string name="about_notifications_on">Notifications from Home Assistant show next to the time for a few seconds. Send them to this TV as to a phone: it’s listed there under its own name.</string>
+    <string name="about_notifications_failed">Home Assistant didn’t let this TV sign up for notifications. Klangbild tries again the next time it connects.</string>
     <string name="about_lyrics_on">The words of the song beside the cover, the line being sung in the middle.</string>
     <string name="about_lyrics_off">Title, artist and album beside the cover. Right shows the words where Music Assistant has them.</string>
     <string name="about_lyrics_set_up">The words come from Music Assistant. OK shows the QR code to set it up on your phone.</string>

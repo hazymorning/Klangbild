@@ -156,6 +156,12 @@ data class Settings(
     val presenceSensors: List<String> = emptyList(),
     /** The screen goes dark while [presenceSensors] see no one (the menu's "Screen off"). */
     val screenOff: Boolean = true,
+    /** Notifications from Home Assistant show in the status line (the menu's "Notifications"). */
+    val notifications: Boolean = false,
+    /** The webhook id of this TV's registration for notifications at [haUrl]: a secret, like a token. */
+    val notifyWebhook: String? = null,
+    /** How Home Assistant knows this TV across registrations, made once: registering again replaces the registration. */
+    val notifyDeviceId: String? = null,
     val sunEntity: String = "sun.sun",
     val sleepAfterMinutes: Int = 10,
     val sleepAction: SleepAction = SleepAction.RELEASE,
@@ -259,6 +265,8 @@ data class Settings(
         val keep = credentials ?: haCredentials.takeIf { url == haUrl }
         return copy(
             haUrl = url,
+            // A registration belongs to the Home Assistant it was made with.
+            notifyWebhook = notifyWebhook.takeIf { url == haUrl },
             haToken = (keep as? HaCredentials.LongLived)?.token,
             haRefreshToken = (keep as? HaCredentials.SignedIn)?.refreshToken,
             haClientId = (keep as? HaCredentials.SignedIn)?.clientId,

@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
+import android.provider.Settings.Global
 import androidx.core.content.FileProvider
 import io.github.hazymorning.klangbild.app.AppGraph
 import io.github.hazymorning.klangbild.app.Platform
@@ -19,6 +20,7 @@ import io.github.hazymorning.klangbild.config.settingsValues
 import io.github.hazymorning.klangbild.data.AndroidLog
 import io.github.hazymorning.klangbild.data.AndroidPictureDecoder
 import io.github.hazymorning.klangbild.data.ha.CleartextGuard
+import io.github.hazymorning.klangbild.data.ha.HaDevice
 import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SocketSetupServer
@@ -104,6 +106,16 @@ class AndroidPlatform(context: Context) : Platform {
     override fun setupServer(scope: CoroutineScope, handler: SetupHandler) = SocketSetupServer(scope, handler)
 
     override val version: String = BuildConfig.VERSION_NAME
+
+    /** Named as the TV is, in its settings; else its model. */
+    override val device = HaDevice(
+        name = Global.getString(app.contentResolver, Global.DEVICE_NAME)?.takeIf { it.isNotBlank() } ?: Build.MODEL,
+        model = Build.MODEL,
+        manufacturer = Build.MANUFACTURER,
+        osName = "Android",
+        osVersion = Build.VERSION.RELEASE,
+        appVersion = BuildConfig.VERSION_NAME,
+    )
 
     /** The new version, kept until Android's installer has read it. */
     private val update = File(File(app.cacheDir, "updates"), "klangbild.apk")

@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.config.ValueStore
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.PictureDecoder
 import io.github.hazymorning.klangbild.data.Releases
+import io.github.hazymorning.klangbild.data.ha.HaDevice
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.speaker.SpeakerHub
@@ -53,6 +54,9 @@ interface Platform {
     /** The version installed, as the platform names it ("2026.11.0" for a release's). */
     val version: String
 
+    /** This TV as Home Assistant lists it once it is sent notifications. */
+    val device: HaDevice
+
     /** Installs the app [apk] holds, read as it downloads, once the person agrees; false when it can't be handed over. */
     suspend fun install(apk: ByteReadChannel): Boolean
 
@@ -87,6 +91,7 @@ class AppGraph(private val platform: Platform) {
         pairingToken = { speakerHub.speaker?.pairingToken },
         ownSound = { speakerHub.speaker?.sound },
         updates = updates,
+        device = platform.device,
     )
 
     /** What the speaker keeps (its key, its pairings), opened when it is first needed. */

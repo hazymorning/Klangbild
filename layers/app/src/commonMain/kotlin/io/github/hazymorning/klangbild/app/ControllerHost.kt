@@ -46,6 +46,9 @@ internal interface ControllerHost {
     /** What Klangbild knows of its own new versions. */
     val update: UpdateInfo
 
+    /** Home Assistant didn't take this TV's registration for notifications. */
+    val notifyFailed: Boolean get() = false
+
     /** OK on the menu's Update line: installs a new version, or asks for one now. */
     fun update()
 
