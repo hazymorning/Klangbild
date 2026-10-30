@@ -55,6 +55,27 @@ class StatesTest {
 
     @Test fun linkDown() = stage("stage_link_down", Fixtures.model(Fixtures.track(SyntheticCover.MIST), linkDown = true))
 
+    /** Music from another room names the room, playing alone too. */
+    @Test fun otherRoom() = stage("stage_other_room", Fixtures.model(Fixtures.track(SyntheticCover.PASTEL), next = spiegel, group = "Küche"))
+
+    /** A notification from Home Assistant in the lead's place; the values make room for a long one. */
+    @Test fun notification() {
+        stage("stage_notification", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, lead = "Wäsche\u00A0· Fertig", values = listOf("Außen 12,3\u00A0°C")))
+        stage(
+            "stage_notification_long",
+            Fixtures.model(
+                Fixtures.track(SyntheticCover.MOSS),
+                next = spiegel,
+                lead = "Haustür\u00A0· Jemand steht vor der Tür und klingelt schon zum zweiten Mal",
+                values = listOf("Außen 12,3\u00A0°C"),
+            ),
+        )
+    }
+
+    @Test fun restNotification() = shot("rest_notification") {
+        RestScreen(RestReason.IDLE, "Wohnzimmer", null, Fixtures.at(21, 47), zone = Fixtures.zone, message = "Wäsche\u00A0· Fertig")
+    }
+
     @Test fun restIdle() = shot("rest_idle") {
         RestScreen(RestReason.IDLE, "Wohnzimmer", null, Fixtures.at(10, 12), zone = Fixtures.zone)
     }
