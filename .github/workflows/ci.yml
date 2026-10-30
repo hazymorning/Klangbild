@@ -80,6 +80,12 @@ jobs:
             echo "::error::Each point under New in docs/releases/$TAG.md starts with the feature's name in bold, followed by a sentence or two on what it does."
             exit 1
           fi
+          # A bug fix says the problem should no longer happen, never that it's fixed.
+          fixes="$(sed -n '/^### Bug fixes$/,/^### /p' "docs/releases/$TAG.md" | grep '^- ' || true)"
+          if [ -n "$fixes" ] && grep -vqi should <<< "$fixes"; then
+            echo "::error::Each point under Bug fixes in docs/releases/$TAG.md says the problem should no longer happen, not that it's fixed."
+            exit 1
+          fi
 
       - name: Release APK (R8)
         env:
