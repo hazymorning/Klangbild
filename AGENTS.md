@@ -57,10 +57,12 @@ By kind:
   when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
   every release's APK must be named `klangbild.apk`.
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better`, `### Gone` and
-  `### Bug fixes` as needed. Each file has a few short points in everyday words about what changed,
-  without addressing the reader. Leave out technical details and precise-sounding claims like "to a
-  fraction of a second", include only what's known to work, and keep it as short as the release
-  allows.
+  `### Bug fixes` as needed. Each point says plainly what changed, so that someone who has never
+  seen the feature understands it. A point under New starts with the feature's name in bold,
+  followed by a sentence or two on what it does and when. Describe what happens, not where the
+  setting is, and don't reuse the menu's explanations, which assume the reader is already looking
+  at the setting. Use everyday words without addressing the reader, leave out technical details and
+  precise-sounding claims like "to a fraction of a second", and include only what's known to work.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
   characters.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
