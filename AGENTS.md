@@ -42,7 +42,9 @@ release notes, commits, pull requests, issues, discussions and code comments.
   recognize them, like the words in `SpeakerLabel`, is fine.
 - The UI is in English, with German in `values-de`. No English sentence in the UI is longer than
   its German translation (`LanguageTest`). Menu labels use the words people know from TVs and
-  phones, and their values are plain words. Everything else in the repository is in English.
+  phones, and their values are plain words. Name a setting by what the viewer sees or does, never
+  by how it works ("Screen off: When no one’s here"), and make sure it reads naturally in German
+  too. Everything else in the repository is in English.
 - Music metadata keeps its own typography (`TrackText`). Dashes in string literals and test data
   are data, so never change them with find and replace.
 
@@ -256,6 +258,8 @@ are in the code, and the tests named here check them.
   never tried again, since Home Assistant counts every attempt as a failed login. The app logs its
   connection steps under the tag `Klangbild` and never logs a token.
 - Music Assistant is optional, and everything works with Home Assistant alone.
+- Notifications are off by default, since turning them on adds this TV to Home Assistant as a
+  device (a mobile app registration), which stays until someone deletes it there.
 - The "Play here" setting, which makes the TV a speaker, is off by default. While it's off, none
   of it runs: no service, thread or connection (`SpeakerServiceTest`). Its key is generated once
   and kept, because a new key would show up as a new speaker in Music Assistant and a new entity

@@ -20,7 +20,10 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 
 ✓ HA actions as quick settings<br>
 ✓ HA entity values on the screen<br>
+✓ HA notifications next to the time<br>
 ✓ Smart lights in the cover color<br>
+✓ Music from other rooms when nothing plays here<br>
+✓ Screen off while no one is in the room<br>
 ✓ Music on the TV itself (Sendspin)
 
 ## More
@@ -53,7 +56,7 @@ Klangbild isn't on Google Play, so you'll need to install the APK from the [late
 <summary><b>2. Connect it to Home Assistant</b></summary>
 <br>
 
-The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
+The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, speakers in other rooms, presence sensors, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait.
 
 > **Important**<br>
 > If Music Assistant plays your music, your speaker usually shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
@@ -138,10 +141,30 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 </details>
 
 <details>
+<summary><b>Notifications</b></summary>
+<br>
+
+Turn on Notifications under Information in the settings, and the TV shows up in Home Assistant as a device you can send notifications to, like a phone. Each one shows next to the time for a few seconds.
+
+```yaml
+actions:
+  - action: notify.mobile_app_living_room_tv
+    data:
+      title: Laundry
+      message: Done
+```
+
+The action is named after your TV, so look for it under the TV's own name.
+
+> Home Assistant can only reach the TV while Klangbild is open, and otherwise the action fails. In an automation that does more than that, add `continue_on_error: true` to it.
+
+</details>
+
+<details>
 <summary><b>Data privacy</b></summary>
 <br>
 
-Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant.
+Klangbild has no accounts and doesn't track you. Your Home Assistant login is stored encrypted on the TV and never goes anywhere but your own Home Assistant. With Notifications on, it tells your Home Assistant the TV's name and model, so it can list the TV as a device.
 
 It asks GitHub for a new version only when you press OK on Update under System in the settings. If you turn on Check for updates there, it also asks when it starts, at most once a day.
 
