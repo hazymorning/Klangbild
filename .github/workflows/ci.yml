@@ -74,6 +74,12 @@ jobs:
             echo "::error::docs/releases/$TAG.md is missing."
             exit 1
           fi
+          # A point under New names the feature in bold, then says what it does.
+          new="$(sed -n '/^### New$/,/^### /p' "docs/releases/$TAG.md" | grep '^- ' || true)"
+          if [ -n "$new" ] && grep -vqE '^- \*\*[^*]+\*\* .{40,}' <<< "$new"; then
+            echo "::error::Each point under New in docs/releases/$TAG.md starts with the feature's name in bold, followed by a sentence or two on what it does."
+            exit 1
+          fi
 
       - name: Release APK (R8)
         env:
