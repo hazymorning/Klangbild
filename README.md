@@ -22,7 +22,7 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 ✓ HA entity values on the screen<br>
 ✓ HA notifications next to the time<br>
 ✓ Smart lights in the cover color<br>
-✓ Music from other rooms when nothing plays here<br>
+✓ Show what plays on other speakers<br>
 ✓ Screen off while no one is in the room<br>
 ✓ Music on the TV itself (Sendspin)
 
