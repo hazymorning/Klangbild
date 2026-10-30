@@ -44,7 +44,9 @@ release notes, commits, pull requests, issues, discussions and code comments.
   its German translation (`LanguageTest`). Menu labels use the words people know from TVs and
   phones, and their values are plain words. Name a setting by what the viewer sees or does, never
   by how it works ("Screen off: When no one’s here"), and make sure it reads naturally in German
-  too. Everything else in the repository is in English.
+  too. Its explanation says in plain, whole sentences what the viewer will notice, like "A minute
+  after everyone has left the room, the screen goes black while the music keeps playing."
+  Everything else in the repository is in English.
 - Music metadata keeps its own typography (`TrackText`). Dashes in string literals and test data
   are data, so never change them with find and replace.
 
@@ -59,10 +61,13 @@ By kind:
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better`, `### Gone` and
   `### Bug fixes` as needed. Each point says plainly what changed, so that someone who has never
   seen the feature understands it. A point under New starts with the feature's name in bold,
-  followed by a sentence or two on what it does and when. Describe what happens, not where the
-  setting is, and don't reuse the menu's explanations, which assume the reader is already looking
-  at the setting. Use everyday words without addressing the reader, leave out technical details and
-  precise-sounding claims like "to a fraction of a second", and include only what's known to work.
+  followed by a sentence or two on what it does and when, like "**Screen off when no one's
+  there.** With presence sensors picked on the setup page, Klangbild turns the screen black a
+  minute after everyone has left the room, and the music keeps playing." Describe what happens,
+  not where the setting is, and don't reuse the menu's explanations, which assume the reader is
+  already looking at the setting. Use everyday words without addressing the reader, leave out
+  technical details and precise-sounding claims like "to a fraction of a second", and include only
+  what's known to work.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
   characters.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
