@@ -62,13 +62,15 @@ By kind:
   `### Bug fixes` as needed. Each point says plainly what changed, so that someone who has never
   seen the feature understands it. A point under New starts with the feature's name in bold,
   followed by a sentence or two on what it does and when, like "**Screen off when no one's
-  there.** With presence sensors picked on the setup page, Klangbild turns the screen black a
-  minute after everyone has left the room, and the music keeps playing." Describe what happens,
-  not where the setting is, and don't reuse the menu's explanations, which assume the reader is
-  already looking at the setting. Use everyday words without addressing the reader, leave out
-  technical details and precise-sounding claims like "to a fraction of a second", and include only
-  what's known to work. Never claim more than that and stay modest: a bug fix says the problem
-  should no longer happen, never that it's fixed or can't happen anymore.
+  there.** With presence sensors from Home Assistant, Klangbild can now turn the screen black
+  once everyone has left the room, while the music keeps playing." A feature that has to be set
+  up or turned on says "can" and how to get it, so it never reads as what every TV now does.
+  Describe what happens rather than where the setting is, and don't reuse the menu's
+  explanations, which assume the reader is already looking at the setting. Use everyday words
+  without addressing the reader, leave out technical details and precise-sounding claims like "to
+  a fraction of a second", and include only what's known to work. Never claim more than that and
+  stay modest: a bug fix says the problem should no longer happen, never that it's fixed or can't
+  happen anymore.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
   characters.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
