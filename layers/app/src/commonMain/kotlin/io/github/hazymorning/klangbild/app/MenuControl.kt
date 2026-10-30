@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsMenu
+import io.github.hazymorning.klangbild.domain.ReleaseNotes
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.atomicfu.locks.synchronized
 import kotlin.concurrent.Volatile
@@ -26,12 +27,18 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
     /** A group was just opened: the repeats of the key that opened it change nothing there. */
     @Volatile private var opening = false
 
+    /** The new version's notes show, opened from the Update line. */
+    @Volatile private var reading = false
+
     val isOpen: Boolean get() = cursor != null
 
     /** Opens the menu on its groups (an open one stays where it is). */
     fun open() {
         synchronized(host.lock) {
-            if (cursor == null) section = null
+            if (cursor == null) {
+                section = null
+                reading = false
+            }
             cursor = cursor ?: 0
             held = false
             touchedAt = host.now()
@@ -43,18 +50,23 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         synchronized(host.lock) {
             cursor = null
             section = null
+            reading = false
             held = false
             host.recompute()
         }
     }
 
     /**
-     * Back: from a group to the groups, the cursor on the group just left; from the groups out of
-     * the menu. Whether the menu is still open.
+     * Back: from the new version's notes to the Update line, from a group to the groups, the
+     * cursor on the group just left; from the groups out of the menu. Whether the menu is still open.
      */
     fun back(): Boolean = synchronized(host.lock) {
         val group = section
-        if (group == null) {
+        if (reading) {
+            reading = false
+            cursor = UPDATE_LINE
+            touchedAt = host.now()
+        } else if (group == null) {
             cursor = null
         } else {
             section = null
@@ -66,8 +78,11 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         cursor != null
     }
 
-    /** How many lines the level shown has. */
-    private fun lines(): Int = section?.let { SettingsMenu.entriesOf(it).size } ?: SettingsMenu.sections.size
+    /** How many lines the level shown has: with the notes, their points. */
+    private fun lines(): Int = when {
+        reading -> ReleaseNotes.points(host.update.notes).size.coerceAtLeast(1)
+        else -> section?.let { SettingsMenu.entriesOf(it).size } ?: SettingsMenu.sections.size
+    }
 
     /** Up (-1) or down (+1) through the menu; it stops at its ends. [held]: the key repeats. */
     fun move(delta: Int, held: Boolean = false) {
@@ -106,6 +121,15 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             if (repeat && (group == null || opening)) return
             opening = false
             touchedAt = host.now()
+            // OK on the notes installs the new version, and the Update line says how it goes.
+            if (reading) {
+                if (!wrap || repeat) return
+                reading = false
+                cursor = UPDATE_LINE
+                host.recompute()
+                host.update()
+                return
+            }
             if (group == null) {
                 if (direction > 0) {
                     section = SettingsMenu.sections.getOrNull(c) ?: return
@@ -135,9 +159,20 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             entry == MenuEntry.SLEEP_TIMER -> sleep.step(direction, wrap)
             // The language is kept by the system (or, before API 33, by the app on its own).
             entry == MenuEntry.LANGUAGE -> host.language = SettingsMenu.stepLanguage(host.language, direction, wrap)
-            // OK installs a new version or asks for one, also while Klangbild doesn't look for them
-            // by itself. A held OK does it once.
-            entry == MenuEntry.UPDATE -> if (wrap && !repeat) host.update()
+            // OK shows a new version's notes, or asks for one, also while Klangbild doesn't look
+            // for them by itself. A held OK does it once.
+            entry == MenuEntry.UPDATE -> if (wrap && !repeat) {
+                if (host.update.available == null) {
+                    host.update()
+                } else {
+                    synchronized(host.lock) {
+                        reading = true
+                        cursor = 0
+                        held = false
+                        host.recompute()
+                    }
+                }
+            }
             else -> SettingsMenu.step(entry, s, direction, wrap)?.let(host::applySettings)
         }
     }
@@ -147,6 +182,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         if (cursor != null && t - touchedAt > IDLE_MS) {
             cursor = null
             section = null
+            reading = false
         }
     }
 
@@ -168,11 +204,15 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
         )
         val group = section
         val rows = if (group == null) SettingsMenu.groups(s, ctx, host.texts) else SettingsMenu.rows(s, ctx, host.texts, group)
-        return MenuState(rows, c, held, group)
+        val notes = host.update.available?.takeIf { reading }?.let { MenuNotes(it.removePrefix("v"), ReleaseNotes.points(host.update.notes)) }
+        return MenuState(rows, c, held, group, notes)
     }
 
     companion object {
         /** An untouched menu closes after this long. */
         const val IDLE_MS = 60_000L
+
+        /** Where the Update line stands in System. */
+        private val UPDATE_LINE = SettingsMenu.entriesOf(MenuSection.SYSTEM).indexOf(MenuEntry.UPDATE)
     }
 }

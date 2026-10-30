@@ -9,6 +9,7 @@
     <string name="menu_heading">Einstellungen</string>
     <string name="menu_hint">OK ändert · Zurück zu allen Einstellungen</string>
     <string name="menu_hint_groups">OK öffnet · Zurück schließt</string>
+    <string name="menu_hint_notes">OK installiert · Zurück zu den Einstellungen</string>
     <string name="section_picture">Bild</string>
     <string name="section_info">Informationen</string>
     <string name="section_lights">Licht</string>
@@ -190,7 +191,9 @@
     <string name="about_language">Die Sprache der Anzeigen und der Einrichtungsseite. Die Systemsprache ist die des Fernsehers.</string>
     <string name="about_update_current">Klangbild %1$s ist die neueste Version. OK fragt noch einmal bei GitHub nach.</string>
     <string name="about_update_unknown">Noch ist nicht bekannt, ob es eine neue Version gibt. OK fragt jetzt bei GitHub nach.</string>
-    <string name="about_update_available">Klangbild %1$s ist da. OK lädt es, und der Fernseher fragt, bevor er es installiert.</string>
+    <string name="about_update_available">Klangbild %1$s ist da. OK zeigt, was neu ist.</string>
+    <string name="about_update_install">OK lädt es, und der Fernseher fragt, bevor er es installiert.</string>
+    <string name="notes_heading">Klangbild %1$s</string>
     <string name="about_update_check_on">Wenn Klangbild startet, fragt es höchstens einmal am Tag bei GitHub nach einer neuen Version.</string>
     <string name="about_update_check_off">Klangbild sucht nicht von selbst nach neuen Versionen. OK bei Update fragt trotzdem bei GitHub nach.</string>
     <string name="about_update_downloading">Die neue Version wird geladen. Danach fragt der Fernseher, ob er sie installieren soll.</string>

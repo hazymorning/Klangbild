@@ -16,6 +16,7 @@
     <string name="menu_heading">Settings</string>
     <string name="menu_hint">OK changes · Back to all settings</string>
     <string name="menu_hint_groups">OK opens · Back closes</string>
+    <string name="menu_hint_notes">OK installs · Back to the settings</string>
     <string name="section_picture">Picture</string>
     <string name="section_info">Information</string>
     <string name="section_lights">Lights</string>
@@ -202,7 +203,9 @@
     <string name="about_language">The language of the screens and the setup page. The system language is the TV’s.</string>
     <string name="about_update_current">Klangbild %1$s is the newest version. OK asks GitHub again.</string>
     <string name="about_update_unknown">It isn’t known yet whether there’s a new version. OK asks GitHub now.</string>
-    <string name="about_update_available">Klangbild %1$s is out. OK downloads it, and the TV asks before installing it.</string>
+    <string name="about_update_available">Klangbild %1$s is out. OK shows what’s new.</string>
+    <string name="about_update_install">OK downloads it, and the TV asks before installing it.</string>
+    <string name="notes_heading">Klangbild %1$s</string>
     <string name="about_update_check_on">When Klangbild starts, it asks GitHub for a new version at most once a day.</string>
     <string name="about_update_check_off">Klangbild doesn’t look for new versions by itself. OK on Update still asks GitHub.</string>
     <string name="about_update_downloading">The new version is downloading. Then the TV asks whether to install it.</string>

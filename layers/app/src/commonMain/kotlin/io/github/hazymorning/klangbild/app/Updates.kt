@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.config.intKey
 import io.github.hazymorning.klangbild.config.set
 import io.github.hazymorning.klangbild.config.stringKey
 import io.github.hazymorning.klangbild.data.Log
+import io.github.hazymorning.klangbild.domain.Release
 import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.UpdateState
 import kotlinx.coroutines.CancellationException
@@ -21,8 +22,9 @@ import kotlinx.io.IOException
 /**
  * Klangbild's own new versions. As a screen starts showing it, it asks GitHub for the newest
  * release if GitHub last answered more than a day ago ([checkIfDue]), unless that is turned off.
- * The menu's Update line tells what it knows; OK there downloads the new version and hands it to
- * the platform, which installs it once the person agrees on the TV. What GitHub said is kept in
+ * The menu's Update line tells what it knows; OK there shows the new version's notes, and OK on
+ * them downloads it and hands it to the platform, which installs it once the person agrees on the
+ * TV. What GitHub said is kept in
  * [store] beside the settings, whose own writes leave it alone. A build of one's own looks for
  * nothing.
  */
@@ -31,8 +33,8 @@ class Updates(
     private val store: ValueStore,
     /** The version installed, as Android names it. */
     version: String,
-    /** The newest release's tag, as GitHub names it; null when it names none this app reads. */
-    private val latest: suspend () -> String?,
+    /** The newest release, as GitHub names it; null when it names none this app reads. */
+    private val latest: suspend () -> Release?,
     /** Downloads the release with the tag given and has it installed; false when that can't be done. */
     private val install: suspend (String) -> Boolean,
     private val now: () -> Long,
@@ -51,7 +53,7 @@ class Updates(
                 log.warn("Update: what GitHub said is not read (${e::class.simpleName})")
                 return@launch
             }
-            _info.update { it.copy(latest = stored[LATEST] ?: it.latest) }
+            _info.update { it.copy(latest = stored[LATEST] ?: it.latest, notes = stored[NOTES] ?: it.notes) }
             val at = stored[CHECKED_AT]
             if (at == null || minutes() - at !in 0 until DAY_MINUTES) check()
         }
@@ -68,14 +70,15 @@ class Updates(
     private suspend fun check() {
         if (!begin(UpdateState.CHECKING)) return
         try {
-            val tag = latest()
-            if (tag != null) {
+            val release = latest()
+            if (release != null) {
                 store.edit {
-                    it[LATEST] = tag
+                    it[LATEST] = release.tag
+                    it[NOTES] = release.notes.orEmpty()
                     it[CHECKED_AT] = minutes()
                 }
-                _info.update { it.copy(latest = tag) }
-                log.info("Update: GitHub's newest release is $tag")
+                _info.update { it.copy(latest = release.tag, notes = release.notes) }
+                log.info("Update: GitHub's newest release is ${release.tag}")
             }
         } catch (e: CancellationException) {
             throw e
@@ -113,9 +116,10 @@ class Updates(
     private fun minutes(): Int = (now() / 60_000L).toInt()
 
     private companion object {
-        /** When GitHub last answered (minutes since 1970), and the newest release it named. */
+        /** When GitHub last answered (minutes since 1970), and the newest release it named, with its notes. */
         val CHECKED_AT = intKey("update_checked_at")
         val LATEST = stringKey("update_latest")
+        val NOTES = stringKey("update_notes")
 
         /** GitHub is asked again a day after it answered. */
         const val DAY_MINUTES = 24 * 60

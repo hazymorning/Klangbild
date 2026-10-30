@@ -218,7 +218,7 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, on, -1)).isEqualTo(off)
         assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, off, +1, wrap = true)).isEqualTo(on)
         // The explanations say what each line does now.
-        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("OK\u00A0lädt es")
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("zeigt, was neu ist")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, on, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).contains("OK\u00A0bei Update fragt trotzdem")
     }

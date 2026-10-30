@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.domain.ReleaseNotes
 import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -53,7 +54,7 @@ class MenuControlTest {
         override val texts: Texts = TestTexts.english()
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
-        override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0")
+        override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0", notes = NOTES)
         override fun update() {
             updates++
         }
@@ -193,7 +194,7 @@ class MenuControlTest {
     }
 
     @Test
-    fun `the system group tells of a new version, OK on its line installs it, and a switch below turns looking off`() {
+    fun `the system group tells of a new version, OK on its line shows the notes, OK on them installs it, and a switch below turns looking off`() {
         settings = Settings(updateCheck = true)
         menu.open()
         assertThat(state().rows.last().value).isEqualTo("New version")
@@ -203,11 +204,25 @@ class MenuControlTest {
         repeat(7) { menu.move(+1) }
         assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(state().rows[state().cursor].value).isEqualTo("Version\u00A02026.11.0")
-        // OK installs it, a held OK only once; left and right change nothing there.
+        // OK shows the new version's notes; a held OK, left and right change nothing there.
         menu.change(+1, wrap = true)
         menu.change(+1, wrap = true, repeat = true)
         menu.change(-1, wrap = false)
+        assertThat(state().notes).isEqualTo(MenuNotes("2026.11.0", ReleaseNotes.points(NOTES)))
+        assertThat(updates).isEqualTo(0)
+        // Down goes through their points and stops at the last; Back goes to the Update line.
+        repeat(5) { menu.move(+1) }
+        assertThat(state().cursor).isEqualTo(1)
+        menu.back()
+        assertThat(state().notes).isNull()
+        assertThat(state().rows[state().cursor].label).isEqualTo("Update")
+        // OK on the notes installs it, once, and the Update line shows how it goes.
+        menu.change(+1, wrap = true)
+        menu.change(+1, wrap = true)
+        menu.change(+1, wrap = true, repeat = true)
         assertThat(updates).isEqualTo(1)
+        assertThat(state().notes).isNull()
+        assertThat(state().rows[state().cursor].label).isEqualTo("Update")
         assertThat(settings.updateCheck).isTrue()
         // Check for updates turns looking off, and the notice goes.
         menu.move(+1)
@@ -218,15 +233,20 @@ class MenuControlTest {
         assertThat(state().rows[state().cursor].value).isEqualTo("Off")
         menu.back()
         assertThat(state().rows.last().value).isEqualTo("")
-        // Off, OK on Update still asks; OK on the switch turns it on again.
+        // Off, OK on Update still shows the notes and installs it; OK on the switch turns it on again.
         menu.change(+1, wrap = true)
         repeat(10) { menu.move(+1) }
         menu.move(-1)
+        menu.change(+1, wrap = true)
         menu.change(+1, wrap = true)
         assertThat(updates).isEqualTo(2)
         menu.move(+1)
         menu.change(+1, wrap = true)
         assertThat(settings.updateCheck).isTrue()
         assertThat(applied).isEqualTo(2)
+    }
+
+    private companion object {
+        const val NOTES = "### New\n- **Lyrics.** They end with the song.\n- Faster."
     }
 }
