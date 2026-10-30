@@ -135,9 +135,9 @@
     <string name="about_values_set_up">Values from Home Assistant next to the time, like the outside temperature. OK shows the QR code; choose them on your phone.</string>
     <string name="about_values_on">Your values from Home Assistant stand next to the time. You change them on your phone, through Home Assistant below.</string>
     <string name="about_values_off">Your values from Home Assistant stay hidden. Right shows them next to the time.</string>
-    <string name="about_notifications_off">Home Assistant can show short notifications here, next to the time. Turned on, this TV shows up there as a device to send them to, like a phone.</string>
-    <string name="about_notifications_off_listed">This TV doesn’t show notifications. It stays listed in Home Assistant until you delete it there.</string>
-    <string name="about_notifications_on">Notifications from Home Assistant show next to the time for a few seconds. Send them to this TV as to a phone: it’s listed there under its own name.</string>
+    <string name="about_notifications_off">Notifications from Home Assistant can show next to the time. Once you turn this on, this TV appears there as a device to send them to, like a phone.</string>
+    <string name="about_notifications_off_listed">This TV doesn’t show notifications. Home Assistant still lists it as a device until you delete it there.</string>
+    <string name="about_notifications_on">Notifications from Home Assistant show next to the time for a few seconds. In Home Assistant, this TV has its own name, and you send to it as you would to a phone.</string>
     <string name="about_notifications_failed">Home Assistant didn’t let this TV sign up for notifications. Klangbild tries again the next time it connects.</string>
     <string name="about_lyrics_on">The words of the song beside the cover, the line being sung in the middle.</string>
     <string name="about_lyrics_off">Title, artist and album beside the cover. Right shows the words where Music Assistant has them.</string>
@@ -190,9 +190,9 @@
     <string name="about_sleep_after_nobody">When no music plays, or no one is in the room, Klangbild turns off after this time.</string>
     <string name="about_sleep_action_close">Klangbild closes and returns to the home screen.</string>
     <string name="about_sleep_action_release">The TV takes over: its screen saver or standby.</string>
-    <string name="about_screen_off_set_up">With a presence sensor from Home Assistant, the screen goes dark while no one is in the room. OK shows the QR code; choose the sensor on your phone.</string>
-    <string name="about_screen_off_on">A minute after your sensors stop seeing anyone, the screen goes dark and the music plays on. Someone coming in, or any key, brings it back.</string>
-    <string name="about_screen_off_off">The screen stays on, whether or not someone is in the room.</string>
+    <string name="about_screen_off_set_up">With a presence sensor from Home Assistant, the screen goes black while no one is in the room. OK shows the QR code; choose the sensor on your phone.</string>
+    <string name="about_screen_off_on">A minute after everyone has left the room, the screen goes black while the music keeps playing. It comes back when someone walks in or presses a key.</string>
+    <string name="about_screen_off_off">The screen stays on even when no one is in the room.</string>
     <string name="about_connection_set_up">OK shows the QR code. On your phone you sign in to Home Assistant and choose the speaker.</string>
     <string name="about_connection">OK shows the QR code. On your phone you change address, sign-in and speaker.</string>
     <string name="about_ma_set_up">Optional. With Music Assistant, the list shows the next tracks, Cover Flow the whole queue, and audiobooks show their chapters. OK shows the QR code for setup.</string>
@@ -208,9 +208,9 @@
     <string name="about_update_own">This Klangbild was built from its code and doesn’t look for new versions.</string>
     <string name="about_speaker">The speaker Klangbild shows and the remote controls: the one chosen on your phone, or this TV, which then plays here.</string>
     <string name="about_speaker_this_tv">Klangbild follows this TV. To follow another speaker, choose it on your phone. OK shows the QR code.</string>
-    <string name="about_other_rooms_set_up">When nothing plays here, Klangbild can show music from speakers in other rooms. OK shows the QR code; choose them on your phone.</string>
-    <string name="about_other_rooms_on">When nothing plays here, Klangbild shows music from the other rooms you chose, with the room’s name next to the time.</string>
-    <string name="about_other_rooms_off">Klangbild shows only this room’s speaker. Right also shows the other rooms you chose.</string>
+    <string name="about_other_rooms_set_up">When the speaker in this room is quiet, Klangbild can show the music playing in other rooms instead. OK shows the QR code; choose the rooms on your phone.</string>
+    <string name="about_other_rooms_on">When the speaker in this room is quiet, Klangbild shows the music in the other rooms you chose, with the room’s name next to the time. Music here always comes first.</string>
+    <string name="about_other_rooms_off">Klangbild shows only the speaker in this room, even while music plays in the other rooms you chose. Right shows those rooms again.</string>
     <string name="about_play_here_set_up">With Music Assistant, this TV can play music in time with your other speakers. OK shows the QR code to set it up on your phone.</string>
     <string name="about_play_here_off">Music Assistant can play music on this TV too, in time with your other speakers. Once you turn it on, this TV shows up there under its own name.</string>
     <string name="about_play_here_open">This TV is one of Music Assistant’s speakers while Klangbild is open. When you close Klangbild, it leaves, so music never interrupts another app.</string>
@@ -325,7 +325,7 @@
     <string name="page_entity_placeholder">media_player.living_room</string>
     <string name="page_no_speakers">No media players found.</string>
     <string name="page_other_rooms">Music in other rooms (optional)</string>
-    <string name="page_other_rooms_hint">When nothing plays on the speaker above, the TV shows music from the speakers you tick here, with the room’s name next to the time.</string>
+    <string name="page_other_rooms_hint">When the speaker above is quiet, the TV shows the music playing on the speakers you tick here, with the room’s name next to the time.</string>
     <string name="page_general_heading">3 · General</string>
     <string name="page_sleep_before">Turn off after</string>
     <string name="page_sleep_after">minutes of silence, then:</string>
@@ -334,7 +334,7 @@
     <string name="page_clock">Show the clock</string>
     <string name="page_remote">The remote controls the music (OK: pause, ◀ ▶: track)</string>
     <string name="page_presence_heading">Screen off when no one’s here (optional)</string>
-    <string name="page_presence_hint">Choose the presence sensors in this room. A minute after none of them sees anyone, the screen goes dark while the music plays on.</string>
+    <string name="page_presence_hint">Choose the presence sensors in the TV’s room. A minute after everyone has left, the screen goes black while the music keeps playing.</string>
     <string name="page_presence_empty">Connect Home Assistant first, then the sensors show here.</string>
     <string name="page_no_sensors">No sensors found.</string>
     <string name="page_sensor">Sensor</string>
