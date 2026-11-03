@@ -298,9 +298,10 @@ internal fun LyricsText(
     val states = LocalLyricsStates.current
     val state = states?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
+    val delay by rememberUpdatedState(model.lyricsDelayMs)
     val current by rememberUpdatedState(model.current)
-    // Where the track is; nothing is sung any more once the player reports the next track.
-    fun place() = state.cursor.at(position()).let { if (current) it else it.copy(lit = false) }
+    // Where the track is as heard; nothing is sung any more once the player reports the next track.
+    fun place() = state.cursor.at(position()?.minus(delay())).let { if (current) it else it.copy(lit = false) }
     // The lyrics first stand where the track is.
     val plan = rememberLyricsPlan(state, layout, room.around()) { place() }
     // The place follows the position on the stage's tick (in a still, once).

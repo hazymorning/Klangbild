@@ -182,6 +182,11 @@ data class Settings(
     val queue: QueueDisplay = QueueDisplay.OFF,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
+    /**
+     * While other speakers play along, each line of the lyrics lights up this much later (ms), for
+     * speakers that play later in a group than they say (the menu's Lyrics in a group); 0 for none.
+     */
+    val lyricsGroupDelayMs: Int = 0,
     /** Music Assistant's URL and token, optional. Lyrics, the queue list, favorites, the party code and Play here need them. */
     val maUrl: String? = null,
     val maToken: String? = null,
@@ -213,6 +218,9 @@ data class Settings(
 
         /** At most this many presence sensors. */
         const val MAX_PRESENCE_SENSORS = 4
+
+        /** The waits the lyrics can take in a group: none, then a tenth of a second at a time up to two seconds. */
+        val LYRICS_GROUP_DELAYS_MS: List<Int> = (0..20).map { it * 100 }
     }
 
     /** The speakers in other rooms whose music shows now: none while the menu hides them. */

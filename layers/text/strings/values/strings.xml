@@ -42,6 +42,7 @@
     <string name="entry_values">Values</string>
     <string name="entry_notifications">Notifications</string>
     <string name="entry_lyrics">Lyrics</string>
+    <string name="entry_lyrics_delay">Lyrics in a group</string>
     <string name="entry_background">Background</string>
     <string name="entry_intensity">Intensity</string>
     <string name="entry_motion">Motion</string>
@@ -102,6 +103,7 @@
     <string name="sleep_action_release">Screen saver</string>
     <string name="screen_off_never">Never</string>
     <string name="screen_off_nobody">When no one’s here</string>
+    <string name="lyrics_delay_later">%1$s s later</string>
     <string name="link_rejected">Access denied</string>
     <string name="ma_not_set_up">Not set up</string>
     <string name="needs_music_assistant">Needs Music Assistant</string>
@@ -145,6 +147,8 @@
     <string name="about_lyrics_on">The words of the song beside the cover, the line being sung in the middle.</string>
     <string name="about_lyrics_off">Title, artist and album beside the cover. Right shows the words where Music Assistant has them.</string>
     <string name="about_lyrics_set_up">The words come from Music Assistant. OK shows the QR code to set it up on your phone.</string>
+    <string name="about_lyrics_delay_off">Some speakers play a little later when others play along, so the lines light up too early. Right makes them wait as long as the group delay set in the speakers’ app.</string>
+    <string name="about_lyrics_delay_on">When other speakers play along, each line lights up %1$s seconds later. With one speaker alone, nothing changes.</string>
     <string name="about_background_cover">The cover’s colors fill the whole screen in soft gradients. The progress bar takes their hue.</string>
     <string name="about_background_plain">A calm background: dark with the cover’s light, or light with its shadow.</string>
     <string name="about_intensity_cover">How strongly the cover’s colors tint the background.</string>

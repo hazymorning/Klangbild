@@ -123,6 +123,8 @@ data class UiState(
     val volumeFlash: Boolean = false,
     /** The chapter of the book or episode on stage, while it has chapters. */
     val chapter: ChapterPlace? = null,
+    /** How much later (ms) the lyrics light up than the position says: the menu's Lyrics in a group while other speakers play along. */
+    val lyricsDelayMs: Long = 0,
     /** When the sleep timer pauses the music (wall clock), while it is set. */
     val sleepAt: Long? = null,
     /** The words in the language shown; null leaves them to the platform's languages (a screen rendered on its own). */

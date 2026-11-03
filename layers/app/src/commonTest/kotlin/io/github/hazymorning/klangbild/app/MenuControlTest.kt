@@ -124,7 +124,7 @@ class MenuControlTest {
         assertThat(state().rows.first().label).isEqualTo("Clock")
         // The list stops at the group's last line.
         repeat(20) { menu.move(+1) }
-        assertThat(state().rows[state().cursor].label).isEqualTo("Lyrics")
+        assertThat(state().rows[state().cursor].label).isEqualTo("Lyrics in a group")
         // Back: the groups again, on the group just left; back again closes the menu.
         assertThat(menu.back()).isTrue()
         assertThat(state().section).isNull()

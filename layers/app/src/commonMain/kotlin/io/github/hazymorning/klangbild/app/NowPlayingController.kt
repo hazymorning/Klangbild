@@ -688,6 +688,7 @@ class NowPlayingController(
             quick = quickState,
             volumeFlash = s.volumeDisplay == VolumeDisplay.ON_CHANGE && volumeFlash.shown(t),
             chapter = chapter,
+            lyricsDelayMs = if (src.group != null) s.lyricsGroupDelayMs.toLong() else 0L,
             sleepAt = sleep.shownPauseAt(previous.sleepAt),
             texts = texts,
             values = s.ownValues.mapNotNull { v ->

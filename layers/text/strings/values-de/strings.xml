@@ -34,6 +34,7 @@
     <string name="entry_values">Werte</string>
     <string name="entry_notifications">Benachrichtigungen</string>
     <string name="entry_lyrics">Songtext</string>
+    <string name="entry_lyrics_delay">Songtext in der Gruppe</string>
     <string name="entry_background">Hintergrund</string>
     <string name="entry_intensity">Intensität</string>
     <string name="entry_motion">Bewegung</string>
@@ -93,6 +94,7 @@
     <string name="sleep_action_release">Bildschirmschoner</string>
     <string name="screen_off_never">Nie</string>
     <string name="screen_off_nobody">Wenn niemand da ist</string>
+    <string name="lyrics_delay_later">%1$s s später</string>
     <string name="link_rejected">Zugang abgelehnt</string>
     <string name="ma_not_set_up">Nicht eingerichtet</string>
     <string name="needs_music_assistant">Nur mit Music Assistant</string>
@@ -133,6 +135,8 @@
     <string name="about_lyrics_on">Der Songtext neben dem Cover, die Zeile, die gerade gesungen wird, in der Mitte.</string>
     <string name="about_lyrics_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt den Songtext, wo Music Assistant ihn hat.</string>
     <string name="about_lyrics_set_up">Der Songtext kommt von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
+    <string name="about_lyrics_delay_off">Manche Lautsprecher spielen etwas später, wenn weitere mitspielen, sodass die Zeilen zu früh aufleuchten. Rechts lässt sie so lange warten wie die Gruppenverzögerung in der App der Lautsprecher.</string>
+    <string name="about_lyrics_delay_on">Spielen weitere Lautsprecher mit, leuchtet jede Zeile %1$s Sekunden später auf. Mit einem Lautsprecher allein ändert sich nichts.</string>
     <string name="about_background_cover">Die Farben des Covers füllen den ganzen Bildschirm, weich verlaufend. Der Fortschrittsbalken nimmt ihren Ton an.</string>
     <string name="about_background_plain">Ein ruhiger Hintergrund: dunkel mit dem Licht des Covers, hell mit seinem Schatten.</string>
     <string name="about_intensity_cover">Wie kräftig die Farben des Covers den Hintergrund färben.</string>

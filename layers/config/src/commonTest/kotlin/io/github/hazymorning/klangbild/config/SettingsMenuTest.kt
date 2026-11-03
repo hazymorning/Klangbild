@@ -113,6 +113,7 @@ class SettingsMenuTest {
                 MenuEntry.OTHER_ROOMS.takeIf { s.otherRooms.isEmpty() },
                 MenuEntry.SCREEN_OFF.takeIf { s.presenceSensors.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
+                MenuEntry.LYRICS_DELAY.takeIf { !s.hasMusicAssistant },
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
@@ -225,7 +226,7 @@ class SettingsMenuTest {
 
     @Test
     fun `the song's words are a setting too, and without Music Assistant they say what they need`() {
-        val lyrics = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).last()
+        val lyrics = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }
         assertThat(lyrics.label).isEqualTo("Songtext")
         assertThat(lyrics.value).isEqualTo("Nur mit Music\u00A0Assistant")
         assertThat(lyrics.dimmed).isTrue()
@@ -234,8 +235,32 @@ class SettingsMenuTest {
         val on = SettingsMenu.step(MenuEntry.LYRICS, withMa, +1)!!
         assertThat(on.lyrics).isTrue()
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, on, MenuContext(), de)).isEqualTo("An")
-        assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).last().dimmed).isFalse()
+        assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }.dimmed).isFalse()
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+    }
+
+    @Test
+    fun `the lyrics can wait in a group, a tenth of a second at a time, with Music Assistant`() {
+        val delay = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS_DELAY }
+        assertThat(delay.label).isEqualTo("Songtext in der Gruppe")
+        assertThat(delay.value).isEqualTo("Einrichten")
+        assertThat(delay.description).contains("Music\u00A0Assistant")
+        assertThat(delay.dimmed).isTrue()
+        assertThat(SettingsMenu.step(MenuEntry.LYRICS_DELAY, configured, +1)).isNull()
+        // Off at first.
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        assertThat(SettingsMenu.value(MenuEntry.LYRICS_DELAY, withMa, MenuContext(), de)).isEqualTo("Aus")
+        assertThat(SettingsMenu.description(MenuEntry.LYRICS_DELAY, withMa, MenuContext(), de)).contains("Gruppenverzögerung")
+        val later = SettingsMenu.step(MenuEntry.LYRICS_DELAY, withMa.copy(lyricsGroupDelayMs = 700), +1)!!
+        assertThat(later.lyricsGroupDelayMs).isEqualTo(800)
+        assertThat(SettingsMenu.value(MenuEntry.LYRICS_DELAY, later, MenuContext(), de)).isEqualTo("0,8\u00A0s später")
+        assertThat(SettingsMenu.value(MenuEntry.LYRICS_DELAY, later, MenuContext(), TestTexts.english())).isEqualTo("0.8\u00A0s later")
+        assertThat(SettingsMenu.description(MenuEntry.LYRICS_DELAY, later, MenuContext(), de)).contains("0,8\u00A0Sekunden")
+        // Left from the first step turns it off; right stops at two seconds, and OK goes round.
+        assertThat(SettingsMenu.step(MenuEntry.LYRICS_DELAY, withMa.copy(lyricsGroupDelayMs = 100), -1)!!.lyricsGroupDelayMs).isEqualTo(0)
+        val most = withMa.copy(lyricsGroupDelayMs = 2_000)
+        assertThat(SettingsMenu.step(MenuEntry.LYRICS_DELAY, most, +1)!!.lyricsGroupDelayMs).isEqualTo(2_000)
+        assertThat(SettingsMenu.step(MenuEntry.LYRICS_DELAY, most, +1, wrap = true)!!.lyricsGroupDelayMs).isEqualTo(0)
     }
 
     @Test
