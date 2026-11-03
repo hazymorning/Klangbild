@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -130,6 +131,9 @@ class NowPlayingControllerTest {
             controller.attach(screen)
             // The sensor has seen no one since it was first read; a minute later the screen goes dark.
             withTimeout(5_000) { controller.ui.first { it.source.entities["binary_sensor.couch"]?.state == "off" } }
+            // The state shows the sensor a moment before the controller takes it in: a tick passes
+            // before the clock moves on.
+            delay(1_100)
             assertThat(controller.ui.value.dark).isFalse()
             clock += 61_000
             withTimeout(5_000) { controller.ui.first { it.dark } }
