@@ -15,6 +15,7 @@ import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.OtherRooms
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.PositionReports
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.SourceState
@@ -127,6 +128,10 @@ class HaSource(
     /** The player as Home Assistant last reported it, written while publishing and read by the commands. */
     @Volatile private var lastSnapshot: PlayerSnapshot? = null
     private var receivedAt = 0L
+
+    /** The latest reports of where the song stands, the best of which is published (only touched while publishing). */
+    private val positions = PositionReports()
+
     /** What the connection was asked to follow besides the chosen speaker and the sun. */
     private var alsoFollowed: Set<String> = emptySet()
 
@@ -337,7 +342,7 @@ class HaSource(
 
         // One estimate of Home Assistant's clock for the whole state: the position is published on it.
         val skew = connection.clockSkew.offsetMs
-        val enriched = player?.let { queue.enrich(it, skew) }
+        val enriched = player?.let { positions.best(queue.enrich(it, skew), t, skew, receivedAt) }
         val sun = entities[sunEntity]?.number("elevation")
         // The other speakers of a group are followed too, for their names, and so are the
         // lights; in a larger group also every Music Assistant speaker, to tell "everywhere".
@@ -425,6 +430,7 @@ class HaSource(
         if (next != speakerShown) {
             speakerShown = next
             lastSnapshot = null
+            positions.clear()
             queue.retarget()
         }
         return when {

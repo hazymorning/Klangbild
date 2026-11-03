@@ -43,6 +43,11 @@ data class QueueTiming(
     val settleMs: Long = 2_500L,
     /** How often Music Assistant itself is asked for its queue while a track plays. */
     val maQueueMs: Long = 15_000L,
+    /**
+     * How often Music Assistant itself is asked where the song stands while it plays: about as
+     * often as its players report, and each report can be a little late ([PositionReports]).
+     */
+    val positionMs: Long = 5_000L,
     /** Home Assistant reports a track change in several updates; the queue is read once they have settled. */
     val burstMs: Long = 350L,
 )
@@ -54,7 +59,7 @@ data class QueueTiming(
  * song that plays ([MaLyrics]). One read at a time: a new song cancels the read under way, so
  * quick skips leave nothing running. A Music Assistant song waits for its queue to describe it
  * ([awaitsDetails]), and the song is enriched with what the queue knows ([enrich]), its position
- * too: Music Assistant keeps it to a fraction of a second, Home Assistant in whole seconds.
+ * too: Home Assistant rounds it down to whole seconds, Music Assistant does not ([readPosition]).
  *
  * It shares [HaSource]'s [lock]; what it learns it hands on by [publish].
  */
@@ -77,6 +82,10 @@ internal class QueueReader(
 ) {
     private var queuePoller: Job? = null
     private var maPoller: Job? = null
+    private var positionPoller: Job? = null
+
+    /** The one question under way of where the song stands. */
+    private var positionJob: Job? = null
 
     /** The one queue read under way: a newer track cancels it (quick skips leave nothing running). */
     private var queueJob: Job? = null
@@ -170,12 +179,23 @@ internal class QueueReader(
                 }
             }
         }
+        positionPoller = ma?.let { client ->
+            scope.launch {
+                while (isActive) {
+                    delay(timing.positionMs)
+                    val p = shown()
+                    if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant) startPositionRead(client)
+                }
+            }
+        }
     }
 
     fun stop() {
         queuePoller?.cancel()
         maPoller?.cancel()
+        positionPoller?.cancel()
         queueJob?.cancel()
+        positionJob?.cancel()
         awaitEnd?.cancel()
         lyrics?.stop()
     }
@@ -186,6 +206,7 @@ internal class QueueReader(
      */
     fun retarget() {
         queueJob?.cancel()
+        positionJob?.cancel()
         awaitEnd?.cancel()
         queue = null
         window = null
@@ -205,7 +226,12 @@ internal class QueueReader(
         // song again later has a queue of its own).
         maNext = null
         trackKey = key
-        if (player.isMusicAssistant) startFirstRead()
+        if (player.isMusicAssistant) {
+            startFirstRead()
+            // Where the new song stands is asked at once: its first lines may come soon.
+            positionJob?.cancel()
+            ma?.let(::startPositionRead)
+        }
     }
 
     /** Whether the queue has been read for the song [key]. */
@@ -284,8 +310,8 @@ internal class QueueReader(
     /**
      * Prefer the queue's richer data when it describes the same track (or announced it as next,
      * before its own read); Music Assistant's own queue adds a book's authors, an episode's show,
-     * the chapters, the speed and the position to a fraction of a second. [skewMs] is the local
-     * clock minus Home Assistant's, the one the position is published on.
+     * the chapters, the speed and the position without Home Assistant's rounding. [skewMs] is the
+     * local clock minus Home Assistant's, the one the position is published on.
      */
     fun enrich(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot = position(details(p), skewMs)
 
@@ -402,21 +428,53 @@ internal class QueueReader(
         val shape = QueueShape(state.index, state.nextId, state.items)
         val same = maNext?.let { it.key == key && it.shape == shape } == true
         val read = state.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
-        val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } }
         if (trackKey != key) return
-        val moved = position != null && position != maPosition?.takeIf { it.key == key }?.position
-        if (position != null) maPosition = MaPosition(key, position).takeIf { position.playing }
-        if (same && (read == null || read == window)) {
-            // Only where the song stands has moved on.
-            if (moved) publish()
-            return
-        }
+        if (same && (read == null || read == window)) return
         maNext = MaNext(key, state.next, shape)
         if (read != null) {
             window = read
             lyrics?.want(listOfNotNull(read.currentSong, read.nextSong))
         }
         publish()
+    }
+
+    /** Asks Music Assistant where the song stands, unless it is being asked already. */
+    private fun startPositionRead(client: MaClient) {
+        synchronized(lock) {
+            if (positionJob?.isActive == true) return
+            positionJob = scope.launch { readPosition(client) }
+        }
+    }
+
+    /**
+     * Where Music Assistant's queue stands in the song that plays, on the local clock: kept while
+     * it plays the song shown, and published when it moved. Its players report every few seconds,
+     * many of them in whole seconds, so each answer can be a little late; [PositionReports] keeps
+     * the best of them.
+     */
+    private suspend fun readPosition(client: MaClient) {
+        val key = trackKey ?: return
+        val id = queue?.takeIf { queueReadFor == key }?.queueId ?: latest()?.activeQueue ?: return
+        val answer = try {
+            client.queue(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: MaUnknownCommandException) {
+            // A version that cannot say: it is not asked again.
+            positionPoller?.cancel()
+            null
+        } catch (_: Exception) {
+            null
+        } ?: return
+        val current = MaQueue.state(answer, client.baseUrl).current ?: return
+        val shown = latest()?.track ?: return
+        // Music Assistant has moved on to another item: that song's own question follows.
+        if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
+        val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } } ?: return
+        if (trackKey != key) return
+        val moved = position != maPosition?.takeIf { it.key == key }?.position
+        maPosition = MaPosition(key, position).takeIf { position.playing }
+        if (moved) publish()
     }
 
     /**
