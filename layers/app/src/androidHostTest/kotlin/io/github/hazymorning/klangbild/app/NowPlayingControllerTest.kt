@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -130,6 +131,9 @@ class NowPlayingControllerTest {
             controller.attach(screen)
             // The sensor has seen no one since it was first read; a minute later the screen goes dark.
             withTimeout(5_000) { controller.ui.first { it.source.entities["binary_sensor.couch"]?.state == "off" } }
+            // The state shows the sensor a moment before the controller takes it in: a tick passes
+            // before the clock moves on.
+            delay(1_100)
             assertThat(controller.ui.value.dark).isFalse()
             clock += 61_000
             withTimeout(5_000) { controller.ui.first { it.dark } }
@@ -172,11 +176,38 @@ class NowPlayingControllerTest {
         }
     }
 
+    @Test
+    fun `the lyrics wait as chosen while other speakers play along, and not alone`() = runBlocking {
+        for (grouped in listOf(true, false)) {
+            MockWebServer().use { ha ->
+                val members = if (grouped) ""","group_members":["media_player.wz","media_player.kitchen"]""" else ""
+                ha.dispatcher = QuietRoom("""{"friendly_name":"Wohnzimmer","media_title":"Lied"$members}""")
+                ha.start()
+                val stored = MemoryValues(
+                    mapOf(
+                        "ha_url" to ha.url("/").toString().trimEnd('/'),
+                        "ha_token" to "good",
+                        "entity_id" to "media_player.wz",
+                        "lyrics_group_delay_ms" to 800,
+                    ),
+                )
+                val controller = controller(stored)
+                controller.attach(screen)
+                // The song shows once the state has been worked out from what Home Assistant reports.
+                val ui = withTimeout(5_000) { controller.ui.first { it.screen is Screen.Stage } }
+                assertThat(ui.source.group != null).isEqualTo(grouped)
+                assertThat(ui.lyricsDelayMs).isEqualTo(if (grouped) 800L else 0L)
+                controller.detach()
+            }
+        }
+    }
+
     /**
-     * A Home Assistant whose speaker plays in a room where the presence sensor sees no one. It
-     * registers this TV for notifications and sends one as soon as their channel opens.
+     * A Home Assistant whose speaker ([speaker], its attributes) plays in a room where the presence
+     * sensor sees no one. It registers this TV for notifications and sends one as soon as their
+     * channel opens.
      */
-    private class QuietRoom : Dispatcher() {
+    private class QuietRoom(private val speaker: String = """{"friendly_name":"Wohnzimmer","media_title":"Lied"}""") : Dispatcher() {
         val registrations = AtomicInteger()
 
         override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
@@ -185,7 +216,7 @@ class NowPlayingControllerTest {
                 registrations.incrementAndGet()
                 MockResponse.Builder().code(201).body("""{"cloudhook_url":null,"remote_ui_url":null,"secret":null,"webhook_id":"hook"}""").build()
             }
-            "/api/states/media_player.wz" -> state("media_player.wz", "playing", """{"friendly_name":"Wohnzimmer","media_title":"Lied"}""")
+            "/api/states/media_player.wz" -> state("media_player.wz", "playing", speaker)
             "/api/states/binary_sensor.couch" -> state("binary_sensor.couch", "off", """{"device_class":"presence"}""")
             else -> MockResponse.Builder().code(404).body("""{"message":"Entity not found."}""").build()
         }

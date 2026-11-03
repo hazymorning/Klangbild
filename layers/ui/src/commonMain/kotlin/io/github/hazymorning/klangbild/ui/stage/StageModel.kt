@@ -55,6 +55,8 @@ internal class StageModel(
     val queue: QueueModel? = null,
     /** Whether the player still reports this track. Once it reports the next one, its lyrics are over. */
     val current: Boolean = true,
+    /** How much later (ms) the lyrics light up than [positionMs] says, read while drawing: a group may play later. */
+    val lyricsDelayMs: () -> Long = { 0L },
 ) {
     /** Whether the track plays or is about to: the progress bar and the lyrics move on. */
     val playing: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING

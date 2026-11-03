@@ -283,6 +283,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // lines leaving) keeps its own time, next and chapter; only the song that plays reads them live.
     val playingKey = stageScreen?.track?.key
     val playingNow by rememberUpdatedState(playingKey)
+    val lyricsDelay by rememberUpdatedState(ui.lyricsDelayMs)
     val played = remember { PlayedLines() }
     val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t, hooks) {
         { s: StageData ->
@@ -309,6 +310,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 // Read for this song by name: the player reports the next a moment before the screen shows it.
                 positionMs = { played.position(key, key == playingNow) { hooks.positionOf(key) } },
                 current = plays,
+                lyricsDelayMs = { lyricsDelay },
                 statusLine = statusLine,
                 year = s.track.year.takeIf { display.album },
                 barShown = barWanted(lyrics),

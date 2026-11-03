@@ -100,6 +100,7 @@ class SettingsStoreTest {
             appearance = AppearanceMode.DARK,
             queue = QueueDisplay.LIST,
             lyrics = true,
+            lyricsGroupDelayMs = 800,
             maUrl = "http://192.168.1.5:8095",
             maToken = "ma-token",
             playHere = PlayHere.OPEN,
@@ -161,6 +162,14 @@ class SettingsStoreTest {
         // A value it does not know reads as the default, and the queue's own key wins.
         assertThat(store.read(mapOf(view to "ELSEWHERE")).queue).isEqualTo(Settings().queue)
         assertThat(store.read(mapOf(view to "FLOW", queue to "LIST")).queue).isEqualTo(QueueDisplay.LIST)
+    }
+
+    @Test
+    fun `a wait for the lyrics that the menu does not offer reads as none`() {
+        val store = SettingsStore(settingsValues(context), FakeBox())
+        assertThat(store.read(mapOf("lyrics_group_delay_ms" to 800)).lyricsGroupDelayMs).isEqualTo(800)
+        assertThat(store.read(mapOf("lyrics_group_delay_ms" to 750)).lyricsGroupDelayMs).isEqualTo(0)
+        assertThat(store.read(mapOf("lyrics_group_delay_ms" to 60_000)).lyricsGroupDelayMs).isEqualTo(0)
     }
 
     @Test

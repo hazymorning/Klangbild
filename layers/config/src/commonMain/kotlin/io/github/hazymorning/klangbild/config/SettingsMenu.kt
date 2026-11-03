@@ -41,6 +41,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     VALUES(MenuSection.INFO, Strings.entryValues),
     NOTIFICATIONS(MenuSection.INFO, Strings.entryNotifications),
     LYRICS(MenuSection.INFO, Strings.entryLyrics),
+    LYRICS_DELAY(MenuSection.INFO, Strings.entryLyricsDelay),
     BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
     OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
     REMOTE(MenuSection.REMOTE, Strings.entryRemote),
@@ -134,7 +135,7 @@ object SettingsMenu {
      * while none are chosen. OK opens the setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
-        MenuEntry.LYRICS, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
+        MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
@@ -193,6 +194,12 @@ object SettingsMenu {
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[Strings.setUp] else onOff(s.showValues, t)
         MenuEntry.NOTIFICATIONS -> onOff(s.notifications, t)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.lyrics, t)
+        // "Needs Music Assistant" would not fit beside its label in German.
+        MenuEntry.LYRICS_DELAY -> when {
+            !s.hasMusicAssistant -> t[Strings.setUp]
+            s.lyricsGroupDelayMs == 0 -> t[Strings.off]
+            else -> t.format(Strings.lyricsDelayLater, seconds(s.lyricsGroupDelayMs, t))
+        }
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
             when (s.motion) {
@@ -328,6 +335,11 @@ object SettingsMenu {
                 else -> Strings.aboutLyricsOff
             },
         ]
+        MenuEntry.LYRICS_DELAY -> when {
+            !s.hasMusicAssistant -> t[Strings.aboutLyricsSetUp]
+            s.lyricsGroupDelayMs == 0 -> t[Strings.aboutLyricsDelayOff]
+            else -> t.format(Strings.aboutLyricsDelayOn, seconds(s.lyricsGroupDelayMs, t))
+        }
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.aboutBackgroundCover else Strings.aboutBackgroundPlain]
         MenuEntry.INTENSITY -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
@@ -495,6 +507,8 @@ object SettingsMenu {
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
+        MenuEntry.LYRICS_DELAY ->
+            if (!s.hasMusicAssistant) null else s.copy(lyricsGroupDelayMs = move(Settings.LYRICS_GROUP_DELAYS_MS, s.lyricsGroupDelayMs, direction, wrap))
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
         MenuEntry.SPEAKER -> when {
             !s.hasMusicAssistant -> null
@@ -603,6 +617,9 @@ object SettingsMenu {
     }
 
     private fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
+
+    /** [ms] as seconds to a tenth, as the language writes them: "0.8", "0,8". */
+    private fun seconds(ms: Int, t: Texts) = t.number(ms / 1_000.0, 1)
 
     /** Sentences one after the other. */
     private fun sentences(vararg s: String) = s.joinToString(" ")
