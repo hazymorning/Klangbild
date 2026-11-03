@@ -116,7 +116,7 @@ class SettingsMenuTest {
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
-            val actions = setOf(MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE) + needs
+            val actions = setOf(MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE) + needs
             for (ctx in contexts) {
                 for (row in SettingsMenu.sections.flatMap { SettingsMenu.rows(s, ctx, de, it) }) {
                     val entry = row.entry!!
@@ -183,7 +183,7 @@ class SettingsMenuTest {
             MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
-            MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
+            MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
             MenuEntry.UPDATE_CHECK,
         )
     }
@@ -218,7 +218,7 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, on, -1)).isEqualTo(off)
         assertThat(SettingsMenu.step(MenuEntry.UPDATE_CHECK, off, +1, wrap = true)).isEqualTo(on)
         // The explanations say what each line does now.
-        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("OK\u00A0lädt es")
+        assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("zeigt, was neu ist")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, on, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).contains("OK\u00A0bei Update fragt trotzdem")
     }

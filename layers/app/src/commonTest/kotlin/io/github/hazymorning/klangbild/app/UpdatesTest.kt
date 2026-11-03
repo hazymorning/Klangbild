@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import io.github.hazymorning.klangbild.domain.Release
 import io.github.hazymorning.klangbild.domain.UpdateState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -11,7 +12,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 
-/** Klangbild's own new versions: asked for at most once a day, offered in the menu, installed on OK. */
+/** Klangbild's own new versions: asked for at most once a day with their notes, offered in the menu, installed on OK. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdatesTest {
     private val test = TestScope(StandardTestDispatcher())
@@ -26,7 +27,7 @@ class UpdatesTest {
         test, store, version,
         latest = {
             asked++
-            newest ?: throw IllegalStateException("no answer")
+            Release(newest ?: throw IllegalStateException("no answer"), "### New\n- Lyrics")
         },
         install = { tag ->
             installed += tag
@@ -43,6 +44,7 @@ class UpdatesTest {
         test.runCurrent()
         assertThat(asked).isEqualTo(1)
         assertThat(u.info.value.available).isEqualTo("v2026.11.0")
+        assertThat(u.info.value.notes).isEqualTo("### New\n- Lyrics")
         // A start later the same day asks nothing, and knows what GitHub said.
         clock += 23 * 3_600_000L
         val again = updates()
@@ -50,6 +52,7 @@ class UpdatesTest {
         test.runCurrent()
         assertThat(asked).isEqualTo(1)
         assertThat(again.info.value.available).isEqualTo("v2026.11.0")
+        assertThat(again.info.value.notes).isEqualTo("### New\n- Lyrics")
         // A day after the answer, it asks again.
         clock += 3_600_000L
         updates().checkIfDue()

@@ -7,6 +7,7 @@ import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.domain.Release
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.utils.io.readBuffer
 import kotlinx.coroutines.runBlocking
@@ -26,13 +27,15 @@ class ReleasesTest {
     fun stop() = server.close()
 
     @Test
-    fun `the newest release is asked for by its tag, and only a version this app reads counts`() = runBlocking<Unit> {
-        server.enqueue(MockResponse.Builder().body("""{"tag_name":"v2026.11.0","draft":false,"prerelease":false}""").build())
-        assertThat(releases.latest()).isEqualTo("v2026.11.0")
+    fun `the newest release is asked for with its notes, and only a version this app reads counts`() = runBlocking<Unit> {
+        server.enqueue(MockResponse.Builder().body("""{"tag_name":"v2026.11.0","draft":false,"prerelease":false,"body":"### New\r\n- Lyrics"}""").build())
+        assertThat(releases.latest()).isEqualTo(Release("v2026.11.0", "### New\r\n- Lyrics"))
         val request = server.takeRequest()
         assertThat(request.url.encodedPath).isEqualTo("/repos/hazymorning/Klangbild/releases/latest")
         assertThat(request.headers["Accept"]).isEqualTo("application/vnd.github+json")
         assertThat(request.headers["Authorization"]).isNull()
+        server.enqueue(MockResponse.Builder().body("""{"tag_name":"v2026.12.0"}""").build())
+        assertThat(releases.latest()).isEqualTo(Release("v2026.12.0", null))
         server.enqueue(MockResponse.Builder().body("""{"tag_name":"6.4.0"}""").build())
         assertThat(releases.latest()).isNull()
         server.enqueue(MockResponse.Builder().code(403).build())

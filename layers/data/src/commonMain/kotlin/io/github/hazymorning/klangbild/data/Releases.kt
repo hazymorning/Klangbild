@@ -1,6 +1,7 @@
 package io.github.hazymorning.klangbild.data
 
 import io.github.hazymorning.klangbild.domain.AppVersion
+import io.github.hazymorning.klangbild.domain.Release
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
@@ -14,18 +15,19 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * Klangbild's releases on GitHub, asked for without credentials: the newest one published (not a
- * beta or a draft, which GitHub leaves out), and its app. [api] and [site] are GitHub's own but
+ * beta or a draft, which GitHub leaves out) with its notes, and its app. [api] and [site] are GitHub's own but
  * in tests.
  */
 class Releases(private val http: HttpClient, private val api: String = API, private val site: String = SITE) {
-    /** The newest release's tag ("v2026.11.0"); null when it names no version this app reads. */
-    suspend fun latest(): String? = http.fetch(CHECK_MS, {
+    /** The newest release, with its notes; null when it names no version this app reads. */
+    suspend fun latest(): Release? = http.fetch(CHECK_MS, {
         url("$api/repos/$REPOSITORY/releases/latest")
         header("Accept", "application/vnd.github+json")
     }) { response ->
         if (!response.status.isSuccess()) throw HttpStatusException("GitHub", response.status.value)
-        val tag = (Json.parseToJsonElement(response.bodyAsText()) as? JsonObject)?.string("tag_name")
-        tag?.takeIf { AppVersion.parse(it) != null }
+        val release = Json.parseToJsonElement(response.bodyAsText()) as? JsonObject
+        val tag = release?.string("tag_name")?.takeIf { AppVersion.parse(it) != null }
+        tag?.let { Release(it, release.string("body")?.take(MAX_NOTES)) }
     }
 
     /**
@@ -47,6 +49,9 @@ class Releases(private val http: HttpClient, private val api: String = API, priv
         const val API = "https://api.github.com"
         const val SITE = "https://github.com"
         const val REPOSITORY = "hazymorning/Klangbild"
+
+        /** A release's notes are kept up to this long: far more than they ever are. */
+        const val MAX_NOTES = 20_000
 
         /** Every release's app has this name. */
         const val APK = "klangbild.apk"

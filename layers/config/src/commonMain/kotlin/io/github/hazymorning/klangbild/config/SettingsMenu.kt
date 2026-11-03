@@ -50,6 +50,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     SLEEP_AFTER(MenuSection.TIMER, Strings.entrySleepAfter),
     SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
     SCREEN_OFF(MenuSection.TIMER, Strings.entryScreenOff),
+    PHONE_SETUP(MenuSection.SYSTEM, Strings.entryPhoneSetup),
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
     SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
@@ -241,6 +242,7 @@ object SettingsMenu {
                 else -> Strings.screenOffNever
             },
         ]
+        MenuEntry.PHONE_SETUP -> t[Strings.phoneSetupQr]
         MenuEntry.CONNECTION -> t[
             when {
                 !s.isConfigured -> Strings.setUp
@@ -373,6 +375,7 @@ object SettingsMenu {
                 else -> Strings.aboutScreenOffOff
             },
         ]
+        MenuEntry.PHONE_SETUP -> t[Strings.aboutPhoneSetup]
         MenuEntry.CONNECTION -> t[if (!s.isConfigured) Strings.aboutConnectionSetUp else Strings.aboutConnection]
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
         MenuEntry.SPEAKER -> t[
@@ -524,7 +527,7 @@ object SettingsMenu {
         MenuEntry.SCREEN_OFF -> if (s.presenceSensors.isEmpty()) null else s.copy(screenOff = !s.screenOff)
         MenuEntry.UPDATE_CHECK -> s.copy(updateCheck = !s.updateCheck)
         // OK on Update installs a new version or asks for one (MenuControl).
-        MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
+        MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
     }
 
     /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */

@@ -13,6 +13,7 @@ import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.Lyrics
+import io.github.hazymorning.klangbild.domain.NotePoint
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
@@ -66,7 +67,12 @@ data class MenuState(
     val held: Boolean = false,
     /** The group whose settings show; null while the groups themselves show. */
     val section: MenuSection? = null,
+    /** A new version's notes, which show before it is installed; [cursor] is then on one of their points. */
+    val notes: MenuNotes? = null,
 )
+
+/** The notes of a new [version] ("2026.11.0"), point by point. */
+data class MenuNotes(val version: String, val points: List<NotePoint>)
 
 /** The quick menu while it is open: its lines and the one the cursor is on. */
 data class QuickState(val rows: List<QuickRow>, val cursor: Int)

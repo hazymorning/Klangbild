@@ -382,20 +382,25 @@ internal fun pickTitleSize(
 
 /**
  * A short word (one to three letters: "im", "de", "der", "You") stays with the word after it,
- * so no line of a title ends on it: "Spiegel / im Spiegel", never "Spiegel im / Spiegel".
+ * so no line of a title ends on it: "Spiegel / im Spiegel", never "Spiegel im / Spiegel". The
+ * glue never runs on: a short word the one before already holds stays free, so the balanced
+ * breaks keep their choice ("We are / never apart", not "We are never / apart").
  */
 internal fun glueShortWords(text: AnnotatedString): AnnotatedString {
     val s = text.text
     val chars = s.toCharArray()
     var start = 0
     var changed = false
+    var held = false
     for (i in chars.indices) {
         if (chars[i] != ' ') continue
         val word = s.substring(start, i)
-        if (word.length in 1..3 && word.all { it.isLetter() } && i + 1 < chars.size && chars[i + 1].isLetterOrDigit()) {
+        val glue = !held && word.length in 1..3 && word.all { it.isLetter() } && i + 1 < chars.size && chars[i + 1].isLetterOrDigit()
+        if (glue) {
             chars[i] = NBSP
             changed = true
         }
+        held = glue
         start = i + 1
     }
     return if (!changed) text else AnnotatedString(chars.concatToString(), spanStyles = text.spanStyles, paragraphStyles = text.paragraphStyles)

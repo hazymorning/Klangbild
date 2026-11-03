@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -37,22 +39,33 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.hazymorning.klangbild.app.MenuNotes
 import io.github.hazymorning.klangbild.app.MenuState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
-import io.github.hazymorning.klangbild.config.MenuSection
+import io.github.hazymorning.klangbild.domain.NotePoint
 import io.github.hazymorning.klangbild.math.smoothstep
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
@@ -196,8 +209,11 @@ private class MenuColors(
 fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, pending: Boolean = false) {
     val colors = remember(appearance) { MenuColors.of(appearance) }
     // The level left keeps showing as it was while it fades.
-    val levels = remember { HashMap<MenuSection?, MenuState>() }
-    levels[menu.section] = menu
+    val levels = remember { HashMap<Any?, MenuState>() }
+    val level: Any? = if (menu.notes != null) NotesLevelKey else menu.section
+    levels[level] = menu
+    // The notes have no chosen row, so the light behind it goes while they show.
+    val band by animateFloatAsState(if (menu.notes == null) 1f else 0f, tween(LEVEL_OUT_MS + LEVEL_IN_MS, easing = Motion.Dimmer), label = "menu-band")
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         BaseWall(colors.wall)
@@ -214,20 +230,23 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
                 map,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
                 colorFilter = ColorFilter.tint(colors.band, BlendMode.Modulate),
+                alpha = band,
                 filterQuality = FilterQuality.Low,
                 blendMode = BlendMode.Plus,
             )
         }
         // The level left goes first, then the new one comes: two lists never lie over each other.
         AnimatedContent(
-            targetState = menu.section,
+            targetState = level,
             transitionSpec = {
                 fadeIn(tween(LEVEL_IN_MS, delayMillis = LEVEL_OUT_MS, easing = Motion.Dimmer)) togetherWith
                     fadeOut(tween(LEVEL_OUT_MS, easing = Motion.Dimmer))
             },
             label = "menu-level",
-        ) { section ->
-            MenuLevel(levels[section] ?: menu, layout, focusY, colors, pending)
+        ) { key ->
+            val shown = levels[key] ?: menu
+            val notes = shown.notes
+            if (notes != null) NotesLevel(shown, notes, layout, focusY, colors) else MenuLevel(shown, layout, focusY, colors, pending)
         }
     }
 }
@@ -284,6 +303,100 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         }
     }
 }
+
+/**
+ * A new version's notes before it is installed: the version, what OK does and the hint on the
+ * left, the notes' points in the text column. The point chosen stands in the middle, and the
+ * others fade with their distance, as rows do. A part's name ("New") stands above its first point.
+ */
+@Composable
+private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, focusY: Float, colors: MenuColors) {
+    val t = texts()
+    val faces = faces()
+    val density = LocalDensity.current.density
+    val partStyle = faces.titleType(NOTES_PART_SP, 460, colors.hint)
+    val pointStyle = faces.textType(NOTES_SP, 420, lineHeight = NOTES_LINE).merge(TextStyle(lineBreak = sentenceLineBreak))
+    val measurer = rememberTextMeasurer()
+    val columnPx = (layout.columnWidth * density).roundToInt()
+    // Each point set at rest and chosen, with its part's name above it if it opens one.
+    val set = remember(notes, columnPx, faces, colors) {
+        notes.points.mapIndexed { i, p ->
+            val part = p.part?.takeIf { i == 0 || notes.points[i - 1].part != it }?.let { measurer.measure(AnnotatedString(it), partStyle) }
+            fun point(name: Color, rest: Color) = measurer.measure(pointText(p, name, rest), pointStyle, constraints = Constraints(maxWidth = columnPx))
+            SetPoint(part, point(colors.label, colors.value), point(colors.labelFocus, colors.valueFocus))
+        }
+    }
+    // How tall each point is (dp), and where it starts.
+    val heights = set.map { (it.part?.let { p -> p.size.height / density + NOTES_PART_GAP } ?: 0f) + it.rest.size.height / density }
+    val tops = heights.runningFold(0f) { top, h -> top + h + NOTES_GAP }
+    val cursor = menu.cursor.coerceIn(0, (set.size - 1).coerceAtLeast(0))
+    val offset = animateGlide(if (heights.isEmpty()) focusY else focusY - (tops[cursor] + heights[cursor] / 2f), GLIDE_MS)
+    val chosen = set.indices.map { i -> animateFloatAsState(if (i == cursor) 1f else 0f, tween(260, easing = Motion.Dimmer), label = "note") }
+
+    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
+    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
+    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
+        BasicText(t.format(Strings.notesHeading, notes.version), style = headingStyle)
+    }
+    BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
+        BalancedText(AnnotatedString(t[Strings.aboutUpdateInstall]), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
+    }
+    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
+        BasicText(t[Strings.menuHintNotes], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
+    }
+
+    // Right: the points, each line faded as a row would be where it stands, so a long point is
+    // gone before the screen's edge as rows are.
+    Canvas(Modifier.fillMaxSize()) {
+        val x = (layout.columnLeft * this.density).roundToInt().toFloat()
+        set.forEachIndexed { i, p ->
+            var top = tops[i] + offset.value
+            p.part?.let {
+                drawFaded(it, x, top, focusY)
+                top += it.size.height / this.density + NOTES_PART_GAP
+            }
+            val f = chosen[i].value
+            if (f < 1f) drawFaded(p.rest, x, top, focusY, 1f - f)
+            if (f > 0f) drawFaded(p.chosen, x, top, focusY, f)
+        }
+    }
+}
+
+/** A point of the notes as set: its part's name, if it opens one, and the point at rest and chosen. */
+private class SetPoint(val part: TextLayoutResult?, val rest: TextLayoutResult, val chosen: TextLayoutResult)
+
+/** [text] from [x] px and [top] dp, each line as faded as a row standing there ([MenuGrid.fade] from [focusY]), times [alpha]. */
+private fun DrawScope.drawFaded(text: TextLayoutResult, x: Float, top: Float, focusY: Float, alpha: Float = 1f) {
+    val y = (top * density).roundToInt().toFloat()
+    val paint = Paint()
+    for (line in 0 until text.lineCount) {
+        val lineTop = y + text.getLineTop(line)
+        val lineBottom = y + text.getLineBottom(line)
+        val a = alpha * MenuGrid.fade((lineTop + lineBottom) / 2f / density - focusY)
+        if (a <= 0.002f) continue
+        // The text keeps its own inks, so a line fades through a layer of its own.
+        clipRect(top = lineTop, bottom = lineBottom) {
+            drawIntoCanvas { canvas ->
+                paint.alpha = a
+                canvas.saveLayer(Rect(0f, lineTop, size.width, lineBottom), paint)
+                drawText(text, topLeft = Offset(x, y))
+                canvas.restore()
+            }
+        }
+    }
+}
+
+/** A point of the notes: its feature's name, if it has one, in [name] ink, then the rest in [rest] ink. */
+private fun pointText(point: NotePoint, name: Color, rest: Color): AnnotatedString = buildAnnotatedString {
+    point.name?.let {
+        withStyle(SpanStyle(color = name)) { append(it) }
+        if (point.text.isNotEmpty()) append(' ')
+    }
+    withStyle(SpanStyle(color = rest)) { append(point.text) }
+}
+
+/** What [MenuScreen] keys the notes' level by, beside the groups and the settings of each. */
+private object NotesLevelKey
 
 @Composable
 private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valueStyle: TextStyle, colors: MenuColors, pending: Boolean) {
@@ -361,6 +474,13 @@ private const val GLIDE_MS = 340
 /** A group opening, or the menu going back to the groups: the level left fades, then the new one comes (ms). */
 private const val LEVEL_OUT_MS = 140
 private const val LEVEL_IN_MS = 220
+
+/** The notes' points: their size (sp) and line height, the room between two, and a part's name (sp) with the room under it (dp). */
+private const val NOTES_SP = 19f
+private const val NOTES_LINE = 27f
+private const val NOTES_GAP = 22f
+private const val NOTES_PART_SP = 17f
+private const val NOTES_PART_GAP = 8f
 
 /** From a row's center to its label's baseline (21 sp in a 40 dp row). */
 private const val LABEL_BASELINE_FROM_CENTER = 7f

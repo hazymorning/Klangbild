@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
+import io.github.hazymorning.klangbild.app.MenuNotes
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.Intensity
 import io.github.hazymorning.klangbild.config.MenuContext
@@ -13,6 +14,7 @@ import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.ReleaseNotes
 import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SpeakerGroup
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
@@ -129,6 +131,26 @@ class OptionsTest {
     }
 
     @Test fun menuSleep() = shot("menu_sleep") { MenuScreen(menu(MenuEntry.SLEEP_AFTER)) }
+
+    /** A new version's notes before it is installed, on its second point, in both walls. */
+    @Test fun menuNotes() {
+        val notes = MenuNotes(
+            "2026.11.0",
+            ReleaseNotes.points(
+                """
+                ### New
+                - **Music in other rooms.** Klangbild can now show what's playing in other rooms while nothing plays in the TV's room, with that room's name next to the time. To use it, pick those rooms' speakers on the setup page.
+                - **Screen off when no one's there.** With presence sensors from Home Assistant, Klangbild can now turn the screen black once everyone has left the room, while the music keeps playing.
+
+                ### Bug fixes
+                - Turning on Play here from Home Assistant sometimes left the TV off as a speaker. That should no longer happen.
+                """.trimIndent(),
+            ),
+        )
+        val state = menu(MenuEntry.UPDATE).copy(cursor = 1, notes = notes)
+        shot("menu_notes") { MenuScreen(state) }
+        shot("menu_notes_light") { MenuScreen(state, appearance = io.github.hazymorning.klangbild.color.Appearance.LIGHT) }
+    }
 
     /** The list glides through the light when the cursor moves down by one line, then by three. */
     @Test fun menuGlide() {

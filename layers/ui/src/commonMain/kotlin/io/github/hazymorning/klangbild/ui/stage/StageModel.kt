@@ -53,6 +53,8 @@ internal class StageModel(
     val lyrics: Lyrics? = null,
     /** The queue as a list in the text column, while it shows and no lyrics fill the column. The track then stands at its top. */
     val queue: QueueModel? = null,
+    /** Whether the player still reports this track. Once it reports the next one, its lyrics are over. */
+    val current: Boolean = true,
 ) {
     /** Whether the track plays or is about to: the progress bar and the lyrics move on. */
     val playing: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING
