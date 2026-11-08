@@ -856,21 +856,58 @@ def day_and_night():
     save(np.concatenate([day, night], axis=1), "day-and-night.jpg")
 
 
+def inset(polygons, d):
+    """Convex outlines moved inward by [d]."""
+    out = []
+    for poly in polygons:
+        p = np.asarray(poly, dtype=np.float64)
+        p = p[np.r_[True, np.hypot(*np.diff(p, axis=0).T) > 1e-9]]
+        t = np.roll(p, -1, axis=0) - np.roll(p, 1, axis=0)
+        t /= np.hypot(t[:, 0], t[:, 1])[:, None]
+        n = np.stack([t[:, 1], -t[:, 0]], axis=1)
+        if np.mean(np.sum(n * (p.mean(axis=0) - p), axis=1)) < 0:
+            n = -n
+        out.append(p + n * d)
+    return out
+
+
+# The README shows the button this many px wide, so its hairline is one px there.
+BUTTON_WIDTH = 257
+
+
 def download_button(scale=4, light=False):
     """The README's download button from tools/download.svg, a store badge with the mark and
-    "Download for Android TV": white with black words for dark pages, and the other way round
-    for light ones. The README shows it 269 px wide."""
-    (_, frame, at), *words = shapes(os.path.join(ROOT, "tools", "download.svg"))
-    _, _, w, h = (float(v) for v in ET.parse(os.path.join(ROOT, "tools", "download.svg")).getroot().get("viewBox").split())
+    "Download for Android TV": black for dark pages and white for light ones. A hairline edge
+    keeps its shape on a page of the same color, and a gradient too faint to see as one gives it
+    depth. On black, a little light catches the top edge. The first line is a step softer than
+    the second, and nothing is pure white or pure black."""
+    svg = os.path.join(ROOT, "tools", "download.svg")
+    (_, frame, at), (_, mark, mark_at), (_, small, small_at), (_, large, large_at) = shapes(svg)
+    _, _, w, h = (float(v) for v in ET.parse(svg).getroot().get("viewBox").split())
+    hairline = w / BUTTON_WIDTH
     w, h = int(math.ceil(w * scale)), int(h * scale)
     zoom = np.diag([scale, scale, 1.0])
-    shape = coverage(outlines(frame, zoom @ at), w, h)
-    ink = coverage([poly for _, d, m in words for poly in outlines(d, zoom @ m)], w, h)
-    paper, letters = (0.0, 255.0) if light else (255.0, 0.0)
-    img = np.full((h, w), paper) * (1 - ink) + letters * ink
-    rgba = np.dstack([img, img, img, shape * 255])
+    edge = outlines(frame, zoom @ at)
+    shape = coverage(edge, w, h)
+    rim = (shape - coverage(inset(edge, hairline * scale), w, h))[..., None]
+    v = ((np.arange(h) + 0.5) / h)[:, None, None]
+    if light:
+        top, bottom, line, line_a = (255, 255, 255), (244, 244, 247), (0, 0, 0), 0.16
+        first, second, catch = (92, 92, 98), (22, 22, 24), 0.0
+    else:
+        top, bottom, line, line_a = (25, 25, 28), (5, 5, 6), (255, 255, 255), 0.22
+        first, second, catch = (200, 200, 206), (246, 246, 248), 0.10
+    img = np.asarray(top, dtype=np.float64) * (1 - v) + np.asarray(bottom, dtype=np.float64) * v + np.zeros((1, w, 1))
+    if catch:
+        light_rim = (shape - coverage(inset(edge, 1.1 * hairline * scale), w, h))[..., None]
+        img += (255 - img) * light_rim * catch * np.clip(1 - v / 0.5, 0, 1) ** 2
+    img = img * (1 - rim * line_a) + np.asarray(line, dtype=np.float64) * rim * line_a
+    for d, m, color in ((mark, mark_at, second), (large, large_at, second), (small, small_at, first)):
+        a = coverage(outlines(d, zoom @ m), w, h)[..., None]
+        img = img * (1 - a) + np.asarray(color, dtype=np.float64) * a
+    rgba = np.dstack([np.clip(img, 0, 255), shape * 255])
     os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "download-light.png" if light else "download.png")
+    path = os.path.join(OUT, "download-button-light.png" if light else "download-button-dark.png")
     Image.fromarray(np.round(rgba).astype(np.uint8), "RGBA").save(path, optimize=True)
     print(path, os.path.getsize(path) // 1024, "KB", f"{w}x{h}")
 

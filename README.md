@@ -8,7 +8,7 @@
 
 Klangbild is an Android TV app that shows what's playing, and it's mostly there to look nice. The idea is to have it running in the background, where it just adds a bit to the mood.
 
-<a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download.png"><img src="docs/screenshots/download-light.png" width="269" alt="Download for Android TV"></picture></a>
+<a href="https://github.com/hazymorning/Klangbild/releases/latest/download/klangbild.apk"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/download-button-dark.png"><img src="docs/screenshots/download-button-light.png" width="257" alt="Download for Android TV"></picture></a>
 
 ## What it does
 
