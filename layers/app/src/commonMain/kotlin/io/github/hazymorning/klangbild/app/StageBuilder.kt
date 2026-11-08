@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SourceState
+import io.github.hazymorning.klangbild.domain.Strip
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.UpNext
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -30,7 +31,7 @@ internal class StageBuilder(
     now: () -> Long,
     private val changed: () -> Unit,
 ) {
-    private val scenes = Scenes(scope, artwork, log)
+    private val scenes = Scenes(scope, artwork, log, now)
     private val thumbs = Thumbs(scope, artwork, log, now)
     private val strip = CoverStrip()
 
@@ -43,17 +44,11 @@ internal class StageBuilder(
         thumbs.px = (StageGrid(spec).rowCover * spec.density).roundToInt()
     }
 
-    /**
-     * Builds for Cover Flow ([flow]) or the single cover from now on. Cover Flow needs scenes of
-     * its own, and its strip starts afresh. What showed before stays on screen until the first
-     * scene is made (it goes then), so the switch never waits in the dark. Off and the list share
-     * the cover's scenes. The song on stage ([onStage]) keeps its scene for a way straight back.
-     */
-    fun queueDisplay(flow: Boolean, onStage: TrackInfo?) {
-        if (flow == scenes.frame.flow) return
-        scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
-        strip.clear()
-    }
+    /** Cover Flow's strip as [follow] last left it. */
+    private var cards: Strip? = null
+
+    /** Cover Flow shows, else the single cover ([follow]). */
+    val flowing: Boolean get() = scenes.frame.flow
 
     /** Another speaker (or another server) has its own history. */
     fun newSource() {
@@ -70,13 +65,33 @@ internal class StageBuilder(
     }
 
     /**
+     * Follows [stage]'s track with Cover Flow's strip, in every view, so the strip knows what
+     * played when Cover Flow comes, and says whether Cover Flow shows, as [build] then builds it.
+     * It shows when chosen ([s]) and while there is another cover beside the song's: one album, a
+     * station, a book or an episode on its own has nothing to flow, and the single cover shows
+     * instead, as the list shows only with something to come. Cover Flow needs scenes of its own:
+     * what showed before stays on screen until the other view's first scene is made, so a switch
+     * never waits in the dark, and the song on stage ([onStage]) keeps its scene for a way
+     * straight back.
+     */
+    fun follow(s: Settings, src: SourceState, stage: Screen.Stage, onStage: TrackInfo?): Boolean {
+        // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
+        val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
+        val strip = strip.update(stage.track, coming, played = src.played).also { cards = it }
+        val flow = s.queue == QueueDisplay.FLOW && strip.cards.size > 1
+        if (flow != scenes.frame.flow) scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
+        return flow
+    }
+
+    /**
      * [ui] with the stage for [stage]'s track: the single cover with the lyrics or the queue
-     * list, or Cover Flow, as the settings [s] say. [shown] is the stage published before.
+     * list, or Cover Flow, as [follow] said for it. [shown] is the stage published before.
      */
     fun build(ui: UiState, s: Settings, stage: Screen.Stage, look: Look, shown: StageData?): UiState {
         val lyrics = lyricsFor(s, ui.source, stage.track)
-        return if (s.queue == QueueDisplay.FLOW) {
-            showFlow(ui, stage, look, lyrics)
+        val strip = cards?.takeIf { flowing && it.middle.track == stage.track }
+        return if (strip != null) {
+            showFlow(ui, stage, strip, look, lyrics)
         } else {
             showStage(ui, stage, look, lyrics, queueFor(s, ui.source, stage.track, lyrics, shown))
         }
@@ -119,8 +134,10 @@ internal class StageBuilder(
         scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
         val rows = list?.upNext?.rows.orEmpty().map { it.track }
         thumbs.retain(rows)
+        // Asked every time: a generated cover standing in for the song's picture may try again.
+        scenes.prepare(stage.track, look) { changed() }
         val scene = scenes.ready(stage.track, look)
-        if (scene == null) scenes.prepare(stage.track, look) { changed() } else stage.next?.let { scenes.prepare(it, look) }
+        if (scene != null) stage.next?.let { scenes.prepare(it, look) }
         for (track in rows) thumbs.prepare(track) { changed() }
         if (scene == null) return ui
         val shown = ui.stage
@@ -130,20 +147,19 @@ internal class StageBuilder(
     }
 
     /**
-     * Cover Flow: [ui] with the strip around [stage]'s track. Every card's scene is made (the
+     * Cover Flow: [ui] with the strip [s] around [stage]'s track. Every card's scene is made (the
      * middle one first, then what comes, then what was), and the strip is shown once the middle
-     * one is ready; cards still on their way join it as they come. A card whose scene is being
-     * lit again keeps the one it has meanwhile. When the wall changes (light to dark), the whole
-     * strip changes at once, as soon as every card it shows is ready.
+     * one is ready; cards still on their way join it as they come. The next song is made ahead
+     * too, though it may share the middle card (the album's next track), so it is there when it
+     * starts. A card whose scene is being lit again keeps the one it has meanwhile. When the wall
+     * changes (light to dark), the whole strip changes at once, as soon as every card it shows
+     * is ready.
      */
-    private fun showFlow(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?): UiState {
-        val src = ui.source
-        // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
-        val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
-        val s = strip.update(stage.track, coming, played = src.played)
-        scenes.retain(s.cards.map { it.track.sceneKey }.toSet())
+    private fun showFlow(ui: UiState, stage: Screen.Stage, s: Strip, look: Look, lyrics: Lyrics?): UiState {
+        scenes.retain(s.cards.map { it.track.sceneKey }.toSet() + setOfNotNull(stage.next?.sceneKey))
         val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
         for (i in order) scenes.prepare(s.cards[i].track, look) { changed() }
+        stage.next?.let { scenes.prepare(it, look) }
         val middle = scenes.ready(s.middle.track, look) ?: return ui
         val shown = ui.flow?.cards.orEmpty().associateBy { it.id }
         val newWall = shown.values.any { it.scene.appearance != look.appearance }

@@ -23,19 +23,20 @@ internal class QueueSwitch {
     /**
      * What is on its way, with the state [ready] just worked out: a choice still [pending] in the
      * quick settings while it differs from the [setting], else the setting until [ready] shows
-     * it. Nothing while no song is [onStage]; the switch is forgotten then.
+     * it, Cover Flow if it [flows] (with nothing beside the song's cover, Cover Flow is the single
+     * cover). Nothing while no song is [onStage]; the switch is forgotten then.
      */
-    fun onItsWay(ready: UiState, onStage: Boolean, setting: QueueDisplay, pending: QueueDisplay?): QueueDisplay? {
+    fun onItsWay(ready: UiState, onStage: Boolean, setting: QueueDisplay, pending: QueueDisplay?, flows: Boolean): QueueDisplay? {
         if (!onStage) {
             coming = null
             return null
         }
-        if (coming?.let { shows(ready, it) } == true) coming = null
+        if (coming != null && shows(ready, flows)) coming = null
         return pending?.takeIf { it != setting } ?: coming
     }
 
     companion object {
-        /** Whether [ui] shows [queue]: Cover Flow once its strip is there, Off and the list once the single cover's stage is. */
-        fun shows(ui: UiState, queue: QueueDisplay): Boolean = if (queue == QueueDisplay.FLOW) ui.flow != null else ui.stage != null
+        /** Whether [ui] shows its view: Cover Flow once its strip is there ([flows]), else once the single cover's stage is. */
+        fun shows(ui: UiState, flows: Boolean): Boolean = if (flows) ui.flow != null else ui.stage != null
     }
 }

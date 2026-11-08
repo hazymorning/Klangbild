@@ -113,7 +113,7 @@
     <string name="about_queue_off">Ein Cover, groß, neben dem Titel.</string>
     <string name="about_queue_list">Die nächsten Titel als Liste neben dem Cover.</string>
     <string name="about_queue_list_set_up">Die nächsten Titel als Liste neben dem Cover. Dafür braucht es Music Assistant: Ohne nennt die letzte Zeile nur den nächsten Titel.</string>
-    <string name="about_queue_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt.</string>
+    <string name="about_queue_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt. Solange es nur ein Cover gibt, steht es groß neben dem Titel.</string>
     <string name="about_appearance_auto">Tagsüber hell, von Sonnenuntergang bis Sonnenaufgang dunkel, nach dem Stand der Sonne in Home Assistant.</string>
     <string name="about_appearance_light">Immer hell: heller Hintergrund, dunkle Schrift.</string>
     <string name="about_appearance_dark">Immer dunkel: dunkler Hintergrund, helle Schrift.</string>

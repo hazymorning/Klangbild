@@ -27,8 +27,9 @@ import kotlin.time.Clock
  * as the cover) and kept for the songs to come: the rows further down are made ahead, so a list
  * that moves up has them at once. A song without a cover gets its generated one, as the stage
  * does. They are kept by picture, so the songs of an album share one. One is loaded at a time,
- * so the stage's own pictures never wait behind them; a cover that took too long stands in as
- * its generated one for a while and is then asked for again.
+ * so the stage's own pictures never wait behind them; a cover that did not come (it took too
+ * long, or the address gave none) stands in as its generated one, and is asked for again after
+ * [Scenes.RETRY_MS], as on the stage.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class Thumbs(
@@ -40,7 +41,7 @@ internal class Thumbs(
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val lane = Mutex()
 
-    /** Generated covers standing in for one that took too long, and since when. */
+    /** Generated covers standing in for one that did not come, and since when. */
     private val standIns = HashMap<String, Long>()
 
     private val cache = RecentMap<String, ImageBitmap>(KEEP) { key, _ -> standIns.remove(key) }
@@ -59,7 +60,7 @@ internal class Thumbs(
 
     /**
      * Starts making [track]'s small cover unless it is made or on its way (a generated one that stands
-     * in is tried again after [RETRY_MS]); [done] runs once it is.
+     * in is tried again after [Scenes.RETRY_MS]); [done] runs once it is.
      */
     fun prepare(track: TrackInfo, done: () -> Unit) {
         val side = px
@@ -67,7 +68,7 @@ internal class Thumbs(
         val key = keyOf(track)
         synchronized(lock) {
             if (key in building) return
-            if (key in cache && standIns[key]?.let { now() - it >= RETRY_MS } != true) return
+            if (key in cache && standIns[key]?.let { now() - it >= Scenes.RETRY_MS } != true) return
             building[key] = scope.launch { make(track, key, side, done) }
         }
     }
@@ -95,13 +96,13 @@ internal class Thumbs(
 
     private suspend fun make(track: TrackInfo, key: String, side: Int, done: () -> Unit) {
         val me = currentCoroutineContext()[Job]
-        var late = false
+        var missing = false
         val bitmap = try {
             // A few seconds for the cover once its turn has come; then the generated one steps in.
             val loaded = lane.withLock {
                 withTimeoutOrNull(Scenes.COVER_TIMEOUT_MS) { Loaded(runCatching { artwork.load(track) }.getOrNull()) }
             }
-            late = loaded == null
+            missing = loaded?.cover == null && track.artworkId != null
             withContext(dispatcher) { SceneBuilder.rowCover(loaded?.cover, track.artFoil, track.artView, side) }
         } catch (e: CancellationException) {
             throw e
@@ -113,12 +114,12 @@ internal class Thumbs(
             if (building[key] === me) building.remove(key)
             if (bitmap == null || side != px) return
             // A generated one never replaces a cover that came before, nor the same one standing in.
-            if (late && key in cache) {
+            if (missing && key in cache) {
                 if (key in standIns) standIns[key] = now()
                 return
             }
             cache[key] = bitmap
-            if (late) standIns[key] = now() else standIns.remove(key)
+            if (missing) standIns[key] = now() else standIns.remove(key)
         }
         done()
     }
@@ -126,9 +127,6 @@ internal class Thumbs(
     companion object {
         /** Small covers kept: the list's rows and a few more. */
         const val KEEP = 16
-
-        /** A cover that took too long is asked for again after this long (ms). */
-        const val RETRY_MS = 60_000L
 
         /** Which picture [track] shows: its address, else its generated one. */
         fun keyOf(track: TrackInfo): String = track.artworkId ?: "seed|${track.artKey}"

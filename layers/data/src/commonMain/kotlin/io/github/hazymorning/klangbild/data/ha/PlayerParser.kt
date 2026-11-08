@@ -134,7 +134,11 @@ object PlayerParser {
             ?.distinct()
             .orEmpty()
 
-    /** MA joins multiple artists with " / " in `media_artist`. */
+    /**
+     * The artists in `media_artist`, which Music Assistant joins with a slash ("A/B"). Only a
+     * slash with a space beside it is split here: a bare one is part of names like AC/DC. Music
+     * Assistant's queue names them one by one.
+     */
     fun splitArtists(raw: String?): List<String> {
         val s = raw?.trim().orEmpty()
         if (s.isEmpty()) return emptyList()
