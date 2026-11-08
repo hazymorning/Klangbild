@@ -859,7 +859,7 @@ def day_and_night():
 def download_button(scale=4, light=False):
     """The README's download button from tools/download.svg, a store badge with the mark and
     "Download for Android TV": white with black words for dark pages, and the other way round
-    for light ones. The README shows it 265 px wide."""
+    for light ones. The README shows it 269 px wide."""
     (_, frame, at), *words = shapes(os.path.join(ROOT, "tools", "download.svg"))
     _, _, w, h = (float(v) for v in ET.parse(os.path.join(ROOT, "tools", "download.svg")).getroot().get("viewBox").split())
     w, h = int(math.ceil(w * scale)), int(h * scale)
