@@ -17,6 +17,7 @@ import json
 import math
 import os
 import sys
+import xml.etree.ElementTree as ET
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -27,7 +28,7 @@ OUT = os.path.join(ROOT, "docs", "screenshots")
 FONTS = os.path.join(ROOT, "layers", "ui", "src", "androidMain", "res", "font")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from make_launcher_assets import NAVY, logo  # noqa: E402  (the same mark as on the TV's home screen)
+from make_launcher_assets import coverage, outlines, shapes  # noqa: E402  (the same drawing as the TV's banner)
 
 
 # Color ---------------------------------------------------------------------------------------
@@ -277,15 +278,6 @@ def dark_room(W, H, tv, colors, strength, albedo=(122, 118, 114), ambient=0.008,
     paint = to_linear(list(albedo))
     lin = wall(H, W, paint, fill, lights)
     return to_srgb(tonemap(lin)), lin / paint
-
-
-def logo_tile(side, ss=4):
-    """The logo on its own night blue tile with round corners, as on the TV's home screen: its
-    colors and its coverage, for light backgrounds, where the bare logo would fade."""
-    tile = Image.new("L", (side * ss, side * ss), 0)
-    ImageDraw.Draw(tile).rounded_rectangle([0, 0, side * ss - 1, side * ss - 1], radius=int(side * 0.24 * ss), fill=255)
-    a = np.asarray(tile.resize((side, side), Image.LANCZOS), dtype=np.float64) / 255.0
-    return np.asarray(logo(side), dtype=np.float64)[..., :3], a[..., None]
 
 
 def now_playing():
@@ -864,56 +856,22 @@ def day_and_night():
     save(np.concatenate([day, night], axis=1), "day-and-night.jpg")
 
 
-def ink_width(mask):
-    """How wide the ink of a text mask is, from its first to its last inked column."""
-    cols = np.nonzero(mask.max(axis=0) > 0.02)[0]
-    return int(cols[-1] + 1) if len(cols) else mask.shape[1]
-
-
 def download_button(scale=4, light=False):
-    """The README's download button, built like a store badge: the logo, then "Download for" over
-    "Android TV", the same space on every side, flat night blue with a hairline edge. The [light]
-    one, for light pages, is pale with night blue words, and the logo sits on its own night blue
-    tile as on the TV's home screen. Its width follows what it holds; the README shows it 236 px
-    wide."""
-    h = 64 * scale
-    side = int(round(h * 0.60))                  # the logo
-    pad = (h - side) // 2                        # the same space left of it as above and below
-    gap = int(round(h * 0.17))
-    small, small_cap = text_mask("Download for", "dmsans.ttf", 10.5 * scale, 450)
-    large, large_cap = text_mask("Android TV", "jost.ttf", 21.5 * scale, 430, tracking=-0.005)
-    words = max(ink_width(small), ink_width(large))
-    w = pad + side + gap + words + pad
-    r = int(round(h * 0.22))
-    ss = 4
-    shape = Image.new("L", (w * ss, h * ss), 0)
-    ImageDraw.Draw(shape).rounded_rectangle([0, 0, w * ss - 1, h * ss - 1], radius=r * ss, fill=255)
-    edge = Image.new("L", (w * ss, h * ss), 0)
-    ImageDraw.Draw(edge).rounded_rectangle([0, 0, w * ss - 1, h * ss - 1], radius=r * ss, outline=255, width=scale * ss)
-    shape = np.asarray(shape.resize((w, h), Image.LANCZOS), dtype=np.float64) / 255.0
-    edge = np.asarray(edge.resize((w, h), Image.LANCZOS), dtype=np.float64) / 255.0
-    img = np.empty((h, w, 3))
-    if light:
-        img[:] = np.array([238, 243, 250], dtype=np.float64)
-        img = img * (1 - edge[..., None] * 0.16) + np.array(NAVY) * edge[..., None] * 0.16
-        mark, a = logo_tile(side)
-    else:
-        img[:] = np.array(NAVY, dtype=np.float64)
-        img = img * (1 - edge[..., None] * 0.22) + np.array([150, 170, 205]) * edge[..., None] * 0.22
-        mark = np.asarray(logo(side, background=None), dtype=np.float64)
-        a = mark[..., 3:4] / 255.0
-    img[pad:pad + side, pad:pad + side] = img[pad:pad + side, pad:pad + side] * (1 - a) + mark[..., :3] * a
-    # The two lines as one block centered on the button: the small line's cap height to the large line's baseline.
-    cap_small, cap_large = 0.70 * 10.5 * scale, 0.70 * 21.5 * scale
-    line_gap = 6.5 * scale
-    y0 = h / 2 - (cap_small + line_gap + cap_large) / 2
-    tx = pad + side + gap
-    paste(img, small, tx, int(round(y0)) - small_cap, (84, 98, 128) if light else (186, 202, 226))
-    paste(img, large, tx, int(round(y0 + cap_small + line_gap)) - large_cap, (12, 24, 52) if light else (242, 246, 252))
-    rgba = np.dstack([np.clip(img, 0, 255), shape * 255]).astype(np.uint8)
+    """The README's download button from tools/download.svg, a store badge with the mark and
+    "Download for Android TV": white with black words for dark pages, and the other way round
+    for light ones. The README shows it 269 px wide."""
+    (_, frame, at), *words = shapes(os.path.join(ROOT, "tools", "download.svg"))
+    _, _, w, h = (float(v) for v in ET.parse(os.path.join(ROOT, "tools", "download.svg")).getroot().get("viewBox").split())
+    w, h = int(math.ceil(w * scale)), int(h * scale)
+    zoom = np.diag([scale, scale, 1.0])
+    shape = coverage(outlines(frame, zoom @ at), w, h)
+    ink = coverage([poly for _, d, m in words for poly in outlines(d, zoom @ m)], w, h)
+    paper, letters = (0.0, 255.0) if light else (255.0, 0.0)
+    img = np.full((h, w), paper) * (1 - ink) + letters * ink
+    rgba = np.dstack([img, img, img, shape * 255])
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, "download-light.png" if light else "download.png")
-    Image.fromarray(rgba, "RGBA").save(path, optimize=True)
+    Image.fromarray(np.round(rgba).astype(np.uint8), "RGBA").save(path, optimize=True)
     print(path, os.path.getsize(path) // 1024, "KB", f"{w}x{h}")
 
 

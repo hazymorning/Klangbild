@@ -40,8 +40,6 @@ internal fun configureLint(lint: Lint) {
         "AndroidGradlePluginVersion",
         // Sideloaded as one APK with every language; there are no app bundle language splits.
         "AppBundleLocaleChanges",
-        // The TV shows the banner; the square icon is a full tile on purpose.
-        "IconLauncherShape",
         // The TV banner exists at xhdpi only, the size Android TV asks for.
         "IconMissingDensityFolder",
     )

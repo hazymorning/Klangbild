@@ -14,30 +14,30 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * The generated cover for a track without artwork: a part of Klangbild's mark (four rounded
- * squares, each turned a little further, around a ring) on a dark, matte sleeve. The lines are
+ * The generated cover for a track without artwork: part of a figure of four rounded squares,
+ * each turned a little further, around a ring, on a dark, matte sleeve. The lines are
  * the sleeve's own color in gloss and show only where they catch the lamp, in a broad, soft band
  * across the sleeve, like spot varnish on soft-touch paper. Each stands a little off the paper
  * and has its own thickness of varnish.
  *
- * The foil the lines catch the light in follows [Seed.foil], the view of the mark [Seed.view]:
+ * The foil the lines catch the light in follows [Seed.foil], the view of the figure [Seed.view]:
  * one artist's records share their foil and differ in their view. Without a view the rings
  * rise from below, like a signal; without a foil (an input like a TV's sound, which has only a
  * title) they are plain silver on black.
  *
  * Pure Kotlin (ARGB pixels), the same on every platform, drawn at the exact size it is shown:
- * every edge is worked out from the mark's geometry, so it is smooth at any size.
+ * every edge is worked out from the figure's geometry, so it is smooth at any size.
  */
 object SleeveArt {
 
     /** What the cover follows: the name its foil comes from and the name its view comes from. */
     data class Seed(val foil: String?, val view: String?)
 
-    /** A view of the mark: its size against the sleeve's side and where its middle stands (shares of the side). */
+    /** A view of the figure: its size against the sleeve's side and where its middle stands (shares of the side). */
     data class View(val zoom: Float, val x: Float, val y: Float)
 
     /**
-     * The views of the mark that [Seed.view] picks from. In each, every line keeps a tenth of the
+     * The views of the figure that [Seed.view] picks from. In each, every line keeps a tenth of the
      * sleeve's side clear of its edges or crosses them steeply ([SleeveArtTest]).
      */
     internal val views = listOf(
@@ -69,7 +69,7 @@ object SleeveArt {
     )
     private val plain = Foil(0.92f, 0f, 0f, 0f, sleeveChroma = 0f)
 
-    /** The mark from tools/logo.svg (a 1024 canvas): each line's half size, corner, stroke, turn and varnish, from the ring outward. */
+    /** The figure on a 1024 unit canvas: each line's half size, corner, stroke, turn and varnish, from the ring outward. */
     private class Line(val half: Float, val corner: Float, val stroke: Float, turn: Float, val varnish: Float) {
         val cos = cos(-turn * PI.toFloat() / 180f)
         val sin = sin(-turn * PI.toFloat() / 180f)
@@ -86,16 +86,16 @@ object SleeveArt {
     /** Which foil [seed] gets (an index), or null for plain silver on black. */
     internal fun foilOf(seed: Seed): Int? = seed.foil?.let { index(it, foils.size) }
 
-    /** Which view of the mark [seed] gets. */
+    /** Which view of the figure [seed] gets. */
     internal fun viewOf(seed: Seed): View = seed.view?.let { views[index(it, views.size)] } ?: rising
 
     private fun index(name: String, count: Int): Int = (stableHash(name.trim().lowercase()).toLong() and 0xFFFFFFFFL).rem(count).toInt()
 
-    /** How many lines the mark has, and the centerline of the [index]th from the ring outward at (x, y) in logo units. */
+    /** How many lines the figure has, and the centerline of the [index]th from the ring outward at (x, y) in its units. */
     internal val lineCount get() = lines.size
     internal fun centerline(index: Int, x: Float, y: Float): Float = centerline(lines[index], x, y)
 
-    /** The centerline of [line] at (x, y) (logo units from the mark's middle): signed distance, negative inside. */
+    /** The centerline of [line] at (x, y) (units from the figure's middle): signed distance, negative inside. */
     private fun centerline(line: Line, x: Float, y: Float): Float {
         if (line.half == 0f) return hypot(x, y) - ringRadius
         val qx = abs(x * line.cos - y * line.sin) - line.half + line.corner
@@ -109,8 +109,8 @@ object SleeveArt {
         val metal = foil.metal
         val sleeve = foil.sleeve
         val view = viewOf(seed)
-        val k = 1024f / view.zoom       // logo units across the side
-        val px = k / side                 // one pixel in logo units
+        val k = 1024f / view.zoom       // the figure's units across the side
+        val px = k / side                 // one pixel in those units
         val out = IntArray(side * side)
         val rgb = FloatArray(3)
         for (j in 0 until side) {
@@ -170,7 +170,7 @@ object SleeveArt {
     private const val SLEEVE_L = 0.16f
     private const val SLEEVE_C = 0.022f
 
-    /** The lines at this share of the logo's own strokes: hairlines on the sleeve. */
+    /** The lines at this share of the strokes in [lines]: hairlines on the sleeve. */
     private const val THIN = 0.32f
 
     /** How much more light the upper left of the sleeve gets than the lower right. */
