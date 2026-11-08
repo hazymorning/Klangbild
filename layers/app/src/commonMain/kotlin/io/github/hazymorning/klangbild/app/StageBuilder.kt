@@ -30,7 +30,7 @@ internal class StageBuilder(
     now: () -> Long,
     private val changed: () -> Unit,
 ) {
-    private val scenes = Scenes(scope, artwork, log)
+    private val scenes = Scenes(scope, artwork, log, now)
     private val thumbs = Thumbs(scope, artwork, log, now)
     private val strip = CoverStrip()
 
@@ -119,8 +119,10 @@ internal class StageBuilder(
         scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
         val rows = list?.upNext?.rows.orEmpty().map { it.track }
         thumbs.retain(rows)
+        // Asked every time: a generated cover standing in for the song's picture may try again.
+        scenes.prepare(stage.track, look) { changed() }
         val scene = scenes.ready(stage.track, look)
-        if (scene == null) scenes.prepare(stage.track, look) { changed() } else stage.next?.let { scenes.prepare(it, look) }
+        if (scene != null) stage.next?.let { scenes.prepare(it, look) }
         for (track in rows) thumbs.prepare(track) { changed() }
         if (scene == null) return ui
         val shown = ui.stage

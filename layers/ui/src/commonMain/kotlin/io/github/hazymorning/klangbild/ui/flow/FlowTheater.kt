@@ -150,7 +150,7 @@ internal fun FlowTheater(
             val kind = changeOf(old, target)
             val look = takesNewLook(old, target, kind)
             val choreography = choreograph(old, target, kind, FlowGeometry(target.middle.scene.layout), look)
-            if (kind == FlowChange.SIDES && choreography.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha }) {
+            if (kind == FlowChange.SIDES && choreography.motions.all { it.from == it.to && it.fromAlpha == it.toAlpha && it.was == null }) {
                 // Only a card's scene was renewed (the same cover in the same light): nothing to watch.
                 current = target
                 motions = choreography.motions
@@ -295,12 +295,13 @@ private fun partySign(url: String, wall: Appearance, geometry: FlowGeometry): Fl
 
 /**
  * Whether the strip takes a new look from [old] to [new] in a change of [kind]: a better cover or
- * the other background for the same track (unless the cards stay as they were), or the next track
- * of the same card whose cover or background differs.
+ * the other background for the same track (unless the cards stay as they were), the next track
+ * of the same card whose cover or background differs, or a card beside it whose picture came.
  */
 internal fun takesNewLook(old: FlowData, new: FlowData, kind: FlowChange): Boolean = when (kind) {
     FlowChange.SOFT, FlowChange.WALL -> !sameCards(old, new)
     FlowChange.TEXT -> !sameCover(old.middle.scene, new.middle.scene) || old.middle.scene.appearance != new.middle.scene.appearance
+    FlowChange.SIDES -> new.cards.any { c -> old.cards.firstOrNull { it.id == c.id }?.let { !sameCover(it.scene, c.scene) } == true }
     else -> false
 }
 

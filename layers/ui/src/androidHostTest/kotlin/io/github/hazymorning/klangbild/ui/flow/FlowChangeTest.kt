@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.test.Test
 
-/** Whether Cover Flow's strip takes a new look when the next track comes to the same card. */
+/** Whether Cover Flow's strip takes a new look when the next track comes to the same card, or a card beside it gets its picture. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-mdpi")
@@ -40,6 +40,20 @@ class FlowChangeTest {
         val new = strip(next)
         assertThat(changeOf(old, new)).isEqualTo(FlowChange.TEXT)
         assertThat(takesNewLook(old, new, FlowChange.TEXT)).isFalse()
+    }
+
+    @Test
+    fun `a card beside the middle one cross-fades to its picture once it comes`() {
+        val side = next.copy(title = "Flut", album = "Gezeiten", key = "Flut")
+        val middle = SceneBuilder.build(first.key, SyntheticCovers.render(SyntheticCover.SALT_WATER), first.artFoil, first.artView, screen, Appearance.DARK, flow = true)
+        val standIn = SceneBuilder.build(side.key, null, side.artFoil, side.artView, screen, Appearance.DARK, flow = true)
+        val picture = SceneBuilder.build(side.key, SyntheticCovers.render(SyntheticCover.MOSS), side.artFoil, side.artView, screen, Appearance.DARK, flow = true)
+        val old = FlowData(listOf(FlowEntry(0L, first, middle), FlowEntry(1L, side, standIn)), 0)
+        val new = FlowData(listOf(FlowEntry(0L, first, middle), FlowEntry(1L, side, picture)), 0)
+        assertThat(changeOf(old, new)).isEqualTo(FlowChange.SIDES)
+        assertThat(takesNewLook(old, new, FlowChange.SIDES)).isTrue()
+        // A card that only comes or goes is no new look.
+        assertThat(takesNewLook(old, FlowData(listOf(old.cards[0]), 0), FlowChange.SIDES)).isFalse()
     }
 
     @Test
