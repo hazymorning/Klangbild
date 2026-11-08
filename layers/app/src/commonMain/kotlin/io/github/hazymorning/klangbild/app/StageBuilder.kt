@@ -149,14 +149,17 @@ internal class StageBuilder(
     /**
      * Cover Flow: [ui] with the strip [s] around [stage]'s track. Every card's scene is made (the
      * middle one first, then what comes, then what was), and the strip is shown once the middle
-     * one is ready; cards still on their way join it as they come. A card whose scene is being
-     * lit again keeps the one it has meanwhile. When the wall changes (light to dark), the whole
-     * strip changes at once, as soon as every card it shows is ready.
+     * one is ready; cards still on their way join it as they come. The next song is made ahead
+     * too, though it may share the middle card (the album's next track), so it is there when it
+     * starts. A card whose scene is being lit again keeps the one it has meanwhile. When the wall
+     * changes (light to dark), the whole strip changes at once, as soon as every card it shows
+     * is ready.
      */
     private fun showFlow(ui: UiState, stage: Screen.Stage, s: Strip, look: Look, lyrics: Lyrics?): UiState {
-        scenes.retain(s.cards.map { it.track.sceneKey }.toSet())
+        scenes.retain(s.cards.map { it.track.sceneKey }.toSet() + setOfNotNull(stage.next?.sceneKey))
         val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
         for (i in order) scenes.prepare(s.cards[i].track, look) { changed() }
+        stage.next?.let { scenes.prepare(it, look) }
         val middle = scenes.ready(s.middle.track, look) ?: return ui
         val shown = ui.flow?.cards.orEmpty().associateBy { it.id }
         val newWall = shown.values.any { it.scene.appearance != look.appearance }

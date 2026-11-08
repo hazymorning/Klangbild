@@ -29,9 +29,11 @@ data class TrackInfo(
     val queueItemId: String? = null,
     /**
      * Identity for transitions and caches: title, artists and album as first reported. A copy
-     * that only adds details, like an album or artwork, keeps it.
+     * that only adds details, like an album or artwork, keeps it. The artists are joined as
+     * Music Assistant joins them for Home Assistant ("A/B"), so its queue's description of the
+     * same song, which names them one by one, has the same key.
      */
-    val key: String = listOf(title, artists.joinToString(), album.orEmpty()).joinToString("|"),
+    val key: String = listOf(title, artists.joinToString("/"), album.orEmpty()).joinToString("|"),
 ) {
     /**
      * The names a generated cover follows for a track without artwork: [artFoil] picks its foil

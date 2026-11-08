@@ -113,6 +113,12 @@ class CoverStripTest {
     }
 
     @Test
+    fun `a song with several artists has one key, however they are joined`() {
+        // Home Assistant names them as Music Assistant joins them, its queue one by one.
+        assertThat(TrackInfo("Song", listOf("A/B"), album = "Album").key).isEqualTo(TrackInfo("Song", listOf("A", "B"), album = "Album").key)
+    }
+
+    @Test
     fun `a picture is the same picture whatever token its address carries`() {
         val a = TrackInfo("S", artworkUrl = "http://ha:8123/api/media_player_proxy/media_player.x?token=1&cache=abc")
         val b = a.copy(artworkUrl = "http://ha:8123/api/media_player_proxy/media_player.x?token=2&cache=abc")
