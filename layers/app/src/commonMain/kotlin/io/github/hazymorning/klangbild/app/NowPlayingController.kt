@@ -4,7 +4,6 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.AppearanceMode
 import io.github.hazymorning.klangbild.config.BackgroundMode
 import io.github.hazymorning.klangbild.config.LaunchExtras
-import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.SessionOptions
@@ -443,7 +442,6 @@ class NowPlayingController(
     }
 
     private fun onSettings(s: Settings): Unit = synchronized(lock) {
-        stageBuilder.queueDisplay(s.queue == QueueDisplay.FLOW, onStage = _ui.value.stage?.track ?: _ui.value.flow?.middle?.track)
         if (_ui.value.queue != s.queue) {
             queueSwitch.chosen(s.queue)
             _ui.value = _ui.value.copy(queue = s.queue)
@@ -671,9 +669,11 @@ class NowPlayingController(
         // A notification shows where it can be seen: on the stage or the rest screen, with no menu over it.
         val seen = !dark && decision.screen !is Screen.Setup && menuState == null && quickState == null
         val message = messages.line(seen && s.notifications, t)
+        // Cover Flow or the single cover, as the song's queue allows.
+        val flow = stage?.let { stageBuilder.follow(s, src, it, onStage = previous.stage?.track ?: previous.flow?.middle?.track) } ?: stageBuilder.flowing
         // After the clock or the setup page, another song (or the same one on a new wall, or to or
         // from Cover Flow) waits for its own scene.
-        val stale = HeldStage.stale(previous, s.queue == QueueDisplay.FLOW, look::fits, stage)
+        val stale = HeldStage.stale(previous, flow, look::fits, stage)
         val decided = previous.copy(
             screen = decision.screen,
             asleep = (decision.asleep || nobodyLong) && menuState == null && quickState == null,
@@ -710,7 +710,7 @@ class NowPlayingController(
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
         // The queue display just chosen stays pending, with dots after its value in the quick
         // settings and the menu, until this state shows it.
-        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending))
+        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending, flow))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
         // chosen, or switched off, go back at once, and so do all of them while the screen is dark.
         val chosen = if (dark || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys

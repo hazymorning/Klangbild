@@ -41,8 +41,8 @@ class QueueSwitchTest {
 
     private val switch = QueueSwitch()
 
-    private fun onItsWay(ready: UiState, setting: QueueDisplay, pending: QueueDisplay? = null, onStage: Boolean = true) =
-        switch.onItsWay(ready, onStage, setting, pending)
+    private fun onItsWay(ready: UiState, setting: QueueDisplay, pending: QueueDisplay? = null, onStage: Boolean = true, flows: Boolean = setting == QueueDisplay.FLOW) =
+        switch.onItsWay(ready, onStage, setting, pending, flows)
 
     @Test
     fun `to Cover Flow it is on its way until the strip is there`() {
@@ -53,6 +53,12 @@ class QueueSwitchTest {
         assertThat(onItsWay(single(), QueueDisplay.FLOW)).isEqualTo(QueueDisplay.FLOW)
         assertThat(onItsWay(strip(), QueueDisplay.FLOW)).isNull()
         assertThat(onItsWay(strip(), QueueDisplay.FLOW)).isNull()
+    }
+
+    @Test
+    fun `Cover Flow with nothing beside the song's cover is the single cover, which is there`() {
+        switch.chosen(QueueDisplay.FLOW)
+        assertThat(onItsWay(single(), QueueDisplay.FLOW, flows = false)).isNull()
     }
 
     @Test
@@ -115,11 +121,11 @@ class QueueSwitchTest {
         for (screen in listOf(Screen.Rest(RestReason.PAUSED, "Wohnzimmer"), Screen.Rest(RestReason.OFFLINE), Screen.Setup(SetupReason.REQUESTED))) {
             val switch = QueueSwitch()
             switch.chosen(QueueDisplay.FLOW)
-            assertThat(switch.onItsWay(single().copy(screen = screen), false, QueueDisplay.FLOW, null)).isNull()
+            assertThat(switch.onItsWay(single().copy(screen = screen), false, QueueDisplay.FLOW, null, true)).isNull()
             // Not even a choice still waiting: nothing is being made.
-            assertThat(switch.onItsWay(single().copy(screen = screen), false, QueueDisplay.OFF, QueueDisplay.FLOW)).isNull()
+            assertThat(switch.onItsWay(single().copy(screen = screen), false, QueueDisplay.OFF, QueueDisplay.FLOW, false)).isNull()
             // The song that comes later waits behind the clock like any other: no switch.
-            assertThat(switch.onItsWay(UiState(screen = playing(a.track), queue = QueueDisplay.FLOW), true, QueueDisplay.FLOW, null)).isNull()
+            assertThat(switch.onItsWay(UiState(screen = playing(a.track), queue = QueueDisplay.FLOW), true, QueueDisplay.FLOW, null, true)).isNull()
         }
     }
 

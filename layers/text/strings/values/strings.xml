@@ -125,7 +125,7 @@
     <string name="about_queue_off">One large cover beside the title.</string>
     <string name="about_queue_list">The next tracks as a list beside the cover.</string>
     <string name="about_queue_list_set_up">The next tracks as a list beside the cover. It needs Music Assistant: without it, the last line names only the next track.</string>
-    <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts.</string>
+    <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts. While there’s only one cover, it shows large beside the title.</string>
     <string name="about_appearance_auto">Light by day, dark from sunset to sunrise, by the sun’s position in Home Assistant.</string>
     <string name="about_appearance_light">Always light: a light background, dark type.</string>
     <string name="about_appearance_dark">Always dark: a dark background, light type.</string>

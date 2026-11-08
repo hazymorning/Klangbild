@@ -54,10 +54,11 @@ data class TrackInfo(
     /**
      * Identity of the cover this track shows: the album (one card for all its tracks, even
      * where each track carries its own copy of the artwork), else the artwork, else the
-     * generated cover's.
+     * generated cover's. A station is one card for all its songs, whatever pictures they bring.
      */
     val pictureKey: String
-        get() = album?.takeIf { it.isNotBlank() }?.let { "album|" + it.trim().lowercase() }
+        get() = (if (kind == MediaKind.RADIO) "station|" + (source ?: title).trim().lowercase() else null)
+            ?: album?.takeIf { it.isNotBlank() }?.let { "album|" + it.trim().lowercase() }
             ?: artworkId?.let { "art|$it" }
             ?: "seed|$artKey"
 

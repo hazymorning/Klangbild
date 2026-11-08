@@ -15,9 +15,9 @@ import kotlin.test.Test
 
 /**
  * Cover Flow with only some of its cards: the first song (nothing played yet), the last one
- * (nothing to come), a player without a queue (only what played), a single cover. Whatever is
- * there stands in the middle of the screen with the text, as much room left of it as right.
- * The full strip is flow/flow_dark.png ([FlowTest]).
+ * (nothing to come), a player without a queue (only what played). Whatever is there stands in
+ * the middle of the screen with the text, as much room left of it as right. A cover alone shows
+ * as the single cover. The full strip is flow/flow_dark.png ([FlowTest]).
  */
 @Category(Pictures::class)
 @RunWith(AndroidJUnit4::class)
@@ -45,7 +45,6 @@ class FlowBalanceTest {
             }
         }
 
-    @Test fun alone() = shot("alone", 0, 0)
     @Test fun firstSong() = shot("first", 0, 2)
     @Test fun lastSong() = shot("last", 2, 0)
     @Test fun oneEach() = shot("one_each", 1, 1)
@@ -55,5 +54,4 @@ class FlowBalanceTest {
     @Test fun lastOnPaper() = shot("last_paper", 2, 0, Appearance.LIGHT)
     @Test fun firstOnPaper() = shot("first_paper", 0, 2, Appearance.LIGHT)
     @Test fun lastOnCoverColors() = shot("last_field", 2, 0, coverField = true)
-    @Test fun aloneOnCoverColors() = shot("alone_field", 0, 0, coverField = true)
 }

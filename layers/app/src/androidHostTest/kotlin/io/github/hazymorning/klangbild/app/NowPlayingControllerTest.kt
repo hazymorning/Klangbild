@@ -1,8 +1,10 @@
 package io.github.hazymorning.klangbild.app
 
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import assertk.assertThat
 import assertk.assertions.hasLength
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.config.QueueDisplay
@@ -46,6 +48,9 @@ import mockwebserver3.RecordedRequest
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -55,6 +60,9 @@ import kotlin.test.Test
  * the credentials Home Assistant refused. And the screen that goes dark while no one is in the
  * room, and the notifications Home Assistant sends.
  */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34])
 class NowPlayingControllerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val http = httpClient(OkHttp.create())
@@ -199,6 +207,27 @@ class NowPlayingControllerTest {
                 assertThat(ui.lyricsDelayMs).isEqualTo(if (grouped) 800L else 0L)
                 controller.detach()
             }
+        }
+    }
+
+    @Test
+    fun `Cover Flow with nothing beside the song's cover shows the single cover`() = runBlocking {
+        MockWebServer().use { ha ->
+            // One song, and no queue to tell what played before or comes next.
+            ha.dispatcher = QuietRoom()
+            ha.start()
+            val stored = MemoryValues(
+                mapOf("ha_url" to ha.url("/").toString().trimEnd('/'), "ha_token" to "good", "entity_id" to "media_player.wz", "queue" to "FLOW"),
+            )
+            val controller = controller(stored)
+            controller.attach(screen)
+            val ui = withTimeout(10_000) { controller.ui.first { it.stage != null || it.flow != null } }
+            assertThat(ui.queue).isEqualTo(QueueDisplay.FLOW)
+            assertThat(ui.flow).isNull()
+            assertThat(ui.stage?.track?.title).isEqualTo("Lied")
+            // Nothing is on its way: this is what Cover Flow shows now.
+            assertThat(ui.queuePending).isNull()
+            controller.detach()
         }
     }
 

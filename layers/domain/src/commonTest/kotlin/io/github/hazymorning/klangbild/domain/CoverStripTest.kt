@@ -95,19 +95,21 @@ class CoverStripTest {
     }
 
     @Test
-    fun `a song keeps its card when its own picture takes the station's place, and the next song gets a new one`() {
+    fun `a station is one card, whatever pictures its songs bring`() {
         val strip = CoverStrip()
         val logo = TrackInfo("Song 1", listOf("X"), artworkUrl = "http://ha/api/media_player_proxy/m?token=a&cache=logo", source = "Radio", kind = MediaKind.RADIO)
         val first = strip.update(logo)
         val own = strip.update(logo.copy(artworkUrl = "https://img.example/song1.jpg", album = "Album 1"))
         assertThat(own.middle.id).isEqualTo(first.middle.id)
         assertThat(own.cards).hasSize(1)
-        // A new token for the same picture is no new picture either.
-        val next = TrackInfo("Song 2", listOf("Y"), artworkUrl = "http://ha/api/media_player_proxy/m?token=b&cache=logo", source = "Radio", kind = MediaKind.RADIO)
+        // The next song, with its own picture or the station's, stays on the station's card.
+        val next = TrackInfo("Song 2", listOf("Y"), album = "Album 2", artworkUrl = "https://img.example/song2.jpg", source = "Radio", kind = MediaKind.RADIO)
         val second = strip.update(next)
-        assertThat(second.middle.id).isNotEqualTo(first.middle.id)
-        assertThat(second.cards.map { it.id }).containsExactly(first.middle.id, second.middle.id)
-        assertThat(strip.update(next.copy(artworkUrl = "http://ha/api/media_player_proxy/m?token=c&cache=logo")).middle.id).isEqualTo(second.middle.id)
+        assertThat(second.middle.id).isEqualTo(first.middle.id)
+        assertThat(second.cards).hasSize(1)
+        // Another station is another card.
+        val other = strip.update(next.copy(title = "Song 3", source = "Other radio", key = "Song 3"))
+        assertThat(other.cards.map { it.id }).containsExactly(first.middle.id, other.middle.id)
     }
 
     @Test
