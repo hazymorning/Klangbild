@@ -1,224 +1,220 @@
 #!/usr/bin/env python3
-"""Renders the banner for the TV's home screen and the launcher icons from the logo and the font.
+"""Renders the banner for the TV's home screen from the logo, and writes the mark into the
+launcher icon and the notification icon.
 
-Usage: python3 tools/make_launcher_assets.py   (needs Pillow)
+Usage: python3 tools/make_launcher_assets.py   (needs Pillow and numpy)
 
-The logo is tools/logo.svg: four rounded squares, each turned a little further toward the
-middle, a ring and a light dot, blue on night blue. It is drawn here from the SVG at any size,
-never scaled from a bitmap.
+The logo is tools/logo.svg: the mark, a rounded square that a note's stem and head cut above a
+wave, beside the name. Everything is drawn from its paths at the size it's shown, never scaled
+from a bitmap. On the TV the mark is white on black: the home screen is dark, and the system
+crops the icon's background to its own shape while the whole mark stays inside.
 """
-import math
 import os
-import random
 import re
 import xml.etree.ElementTree as ET
 
-from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "androidApp", "src", "main", "res")
-FONT = os.path.join(ROOT, "layers", "ui", "src", "androidMain", "res", "font", "jost.ttf")
 LOGO = os.path.join(ROOT, "tools", "logo.svg")
+NS = "{http://www.w3.org/2000/svg}"
 
-INK = (232, 242, 255)
-
-
-def _color(value):
-    v = value.lstrip("#")
-    return tuple(int(v[i:i + 2], 16) for i in (0, 2, 4))
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 
 
-def _arc(x1, y1, rx, ry, phi, large, sweep, x2, y2, steps=32):
-    """Points along an SVG arc from (x1, y1) to (x2, y2), the start left out."""
-    phi = math.radians(phi)
-    c, s = math.cos(phi), math.sin(phi)
-    dx, dy = (x1 - x2) / 2, (y1 - y2) / 2
-    xp, yp = c * dx + s * dy, -s * dx + c * dy
-    rx, ry = abs(rx), abs(ry)
-    lam = xp * xp / (rx * rx) + yp * yp / (ry * ry)
-    if lam > 1:
-        rx, ry = rx * math.sqrt(lam), ry * math.sqrt(lam)
-    num = rx * rx * ry * ry - rx * rx * yp * yp - ry * ry * xp * xp
-    den = rx * rx * yp * yp + ry * ry * xp * xp
-    k = math.sqrt(max(0.0, num / den)) * (-1 if large == sweep else 1)
-    cxp, cyp = k * rx * yp / ry, -k * ry * xp / rx
-    cx, cy = c * cxp - s * cyp + (x1 + x2) / 2, s * cxp + c * cyp + (y1 + y2) / 2
-    ux, uy = (xp - cxp) / rx, (yp - cyp) / ry
-    vx, vy = (-xp - cxp) / rx, (-yp - cyp) / ry
-    t1 = math.atan2(uy, ux)
-    dt = math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)
-    if not sweep and dt > 0:
-        dt -= 2 * math.pi
-    elif sweep and dt < 0:
-        dt += 2 * math.pi
+# Paths ---------------------------------------------------------------------------------------
+
+def _curve(points, steps):
+    """Points along a Bézier curve of any degree, the start left out."""
+    p = np.asarray(points, dtype=np.float64)
     out = []
     for i in range(1, steps + 1):
-        t = t1 + dt * i / steps
-        x, y = rx * math.cos(t), ry * math.sin(t)
-        out.append((c * x - s * y + cx, s * x + c * y + cy))
+        t = i / steps
+        q = p
+        while len(q) > 1:
+            q = q[:-1] * (1 - t) + q[1:] * t
+        out.append((q[0][0], q[0][1]))
     return out
 
 
-def _path(d):
-    """The points of an SVG path made of M, H, V, A and Z (all absolute, as the logo's are)."""
-    tokens = re.findall(r"[MHVAZ]|-?\d*\.?\d+(?:e-?\d+)?", d)
-    pts, i, cmd = [], 0, None
+def subpaths(d):
+    """The closed outlines of an SVG path made of M, L, H, V, C, Q and Z (all absolute, as the
+    logo's are), as lists of points."""
+    tokens = re.findall(r"[MLHVCQZ]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?", d)
+    out, pts, i, cmd = [], [], 0, None
     x = y = 0.0
     while i < len(tokens):
-        if tokens[i] in "MHVAZ":
+        if tokens[i] in "MLHVCQZ":
             cmd = tokens[i]
             i += 1
             if cmd == "Z":
+                if pts:
+                    out.append(pts)
+                pts = []
                 continue
-        n = lambda k: float(tokens[i + k])  # noqa: E731
+        n = [float(v) for v in tokens[i:i + {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "Q": 4}[cmd]]]
+        i += len(n)
         if cmd == "M":
-            x, y = n(0), n(1)
+            if pts:
+                out.append(pts)
+            x, y = n
+            pts = [(x, y)]
+            cmd = "L"  # more pairs after a move draw lines
+        elif cmd == "L":
+            x, y = n
             pts.append((x, y))
-            i += 2
         elif cmd == "H":
-            x = n(0)
+            x = n[0]
             pts.append((x, y))
-            i += 1
         elif cmd == "V":
-            y = n(0)
+            y = n[0]
             pts.append((x, y))
-            i += 1
-        elif cmd == "A":
-            rx, ry, phi, large, sweep, x2, y2 = (n(k) for k in range(7))
-            pts += _arc(x, y, rx, ry, phi, int(large), int(sweep), x2, y2)
-            x, y = x2, y2
-            i += 7
+        elif cmd == "C":
+            pts += _curve([(x, y), n[0:2], n[2:4], n[4:6]], 16)
+            x, y = n[4:6]
+        elif cmd == "Q":
+            pts += _curve([(x, y), n[0:2], n[2:4]], 12)
+            x, y = n[2:4]
+    if pts:
+        out.append(pts)
+    return out
+
+
+def _transform(value):
+    """An SVG transform made of translate and scale, as a matrix (a, b, c, d, e, f)."""
+    m = np.eye(3)
+    for name, args in re.findall(r"(translate|scale)\(([^)]*)\)", value or ""):
+        v = [float(a) for a in re.split(r"[\s,]+", args.strip())]
+        if name == "translate":
+            step = np.array([[1, 0, v[0]], [0, 1, v[1] if len(v) > 1 else 0], [0, 0, 1]])
         else:
-            raise ValueError("unsupported path command " + str(cmd))
-    return pts
+            step = np.array([[v[0], 0, 0], [0, v[1] if len(v) > 1 else v[0], 0], [0, 0, 1]])
+        m = m @ step
+    return m
 
 
-def _rotated(pts, transform):
-    m = re.match(r"rotate\(\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\)", transform or "")
-    if not m:
-        return pts
-    a, cx, cy = math.radians(float(m.group(1))), float(m.group(2)), float(m.group(3))
-    c, s = math.cos(a), math.sin(a)
-    return [(cx + (px - cx) * c - (py - cy) * s, cy + (px - cx) * s + (py - cy) * c) for px, py in pts]
+def shapes(svg):
+    """The filled paths of [svg] in its own units: (fill, path data, matrix) each, in order."""
+    out = []
 
-
-def _shapes():
-    """The logo's background color and its shapes, as drawn in tools/logo.svg."""
-    root = ET.parse(LOGO).getroot()
-    ns = "{http://www.w3.org/2000/svg}"
-    background, shapes = None, []
-
-    def walk(node, inherited):
-        style = dict(inherited)
-        style.update({k: v for k, v in node.attrib.items() if k in ("fill", "stroke", "stroke-width")})
-        tag = node.tag.replace(ns, "")
-        nonlocal background
-        if tag == "rect":
-            background = _color(node.get("fill"))
-        elif tag == "circle":
-            shapes.append(("circle", style, float(node.get("cx")), float(node.get("cy")), float(node.get("r"))))
-        elif tag == "path":
-            shapes.append(("path", style, _rotated(_path(node.get("d")), node.get("transform"))))
+    def walk(node, fill, matrix):
+        fill = node.get("fill", fill)
+        matrix = matrix @ _transform(node.get("transform"))
+        if node.tag == NS + "path":
+            out.append((fill, node.get("d"), matrix))
         for child in node:
-            walk(child, style)
+            walk(child, fill, matrix)
 
-    walk(root, {})
-    return background, shapes
-
-
-NAVY, _SHAPES = _shapes()
-# The SVG's square, and a square that holds just the logo with its outermost stroke.
-FULL = 1024
-TIGHT = 676
+    walk(ET.parse(svg).getroot(), "#000000", np.eye(3))
+    return out
 
 
-def logo(size, background=NAVY, extent=TIGHT):
-    """The logo on a square of [size] px showing [extent] units of the 1024 unit SVG around its
-    middle; without a background, on transparency."""
-    ss = 4
-    px = size * ss
-    img = Image.new("RGBA", (px, px), (background + (255,)) if background else (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    k = px / extent
-    off = FULL / 2
-
-    def at(x, y):
-        return (px / 2 + (x - off) * k, px / 2 + (y - off) * k)
-
-    for shape in _SHAPES:
-        style = shape[1]
-        stroke = style.get("stroke") not in (None, "none")
-        width = float(style.get("stroke-width", 0)) * k
-        if shape[0] == "circle":
-            _, _, cx, cy, r = shape
-            (x, y) = at(cx, cy)
-            if stroke:
-                outer = r * k + width / 2
-                d.ellipse([x - outer, y - outer, x + outer, y + outer], outline=_color(style["stroke"]) + (255,), width=max(1, round(width)))
-            else:
-                d.ellipse([x - r * k, y - r * k, x + r * k, y + r * k], fill=_color(style["fill"]) + (255,))
-        else:
-            pts = [at(x, y) for x, y in shape[2]]
-            d.line(pts + pts[:2], fill=_color(style["stroke"]) + (255,), width=max(1, round(width)), joint="curve")
-    # Scaled down with the color premultiplied, so the edges keep their color on transparency.
-    return img.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
+def outlines(d, matrix):
+    """The outlines of path data [d] with [matrix] applied."""
+    return [[tuple((matrix @ (px, py, 1))[:2]) for px, py in sub] for sub in subpaths(d)]
 
 
-def jost(size, weight=400):
-    f = ImageFont.truetype(FONT, size)
-    vals = []
-    for a in f.get_variation_axes():
-        name = a["name"] if isinstance(a["name"], str) else a["name"].decode()
-        vals.append({"Weight": weight}.get(name, a["default"]))
-    f.set_variation_by_axes(vals)
-    return f
+def coverage(polygons, w, h, ss=8):
+    """How much of each of [w] × [h] pixels the [polygons] (in pixels) cover, from 0 to 1, by
+    the nonzero rule as SVG fills, with [ss] × [ss] samples a pixel."""
+    W, H = w * ss, h * ss
+    diff = np.zeros((H, W + 1), dtype=np.int32)
+    for poly in polygons:
+        p = np.asarray(poly, dtype=np.float64) * ss
+        x0, y0 = p[:, 0], p[:, 1]
+        x1, y1 = np.roll(x0, -1), np.roll(y0, -1)
+        sign = np.sign(y1 - y0).astype(np.int32)
+        # The rows whose sample centers lie between an edge's ends, and where it crosses them.
+        r0 = np.clip(np.ceil(np.minimum(y0, y1) - 0.5), 0, H).astype(np.int64)
+        r1 = np.clip(np.ceil(np.maximum(y0, y1) - 0.5), 0, H).astype(np.int64)
+        count = np.where(sign != 0, r1 - r0, 0)
+        edge = np.repeat(np.arange(len(p)), count)
+        rows = r0[edge] + np.arange(count.sum()) - np.repeat(np.cumsum(count) - count, count)
+        t = (rows + 0.5 - y0[edge]) / (y1[edge] - y0[edge])
+        xs = x0[edge] + t * (x1[edge] - x0[edge])
+        cols = np.clip(np.ceil(xs - 0.5), 0, W).astype(np.int64)
+        np.add.at(diff, (rows, cols), sign[edge])
+    inside = np.cumsum(diff[:, :W], axis=1) != 0
+    return inside.reshape(h, ss, w, ss).mean(axis=(1, 3))
 
 
-def dither(img, amount=1.2, seed=3):
-    rnd = random.Random(seed)
-    px = img.load()
-    w, h = img.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, *rest = px[x, y]
-            n = (rnd.random() + rnd.random() - 1.0) * amount
-            px[x, y] = (max(0, min(255, int(r + n))), max(0, min(255, int(g + n))), max(0, min(255, int(b + n))), *rest)
-    return img
+def paint(img, polygons, color):
+    """Fills [polygons] on [img] (an h × w × 3 float array, sRGB) with [color]."""
+    h, w = img.shape[:2]
+    a = coverage(polygons, w, h)[..., None]
+    img[:] = img * (1 - a) + np.asarray(color, dtype=np.float64) * a
 
 
-def banner(path, w=320, h=180):
-    """The logo beside the name, both centered on the banner as a group."""
-    s = 4
-    img = Image.new("RGB", (w * s, h * s), NAVY)
-    side = int(h * s * 0.50)
-    mark = logo(side, background=None)
-    f = jost(int(37 * s))
-    d = ImageDraw.Draw(img)
-    text = "Klangbild"
-    tw = d.textlength(text, font=f)
-    gap = int(17 * s)
-    x0 = int((w * s - (side + gap + tw)) / 2)
-    y0 = (h * s - side) // 2
-    img.paste(mark, (x0, y0), mark)
-    ascent, _ = f.getmetrics()
-    # The cap height (0.70 em) centered on the logo.
-    cap = 0.70 * 37 * s
-    d.text((x0 + side + gap, int(h * s / 2 + cap / 2 - ascent)), text, font=f, fill=INK)
-    img = img.resize((w, h), Image.LANCZOS)
-    dither(img)
+# The logo ------------------------------------------------------------------------------------
+
+def _bounds(polygons):
+    p = np.concatenate([np.asarray(poly) for poly in polygons])
+    return p[:, 0].min(), p[:, 1].min(), p[:, 0].max(), p[:, 1].max()
+
+
+_LOGO = shapes(LOGO)
+MARK = _LOGO[0][1]                       # the mark's path data, 100 units wide from 0
+
+
+def banner(path, w=320, h=180, width=0.70):
+    """The logo, white on black, [width] of the banner wide and centered on the mark, which
+    stands as tall as the name's capitals."""
+    polygons = [poly for _, d, m in _LOGO for poly in outlines(d, m)]
+    x0, _, x1, _ = _bounds(polygons)
+    _, top, _, bottom = _bounds(outlines(MARK, _LOGO[0][2]))
+    k = w * width / (x1 - x0)
+    dx = (w - (x1 - x0) * k) / 2 - x0 * k
+    dy = h / 2 - (top + bottom) / 2 * k
+    img = np.zeros((h, w, 3))
+    img[:] = BLACK
+    paint(img, [[(dx + x * k, dy + y * k) for x, y in poly] for poly in polygons], WHITE)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.save(path)
+    Image.fromarray(np.round(img).astype(np.uint8), "RGB").save(path, optimize=True)
 
 
-def legacy_icon(path, size):
-    """The logo filling most of a night blue square."""
-    img = logo(size, extent=int(TIGHT / 0.80)).convert("RGB")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.save(path)
+def _number(v):
+    return f"{v:.4f}".rstrip("0").rstrip(".")
+
+
+def vector(path, comment, side, width):
+    """The mark in white as a vector drawable of [side] dp, [width] dp wide in its middle. Each
+    of the mark's two parts is a path of its own, which keeps them short enough to draw fast."""
+    k = width / 100
+    height = _bounds(subpaths(MARK))[3] * k
+    parts = re.findall(r"M[^M]*", MARK)
+    body = "\n".join(
+        f'        <path\n            android:fillColor="#FFFFFFFF"\n            android:pathData="{part.strip()}" />'
+        for part in parts
+    )
+    xml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!-- {comment} Made by tools/make_launcher_assets.py from tools/logo.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="{side}dp"
+    android:height="{side}dp"
+    android:viewportWidth="{side}"
+    android:viewportHeight="{side}">
+    <group
+        android:translateX="{_number((side - width) / 2)}"
+        android:translateY="{_number((side - height) / 2)}"
+        android:scaleX="{_number(k)}"
+        android:scaleY="{_number(k)}">
+{body}
+    </group>
+</vector>
+"""
+    with open(path, "w") as f:
+        f.write(xml)
 
 
 if __name__ == "__main__":
     banner(os.path.join(RES, "drawable-xhdpi", "banner.png"))
-    for density, size in {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}.items():
-        legacy_icon(os.path.join(RES, f"mipmap-{density}", "ic_launcher.png"), size)
+    # The icon's layers are 108 dp, of which the system shows the middle 72 in its own shape and
+    # keeps a circle of 66 whole: the mark's corners stay well inside it.
+    vector(os.path.join(RES, "drawable", "ic_launcher_foreground.xml"),
+           "The mark for the launcher icon, on black (mipmap-anydpi/ic_launcher.xml).", 108, 46)
+    vector(os.path.join(RES, "drawable", "ic_notification.xml"),
+           "The mark for the speaker's notification (Android needs an icon there).", 24, 20)
     print("ok")
