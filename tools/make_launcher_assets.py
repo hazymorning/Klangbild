@@ -179,11 +179,26 @@ def _number(v):
     return f"{v:.4f}".rstrip("0").rstrip(".")
 
 
-def vector(path, comment, side, width):
-    """The mark in white as a vector drawable of [side] dp, [width] dp wide in its middle. Each
-    of the mark's two parts is a path of its own, which keeps them short enough to draw fast."""
+def snug(visible=72):
+    """The space above and beside the mark in a square of [visible] dp, the same on all three
+    sides and just enough that the mark's top corners touch the circle the square holds."""
+    points = np.concatenate([np.asarray(poly) for poly in subpaths(MARK)])
+    lo, hi = 0.0, visible / 2
+    for _ in range(50):
+        pad = (lo + hi) / 2
+        k = (visible - 2 * pad) / 100
+        reach = np.hypot(pad + points[:, 0] * k - visible / 2, pad + points[:, 1] * k - visible / 2).max()
+        lo, hi = (pad, hi) if reach > visible / 2 else (lo, pad)
+    return hi
+
+
+def vector(path, comment, side, width, top=None):
+    """The mark in white as a vector drawable of [side] dp, [width] dp wide in its middle and
+    [top] dp from its top, or halfway down without one. Each of the mark's two parts is a path of
+    its own, which keeps them short enough to draw fast."""
     k = width / 100
-    height = _bounds(subpaths(MARK))[3] * k
+    if top is None:
+        top = (side - _bounds(subpaths(MARK))[3] * k) / 2
     parts = re.findall(r"M[^M]*", MARK)
     body = "\n".join(
         f'        <path\n            android:fillColor="#FFFFFFFF"\n            android:pathData="{part.strip()}" />'
@@ -198,7 +213,7 @@ def vector(path, comment, side, width):
     android:viewportHeight="{side}">
     <group
         android:translateX="{_number((side - width) / 2)}"
-        android:translateY="{_number((side - height) / 2)}"
+        android:translateY="{_number(top)}"
         android:scaleX="{_number(k)}"
         android:scaleY="{_number(k)}">
 {body}
@@ -211,10 +226,12 @@ def vector(path, comment, side, width):
 
 if __name__ == "__main__":
     banner(os.path.join(RES, "drawable-xhdpi", "banner.png"))
-    # The icon's layers are 108 dp, of which the system shows the middle 72 in its own shape and
-    # keeps a circle of 66 whole: the mark's corners stay well inside it.
+    # The icon's layers are 108 dp, of which the system shows the middle 72 in its own shape. The
+    # mark stands at the top of it, filling a round icon up to its corners and a square one up to
+    # an even margin, and the space below it stays empty.
+    pad = snug()
     vector(os.path.join(RES, "drawable", "ic_launcher_foreground.xml"),
-           "The mark for the launcher icon, on black (mipmap-anydpi/ic_launcher.xml).", 108, 46)
+           "The mark for the launcher icon, on black (mipmap-anydpi/ic_launcher.xml).", 108, 72 - 2 * pad, 18 + pad)
     vector(os.path.join(RES, "drawable", "ic_notification.xml"),
            "The mark for the speaker's notification (Android needs an icon there).", 24, 20)
     print("ok")
