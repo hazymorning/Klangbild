@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
 /** Turns the bytes of a picture into a bitmap, or null when they are none, subsampled by [sampleSize] as it decodes. */
@@ -37,9 +38,10 @@ internal fun sampleSize(width: Int, height: Int): Int {
 }
 
 /**
- * Fetches and decodes covers. Tries the upgraded (larger) URL first, then the original, then
- * Home Assistant's own proxy. The access token is only attached for Home Assistant's own host.
- * Returns null when there is no cover at all; the scene then makes one of its own.
+ * Fetches and decodes covers. Tries the upgraded (larger) URL first, then the original, then the
+ * fallback the same way, which for the song that plays is Home Assistant's own proxy. The access
+ * token is only attached for Home Assistant's own host. Returns null when there is no cover at
+ * all; the scene then makes one of its own.
  */
 class ArtworkLoader(
     private val http: HttpClient,
@@ -49,6 +51,8 @@ class ArtworkLoader(
     private val haAuth: () -> HaAuth?,
     private val decoder: PictureDecoder,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    /** How long the cover's own address may take before the fallback is tried (shorter in tests). */
+    private val fallbackAfterMs: Long = FALLBACK_AFTER_MS,
 ) {
     private val lock = SynchronizedObject()
     private val cache = RecentMap<String, ImageBitmap>(MAX_DECODED)
@@ -60,15 +64,25 @@ class ArtworkLoader(
     private val slots = Semaphore(MAX_LOADS)
 
     /**
-     * The cover of [track], from the first address that gives one. Canceling stops the
-     * download under way, so a skipped song's cover is not fetched to the end. A larger
-     * rendition guessed from the address gets a shorter time than the address itself, and a
-     * guess that failed is not tried again for [RETRY_FAILED_MS].
+     * The cover of [track], from the first address that gives one, or at once when one of them
+     * gave it before. Canceling stops the download under way, so a skipped song's cover is not
+     * fetched to the end. A larger rendition guessed from the address gets a shorter time than
+     * the address itself, and a guess that failed is not tried again for [RETRY_FAILED_MS]. The
+     * fallback is tried after [FALLBACK_AFTER_MS] at the latest, so an address that never
+     * answers can't use up the time a scene waits for its cover.
      */
     suspend fun load(track: TrackInfo): ImageBitmap? {
         val originals = listOfNotNull(track.artworkUrl, track.artworkFallbackUrl).toSet()
-        for (url in ArtworkUrls.candidates(track.artworkUrl, track.artworkFallbackUrl)) {
-            synchronized(lock) { cache[url] }?.let { return it }
+        val first = ArtworkUrls.candidates(track.artworkUrl)
+        val fallback = ArtworkUrls.candidates(track.artworkFallbackUrl) - first.toSet()
+        synchronized(lock) { (first + fallback).firstNotNullOfOrNull { cache[it] } }?.let { return it }
+        if (fallback.isEmpty()) return firstOf(first, originals)
+        return withTimeoutOrNull(fallbackAfterMs) { firstOf(first, originals) } ?: firstOf(fallback, originals)
+    }
+
+    /** The cover from the first of [urls] that gives one; those not among [originals] are guesses. */
+    private suspend fun firstOf(urls: List<String>, originals: Set<String>): ImageBitmap? {
+        for (url in urls) {
             if (synchronized(lock) { failed[url] }?.let { now() - it < RETRY_FAILED_MS } == true) continue
             val timeout = if (url in originals) CALL_TIMEOUT_MS else UPGRADE_TIMEOUT_MS
             val bmp = slots.withPermit {
@@ -117,6 +131,13 @@ class ArtworkLoader(
 
         /** A larger rendition guessed from the address gets this long, so the address itself still has time within the scene's wait. */
         const val UPGRADE_TIMEOUT_MS = 2_500L
+
+        /**
+         * The fallback is tried after this long at the latest, so it still has a few seconds of
+         * the time a scene waits for its cover. For the song that plays, it's Home Assistant's
+         * own proxy, which works as long as Home Assistant does.
+         */
+        const val FALLBACK_AFTER_MS = 4_000L
 
         /** An address that gave no picture is not asked again for this long. */
         const val RETRY_FAILED_MS = 10 * 60_000L
