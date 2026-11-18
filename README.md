@@ -29,63 +29,15 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 ## More
 
 <details>
-<summary><b>Compatibility</b></summary>
-<br>
-
-Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. This means older fire TV sticks probably won't work.
-
-Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
-
-</details>
-
-<details>
 <summary><a name="setup"></a><b>Setting it up</b></summary>
 <br>
 
-You need Home Assistant and a TV or box with Android TV 9 or later.
-
-<details>
-<summary><b>1. Install Klangbild on your TV</b></summary>
-<br>
-
-Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself.
-
-</details>
-
-<details>
-<summary><b>2. Connect it to Home Assistant</b></summary>
-<br>
+You need Home Assistant and a TV or box with Android TV 9 or later. Klangbild isn't on Google Play, so you'll need to install the APK from the [latest release](https://github.com/hazymorning/Klangbild/releases/latest) yourself.
 
 The first time you open Klangbild, it shows a QR code. Scan it with your phone, sign in to Home Assistant and choose the speaker your music plays on. Everything happens on the phone, because no one likes typing on a remote. On the same page you can add Music Assistant, speakers in other rooms, presence sensors, the lights behind your TV and a few buttons of your own for the quick settings, but all of that can wait. To change anything later, choose Set up on phone under System in the TV's settings.
 
 > **Important**<br>
 > If Music Assistant plays your music, your speaker usually shows up twice in the list, once from its own integration and once from Music Assistant. Choose the one marked Music Assistant, since only that one brings the queue, the lyrics and everything else Music Assistant knows about the song.
-
-</details>
-
-<details>
-<summary><b>3. Open it automatically (optional)</b></summary>
-<br>
-
-If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
-
-```yaml
-triggers:
-  - trigger: state
-    entity_id: media_player.living_room
-    to: playing
-actions:
-  - action: media_player.select_source
-    target:
-      entity_id: media_player.tv
-    data:
-      source: io.github.hazymorning.klangbild
-```
-
-The two entity IDs are only examples, so put in the ones for your own speaker and TV.
-
-</details>
-<br>
 
 </details>
 
@@ -130,21 +82,27 @@ Press the down button on the remote to open the quick settings, where you can ch
 </details>
 
 <details>
-<summary><b>Sendspin</b></summary>
+<summary><b>Automations</b></summary>
 <br>
 
-With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name while Klangbild is open. Set to "Always", it keeps playing even while Klangbild is closed.
+**Open Klangbild when music starts.** If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
 
-> **Important**<br>
-> "Play here" makes the TV a speaker, but Klangbild keeps following the speaker chosen on the setup page. To have it follow the TV, open Home Assistant under System in the settings, scan the code, choose "This TV" as the speaker and save.
+```yaml
+triggers:
+  - trigger: state
+    entity_id: media_player.living_room
+    to: playing
+actions:
+  - action: media_player.select_source
+    target:
+      entity_id: media_player.tv
+    data:
+      source: io.github.hazymorning.klangbild
+```
 
-</details>
+The two entity IDs are only examples, so put in the ones for your own speaker and TV.
 
-<details>
-<summary><b>Notifications</b></summary>
-<br>
-
-Turn on Notifications under Information in the settings, and the TV shows up in Home Assistant as a device you can send notifications to, like a phone. Each one shows next to the time for a few seconds.
+**Notifications on the TV.** Turn on Notifications under Information in the settings, and the TV shows up in Home Assistant as a device you can send notifications to, like a phone. Each one shows next to the time for a few seconds.
 
 ```yaml
 actions:
@@ -157,6 +115,27 @@ actions:
 The action is named after your TV, so look for it under the TV's own name.
 
 > Home Assistant can only reach the TV while Klangbild is open, and otherwise the action fails. In an automation that does more than that, add `continue_on_error: true` to it.
+
+</details>
+
+<details>
+<summary><b>Music on the TV itself</b></summary>
+<br>
+
+With Music Assistant 2.10.7 or later, the TV can become one of its speakers and play in time with the others over Sendspin. Once "Play here" is on, under System in the settings or with the box on the setup page, it shows up in Music Assistant under its own name while Klangbild is open. Set to "Always", it keeps playing even while Klangbild is closed.
+
+> **Important**<br>
+> "Play here" makes the TV a speaker, but Klangbild keeps following the speaker chosen on the setup page. To have it follow the TV, open Home Assistant under System in the settings, scan the code, choose "This TV" as the speaker and save.
+
+</details>
+
+<details>
+<summary><b>Compatibility</b></summary>
+<br>
+
+Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. This means older fire TV sticks probably won't work.
+
+Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
 </details>
 
