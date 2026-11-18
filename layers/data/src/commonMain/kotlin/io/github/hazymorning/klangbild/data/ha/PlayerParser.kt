@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
+import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerAbilities
@@ -83,6 +84,7 @@ object PlayerParser {
             isGroupPlayer = entity.string("mass_player_type") == "group",
             shuffle = shuffleOf(entity),
             abilities = abilitiesOf(entity),
+            maAddress = MaClient.addressIn(entity.string("entity_picture")),
         )
     }
 

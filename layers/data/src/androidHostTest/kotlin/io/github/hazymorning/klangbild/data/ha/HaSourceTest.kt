@@ -720,6 +720,111 @@ class HaSourceTest {
         s.stop()
     }
 
+    /** The address Music Assistant reports for itself, which this TV can't reach. */
+    private val reported = "http://10.0.0.99:8095"
+
+    /**
+     * Home Assistant's state of a Music Assistant player it reaches at another address than the
+     * one Music Assistant reports: the picture at Music Assistant's, its own proxy as `entity_picture_local`.
+     */
+    private fun maPlayerElsewhere(title: String, picture: String) =
+        """{"media_title":"$title","media_artist":"A","media_album_name":"Platte","app_id":"music_assistant","mass_player_type":"player",
+            "entity_picture":"$reported/imageproxy/$picture?size=512&fmt=jpg",
+            "entity_picture_local":"/api/media_player_proxy/media_player.wz?token=t1&cache=$picture"}"""
+
+    /** A song from files as Home Assistant's `get_queue` gives it: its picture at full size, at Music Assistant's address. */
+    private fun fileItem(title: String, picture: String) =
+        """{"name":"$title","media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}],
+            "image":"$reported/imageproxy/$picture?size=0","album":{"name":"Platte"}}}"""
+
+    /** The same song in Music Assistant's own queue (`player_queues/items`): its picture by the id of Music Assistant's proxy. */
+    private fun maFileItem(title: String, picture: String) =
+        """{"queue_id":"q1","queue_item_id":"$picture","name":"$title","duration":200,
+            "media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}],"album":{"name":"Platte","year":2024}},
+            "image":{"type":"thumb","path":"/music/$picture.jpg","provider":"filesystem--x","remotely_accessible":false,"proxy_id":"$picture"}}"""
+
+    /** The same song from a streaming service in Music Assistant's own queue: its picture where the service has it, Music Assistant's proxy behind it. */
+    private fun maServiceItem(title: String, picture: String) =
+        """{"queue_id":"q1","queue_item_id":"$picture","name":"$title","duration":200,
+            "media_item":{"media_type":"track","name":"$title","artists":[{"name":"A"}],"album":{"name":"Platte","year":2024}},
+            "image":{"type":"thumb","path":"https://cdn.example/$picture.jpg","provider":"service","remotely_accessible":true,"proxy_id":"$picture"}}"""
+
+    /** Music Assistant itself, answering `player_queues/items` with [items]. */
+    private fun maItems(items: () -> List<String>) = MockWebServer().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val command = Json.parseToJsonElement(request.body!!.utf8()).jsonObject["command"]!!.jsonPrimitive.content
+                return MockResponse.Builder().body(if (command == "player_queues/items") items().joinToString(",", "[", "]") else "[]").build()
+            }
+        }
+        start()
+    }
+
+    @Test
+    fun `a song shows the picture Music Assistant's own queue has, Home Assistant's own behind it`() = runBlocking {
+        player = maPlayerElsewhere("Erstes Lied", "c1")
+        queueAnswer = { queueOf(fileItem("Erstes Lied", "c1"), fileItem("Zweites Lied", "c2")) }
+        var items = listOf(maFileItem("Erstes Lied", "c1"), maFileItem("Zweites Lied", "c2"))
+        val ma = maItems { items }
+        try {
+            val own = ma.url("/").toString().trimEnd('/')
+            val proxy = ha.url("/").toString().trimEnd('/') + "/api/media_player_proxy/media_player.wz?token=t1&cache="
+            val s = source(ma = MaClient(http, own, "ma-token"), queue = fast.copy(burstMs = 150L))
+            s.start()
+            val first = withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }
+            // At the address Klangbild reaches Music Assistant by, as Cover Flow's cards and the list.
+            assertThat(first.player!!.track!!.artworkUrl).isEqualTo("$own/imageproxy/c1?size=512")
+            // Behind it Home Assistant's own proxy, which works as long as Home Assistant does.
+            assertThat(first.player!!.track!!.artworkFallbackUrl).isEqualTo(proxy + "c1")
+            // The next song's scene is made ahead with the picture it shows once it plays.
+            assertThat(first.next!!.artworkUrl).isEqualTo("$own/imageproxy/c2?size=512")
+            // The song announced as next shows it before its own read.
+            items = listOf(maFileItem("Zweites Lied", "c2"))
+            queueAnswer = { queueOf(fileItem("Zweites Lied", "c2"), null) }
+            report(
+                "media_title" to "Zweites Lied",
+                "entity_picture" to "$reported/imageproxy/c2?size=512&fmt=jpg",
+                "entity_picture_local" to "/api/media_player_proxy/media_player.wz?token=t1&cache=c2",
+            )
+            val second = withTimeout(5_000) { s.state.first { it.player?.track?.title == "Zweites Lied" } }.player!!.track!!
+            assertThat(second.artworkUrl).isEqualTo("$own/imageproxy/c2?size=512")
+            assertThat(second.artworkFallbackUrl).isEqualTo(proxy + "c2")
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `a streaming service's picture keeps Music Assistant's proxy behind it`() = runBlocking {
+        player = maPlayerElsewhere("Erstes Lied", "c1")
+        queueAnswer = { queueOf(item("Erstes Lied", "c1"), null) }
+        val ma = maItems { listOf(maServiceItem("Erstes Lied", "c1")) }
+        try {
+            val own = ma.url("/").toString().trimEnd('/')
+            val s = source(ma = MaClient(http, own, "ma-token"))
+            s.start()
+            val track = withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }.player!!.track!!
+            assertThat(track.artworkUrl).isEqualTo("https://cdn.example/c1.jpg")
+            assertThat(track.artworkFallbackUrl).isEqualTo("$own/imageproxy/c1?size=512")
+            s.stop()
+        } finally {
+            ma.close()
+        }
+    }
+
+    @Test
+    fun `with Home Assistant alone, its own proxy stays behind the queue's picture`() = runBlocking {
+        player = maPlayerElsewhere("Erstes Lied", "c1")
+        queueAnswer = { queueOf(fileItem("Erstes Lied", "c1"), null) }
+        val s = source()
+        s.start()
+        val track = withTimeout(5_000) { s.state.first { it.queueKnown && it.player?.track != null } }.player!!.track!!
+        assertThat(track.artworkUrl).isEqualTo("$reported/imageproxy/c1?size=0")
+        assertThat(track.artworkFallbackUrl).isEqualTo(ha.url("/").toString().trimEnd('/') + "/api/media_player_proxy/media_player.wz?token=t1&cache=c1")
+        s.stop()
+    }
+
     @Test
     fun `a queue replaced as its first song starts names the new next song a moment later`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")

@@ -231,8 +231,8 @@ class NowPlayingController(
         ownSpeaker = { _ui.value.source.ownSpeaker },
         pairingToken = pairingToken,
         maGuess = {
-            val track = _ui.value.source.player?.track
-            MaClient.addressIn(track?.artworkUrl) ?: MaClient.addressIn(track?.artworkFallbackUrl)
+            val player = _ui.value.source.player
+            player?.maAddress ?: MaClient.addressIn(player?.track?.artworkUrl)
         },
     )
     private val setupServer: SetupServer = setupServerFor(scope, setupHandler)

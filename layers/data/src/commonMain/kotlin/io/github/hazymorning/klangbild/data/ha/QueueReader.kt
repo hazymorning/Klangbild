@@ -291,13 +291,25 @@ internal class QueueReader(
     /**
      * What comes next: Home Assistant's word ([q]), unless Music Assistant itself has since said
      * otherwise for the song [key] (the queue changed while it plays). The same song keeps Home
-     * Assistant's description, the one it brings when it starts.
+     * Assistant's description, the one it brings when it starts, with Music Assistant's own
+     * picture ([pictured]), the one it shows when it plays.
      */
     fun nextOf(q: QueueInfo?, key: String?): TrackInfo? {
         val ha = q?.next
-        val mine = maNext?.takeIf { q != null && it.key == key } ?: return ha
+        val mine = maNext?.takeIf { q != null && it.key == key } ?: return ha?.pictured(windowFor(key)?.coming?.firstOrNull())
         val next = mine.next ?: return null
-        return if (ha != null && ha.kind == next.kind && sameTitle(ha.title, next.title)) ha else next
+        return if (ha != null && ha.kind == next.kind && sameTitle(ha.title, next.title)) ha.pictured(next) else next
+    }
+
+    /**
+     * This song with the picture Music Assistant's own queue has for it ([own], when it is the
+     * same song), at the address Klangbild reaches Music Assistant by, as Cover Flow's cards and
+     * the list have it. Home Assistant's picture stays behind it: its address is the one Music
+     * Assistant reports for itself, which this TV may not reach.
+     */
+    private fun TrackInfo.pictured(own: TrackInfo?): TrackInfo {
+        val url = own?.takeIf { it.kind == kind && sameTitle(it.title, title) }?.artworkUrl ?: return this
+        return copy(artworkUrl = url, artworkFallbackUrl = own.artworkFallbackUrl ?: artworkUrl)
     }
 
     /**
@@ -310,8 +322,9 @@ internal class QueueReader(
     /**
      * Prefer the queue's richer data when it describes the same track (or announced it as next,
      * before its own read); Music Assistant's own queue adds a book's authors, an episode's show,
-     * the chapters, the speed and the position without Home Assistant's rounding. [skewMs] is the
-     * local clock minus Home Assistant's, the one the position is published on.
+     * the chapters, the speed, the position without Home Assistant's rounding, and the picture at
+     * the address Klangbild reaches it by. [skewMs] is the local clock minus Home Assistant's, the
+     * one the position is published on.
      */
     fun enrich(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot = position(details(p), skewMs)
 
@@ -347,14 +360,19 @@ internal class QueueReader(
         if (!sameTitle(current.title, track.title)) return p
         val w = window?.takeIf { w -> known && w.current?.let { sameTitle(it.title, track.title) } == true }
         val mine = w?.current
+        // Music Assistant's own picture of the song: its current item, or the next one of the
+        // queue read before while the song is only announced.
+        val own = if (known) mine else window?.coming?.firstOrNull()?.takeIf { it.kind == track.kind && sameTitle(it.title, track.title) }
         // Only Music Assistant's own queue knows the album's year.
         return p.copy(
             track = track.copy(
                 artists = current.artists.ifEmpty { mine?.artists.orEmpty() }.ifEmpty { track.artists },
                 album = track.album ?: current.album,
                 year = current.year ?: mine?.year ?: track.year,
-                artworkUrl = current.artworkUrl ?: track.artworkUrl,
-                artworkFallbackUrl = track.artworkUrl ?: track.artworkFallbackUrl,
+                artworkUrl = own?.artworkUrl ?: current.artworkUrl ?: track.artworkUrl,
+                // Behind it Music Assistant's proxy for a service's picture, else Home Assistant's
+                // own where it offers one, which works as long as Home Assistant does.
+                artworkFallbackUrl = own?.artworkFallbackUrl ?: track.artworkFallbackUrl ?: track.artworkUrl,
                 source = current.source ?: track.source,
                 kind = listOf(track.kind, mine?.kind, current.kind).firstOrNull { it != null && it != MediaKind.MUSIC } ?: MediaKind.MUSIC,
                 chapters = mine?.chapters.orEmpty(),
