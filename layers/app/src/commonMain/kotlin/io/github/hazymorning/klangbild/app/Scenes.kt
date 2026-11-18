@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.domain.pictureId
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
@@ -61,8 +62,8 @@ class Scenes(
     private val lock = SynchronizedObject()
     private val building = HashMap<String, Job>()
 
-    /** A generated cover standing in for a picture: the picture's address when it was made ([TrackInfo.artworkId]), and when. */
-    private class StandIn(val pictureId: String?, val at: Long)
+    /** A generated cover standing in for a picture: the picture's addresses when it was made ([addressesOf]), and when. */
+    private class StandIn(val addresses: List<String>, val at: Long)
 
     /** The stand-ins among the scenes, by [TrackInfo.sceneKey]. */
     private val standIns = HashMap<String, StandIn>()
@@ -124,14 +125,17 @@ class Scenes(
 
     /**
      * Whether the generated cover standing in for [track]'s picture asks for it again: the track
-     * names another address than the stand-in was made for, or [RETRY_MS] have passed. Called
-     * under the lock.
+     * names another address than the stand-in was made for (its fallback too), or [RETRY_MS]
+     * have passed. Called under the lock.
      */
     private fun pictureDue(key: String, track: TrackInfo): Boolean {
-        val wanted = track.artworkId ?: return false
+        val wanted = addressesOf(track).ifEmpty { return false }
         val standIn = standIns[key] ?: return false
-        return standIn.pictureId != wanted || now() - standIn.at >= RETRY_MS
+        return standIn.addresses != wanted || now() - standIn.at >= RETRY_MS
     }
+
+    /** The addresses [track] names for its picture, its fallback's too, without the token Home Assistant renews ([pictureId]). */
+    private fun addressesOf(track: TrackInfo): List<String> = listOfNotNull(track.artworkUrl, track.artworkFallbackUrl).map(::pictureId)
 
     /** Lets go of every scene (nothing is shown any more, or memory is short). */
     fun clear() {
@@ -177,7 +181,7 @@ class Scenes(
             if (scene == null || frame != forFrame) return
             // Re-lit, a scene stays what it was; built anew, it is the picture or stands in for it.
             if (old == null) {
-                if (scene.coverGenerated) standIns[key] = StandIn(track.artworkId, now()) else standIns.remove(key)
+                if (scene.coverGenerated) standIns[key] = StandIn(addressesOf(track), now()) else standIns.remove(key)
             }
             cache.remove(key)
             cache[key] = scene
@@ -193,7 +197,7 @@ class Scenes(
     private fun keepStandIn(key: String, track: TrackInfo, look: Look, me: Job?): Boolean = synchronized(lock) {
         if (key !in standIns || cache[key]?.let(look::fits) != true) return false
         if (building[key] === me) building.remove(key)
-        standIns[key] = StandIn(track.artworkId, now())
+        standIns[key] = StandIn(addressesOf(track), now())
         true
     }
 

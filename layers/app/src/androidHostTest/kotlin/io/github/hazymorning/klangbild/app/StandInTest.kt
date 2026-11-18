@@ -55,9 +55,12 @@ class StandInTest {
         Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(180, 60, 40)) }.compress(Bitmap.CompressFormat.PNG, 100, out)
     }.toByteArray()
 
+    /** Where no picture ever comes from, whatever [serves] says. */
+    private val nowhere = "http://10.0.0.99:8095/"
+
     private val http = httpClient(OkHttp.create { addInterceptor { chain ->
         asked.incrementAndGet()
-        val ok = serves.get()
+        val ok = serves.get() && !chain.request().url.toString().startsWith(nowhere)
         Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
             .code(if (ok) 200 else 404).message(if (ok) "OK" else "Not found")
             .body(if (ok) png.toResponseBody("image/png".toMediaType()) else "".toResponseBody()).build()
@@ -116,6 +119,18 @@ class StandInTest {
         val scene = scenes.made(track)
         assertThat(scene.coverGenerated).isFalse()
         assertThat(scenes.ready(track, look)).isSameInstanceAs(scene)
+    }
+
+    @Test
+    fun `an address that comes later behind the picture is asked for at once`() = withScenes { scenes ->
+        serves.set(true)
+        val lost = track.copy(artworkUrl = "${nowhere}imageproxy/a?size=0")
+        assertThat(scenes.made(lost).coverGenerated).isTrue()
+        // The same song, now with Home Assistant's own address behind its picture: no waiting.
+        val found = lost.copy(artworkFallbackUrl = "http://192.168.1.4:8123/api/media_player_proxy/media_player.wz?token=t1&cache=a")
+        val scene = scenes.made(found)
+        assertThat(scene.coverGenerated).isFalse()
+        assertThat(scenes.ready(found, look)).isSameInstanceAs(scene)
     }
 
     @Test
