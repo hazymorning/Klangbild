@@ -97,7 +97,7 @@ class FieldScene(
 )
 
 object CoverField {
-    /** The field reaches this far beyond each screen edge, so the screen's drift (±6 dp) never shows a border. */
+    /** The field reaches this far beyond each screen edge, so the screen's drift (±3 dp) never shows a border. */
     const val OVERSCAN_DP = 18f
 
     /** The veil's resolution: it only holds soft ramps. */

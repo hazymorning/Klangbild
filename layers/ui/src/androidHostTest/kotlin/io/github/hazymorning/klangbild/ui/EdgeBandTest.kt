@@ -92,7 +92,7 @@ class EdgeBandTest {
     @Test
     fun theCoverColorsReachEveryEdgeWhereverTheStageDrifts() {
         // The cover colors background is the one that fills the screen: it meets the light behind the TV.
-        // The screen drifts up to 6 dp against burn-in. Moved twice as far, the field still reaches every edge.
+        // The screen drifts up to 3 dp against burn-in. Moved four times as far, the field still reaches every edge.
         val scenes = Fixtures.tracks.take(6).map { Fixtures.scene(it, mdpi, coverField = true) }
         var i by mutableStateOf(0)
         var at by mutableStateOf(0.0)

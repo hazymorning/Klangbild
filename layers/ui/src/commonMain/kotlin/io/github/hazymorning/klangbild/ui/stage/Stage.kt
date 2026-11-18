@@ -83,7 +83,7 @@ internal fun WallMargin(color: Color, alpha: () -> Float) {
 
 /**
  * How far [BaseWall] and the full-screen overlays reach past each screen edge (dp), more than the
- * drift (±6 dp). The cover field has its own [io.github.hazymorning.klangbild.render.CoverField.OVERSCAN_DP].
+ * drift (±3 dp). The cover field has its own [io.github.hazymorning.klangbild.render.CoverField.OVERSCAN_DP].
  */
 internal const val BEYOND_EDGES_DP = 24f
 

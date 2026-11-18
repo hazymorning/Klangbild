@@ -232,7 +232,7 @@ are in the code, and the tests named here check them.
   62% of its height (`BLOCK_SHARE`). Nothing frames a cover, so no shadow, outline or mat
   (`NoFrameTest`), and every cover fills its square (`CoverFillTest`).
 - The layout follows `StageGrid` and is centered on what's actually drawn, in both languages
-  (`CenteringTest`). The whole screen drifts by up to 6 dp to protect the OLED.
+  (`CenteringTest`). The whole screen drifts by up to 3 dp to protect the OLED.
 - Spaces grow with what they separate: the lines of one entry stand closest, then two entries,
   then what frames them (`Rhythm`). A space runs from the descenders of the line above to the cap
   height of the line below, never from the baseline, so the space under the title grows with its

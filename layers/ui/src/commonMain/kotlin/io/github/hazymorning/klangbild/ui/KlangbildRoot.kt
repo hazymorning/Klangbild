@@ -219,7 +219,7 @@ private const val HINT_MS = 12_000L
  * How far the whole screen drifts against burn-in (dp): enough to soften every edge on an
  * OLED, too little to see anything stand off the middle.
  */
-private const val DRIFT_DP = 6f
+private const val DRIFT_DP = 3f
 
 /** The screen fades in from black at start over this long (ms). */
 private const val ENTRANCE_MS = 1_800
