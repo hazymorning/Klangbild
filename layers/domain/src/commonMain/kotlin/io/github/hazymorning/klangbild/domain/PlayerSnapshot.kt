@@ -32,6 +32,11 @@ data class PlayerSnapshot(
     val shuffle: Boolean? = null,
     /** What the player lets the remote do. */
     val abilities: PlayerAbilities = PlayerAbilities(),
+    /**
+     * Music Assistant's address as it reports it in the player's picture (`http://host:8095`),
+     * which the setup page suggests; null when the picture doesn't give it away.
+     */
+    val maAddress: String? = null,
 )
 
 /**

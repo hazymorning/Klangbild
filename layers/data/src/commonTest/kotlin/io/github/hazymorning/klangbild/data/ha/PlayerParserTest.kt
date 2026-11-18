@@ -47,6 +47,8 @@ class PlayerParserTest {
         // As given: the loader tries a larger size first.
         assertThat(t.artworkUrl).isEqualTo("http://192.168.1.6:8095/imageproxy/ab?size=512&fmt=jpg")
         assertThat(t.artworkFallbackUrl).isEqualTo("http://192.168.1.5:8123/api/media_player_proxy/media_player.wz?token=t&cache=c")
+        // Where Music Assistant says it is, for the setup page to suggest.
+        assertThat(p.maAddress).isEqualTo("http://192.168.1.6:8095")
         assertThat(p.positionMs).isEqualTo(73_000)
         assertThat(p.positionAtEpochMs).isEqualTo(1791483667512L)
     }
