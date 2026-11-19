@@ -5,9 +5,11 @@ import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.CoverStrip
+import io.github.hazymorning.klangbild.domain.ArtistBio
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
+import io.github.hazymorning.klangbild.domain.SongBio
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.Strip
@@ -37,6 +39,7 @@ internal class StageBuilder(
 
     /** What was last known of the words of the song on stage: it stays while a moment between two songs says nothing. */
     private var lastLyrics: SongLyrics? = null
+    private var lastBio: SongBio? = null
 
     /** Builds for a screen of [spec] from now on. */
     fun screen(spec: ScreenSpec) {
@@ -54,6 +57,7 @@ internal class StageBuilder(
     fun newSource() {
         strip.clear()
         lastLyrics = null
+        lastBio = null
     }
 
     /** Lets go of decoded covers and scenes. */
@@ -91,11 +95,12 @@ internal class StageBuilder(
      */
     fun build(ui: UiState, s: Settings, stage: Screen.Stage, look: Look, shown: StageData?): UiState {
         val lyrics = lyricsFor(s, ui.source, stage.track)
+        val bio = bioFor(s, ui.source, stage.track, lyrics)
         val strip = cards?.takeIf { flowing && it.middle.track == stage.track }
         return if (strip != null) {
-            showFlow(ui, stage, strip, look, lyrics)
+            showFlow(ui, stage, strip, look, lyrics, bio)
         } else {
-            showStage(ui, stage, look, lyrics, queueFor(s, ui.source, stage.track, lyrics, shown))
+            showStage(ui, stage, look, lyrics, bio, queueFor(s, ui.source, stage.track, taken = lyrics != null || bio != null, shown))
         }
     }
 
@@ -107,16 +112,27 @@ internal class StageBuilder(
     }
 
     /**
+     * A few sentences about the artist of [track] in the text column. With Artist info on, what
+     * Music Assistant knows about the artist of a song, unless its [lyrics] take the column.
+     */
+    private fun bioFor(s: Settings, src: SourceState, track: TrackInfo, lyrics: Lyrics?): ArtistBio? {
+        src.bio?.let { lastBio = it }
+        if (!s.artistInfo || lyrics != null || track.kind != MediaKind.MUSIC) return null
+        return lastBio?.takeIf { it.key == track.key }?.bio
+    }
+
+    /**
      * The queue as a list beside the cover for [track], with Queue on List: what Music Assistant's
-     * queue says comes after it, while the song plays and no words take the column. A song only
+     * queue says comes after it, while the song plays and no words take the column ([taken]: the
+     * lyrics or the artist's). A song only
      * (a station or spoken word keeps its own last line), and only with something to come. The
      * small covers its rows have so far come with it. A song the player no longer reports keeps
      * the list it had ([shown]), and so does a song whose queue is being read again. A song the
      * list announced plays a moment before its own queue is read: meanwhile the list before
      * moves up by one, so the rows that stay glide up with the song and nothing comes twice.
      */
-    private fun queueFor(s: Settings, src: SourceState, track: TrackInfo, lyrics: Lyrics?, shown: StageData?): QueueList? {
-        if (s.queue != QueueDisplay.LIST || lyrics != null || track.kind != MediaKind.MUSIC) return null
+    private fun queueFor(s: Settings, src: SourceState, track: TrackInfo, taken: Boolean, shown: StageData?): QueueList? {
+        if (s.queue != QueueDisplay.LIST || taken || track.kind != MediaKind.MUSIC) return null
         if (src.player?.track?.key != track.key) return shown?.takeIf { it.track.key == track.key }?.queue
         if (!src.queueKnown) {
             val before = shown?.queue ?: return null
@@ -132,7 +148,7 @@ internal class StageBuilder(
      * asked for after the song's own picture and made one at a time, so they never hold it up: a
      * row whose small cover is still on its way shows without it, and it comes in where it stands.
      */
-    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?, list: QueueList?): UiState {
+    private fun showStage(ui: UiState, stage: Screen.Stage, look: Look, lyrics: Lyrics?, bio: ArtistBio?, list: QueueList?): UiState {
         scenes.retain(setOfNotNull(stage.track.sceneKey, stage.next?.sceneKey))
         val rows = list?.upNext?.rows.orEmpty().map { it.track }
         thumbs.retain(rows)
@@ -143,9 +159,9 @@ internal class StageBuilder(
         for (track in rows) thumbs.prepare(track) { changed() }
         if (scene == null) return ui
         val shown = ui.stage
-        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && shown.queue == list && ui.flow == null) return ui
+        if (shown?.track == stage.track && shown.scene === scene && shown.lyrics === lyrics && shown.bio === bio && shown.queue == list && ui.flow == null) return ui
         // Cover Flow, if it showed before, goes now.
-        return ui.copy(stage = StageData(stage.track, scene, lyrics, list), flow = null)
+        return ui.copy(stage = StageData(stage.track, scene, lyrics, list, bio), flow = null)
     }
 
     /**
@@ -157,7 +173,7 @@ internal class StageBuilder(
      * changes (light to dark), the whole strip changes at once, as soon as every card it shows
      * is ready.
      */
-    private fun showFlow(ui: UiState, stage: Screen.Stage, s: Strip, look: Look, lyrics: Lyrics?): UiState {
+    private fun showFlow(ui: UiState, stage: Screen.Stage, s: Strip, look: Look, lyrics: Lyrics?, bio: ArtistBio?): UiState {
         scenes.retain(s.cards.map { it.track.sceneKey }.toSet() + setOfNotNull(stage.next?.sceneKey))
         val order = listOf(s.current) + (s.current + 1 until s.cards.size) + (s.current - 1 downTo 0)
         for (i in order) scenes.prepare(s.cards[i].track, look) { changed() }
@@ -170,7 +186,7 @@ internal class StageBuilder(
             val scene = scenes.ready(c.track, look) ?: shown[c.id]?.scene?.takeIf { !newWall && it.layout == middle.layout }
             scene?.let { FlowEntry(c.id, c.track, it) }
         }
-        val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics)
+        val flow = FlowData(entries, entries.indexOfFirst { it.id == s.middle.id }, lyrics, bio)
         if (flow == ui.flow && ui.stage == null) return ui
         // The single cover, if it showed before, goes now.
         return ui.copy(flow = flow, stage = null)

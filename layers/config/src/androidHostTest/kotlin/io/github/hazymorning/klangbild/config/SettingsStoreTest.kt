@@ -101,6 +101,7 @@ class SettingsStoreTest {
             queue = QueueDisplay.LIST,
             edgeToEdge = true,
             lyrics = true,
+            artistInfo = true,
             lyricsGroupDelayMs = 800,
             maUrl = "http://192.168.1.5:8095",
             maToken = "ma-token",

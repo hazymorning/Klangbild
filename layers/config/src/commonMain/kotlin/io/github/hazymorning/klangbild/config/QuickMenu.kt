@@ -11,6 +11,12 @@ import io.github.hazymorning.klangbild.text.Texts
  */
 enum class LyricsChoice { ON, OFF, NONE }
 
+/**
+ * A few sentences about the artist in the text column: on, off, or on while Music Assistant
+ * knows none about this song's artist (NONE: the entry still says On, in a quieter ink).
+ */
+enum class ArtistChoice { ON, OFF, NONE }
+
 /** How far the current song's way into the favorites has come. */
 enum class FavoriteState {
     /** Not asked yet (or not known to be one). */
@@ -34,6 +40,7 @@ enum class FavoriteState {
 enum class QuickItem(val label: StringId?) {
     QUEUE(Strings.quickQueue),
     LYRICS(Strings.quickLyrics),
+    ARTIST(Strings.quickArtistInfo),
     PARTY(Strings.quickParty),
     FAVORITE(Strings.quickFavorite),
     LIGHTS(Strings.quickLights),
@@ -94,6 +101,8 @@ data class QuickContext(
     val lyrics: LyricsChoice? = null,
     /** Whether a party's code shows; null while no party of Music Assistant's plays to this speaker. */
     val party: Boolean? = null,
+    /** What is known about the artist as the entry says it; null without Music Assistant or without a song. */
+    val artist: ArtistChoice? = null,
 )
 
 /**
@@ -114,6 +123,7 @@ object QuickMenu {
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
+        if (ctx.artist != null) row(QuickItem.ARTIST, t[if (ctx.artist == ArtistChoice.OFF) Strings.off else Strings.on], muted = ctx.artist == ArtistChoice.NONE)
         if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) Strings.on else Strings.off])
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
         if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) Strings.off else Strings.on])
@@ -165,7 +175,7 @@ object QuickMenu {
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
         QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
-        QuickItem.LYRICS, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
+        QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
     }

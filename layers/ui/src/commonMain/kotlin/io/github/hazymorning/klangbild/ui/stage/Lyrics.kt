@@ -474,7 +474,7 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
 
 /** The track in the footer, which has no lead here ([fitFooter]). */
 @Composable
-private fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
+internal fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
     return remember(full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { AnnotatedString(isolateRightToLeft(it)) } }
 }
@@ -504,7 +504,7 @@ private const val OUTER_GAP_SHARE = 1.6f
 private const val EDGE_FADE = 0.5f
 
 /** From the slot's baseline to the footer's cap height under it (dp). */
-private const val SLOT_GAP = 26f
+internal const val SLOT_GAP = 26f
 
 /** Each voice of a lyric line takes at most this many rows, the last one ending after a whole word. */
 private const val MAX_ROWS = 4

@@ -24,7 +24,7 @@
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
     <string name="about_section_picture">How the picture looks: the queue, the cover, light or dark, colors and motion.</string>
-    <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next, the lyrics and notifications.</string>
+    <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next, the lyrics, the artist info and notifications.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
     <string name="about_section_timer">The sleep timer, and when the screen and Klangbild turn off.</string>
@@ -44,6 +44,7 @@
     <string name="entry_notifications">Notifications</string>
     <string name="entry_lyrics">Lyrics</string>
     <string name="entry_lyrics_delay">Lyrics in a group</string>
+    <string name="entry_artist_info">Artist info</string>
     <string name="entry_background">Background</string>
     <string name="entry_intensity">Intensity</string>
     <string name="entry_motion">Motion</string>
@@ -153,6 +154,9 @@
     <string name="about_lyrics_on">The words of the song beside the cover, the line being sung in the middle.</string>
     <string name="about_lyrics_off">Title, artist and album beside the cover. Right shows the words where Music Assistant has them.</string>
     <string name="about_lyrics_set_up">The words come from Music Assistant. OK shows the QR code to set it up on your phone.</string>
+    <string name="about_artist_info_on">A few sentences about the artist beside the cover, one page after another. With Lyrics on, the lyrics come first.</string>
+    <string name="about_artist_info_off">Title, artist and album beside the cover. Right shows a few sentences about the artist where Music Assistant knows them.</string>
+    <string name="about_artist_info_set_up">The sentences come from Music Assistant. OK shows the QR code to set it up on your phone.</string>
     <string name="about_lyrics_delay_off">Some speakers play a little later when others play along, so the lines light up too early. Right makes them wait as long as the group delay set in the speakers’ app.</string>
     <string name="about_lyrics_delay_on">When other speakers play along, each line lights up %1$s seconds later. With one speaker alone, nothing changes.</string>
     <string name="about_background_cover">The cover’s colors fill the whole screen in soft gradients. The progress bar takes their hue.</string>
@@ -242,6 +246,7 @@
     <!-- Quick settings -->
     <string name="quick_queue">Queue</string>
     <string name="quick_lyrics">Lyrics</string>
+    <string name="quick_artist_info">Artist info</string>
     <string name="quick_favorite">Favorite</string>
     <string name="quick_lights">Lights</string>
     <string name="quick_shuffle">Shuffle</string>

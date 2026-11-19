@@ -38,6 +38,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         /** The view of versions before the queue's setting: SINGLE or FLOW. Read once, then removed. */
         val formerView = stringKey("view")
         val lyrics = booleanKey("lyrics")
+        val artistInfo = booleanKey("artist_info")
         val lyricsGroupDelay = intKey("lyrics_group_delay_ms")
         val maUrl = stringKey("ma_url")
         val maToken = stringKey("ma_token")
@@ -143,6 +144,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             queue = p[Keys.queue]?.let { enumOr(it, defaults.queue) } ?: queueOfView(p[Keys.formerView]),
             edgeToEdge = p[Keys.edgeToEdge] ?: defaults.edgeToEdge,
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
+            artistInfo = p[Keys.artistInfo] ?: defaults.artistInfo,
             lyricsGroupDelayMs = p[Keys.lyricsGroupDelay]?.takeIf { it in Settings.LYRICS_GROUP_DELAYS_MS } ?: defaults.lyricsGroupDelayMs,
             maUrl = p[Keys.maUrl],
             maToken = p[Keys.maToken]?.let(secrets::open),
@@ -196,6 +198,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.edgeToEdge] = s.edgeToEdge
         p.remove(Keys.formerView)
         p[Keys.lyrics] = s.lyrics
+        p[Keys.artistInfo] = s.artistInfo
         p[Keys.lyricsGroupDelay] = s.lyricsGroupDelayMs
         putOrRemove(Keys.maUrl, s.maUrl)
         putSecret(Keys.maToken, s.maToken)

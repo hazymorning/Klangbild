@@ -319,7 +319,7 @@ internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.track.key != b.track.key -> FlowChange.TEXT
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
-        old.lyrics !== new.lyrics -> FlowChange.LYRICS
+        old.lyrics !== new.lyrics || old.bio !== new.bio -> FlowChange.LYRICS
         // The same track described anew (a year that came late): its text crossfades, as on the single stage.
         !drawnAlike(a.track, b.track) -> FlowChange.SOFT
         else -> FlowChange.SIDES

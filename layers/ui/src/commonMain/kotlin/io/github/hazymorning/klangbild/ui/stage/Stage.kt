@@ -264,8 +264,9 @@ internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Flo
  * The text column. By default it holds the text block, centered on the cover from the first cap
  * height to the last baseline: (work), title, (version), artist, album · year, then the slot
  * (the progress bar, the station or a notice). The footer ends at the column's foot. With
- * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), and with [StageModel.queue] the
- * queue ([QueueText], whose plan a theater keeps through a change: [queuePlan]). [alpha] and
+ * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), with [StageModel.bio] a few
+ * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText], whose
+ * plan a theater keeps through a change: [queuePlan]). [alpha] and
  * [rise] animate a change line by line, [textLevel] dims the text in a pause, and [shift] moves
  * the column from its place in the grid (dp: Cover Flow moves it left while cards are missing).
  */
@@ -282,6 +283,11 @@ internal fun TextLayer(
     val lyrics = model.lyrics
     if (lyrics != null) {
         LyricsText(model, lyrics, modifier, alpha, rise, textLevel, shift)
+        return
+    }
+    val bio = model.bio
+    if (bio != null) {
+        BioText(model, bio, modifier, alpha, rise, textLevel, shift)
         return
     }
     if (queuePlan != null) {

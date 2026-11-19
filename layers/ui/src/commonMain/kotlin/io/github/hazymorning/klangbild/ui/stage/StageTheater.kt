@@ -281,7 +281,7 @@ internal fun StageTheater(
  * has changed (another artwork URL for the same cover), so there is nothing to watch.
  */
 internal fun changeOf(old: StageData, new: StageData): Change? {
-    if (new.scene === old.scene && new.lyrics === old.lyrics && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
+    if (new.scene === old.scene && new.lyrics === old.lyrics && new.bio === old.bio && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
     if (new.track.key != old.track.key) {
         // Only the text changes for the next track of the same cover, unless the background changes with it.
         return if (sameCover(old.scene, new.scene) && new.scene.appearance == old.scene.appearance) Change.TEXT else Change.FULL
@@ -289,7 +289,7 @@ internal fun changeOf(old: StageData, new: StageData): Change? {
     return when {
         new.scene.appearance != old.scene.appearance -> Change.WALL
         new.scene !== old.scene -> Change.SOFT
-        new.lyrics !== old.lyrics || (new.queue == null) != (old.queue == null) -> Change.COLUMN
+        new.lyrics !== old.lyrics || new.bio !== old.bio || (new.queue == null) != (old.queue == null) -> Change.COLUMN
         new.queue != old.queue && drawnAlike(new.track, old.track) -> Change.ROWS
         else -> Change.SOFT
     }

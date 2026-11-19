@@ -43,6 +43,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     NOTIFICATIONS(MenuSection.INFO, Strings.entryNotifications),
     LYRICS(MenuSection.INFO, Strings.entryLyrics),
     LYRICS_DELAY(MenuSection.INFO, Strings.entryLyricsDelay),
+    ARTIST_INFO(MenuSection.INFO, Strings.entryArtistInfo),
     BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
     OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
     REMOTE(MenuSection.REMOTE, Strings.entryRemote),
@@ -136,7 +137,7 @@ object SettingsMenu {
      * while none are chosen. OK opens the setup.
      */
     fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
-        MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
+        MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.ARTIST_INFO, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
         MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
         MenuEntry.VALUES -> s.ownValues.isEmpty()
         MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
@@ -202,6 +203,8 @@ object SettingsMenu {
             s.lyricsGroupDelayMs == 0 -> t[Strings.off]
             else -> t.format(Strings.lyricsDelayLater, seconds(s.lyricsGroupDelayMs, t))
         }
+        // "Needs Music Assistant" would not fit beside its label in German.
+        MenuEntry.ARTIST_INFO -> if (!s.hasMusicAssistant) t[Strings.setUp] else onOff(s.artistInfo, t)
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
             when (s.motion) {
@@ -335,6 +338,13 @@ object SettingsMenu {
                 !s.hasMusicAssistant -> Strings.aboutLyricsSetUp
                 s.lyrics -> Strings.aboutLyricsOn
                 else -> Strings.aboutLyricsOff
+            },
+        ]
+        MenuEntry.ARTIST_INFO -> t[
+            when {
+                !s.hasMusicAssistant -> Strings.aboutArtistInfoSetUp
+                s.artistInfo -> Strings.aboutArtistInfoOn
+                else -> Strings.aboutArtistInfoOff
             },
         ]
         MenuEntry.LYRICS_DELAY -> when {
@@ -514,6 +524,7 @@ object SettingsMenu {
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
+        MenuEntry.ARTIST_INFO -> if (!s.hasMusicAssistant) null else s.copy(artistInfo = !s.artistInfo)
         MenuEntry.LYRICS_DELAY ->
             if (!s.hasMusicAssistant) null else s.copy(lyricsGroupDelayMs = move(Settings.LYRICS_GROUP_DELAYS_MS, s.lyricsGroupDelayMs, direction, wrap))
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.

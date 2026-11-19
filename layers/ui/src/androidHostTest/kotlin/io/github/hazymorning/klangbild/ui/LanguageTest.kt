@@ -21,6 +21,7 @@ import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
+import io.github.hazymorning.klangbild.config.ArtistChoice
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
@@ -184,7 +185,9 @@ class LanguageTest {
         for (s in settings) for (music in listOf(true, false)) for (actions in states) {
             for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in QueueDisplay.entries + null) {
                 for (lyrics in LyricsChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
-                    val rows = QuickMenu.rows(s, QuickContext(pending, music, favorite, shuffle, actions, lyrics, code), t)
+                    // The artist info entry takes each of its values along with the lyrics'.
+                    val artist = lyrics?.let { ArtistChoice.entries[it.ordinal] }
+                    val rows = QuickMenu.rows(s, QuickContext(pending, music, favorite, shuffle, actions, lyrics, code, artist), t)
                     add(QuickState(rows, 0))
                 }
             }

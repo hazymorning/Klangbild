@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.ui.stage
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import io.github.hazymorning.klangbild.domain.ArtistBio
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.TimeText
@@ -51,6 +52,11 @@ internal class StageModel(
      * the progress bar shows only for a moment after a key ([barShown]).
      */
     val lyrics: Lyrics? = null,
+    /**
+     * A few sentences about the artist, while they fill the text column. The [footer] then names
+     * the track itself, and the progress bar shows only for a moment after a key ([barShown]).
+     */
+    val bio: ArtistBio? = null,
     /** The queue as a list in the text column, while it shows and no lyrics fill the column. The track then stands at its top. */
     val queue: QueueModel? = null,
     /** Whether the player still reports this track. Once it reports the next one, its lyrics are over. */

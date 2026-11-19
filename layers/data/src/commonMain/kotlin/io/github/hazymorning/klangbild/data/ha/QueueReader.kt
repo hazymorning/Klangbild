@@ -5,6 +5,7 @@ import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameTitle
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaAuthException
 import io.github.hazymorning.klangbild.data.ma.MaClient
+import io.github.hazymorning.klangbild.data.ma.MaBios
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
 import io.github.hazymorning.klangbild.data.ma.MaQueue
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
@@ -16,6 +17,7 @@ import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
+import io.github.hazymorning.klangbild.domain.SongBio
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -122,6 +124,12 @@ internal class QueueReader(
     /** What was last known of the words of the song that plays (only touched while publishing). */
     private var lastLyrics: SongLyrics? = null
 
+    /** What Music Assistant keeps about the artists of the song that plays and of the one up next. */
+    private val bios: MaBios? = ma?.let { MaBios(it, scope, now, publish) }
+
+    /** What was last known about the artist of the song that plays (only touched while publishing). */
+    private var lastBio: SongBio? = null
+
     /**
      * What comes next as Music Assistant itself has it, for the track [key]: [next] (null: nothing
      * follows), and the [shape] of the queue that said so.
@@ -198,6 +206,7 @@ internal class QueueReader(
         positionJob?.cancel()
         awaitEnd?.cancel()
         lyrics?.stop()
+        bios?.stop()
     }
 
     /**
@@ -285,6 +294,23 @@ internal class QueueReader(
             loader.known(uri)?.let { SongLyrics(track.key, it.lyrics?.takeIf { l -> length == null || l.fit(length) }) }
         }
         if (known != null) lastLyrics = known
+        return known
+    }
+
+    /**
+     * What Music Assistant knows about the artist of [track], the song that plays: the queue's
+     * current song's first artist, when that song is [track] (by the URI Home Assistant names as
+     * what plays, or by its title). Null while nothing is known; while the queue doesn't tell,
+     * what was known for [track] stays.
+     */
+    fun bioOf(track: TrackInfo, entity: EntityState?, w: QueueWindow?): SongBio? {
+        val loader = bios ?: return null
+        if (track.kind != MediaKind.MUSIC) return null
+        val song = w?.currentSong?.takeIf { s ->
+            entity?.string("media_content_id") == s.uri || w.current?.let { c -> sameTitle(c.title, track.title) } == true
+        }
+        val known = if (song == null) lastBio?.takeIf { it.key == track.key } else loader.known(song)?.let { SongBio(track.key, it.bio) }
+        if (known != null) lastBio = known
         return known
     }
 
@@ -452,6 +478,7 @@ internal class QueueReader(
         if (read != null) {
             window = read
             lyrics?.want(listOfNotNull(read.currentSong, read.nextSong))
+            bios?.want(listOfNotNull(read.currentSong, read.nextSong))
         }
         publish()
     }
@@ -568,8 +595,12 @@ internal class QueueReader(
         queue = parsed
         window = read
         queueReadFor = key
-        // The words of the song that plays and of the one up next, as they come; never waited for.
-        read?.let { w -> lyrics?.want(listOfNotNull(w.currentSong, w.nextSong)) }
+        // The words of the song that plays and of the one up next, and what is known about their
+        // artists, as they come; never waited for.
+        read?.let { w ->
+            lyrics?.want(listOfNotNull(w.currentSong, w.nextSong))
+            bios?.want(listOfNotNull(w.currentSong, w.nextSong))
+        }
         publish()
         if (again || parsed == null) return
         // Music Assistant names the next item anew only when the player reports after the new one

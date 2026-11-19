@@ -130,6 +130,25 @@ class CenteringTest {
     }
 
     @Test
+    fun theArtistsSentencesStandOnTheArtworksMiddle() {
+        val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
+        for ((t, bio) in listOf(Fixtures.texts to Fixtures.neonBio, TestTexts.english() to Fixtures.nightBio)) for (edge in listOf(false, true)) {
+            val scene = Fixtures.scene(track, edge = edge)
+            val ink = render { Fixtures.Still(t) { Stage(Fixtures.bioModel(track, bio, scene = scene, t = t)) } }
+            val layout = scene.layout
+            val left = (layout.columnLeft * 2).toInt() - 4
+            // The status line, the page's lines, the footer.
+            val page = ink.lines(left, 1920).drop(1).dropLast(1)
+            val case = "${if (edge) "edge to edge" else "single cover"} in ${t.locale}"
+            assertThat(page.size, name = "$case: the page's lines").isGreaterThan(1)
+            // Its first cap height and its last baseline are as far from the artwork's middle (540) on either side.
+            val cap = 18f * io.github.hazymorning.klangbild.ui.theme.Fonts.CAP_HEIGHT * 2f
+            assertThat(abs((page.first().baseline - cap + page.last().baseline) / 2f - 540f), name = "$case: the page's middle").isLessThanOrEqualTo(2f)
+            for (line in page) assertThat(abs(line.left - layout.columnLeft * 2f), name = "$case: a line's left edge at ${line.top}").isLessThanOrEqualTo(4f)
+        }
+    }
+
+    @Test
     fun theQueuesSongStandsInTheMiddleItsSpacesGrowAndTheListEndsWithTheCover() {
         // Rows in Latin letters, so that each of a row's two lines has ink of its own right of the small covers.
         val coming = Catalog.cairoNights + Catalog.northernHours

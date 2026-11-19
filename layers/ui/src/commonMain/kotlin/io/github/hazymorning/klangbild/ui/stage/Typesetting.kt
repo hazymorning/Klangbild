@@ -35,6 +35,7 @@ import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
+import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
 import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
@@ -77,6 +78,9 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     val artist = faces.textType(21f, 500, muted, lineHeight = 27f).leftAligned()
     val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).leftAligned()
     val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
+
+    /** A few sentences about the artist ([BioText]): between the artist and the album, on balanced lines. */
+    val bio = faces.textType(18f, 420, muted, lineHeight = 26f).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
 
     /** The status line and the station: 15 sp with slight tracking, since light text on dark looks tighter. */
     val label = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)

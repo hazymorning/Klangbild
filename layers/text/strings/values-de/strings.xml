@@ -17,7 +17,7 @@
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
     <string name="about_section_picture">Wie das Bild aussieht: Warteschlange, Cover, hell oder dunkel, Farben und Bewegung.</string>
-    <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt, der Songtext und Benachrichtigungen.</string>
+    <string name="about_section_info">Was neben dem Cover steht: die Uhrzeit, der Fortschrittsbalken, was als Nächstes kommt, der Songtext, die Künstlerinfo und Benachrichtigungen.</string>
     <string name="about_section_lights">Lampen im Raum, die in den Farben der Musik leuchten.</string>
     <string name="about_section_remote">Was die Tasten der Fernbedienung tun.</string>
     <string name="about_section_timer">Der Sleep-Timer und wann sich der Bildschirm und Klangbild ausschalten.</string>
@@ -36,6 +36,7 @@
     <string name="entry_notifications">Benachrichtigungen</string>
     <string name="entry_lyrics">Songtext</string>
     <string name="entry_lyrics_delay">Songtext in der Gruppe</string>
+    <string name="entry_artist_info">Künstlerinfo</string>
     <string name="entry_background">Hintergrund</string>
     <string name="entry_intensity">Intensität</string>
     <string name="entry_motion">Bewegung</string>
@@ -141,6 +142,9 @@
     <string name="about_lyrics_on">Der Songtext neben dem Cover, die Zeile, die gerade gesungen wird, in der Mitte.</string>
     <string name="about_lyrics_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt den Songtext, wo Music Assistant ihn hat.</string>
     <string name="about_lyrics_set_up">Der Songtext kommt von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
+    <string name="about_artist_info_on">Ein paar Sätze über den Künstler neben dem Cover, eine Seite nach der anderen. Ist Songtext an, kommt der Songtext zuerst.</string>
+    <string name="about_artist_info_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt ein paar Sätze über den Künstler, wo Music Assistant sie kennt.</string>
+    <string name="about_artist_info_set_up">Diese Sätze kommen von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_lyrics_delay_off">Manche Lautsprecher spielen etwas später, wenn weitere mitspielen, sodass die Zeilen zu früh aufleuchten. Rechts lässt sie so lange warten wie die Gruppenverzögerung in der App der Lautsprecher.</string>
     <string name="about_lyrics_delay_on">Spielen weitere Lautsprecher mit, leuchtet jede Zeile %1$s Sekunden später auf. Mit einem Lautsprecher allein ändert sich nichts.</string>
     <string name="about_background_cover">Die Farben des Covers füllen den ganzen Bildschirm, weich verlaufend. Der Fortschrittsbalken nimmt ihren Ton an.</string>
@@ -229,6 +233,7 @@
 
     <string name="quick_queue">Warteschlange</string>
     <string name="quick_lyrics">Songtext</string>
+    <string name="quick_artist_info">Künstlerinfo</string>
     <string name="quick_favorite">Favorit</string>
     <string name="quick_lights">Licht</string>
     <string name="quick_shuffle">Zufallswiedergabe</string>

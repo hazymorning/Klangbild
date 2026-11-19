@@ -146,6 +146,20 @@ class MaClient(
     }
 
     /**
+     * The artist [itemId] of the provider [provider] as Music Assistant has it
+     * (`music/artists/get`): from its library where it is there, with what Music Assistant keeps
+     * about it, else as the provider describes it. Reading a library artist also has Music
+     * Assistant look for what is still missing about it. Null for an answer that isn't an artist.
+     */
+    suspend fun artist(itemId: String, provider: String): JsonObject? = command(
+        "music/artists/get",
+        buildJsonObject {
+            put("item_id", itemId)
+            put("provider_instance_id_or_domain", provider)
+        },
+    ) as? JsonObject
+
+    /**
      * One command; canceling the coroutine cancels the request. It may take [timeoutMs], reading
      * included, and wait [readTimeoutMs] for the next bytes instead of as long as the engine lets it.
      */

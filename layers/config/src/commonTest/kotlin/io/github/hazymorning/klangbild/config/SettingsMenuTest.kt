@@ -115,6 +115,7 @@ class SettingsMenuTest {
                 MenuEntry.SCREEN_OFF.takeIf { s.presenceSensors.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
                 MenuEntry.LYRICS_DELAY.takeIf { !s.hasMusicAssistant },
+                MenuEntry.ARTIST_INFO.takeIf { !s.hasMusicAssistant },
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
@@ -254,6 +255,24 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, on, MenuContext(), de)).isEqualTo("An")
         assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }.dimmed).isFalse()
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+    }
+
+    @Test
+    fun `the artist info is a setting too, and without Music Assistant it says what it needs`() {
+        val info = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.ARTIST_INFO }
+        assertThat(info.label).isEqualTo("Künstlerinfo")
+        assertThat(info.dimmed).isTrue()
+        assertThat(SettingsMenu.step(MenuEntry.ARTIST_INFO, configured, +1)).isNull()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.ARTIST_INFO, configured, +1, wrap = true)).isTrue()
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        val on = SettingsMenu.step(MenuEntry.ARTIST_INFO, withMa, +1)!!
+        assertThat(on.artistInfo).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, on, MenuContext(), de)).isEqualTo("An")
+        assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+        assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).map { it.entry }).containsExactly(
+            MenuEntry.CLOCK, MenuEntry.PROGRESS_BAR, MenuEntry.NEXT, MenuEntry.ALBUM, MenuEntry.GROUP, MenuEntry.VOLUME, MenuEntry.VALUES,
+            MenuEntry.NOTIFICATIONS, MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.ARTIST_INFO,
+        )
     }
 
     @Test
