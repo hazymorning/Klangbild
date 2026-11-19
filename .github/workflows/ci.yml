@@ -44,9 +44,32 @@ env:
   LC_ALL: C.UTF-8
 
 jobs:
+  # Publishing a draft creates its tag. The run that made the draft built and tested that release
+  # already, so the tag's own run skips everything else. This job runs in every run, since GitHub
+  # also skips every job after a skipped one.
+  published:
+    name: Release check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      already: ${{ steps.look.outputs.already }}
+    steps:
+      - name: Look for the release published from its draft
+        id: look
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null)" = false ]; then
+            echo "Klangbild $GITHUB_REF_NAME is out already, so this run has nothing to do."
+            echo "already=true" >> "$GITHUB_OUTPUT"
+          fi
+
   # The APK, the tests and lint run side by side; the emulator jobs need only the APK.
   apk:
     name: Release APK
+    needs: published
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -111,6 +134,8 @@ jobs:
   # compared with the pictures of the branch it goes into.
   tests:
     name: Tests and pictures
+    needs: published
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -281,6 +306,8 @@ jobs:
 
   lint:
     name: Android Lint
+    needs: published
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

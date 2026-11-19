@@ -32,9 +32,12 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.Test
 
 /**
@@ -58,8 +61,12 @@ class StandInTest {
     /** Where no picture ever comes from, whatever [serves] says. */
     private val nowhere = "http://10.0.0.99:8095/"
 
+    /** While set, every answer waits for it, so a test sees the scene on its way however fast the answer would be. */
+    private val held = AtomicReference<CountDownLatch?>(null)
+
     private val http = httpClient(OkHttp.create { addInterceptor { chain ->
         asked.incrementAndGet()
+        held.get()?.await(10, TimeUnit.SECONDS)
         val ok = serves.get() && !chain.request().url.toString().startsWith(nowhere)
         Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
             .code(if (ok) 200 else 404).message(if (ok) "OK" else "Not found")
@@ -138,8 +145,11 @@ class StandInTest {
         val standIn = scenes.made(track)
         val first = asked.get()
         clock.addAndGet(Scenes.RETRY_MS)
+        val answer = CountDownLatch(1)
+        held.set(answer)
         scenes.prepare(track, look)
         assertThat(scenes.pending(track)).isTrue()
+        answer.countDown()
         scenes.settled(track)
         // It was asked for, found nothing, and the screen keeps the very same scene (nothing to fade).
         assertThat(asked.get() > first).isTrue()
