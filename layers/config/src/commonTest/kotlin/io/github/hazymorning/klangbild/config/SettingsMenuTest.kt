@@ -21,6 +21,7 @@ import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.UpdateState
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlin.test.Test
 
@@ -181,7 +182,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactly(*(SettingsMenu.entries).toTypedArray())
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
+            MenuEntry.QUEUE, MenuEntry.COVER, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
             MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
@@ -222,6 +223,22 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.description(MenuEntry.UPDATE, configured, ctx("v2026.11.0"), de)).contains("zeigt, was neu ist")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, on, ctx(null), de)).contains("höchstens einmal am\u00A0Tag")
         assertThat(SettingsMenu.description(MenuEntry.UPDATE_CHECK, off, ctx(null), de)).contains("OK\u00A0bei Update fragt trotzdem")
+    }
+
+    @Test
+    fun `the cover goes edge to edge and back, and in Cover Flow it says it stays beside the others`() {
+        val cover = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.PICTURE).first { it.entry == MenuEntry.COVER }
+        assertThat(cover.label).isEqualTo("Cover")
+        assertThat(cover.value).isEqualTo("Normal")
+        assertThat(cover.dimmed).isFalse()
+        val edge = SettingsMenu.step(MenuEntry.COVER, configured, -1)!!
+        assertThat(edge.edgeToEdge).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), de)).isEqualTo("Randlos")
+        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())).isEqualTo("Edge to edge")
+        assertThat(SettingsMenu.step(MenuEntry.COVER, edge, +1, wrap = true)!!.edgeToEdge).isFalse()
+        val about = SettingsMenu.description(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())
+        val inFlow = SettingsMenu.description(MenuEntry.COVER, edge.copy(queue = QueueDisplay.FLOW), MenuContext(), TestTexts.english())
+        assertThat(inFlow).isEqualTo(about + " " + TestTexts.english()[Strings.aboutCoverFlow])
     }
 
     @Test

@@ -79,7 +79,9 @@ internal class StageBuilder(
         val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
         val strip = strip.update(stage.track, coming, played = src.played).also { cards = it }
         val flow = s.queue == QueueDisplay.FLOW && strip.cards.size > 1
-        if (flow != scenes.frame.flow) scenes.show(scenes.frame.copy(flow = flow), keep = onStage?.sceneKey)
+        // The cover edge to edge is the single cover's: Cover Flow has its cards side by side.
+        val frame = scenes.frame.copy(flow = flow, edge = s.edgeToEdge && !flow)
+        if (frame != scenes.frame) scenes.show(frame, keep = onStage?.sceneKey)
         return flow
     }
 

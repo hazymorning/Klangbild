@@ -77,8 +77,9 @@ object SceneBuilder {
         wallTint: Float = 1f,
         flow: Boolean = false,
         coverField: Boolean = false,
+        edge: Boolean = false,
     ): ArtworkScene {
-        val layout = StageGrid(screen, flow)
+        val layout = StageGrid(screen, flow, edge)
         val slotPx = (layout.art * screen.density).roundToInt()
         val slotRect = layout.artRect
         val coverPixels: IntArray

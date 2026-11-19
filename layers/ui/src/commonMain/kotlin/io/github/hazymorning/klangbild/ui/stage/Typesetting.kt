@@ -274,7 +274,7 @@ private fun planText(
         if (model.slotText != null || (model.barShown && model.durationMs != null)) {
             rest += descent(last) + outerGap(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
-        layout.art * BLOCK_SHARE * d - rest
+        layout.columnArt * BLOCK_SHARE * d - rest
     }
 
     val balancer = lineBalancer(measurer)

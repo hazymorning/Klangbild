@@ -99,6 +99,7 @@ class SettingsStoreTest {
             volumeKeys = true,
             appearance = AppearanceMode.DARK,
             queue = QueueDisplay.LIST,
+            edgeToEdge = true,
             lyrics = true,
             lyricsGroupDelayMs = 800,
             maUrl = "http://192.168.1.5:8095",

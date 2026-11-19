@@ -24,6 +24,7 @@ It works with any speaker that's set up in Home Assistant, but it's mostly meant
 ✓ Smart lights in the cover color<br>
 ✓ Show what plays on other speakers<br>
 ✓ Screen off while no one is in the room<br>
+✓ The cover at full height, edge to edge<br>
 ✓ Music on the TV itself (Sendspin)
 
 ## More

@@ -33,6 +33,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val volumeKeys = booleanKey("volume_keys")
         val appearance = stringKey("appearance")
         val queue = stringKey("queue")
+        val edgeToEdge = booleanKey("edge_to_edge")
 
         /** The view of versions before the queue's setting: SINGLE or FLOW. Read once, then removed. */
         val formerView = stringKey("view")
@@ -140,6 +141,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             volumeKeys = p[Keys.volumeKeys] ?: defaults.volumeKeys,
             appearance = enumOr(p[Keys.appearance], defaults.appearance),
             queue = p[Keys.queue]?.let { enumOr(it, defaults.queue) } ?: queueOfView(p[Keys.formerView]),
+            edgeToEdge = p[Keys.edgeToEdge] ?: defaults.edgeToEdge,
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
             lyricsGroupDelayMs = p[Keys.lyricsGroupDelay]?.takeIf { it in Settings.LYRICS_GROUP_DELAYS_MS } ?: defaults.lyricsGroupDelayMs,
             maUrl = p[Keys.maUrl],
@@ -191,6 +193,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.volumeKeys] = s.volumeKeys
         p[Keys.appearance] = s.appearance.name
         p[Keys.queue] = s.queue.name
+        p[Keys.edgeToEdge] = s.edgeToEdge
         p.remove(Keys.formerView)
         p[Keys.lyrics] = s.lyrics
         p[Keys.lyricsGroupDelay] = s.lyricsGroupDelayMs

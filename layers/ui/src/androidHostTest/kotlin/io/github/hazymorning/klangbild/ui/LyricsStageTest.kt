@@ -58,6 +58,8 @@ class LyricsStageTest {
 
     @Test fun dark() = shot("single_dark", Fixtures.lyricsModel(neon, neonLyrics))
 
+    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, edge = true)))
+
     @Test fun light() = shot("single_light", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT))
 
     @Test fun darkEnglish() = shot("single_dark_en", Fixtures.lyricsModel(Fixtures.night, nightLyrics, position = { 81_000L }, t = en, group = "Living room"), en)

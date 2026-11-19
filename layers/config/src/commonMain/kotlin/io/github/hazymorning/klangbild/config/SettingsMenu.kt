@@ -28,6 +28,7 @@ enum class MenuSection(val title: StringId, val about: StringId) {
 /** One setting, in its group's order; [label] is null for a line named after what it connects to. */
 enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     QUEUE(MenuSection.PICTURE, Strings.entryQueue),
+    COVER(MenuSection.PICTURE, Strings.entryCover),
     APPEARANCE(MenuSection.PICTURE, Strings.entryAppearance),
     BACKGROUND(MenuSection.PICTURE, Strings.entryBackground),
     INTENSITY(MenuSection.PICTURE, Strings.entryIntensity),
@@ -179,6 +180,7 @@ object SettingsMenu {
 
     fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
         MenuEntry.QUEUE -> queueValue(s.queue, t)
+        MenuEntry.COVER -> t[if (s.edgeToEdge) Strings.coverEdge else Strings.coverNormal]
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
@@ -341,6 +343,10 @@ object SettingsMenu {
             else -> t.format(Strings.aboutLyricsDelayOn, seconds(s.lyricsGroupDelayMs, t))
         }
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.aboutBackgroundCover else Strings.aboutBackgroundPlain]
+        MenuEntry.COVER -> {
+            val about = t[if (s.edgeToEdge) Strings.aboutCoverEdge else Strings.aboutCoverNormal]
+            if (s.queue == QueueDisplay.FLOW) sentences(about, t[Strings.aboutCoverFlow]) else about
+        }
         MenuEntry.INTENSITY -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
             val what = when {
@@ -498,6 +504,7 @@ object SettingsMenu {
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
         MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
+        MenuEntry.COVER -> s.copy(edgeToEdge = !s.edgeToEdge)
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)

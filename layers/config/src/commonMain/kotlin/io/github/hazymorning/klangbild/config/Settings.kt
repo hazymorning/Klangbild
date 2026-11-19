@@ -180,6 +180,8 @@ data class Settings(
     val appearance: AppearanceMode = AppearanceMode.AUTO,
     /** How the queue shows: not at all, as a list, or as Cover Flow. */
     val queue: QueueDisplay = QueueDisplay.OFF,
+    /** The single cover fills the screen's height at its left edge (the menu's Cover: Edge to edge); not in Cover Flow. */
+    val edgeToEdge: Boolean = false,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
     /**
