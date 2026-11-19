@@ -9,8 +9,11 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -19,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -41,11 +45,12 @@ internal class ProgressColors(val groove: Color, val fill: Color, val label: Col
  * its right end ("1:35" and "4:11"). Only one number ticks, and its figures sit in fixed
  * cells, so nothing jitters.
  *
- * It glides. While playing, only the bar's own drawing is refreshed, on the stage's tick. The
- * fill grows by a fraction of a pixel each time, anti-aliased, so it never steps. A seek glides
- * to the new place over [GLIDE_MS] instead of jumping. The labels recompose once a second.
- * Paused, the fill dims and the bar is redrawn only twice a second (a seek while paused still
- * shows).
+ * It glides. While playing, only the bar's own drawing is refreshed, once its end has moved a
+ * quarter of a pixel ([STEPS_PER_PX]), anti-aliased, so it never steps: a song's bar about a dozen
+ * times a second, a long book's now and then. Every redraw repaints the whole screen, so the bar
+ * doesn't ask for one on every tick. A seek glides to the new place over [GLIDE_MS] instead of
+ * jumping. The labels recompose once a second. Paused, the fill dims and the bar checks its place
+ * only twice a second (a seek while paused still shows).
  *
  * The labels' cap height sits [BAR_LABEL_GAP] below the bar, and the measured height ends at
  * their baseline, so a layout can align the block by it.
@@ -85,6 +90,14 @@ internal fun ProgressBar(
             elapsed() / 1000L
         }
     }
+    // Where the played part ends (0 to 1) at the tick's time [now]: gliding after a seek.
+    val end: (Long) -> Float = { now ->
+        val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
+        if (still) target else glide.at(target, now, durationMs)
+    }
+    // The bar's width in steps, once it is laid out, and the step its end stands on.
+    var steps by remember { mutableIntStateOf(0) }
+    val step = remember(glide, still) { derivedStateOf { (end(tick.value) * steps).roundToInt() } }
     val label = labelStyle.copy(color = colors.label)
     val figures = rememberFigures(labelStyle, Face.TITLE)
     val length = remember(figures, durationMs) { figures.of(TimeText.duration(durationMs)) }
@@ -92,10 +105,10 @@ internal fun ProgressBar(
         modifier = modifier.fillMaxWidth(),
         content = {
             // Its own layer: the refresh re-records only the bar, not the labels.
-            Canvas(Modifier.fillMaxWidth().height(BAR_THICKNESS.dp).graphicsLayer()) {
-                val now = tick.value // redraw on every tick
-                val target = (elapsed().toFloat() / durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
-                val f = if (still) target else glide.at(target, now, durationMs)
+            Canvas(Modifier.fillMaxWidth().height(BAR_THICKNESS.dp).onSizeChanged { steps = it.width * STEPS_PER_PX }.graphicsLayer()) {
+                step.value // drawn again once the end has moved a step
+                // Drawn where it ends now, which the tick tells without asking for every tick.
+                val f = end(Snapshot.withoutReadObservation { tick.value })
                 val r = CornerRadius(size.height / 2f)
                 drawRoundRect(colors.groove, cornerRadius = r)
                 if (f > 0f) {
@@ -160,6 +173,9 @@ internal fun Density.barBlock(labelStyle: TextStyle): Int =
 /** The bar's thickness, and the room from it down to its labels' cap height (dp). */
 internal const val BAR_THICKNESS = 4f
 internal const val BAR_LABEL_GAP = 10f
+
+/** The bar is drawn again once its end has moved a pixel divided by this. */
+private const val STEPS_PER_PX = 4
 
 /** Paused, the played part keeps this much of its ink, so the bar shows the pause too. */
 private const val PAUSED_FILL = 0.6f
