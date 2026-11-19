@@ -37,6 +37,23 @@ class ArtistBioTest {
     }
 
     @Test
+    fun `HTML from another source reads as plain text`() {
+        assertThat(sentences("<p>Lumen Drive is a German synthwave duo.</p>\n<p>Their first album came\nout in 2018 &amp; sold well.<br/>It&#39;s called &quot;Neon&quot;.</p>"))
+            .containsExactly(
+                listOf("Lumen Drive is a German synthwave duo."),
+                listOf("Their first album came out in 2018 & sold well."),
+                listOf("It's called \"Neon\"."),
+            )
+        assertThat(sentences("<b>Kraftwerk</b> is a <a href=\"https://example.com/k\">German band</a>.<sup>[1]</sup>").single())
+            .containsExactly("Kraftwerk is a German band.")
+        // Escaped twice, the tags still go.
+        assertThat(sentences("&lt;p&gt;Theo Lind is a Swedish pianist.&lt;/p&gt;").single()).containsExactly("Theo Lind is a Swedish pianist.")
+        assertThat(ArtistBio.of("<p></p><br>")).isNull()
+        // Without tags, a line break still starts a paragraph.
+        assertThat(sentences("Lumen Drive is a duo.\nThey met in 2014 &amp; stayed.")).containsExactly(listOf("Lumen Drive is a duo."), listOf("They met in 2014 & stayed."))
+    }
+
+    @Test
     fun `a sentence keeps the quotes and brackets that close after its last mark`() {
         assertThat(sentences("They called it \"Neon.\" Then came the second (and last) album.").single())
             .containsExactly("They called it \"Neon.\"", "Then came the second (and last) album.")

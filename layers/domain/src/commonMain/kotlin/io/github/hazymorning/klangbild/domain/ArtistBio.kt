@@ -2,9 +2,9 @@ package io.github.hazymorning.klangbild.domain
 
 /**
  * What Music Assistant keeps about an artist, made fit for the screen: its Wikipedia provider
- * writes the opening of the artist's article in Music Assistant's language. The bio holds it in
- * paragraphs of whole sentences, without the pronunciation an article opens with. No paragraph
- * is empty.
+ * writes the opening of the artist's article in Music Assistant's language, and other sources
+ * write HTML. The bio holds it in paragraphs of whole sentences, as plain text and without the
+ * pronunciation an article opens with. No paragraph is empty.
  */
 class ArtistBio(val paragraphs: List<List<String>>) {
     init {
@@ -15,12 +15,45 @@ class ArtistBio(val paragraphs: List<List<String>>) {
         /** [text] as a bio, or null when nothing of it is left to show. */
         fun of(text: String?): ArtistBio? {
             if (text.isNullOrBlank()) return null
-            val paragraphs = text.replace('\r', '\n').split('\n')
+            val paragraphs = plain(text).replace('\r', '\n').split('\n')
                 .map { clean(it) }
                 .filter { it.isNotEmpty() }
                 .map { sentences(it) }
                 .filter { it.isNotEmpty() }
             return if (paragraphs.isEmpty()) null else ArtistBio(paragraphs)
+        }
+
+        /**
+         * [text] as plain text. Entities like `&amp;` become their characters first, so text that
+         * was escaped twice loses its tags too. In HTML a line break in the source is a space, a
+         * paragraph or `<br>` starts a new line, footnote marks and scripts go with what they
+         * hold, and every other tag goes.
+         */
+        internal fun plain(text: String): String {
+            var s = ENTITY.replace(text) { m -> character(m.groupValues[1]) ?: m.value }
+            if (!TAG.containsMatchIn(s)) return s
+            s = s.replace('\r', ' ').replace('\n', ' ')
+            s = COMMENT.replace(s, "")
+            s = HIDDEN.replace(s, "")
+            s = BREAK.replace(s, "\n")
+            return TAG.replace(s, "")
+        }
+
+        /** The character an entity stands for, by its name or number, or null for one that isn't known. */
+        private fun character(entity: String): String? {
+            val code = when {
+                entity.startsWith("#x") || entity.startsWith("#X") -> entity.substring(2).toIntOrNull(16)
+                entity.startsWith("#") -> entity.substring(1).toIntOrNull()
+                else -> return ENTITIES[entity]
+            } ?: return null
+            return when (code) {
+                9, 10, 13, in 0x20..0xD7FF, in 0xE000..0xFFFF -> code.toChar().toString()
+                in 0x10000..0x10FFFF -> charArrayOf(
+                    ((code - 0x10000) shr 10 or 0xD800).toChar(),
+                    ((code - 0x10000) and 0x3FF or 0xDC00).toChar(),
+                ).concatToString()
+                else -> null
+            }
         }
 
         /**
@@ -95,6 +128,20 @@ class ArtistBio(val paragraphs: List<List<String>>) {
                 else -> word.lowercase() in ABBREVIATIONS
             }
         }
+
+        private val ENTITY = Regex("""&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z]{2,8});""")
+        private val TAG = Regex("""</?[a-zA-Z][a-zA-Z0-9]*\b[^>]*>""")
+        private val COMMENT = Regex("""<!--[\s\S]*?-->""")
+        private val HIDDEN = Regex("""<(script|style|sup)\b[^>]*>[\s\S]*?</\1\s*>""", RegexOption.IGNORE_CASE)
+        private val BREAK = Regex("""<\s*(br|/?p|/?div|/?li|/?h[1-6]|/?blockquote)\b[^>]*>""", RegexOption.IGNORE_CASE)
+
+        /** The named entities a text about an artist uses; a soft hyphen goes. */
+        private val ENTITIES = mapOf(
+            "amp" to "&", "lt" to "<", "gt" to ">", "quot" to "\"", "apos" to "'", "nbsp" to "\u00a0", "shy" to "",
+            "ndash" to "\u2013", "mdash" to "\u2014", "hellip" to "\u2026",
+            "lsquo" to "\u2018", "rsquo" to "\u2019", "sbquo" to "\u201a", "ldquo" to "\u201c", "rdquo" to "\u201d", "bdquo" to "\u201e",
+            "laquo" to "\u00ab", "raquo" to "\u00bb",
+        )
 
         private val PARENTHESES = Regex("""\s*\([^()]*\)""")
         private val BRACKETS = Regex("""\s*\[[^\[\]]*]""")
