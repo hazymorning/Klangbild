@@ -57,8 +57,8 @@ class NoFrameTest {
         for (cover in listOf(SyntheticCover.NIGHT_DRIVE, SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS)) {
             val model = Fixtures.model(Fixtures.track(cover), next = Fixtures.spiegel, group = "Wohnzimmer", appearance = Appearance.LIGHT)
             val px = render { Stage(model) }
-            // The artwork: 368 dp at 88 dp from the left, centered, at 2 px a dp. A ring from 3 to 40 dp around it.
-            val l = 176; val t = 172; val r = 912; val b = 908
+            // The artwork: 380 dp at 75 dp from the left, centered, at 2 px a dp. A ring from 3 to 40 dp around it.
+            val l = 150; val t = 160; val r = 910; val b = 920
             val boxes = listOf(
                 intArrayOf(l - 80, t - 80, r + 80, t - 6),
                 intArrayOf(l - 80, b + 6, r + 80, b + 80),
@@ -81,11 +81,11 @@ class NoFrameTest {
         val scenes = Fixtures.flowScenes(strip, Appearance.LIGHT)
         val model = Fixtures.model(strip[2], next = strip[3], group = "Wohnzimmer", scene = scenes[2])
         val px = render { FlowStage(model, Fixtures.restingCards(scenes, 2)) }
-        // The middle card: 300 dp, its middle 303 dp from the left and in the middle of the height; the column from 598 dp.
-        val top = 240; val bottom = 840
+        // The middle card: 312 dp, its middle 317 dp from the left and in the middle of the height; the column from 602.75 dp.
+        val top = 228; val bottom = 852
         val boxes = listOf(
-            intArrayOf(80, top - 90, 1110, top - 6),
-            intArrayOf(80, bottom + 6, 1110, bottom + 90),
+            intArrayOf(130, top - 90, 1150, top - 6),
+            intArrayOf(130, bottom + 6, 1150, bottom + 90),
         )
         assertThat(deviation(px, boxes), name = "the background above and below the cards").isLessThanOrEqualTo(3)
     }
@@ -111,9 +111,9 @@ class NoFrameTest {
 
     /** The largest difference (levels, any channel) between the middle card in [a] and in [b], [dx] px further right (round corners left out). */
     private fun middleCardDifference(a: Pixels, b: Pixels, dx: Int): Int {
-        // The middle card: 300 dp, its middle 303 dp from the left and in the middle of the height, at 2 px a dp.
+        // The middle card: 312 dp, its middle 317 dp from the left and in the middle of the height, at 2 px a dp.
         var worst = 0
-        for (y in 256 until 824) for (x in 306 until 906) worst = maxOf(worst, Pixels.apart(a[x, y], b[x + dx, y]))
+        for (y in 244 until 836) for (x in 322 until 946) worst = maxOf(worst, Pixels.apart(a[x, y], b[x + dx, y]))
         return worst
     }
 }

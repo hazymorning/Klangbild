@@ -236,10 +236,10 @@ internal fun FlowTheater(
         val oldWall = prev?.middle?.scene?.takeIf { kind == FlowChange.MOVE || restrip }
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
-            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
+            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = true)
             WallMargin(wall, alpha = newWall)
         }
-        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
+        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = oldWall == null)
         // One strip, also while it takes a new look: each card is the mix of its texture before
         // and its new one, so a card never shows through another and its reflection keeps its
         // strength.
@@ -319,7 +319,7 @@ internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.track.key != b.track.key -> FlowChange.TEXT
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
-        old.lyrics !== new.lyrics -> FlowChange.LYRICS
+        old.lyrics !== new.lyrics || old.bio !== new.bio -> FlowChange.LYRICS
         // The same track described anew (a year that came late): its text crossfades, as on the single stage.
         !drawnAlike(a.track, b.track) -> FlowChange.SOFT
         else -> FlowChange.SIDES

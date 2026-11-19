@@ -139,6 +139,52 @@ object Fixtures : AppFixtures() {
         )
     }
 
+    /** What Music Assistant could keep about the night drive's artist, in German. */
+    val neonBio = io.github.hazymorning.klangbild.domain.ArtistBio.of(
+        "Lumen Drive ist ein deutsches Synthwave-Duo aus Essen. Die beiden Musiker lernten sich 2014 an der Musikhochschule " +
+            "kennen und gründeten die Band zwei Jahre später, nach einer Nachtfahrt über die A40.\n" +
+            "Ihr erstes Album Nachtfahrt erschien 2018 und verbindet analoge Synthesizer mit Aufnahmen nächtlicher Autobahnen. " +
+            "Auf der Tour 2024 spielten sie in zwölf Planetarien, unter einer Kuppel aus Sternen.",
+    )!!
+
+    /** The same in English. */
+    val nightBio = io.github.hazymorning.klangbild.domain.ArtistBio.of(
+        "Lumen Drive is a German synthwave duo from Essen. The two musicians met at music school in 2014 and formed the band " +
+            "two years later, after a drive across the city at night.\n" +
+            "Their first album, Night Drive, came out in 2018 and blends analog synthesizers with recordings of motorways at night. " +
+            "On their 2024 tour they played in twelve planetariums, under a dome of stars.",
+    )!!
+
+    /**
+     * The stage with a few sentences about the artist ([bio]) at [position] (ms), as the root
+     * builds it: the song itself where "Up next" stands, the progress bar only for a moment after a key ([peek]).
+     */
+    internal fun bioModel(
+        track: TrackInfo,
+        bio: io.github.hazymorning.klangbild.domain.ArtistBio,
+        position: () -> Long? = { 4_000L },
+        appearance: Appearance = Appearance.DARK,
+        scene: ArtworkScene = scene(track, appearance = appearance),
+        group: String? = "Wohnzimmer",
+        t: Texts = texts,
+        peek: Boolean = false,
+    ): StageModel {
+        val lead = StageTexts.lead(PlayerStatus.PLAYING, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
+        return StageModel(
+            scene = scene,
+            text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers]),
+            status = PlayerStatus.PLAYING,
+            durationMs = track.durationMs,
+            positionMs = position,
+            year = track.year,
+            barShown = peek,
+            footer = StageTexts.footer(track, t),
+            footerTitle = StageTexts.footerTitle(track, t),
+            statusLine = StatusLine(lead, "21:47"),
+            bio = bio,
+        )
+    }
+
     /** The stage with the queue as a list ([list]), as the root builds it: the song at the top, the rows under it. */
     internal fun queueModel(
         track: TrackInfo,

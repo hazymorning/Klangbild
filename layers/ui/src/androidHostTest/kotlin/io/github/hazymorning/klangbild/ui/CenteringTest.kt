@@ -118,13 +118,33 @@ class CenteringTest {
             }
             val layout = scene.layout
             val left = (layout.columnLeft * 2).toInt() - 4
-            val sung = ink.lines(left, 1920, threshold = LIT).single()
+            // On one row, or on two where the column is narrower.
+            val sung = ink.lines(left, 1920, threshold = LIT)
             val case = "${if (flow) "Cover Flow" else "single cover"} in ${t.locale}"
-            // Its cap height and its baseline are as far from the artwork's middle (540) on either side.
+            // Its first cap height and its last baseline are as far from the artwork's middle (540) on either side.
             val cap = 30f * io.github.hazymorning.klangbild.ui.theme.Fonts.CAP_HEIGHT * 2f
-            assertThat(abs(sung.baseline - (540f + cap / 2f)), name = "$case: the sung line's baseline").isLessThanOrEqualTo(1.5f)
+            assertThat(abs((sung.first().baseline - cap + sung.last().baseline) / 2f - 540f), name = "$case: the sung line's middle").isLessThanOrEqualTo(1.5f)
             // It starts on the column's left edge (pulled left by large type's extra side bearing, a pixel or two).
-            assertThat(abs(sung.left - layout.columnLeft * 2f), name = "$case: the sung line's left edge").isLessThanOrEqualTo(4f)
+            for (row in sung) assertThat(abs(row.left - layout.columnLeft * 2f), name = "$case: the sung line's left edge").isLessThanOrEqualTo(4f)
+        }
+    }
+
+    @Test
+    fun theArtistsSentencesStandOnTheArtworksMiddle() {
+        val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
+        for ((t, bio) in listOf(Fixtures.texts to Fixtures.neonBio, TestTexts.english() to Fixtures.nightBio)) for (edge in listOf(false, true)) {
+            val scene = Fixtures.scene(track, edge = edge)
+            val ink = render { Fixtures.Still(t) { Stage(Fixtures.bioModel(track, bio, scene = scene, t = t)) } }
+            val layout = scene.layout
+            val left = (layout.columnLeft * 2).toInt() - 4
+            // The status line, the page's lines, the footer.
+            val page = ink.lines(left, 1920).drop(1).dropLast(1)
+            val case = "${if (edge) "edge to edge" else "single cover"} in ${t.locale}"
+            assertThat(page.size, name = "$case: the page's lines").isGreaterThan(1)
+            // Its first cap height and its last baseline are as far from the artwork's middle (540) on either side.
+            val cap = 18f * io.github.hazymorning.klangbild.ui.theme.Fonts.CAP_HEIGHT * 2f
+            assertThat(abs((page.first().baseline - cap + page.last().baseline) / 2f - 540f), name = "$case: the page's middle").isLessThanOrEqualTo(2f)
+            for (line in page) assertThat(abs(line.left - layout.columnLeft * 2f), name = "$case: a line's left edge at ${line.top}").isLessThanOrEqualTo(4f)
         }
     }
 

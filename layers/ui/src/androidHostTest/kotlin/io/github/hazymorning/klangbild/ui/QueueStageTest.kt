@@ -34,6 +34,9 @@ class QueueStageTest {
     fun playlistDark() = shot("playlist_dark", Fixtures.queueModel(playing, playlistQueue))
 
     @Test
+    fun playlistEdgeToEdge() = shot("playlist_edge", Fixtures.queueModel(playing, playlistQueue, scene = Fixtures.scene(playing, edge = true)))
+
+    @Test
     fun playlistLight() = shot("playlist_light", Fixtures.queueModel(playing, playlistQueue, appearance = Appearance.LIGHT))
 
     @Test

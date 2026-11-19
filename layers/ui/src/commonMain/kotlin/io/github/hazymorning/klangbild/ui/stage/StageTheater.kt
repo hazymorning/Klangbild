@@ -246,10 +246,10 @@ internal fun StageTheater(
         val oldWall = prev?.scene?.takeIf { coverChanges }
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
-            WallLayer(oldWall, lightLevel = lightLevel)
+            WallLayer(oldWall, lightLevel = lightLevel, onOwnWall = true)
             WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
         }
-        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel)
+        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel, onOwnWall = oldWall == null)
         if (prev != null && coverChanges) CoverLayer(prev.scene, alpha = oldCover, coverLevel = { dim.coverLevel })
         CoverLayer(cur.scene, alpha = newCover, coverLevel = { dim.coverLevel })
         // A party's code stands in the cover's place and stays while the tracks change beneath it.
@@ -281,7 +281,7 @@ internal fun StageTheater(
  * has changed (another artwork URL for the same cover), so there is nothing to watch.
  */
 internal fun changeOf(old: StageData, new: StageData): Change? {
-    if (new.scene === old.scene && new.lyrics === old.lyrics && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
+    if (new.scene === old.scene && new.lyrics === old.lyrics && new.bio === old.bio && new.queue == old.queue && drawnAlike(new.track, old.track)) return null
     if (new.track.key != old.track.key) {
         // Only the text changes for the next track of the same cover, unless the background changes with it.
         return if (sameCover(old.scene, new.scene) && new.scene.appearance == old.scene.appearance) Change.TEXT else Change.FULL
@@ -289,7 +289,7 @@ internal fun changeOf(old: StageData, new: StageData): Change? {
     return when {
         new.scene.appearance != old.scene.appearance -> Change.WALL
         new.scene !== old.scene -> Change.SOFT
-        new.lyrics !== old.lyrics || (new.queue == null) != (old.queue == null) -> Change.COLUMN
+        new.lyrics !== old.lyrics || new.bio !== old.bio || (new.queue == null) != (old.queue == null) -> Change.COLUMN
         new.queue != old.queue && drawnAlike(new.track, old.track) -> Change.ROWS
         else -> Change.SOFT
     }

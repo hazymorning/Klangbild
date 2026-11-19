@@ -63,9 +63,10 @@ abstract class AppFixtures {
         appearance: Appearance = Appearance.DARK,
         flow: Boolean = false,
         coverField: Boolean = false,
+        edge: Boolean = false,
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
-        return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField)
+        return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField, edge = edge)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */
@@ -96,7 +97,8 @@ abstract class AppFixtures {
         screen: ScreenSpec = ScreenSpec.TV_1080,
         appearance: Appearance = Appearance.DARK,
         coverField: Boolean = false,
-    ) = StageData(track, scene(track, screen, appearance, coverField = coverField))
+        edge: Boolean = false,
+    ) = StageData(track, scene(track, screen, appearance, coverField = coverField, edge = edge))
 
     /** A cover flow of [scenes] (ids as given), the card with id [middle] in the middle. */
     fun flow(scenes: Map<Long, ArtworkScene>, ids: List<Long>, middle: Long): FlowData {

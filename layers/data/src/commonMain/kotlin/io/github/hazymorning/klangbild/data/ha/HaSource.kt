@@ -378,6 +378,7 @@ class HaSource(
             precision = connection.registry.value?.mapNotNull { e -> e.displayPrecision?.takeIf { e.entityId in ownIds }?.let { e.entityId to it } }?.toMap().orEmpty(),
             temperatureUnit = connection.temperatureUnit.value,
             lyrics = enriched?.track?.let { queue.lyricsOf(it, entity, currentWindow) },
+            bio = enriched?.track?.let { queue.bioOf(it, entity, currentWindow) },
             party = partyQueue?.let { q -> q == player?.activeQueue } == true,
             speaker = speakerShown,
             ownSpeaker = own?.entity,
@@ -452,6 +453,7 @@ class HaSource(
         played = shown.played,
         favorites = shown.favorites,
         lyrics = shown.lyrics,
+        bio = shown.bio,
     )
 
     /**

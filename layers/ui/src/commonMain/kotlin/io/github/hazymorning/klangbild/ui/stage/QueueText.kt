@@ -173,7 +173,7 @@ internal fun rememberQueuePlan(model: StageModel, rooms: QueueRooms? = null): Qu
     if (model.lyrics != null) return null
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val density = LocalDensity.current
-    val styles = rememberStageStyles(model.scene.palette)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val figures = rememberFigures(styles.time, Face.TITLE)
     // The room the slot takes, gliding as it comes and goes.
     val target = slotRoom(slotOf(model), styles, density)

@@ -6,8 +6,10 @@ Usage: python3 tools/make_launcher_assets.py   (needs Pillow and numpy)
 
 The logo is tools/logo.svg: the mark, a rounded square that a note's stem and head cut above a
 wave, beside the name. Everything is drawn from its paths at the size it's shown, never scaled
-from a bitmap. On the TV the mark is white on black: the home screen is dark, and the system
-crops the icon's background to its own shape while the whole mark stays inside.
+from a bitmap. On the TV the mark is white on black, since the home screen is dark. The launcher
+icon is the mark without its outline: its white runs past every edge, so whatever shape the
+system crops the icon to becomes the mark's outline, while the note and the wave stay well
+inside the part every shape keeps.
 """
 import os
 import re
@@ -158,6 +160,10 @@ def _bounds(polygons):
 _LOGO = shapes(LOGO)
 MARK = _LOGO[0][1]                       # the mark's path data, 100 units wide from 0
 
+ICON_MARK = 60      # the mark's width in the launcher icon (dp)
+WAVE = 61           # the middle of the wave, in the mark's units down from its top
+WAVE_BELOW = 4      # how far the wave's middle stands below the icon's center (dp)
+
 
 def banner(path, w=320, h=180, width=0.70):
     """The logo, white on black, [width] of the banner wide and centered on the mark, which
@@ -179,29 +185,36 @@ def _number(v):
     return f"{v:.4f}".rstrip("0").rstrip(".")
 
 
-def snug(visible=72):
-    """The space above and beside the mark in a square of [visible] dp, the same on all three
-    sides and just enough that the mark's top corners touch the circle the square holds."""
-    points = np.concatenate([np.asarray(poly) for poly in subpaths(MARK)])
-    lo, hi = 0.0, visible / 2
-    for _ in range(50):
-        pad = (lo + hi) / 2
-        k = (visible - 2 * pad) / 100
-        reach = np.hypot(pad + points[:, 0] * k - visible / 2, pad + points[:, 1] * k - visible / 2).max()
-        lo, hi = (pad, hi) if reach > visible / 2 else (lo, pad)
-    return hi
+def open_mark(far=400.0):
+    """The mark's two parts without its outline, as path data in its own units: the stem runs on
+    to the top with its own slant, the wave runs on to either side along its ends, and the white
+    reaches [far] units past the mark everywhere else."""
+    right, left = (part.strip() for part in re.findall(r"M[^M]*", MARK))
+    # The right part: down the stem's right edge, round the head, along the wave to its end at
+    # the right, then on along the wave's last tangent and back over the top.
+    body = right[right.index("L58.11 57.29"):right.index("L100 34")]
+    x1 = 100 + far
+    y1 = 54.5 + (54.5 - 54.99) / (100 - 93.25) * far
+    right = f"M58.11 {_number(-far)}{body}L{_number(x1)} {_number(y1)}L{_number(x1)} {_number(-far)}Z"
+    # The left part: along the wave from its start to the head and up the stem's left edge, which
+    # goes on to the top with its slant, then over the top and down to the wave's first tangent.
+    body = left[:left.index("L34 0")]
+    xs = 53.11 + (53.11 - 51.08) / 44.75 * far
+    y0 = 59 - (59.19 - 59) / 6.29 * far
+    left = f"{body}L{_number(xs)} {_number(-far)}L{_number(-far)} {_number(-far)}L{_number(-far)} {_number(y0)}Z"
+    return [right, left]
 
 
-def vector(path, comment, side, width, top=None):
+def vector(path, comment, side, width, top=None, parts=None):
     """The mark in white as a vector drawable of [side] dp, [width] dp wide in its middle and
-    [top] dp from its top, or halfway down without one. Each of the mark's two parts is a path of
-    its own, which keeps them short enough to draw fast."""
+    [top] dp from its top, or halfway down without one. Each of its [parts] (the mark's two by
+    default) is a path of its own, which keeps them short enough to draw fast."""
     k = width / 100
     if top is None:
         top = (side - _bounds(subpaths(MARK))[3] * k) / 2
-    parts = re.findall(r"M[^M]*", MARK)
+    parts = parts or [part.strip() for part in re.findall(r"M[^M]*", MARK)]
     body = "\n".join(
-        f'        <path\n            android:fillColor="#FFFFFFFF"\n            android:pathData="{part.strip()}" />'
+        f'        <path\n            android:fillColor="#FFFFFFFF"\n            android:pathData="{part}" />'
         for part in parts
     )
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -226,12 +239,13 @@ def vector(path, comment, side, width, top=None):
 
 if __name__ == "__main__":
     banner(os.path.join(RES, "drawable-xhdpi", "banner.png"))
-    # The icon's layers are 108 dp, of which the system shows the middle 72 in its own shape. The
-    # mark stands at the top of it, filling a round icon up to its corners and a square one up to
-    # an even margin, and the space below it stays empty.
-    pad = snug()
+    # The icon's layers are 108 dp, of which the system shows the middle 72 in its own shape and
+    # every shape keeps a circle of 66. The mark is ICON_MARK dp wide in the middle, the middle of
+    # its wave (WAVE units down) a little below the icon's, so the note and the wave stay inside
+    # a circle of 61 dp, and its white runs on past every edge.
     vector(os.path.join(RES, "drawable", "ic_launcher_foreground.xml"),
-           "The mark for the launcher icon, on black (mipmap-anydpi/ic_launcher.xml).", 108, 72 - 2 * pad, 18 + pad)
+           "The mark without its outline for the launcher icon, on black (mipmap-anydpi/ic_launcher.xml).",
+           108, ICON_MARK, 54 + WAVE_BELOW - WAVE * ICON_MARK / 100, open_mark())
     vector(os.path.join(RES, "drawable", "ic_notification.xml"),
            "The mark for the speaker's notification (Android needs an icon there).", 24, 20)
     print("ok")

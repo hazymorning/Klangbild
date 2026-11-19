@@ -21,6 +21,7 @@ import io.github.hazymorning.klangbild.domain.SleepChoice
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.UpdateState
+import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
 import kotlin.test.Test
 
@@ -114,6 +115,7 @@ class SettingsMenuTest {
                 MenuEntry.SCREEN_OFF.takeIf { s.presenceSensors.isEmpty() },
                 MenuEntry.LYRICS.takeIf { !s.hasMusicAssistant },
                 MenuEntry.LYRICS_DELAY.takeIf { !s.hasMusicAssistant },
+                MenuEntry.ARTIST_INFO.takeIf { !s.hasMusicAssistant },
                 MenuEntry.SPEAKER.takeIf { !s.hasMusicAssistant },
                 MenuEntry.PLAY_HERE.takeIf { !s.hasMusicAssistant },
             )
@@ -181,7 +183,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactly(*(SettingsMenu.entries).toTypedArray())
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
+            MenuEntry.QUEUE, MenuEntry.COVER, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
             MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
@@ -225,6 +227,22 @@ class SettingsMenuTest {
     }
 
     @Test
+    fun `the cover goes edge to edge and back, and in Cover Flow it says it stays beside the others`() {
+        val cover = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.PICTURE).first { it.entry == MenuEntry.COVER }
+        assertThat(cover.label).isEqualTo("Cover")
+        assertThat(cover.value).isEqualTo("Normal")
+        assertThat(cover.dimmed).isFalse()
+        val edge = SettingsMenu.step(MenuEntry.COVER, configured, -1)!!
+        assertThat(edge.edgeToEdge).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), de)).isEqualTo("Randlos")
+        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())).isEqualTo("Edge to edge")
+        assertThat(SettingsMenu.step(MenuEntry.COVER, edge, +1, wrap = true)!!.edgeToEdge).isFalse()
+        val about = SettingsMenu.description(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())
+        val inFlow = SettingsMenu.description(MenuEntry.COVER, edge.copy(queue = QueueDisplay.FLOW), MenuContext(), TestTexts.english())
+        assertThat(inFlow).isEqualTo(about + " " + TestTexts.english()[Strings.aboutCoverFlow])
+    }
+
+    @Test
     fun `the song's words are a setting too, and without Music Assistant they say what they need`() {
         val lyrics = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }
         assertThat(lyrics.label).isEqualTo("Songtext")
@@ -237,6 +255,24 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, on, MenuContext(), de)).isEqualTo("An")
         assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }.dimmed).isFalse()
         assertThat(SettingsMenu.value(MenuEntry.LYRICS, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+    }
+
+    @Test
+    fun `the artist info is a setting too, and without Music Assistant it says what it needs`() {
+        val info = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.ARTIST_INFO }
+        assertThat(info.label).isEqualTo("Künstlerinfo")
+        assertThat(info.dimmed).isTrue()
+        assertThat(SettingsMenu.step(MenuEntry.ARTIST_INFO, configured, +1)).isNull()
+        assertThat(SettingsMenu.opensSetup(MenuEntry.ARTIST_INFO, configured, +1, wrap = true)).isTrue()
+        val withMa = configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "t")
+        val on = SettingsMenu.step(MenuEntry.ARTIST_INFO, withMa, +1)!!
+        assertThat(on.artistInfo).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, on, MenuContext(), de)).isEqualTo("An")
+        assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
+        assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).map { it.entry }).containsExactly(
+            MenuEntry.CLOCK, MenuEntry.PROGRESS_BAR, MenuEntry.NEXT, MenuEntry.ALBUM, MenuEntry.GROUP, MenuEntry.VOLUME, MenuEntry.VALUES,
+            MenuEntry.NOTIFICATIONS, MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.ARTIST_INFO,
+        )
     }
 
     @Test

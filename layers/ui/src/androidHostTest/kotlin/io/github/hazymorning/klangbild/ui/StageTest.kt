@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.ui.Fixtures.spiegel
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
@@ -34,6 +35,16 @@ class StageTest {
     @Test fun busy() = shot("busy", Fixtures.model(Fixtures.track(SyntheticCover.CONFETTI), next = spiegel))
     @Test fun white() = shot("white", Fixtures.model(Fixtures.track(SyntheticCover.WHITE_SPACE)))
     @Test fun featVersion() = shot("feat_version", Fixtures.model(Fixtures.track(SyntheticCover.SALT_WATER), next = spiegel))
+
+    /** The cover edge to edge, on both backgrounds and on its own colors. */
+    @Test fun edgeDark() = edge("edge_neon", SyntheticCover.NIGHT_DRIVE)
+    @Test fun edgeLight() = edge("edge_bauhaus_light", SyntheticCover.BAUHAUS, Appearance.LIGHT)
+    @Test fun edgeCoverColors() = edge("edge_terracotta_cover_colors", SyntheticCover.TERRACOTTA, coverField = true)
+
+    private fun edge(name: String, cover: SyntheticCover, appearance: Appearance = Appearance.DARK, coverField: Boolean = false) {
+        val track = Fixtures.track(cover)
+        shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, edge = true)))
+    }
 
     /** A short word never ends a title line; a long "Up next" line drops its artist rather than cutting it. */
     @Test fun shortWords() = shot(

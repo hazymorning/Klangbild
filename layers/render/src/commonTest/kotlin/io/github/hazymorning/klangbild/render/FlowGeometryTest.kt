@@ -20,10 +20,10 @@ class FlowGeometryTest {
         g.corners(0f, c)
         assertThat(c[0]).isCloseTo(layout.artRect.left, 0.01f)
         assertThat(c[1]).isCloseTo(layout.artRect.top, 0.01f)
-        assertThat(c[2] - c[0]).isCloseTo(300f, 0.01f)
-        // the text column starts 145 dp to the right of it and is 314 dp wide
-        assertThat(layout.columnLeft).isCloseTo(598f, 0.01f)
-        assertThat(layout.columnWidth).isCloseTo(314f, 0.01f)
+        assertThat(c[2] - c[0]).isCloseTo(312f, 0.01f)
+        // the text column starts 129.75 dp to the right of it and is 286 dp wide
+        assertThat(layout.columnLeft).isCloseTo(602.75f, 0.01f)
+        assertThat(layout.columnWidth).isCloseTo(286f, 0.01f)
     }
 
     @Test
@@ -39,7 +39,8 @@ class FlowGeometryTest {
 
     @Test
     fun `the side cards stand where the design has them`() {
-        for ((p, edge) in listOf(1f to 222.5f, 2f to 255f, -1f to -222.5f, -2f to -255f)) {
+        // At the design's 300 dp: 222.5 and 236.3 dp. The grid's cover is 312 dp, and they grow with it.
+        for ((p, edge) in listOf(1f to 231.4f, 2f to 245.75f, -1f to -231.4f, -2f to -245.75f)) {
             g.corners(p, c)
             // the outer edge: right for the cards to come, left for those played
             val x = if (p > 0) c[2] else c[0]
@@ -125,10 +126,10 @@ class FlowGeometryTest {
         }
         // The full strip stays exactly where the grid has it.
         assertThat(g.balance(2, 2)).isEqualTo(Balance.NONE)
-        assertThat(g.balance(2, 0).cards).isCloseTo(40.5f, 0.5f)
-        assertThat(g.balance(0, 2).cards).isCloseTo(-52.5f, 0.5f)
+        assertThat(g.balance(2, 0).cards).isCloseTo(32.9f, 0.5f)
+        assertThat(g.balance(0, 2).cards).isCloseTo(-44.9f, 0.5f)
         assertThat(g.leftmostColumn).isCloseTo(g.balance(0, 0).column, 0.5f)
-        assertThat(g.leftmostColumn).isCloseTo(-93f, 0.5f)
+        assertThat(g.leftmostColumn).isCloseTo(-77.75f, 0.5f)
     }
 
     @Test

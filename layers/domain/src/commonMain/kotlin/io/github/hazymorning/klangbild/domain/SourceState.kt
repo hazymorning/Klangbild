@@ -60,6 +60,8 @@ data class SourceState(
     val temperatureUnit: String? = null,
     /** What Music Assistant knows of the lyrics of the track that plays; null while nothing is known (or without Music Assistant). */
     val lyrics: SongLyrics? = null,
+    /** What Music Assistant knows about the artist of the track that plays; null while nothing is known (or without Music Assistant). */
+    val bio: SongBio? = null,
     /** A party of Music Assistant's Party plugin plays to this speaker, and its guests may join. */
     val party: Boolean = false,
     /** The entity of the speaker shown: the one chosen, this TV's own while music plays on it, or another room's. */

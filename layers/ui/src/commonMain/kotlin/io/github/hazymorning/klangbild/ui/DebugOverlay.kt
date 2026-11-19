@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,13 +32,15 @@ import io.github.hazymorning.klangbild.sound.monotonicMicros
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Frame statistics for one second, for the debug overlay (`--ez debug true`): the frames drawn,
- * the slowest one (ms) and those over the 60 Hz budget. A screen that doesn't change draws none.
+ * the slowest one (ms), those over the 60 Hz budget and the most the GPU spent on one (ms, where
+ * the platform tells it). A screen that doesn't change draws none.
  */
-data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int)
+data class FrameSecond(val frames: Int, val worstMs: Float, val janky: Int, val worstGpuMs: Float? = null)
 
 /** The frames of each second, as the platform counts them ([frames]), and what [sound] hears. */
 @Composable
@@ -45,7 +50,9 @@ fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed) {
     val style = faces().textType(TEXT_SP, 440, INK)
     Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopStart) {
         Column(Modifier.background(BACKDROP).padding(horizontal = 8.dp, vertical = 4.dp)) {
-            BasicText(t.format(Strings.debugFrames, s.frames, t.decimal(s.worstMs.toDouble(), 1), s.janky), style = style)
+            val worst = t.decimal(s.worstMs.toDouble(), 1)
+            val line = s.worstGpuMs?.let { gpu -> t.format(Strings.debugFramesGpu, s.frames, worst, t.decimal(gpu.toDouble(), 1), s.janky) }
+            BasicText(line ?: t.format(Strings.debugFrames, s.frames, worst, s.janky), style = style)
             SoundMeter(sound, style)
         }
     }
@@ -55,7 +62,9 @@ fun DebugOverlay(frames: StateFlow<FrameSecond>, sound: SoundFeed) {
  * What the sound feed hears at each moment, so its timing can be judged against the music on a
  * TV: how exactly it is timed, then bars for the loudness, the four bands and the onset, and a
  * dot that lights for a moment on each beat. The feed is read only while the meter shows, and
- * the meter is drawn on every frame then (it shows only with the overlay).
+ * the meter is drawn on every frame then (it shows only with the overlay), as long as it hears
+ * something: otherwise it would keep the whole screen redrawing, and the frames counted above
+ * would be its own.
  */
 @Composable
 private fun SoundMeter(sound: SoundFeed, style: TextStyle) {
@@ -63,7 +72,15 @@ private fun SoundMeter(sound: SoundFeed, style: TextStyle) {
         sound.reading(true)
         onDispose { sound.reading(false) }
     }
-    val frames = rememberTick(fast = true)
+    var hearing by remember { mutableStateOf(false) }
+    LaunchedEffect(sound) {
+        val probe = SoundFrame()
+        while (true) {
+            hearing = sound.read(monotonicMicros(), probe)
+            delay(LISTEN_MS)
+        }
+    }
+    val frames = rememberTick(fast = true, running = hearing)
     val heard = remember { SoundFrame() }
     val t = texts()
     val measurer = rememberTextMeasurer()
@@ -76,8 +93,10 @@ private fun SoundMeter(sound: SoundFeed, style: TextStyle) {
     }
     Canvas(Modifier.padding(top = 4.dp).size(METER_WIDTH, METER_HEIGHT)) {
         frames.value
+        // Drawn once more when it stops hearing, so it shows the silence.
+        if (!hearing) heard.silence()
         val nowUs = monotonicMicros()
-        sound.read(nowUs, heard)
+        if (hearing) sound.read(nowUs, heard)
         drawText(words.getValue(heard.timing), topLeft = Offset.Zero)
         val bar = BAR.toPx()
         val gap = BAR_GAP.toPx()
@@ -114,3 +133,6 @@ private val BAR_GAP = 4.dp
 
 /** A beat lights the dot this long. */
 private const val BEAT_LIT_US = 120_000L
+
+/** While the meter hears nothing, it listens this often (ms). */
+private const val LISTEN_MS = 500L

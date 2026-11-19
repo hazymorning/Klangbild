@@ -55,6 +55,25 @@ class QuickMenuTest {
     }
 
     @Test
+    fun `the artist info stands after the song's words, only with Music Assistant and a song`() {
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.ON, artist = ArtistChoice.ON)
+        val rows = QuickMenu.rows(lights, ctx, de)
+        assertThat(rows.map { it.item }).containsExactly(
+            QuickItem.QUEUE, QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS,
+        )
+        assertThat(rows[2].label).isEqualTo("Künstlerinfo")
+        assertThat(rows[2].value).isEqualTo("An")
+        assertThat(QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.OFF), de)[2].value).isEqualTo("Aus")
+        // On, but Music Assistant knows nothing about this artist: still On, said quietly.
+        val none = QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.NONE), de)[2]
+        assertThat(none.value).isEqualTo("An")
+        assertThat(none.muted).isTrue()
+        assertThat(rows[2].values).containsExactlyInAnyOrder("An", "Aus")
+        assertThat(QuickMenu.rows(lights, ctx.copy(artist = null), de).map { it.item }).doesNotContain(QuickItem.ARTIST)
+        assertThat(QuickMenu.rows(lights, ctx, TestTexts.english())[2].label).isEqualTo("Artist info")
+    }
+
+    @Test
     fun `the party code stands with what the screen shows, only while a party plays here`() {
         val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.OFF, party = false)
         val rows = QuickMenu.rows(lights, ctx, de)

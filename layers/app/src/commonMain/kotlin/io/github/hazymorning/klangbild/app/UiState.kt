@@ -12,6 +12,7 @@ import io.github.hazymorning.klangbild.config.SleepAction
 import io.github.hazymorning.klangbild.data.ha.TrackMatch
 import io.github.hazymorning.klangbild.domain.ChapterPlace
 import io.github.hazymorning.klangbild.domain.LinkState
+import io.github.hazymorning.klangbild.domain.ArtistBio
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.NotePoint
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -26,9 +27,10 @@ import io.github.hazymorning.klangbild.text.Texts
 
 /**
  * A scene that is ready to be shown for a track, with the song's [lyrics] while they take the text
- * column, or the [queue] while it shows as a list beside the cover.
+ * column, a few sentences about its artist ([bio]) while they do, or the [queue] while it shows as
+ * a list beside the cover.
  */
-data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: Lyrics? = null, val queue: QueueList? = null)
+data class StageData(val track: TrackInfo, val scene: ArtworkScene, val lyrics: Lyrics? = null, val queue: QueueList? = null, val bio: ArtistBio? = null)
 
 /** The queue as a list beside the cover: what comes next, and the small covers made so far, by [UpNextRow.id]. */
 data class QueueList(val upNext: UpNext, val covers: Map<String, ImageBitmap> = emptyMap()) {
@@ -50,13 +52,14 @@ data class FlowEntry(val id: Long, val track: TrackInfo, val scene: ArtworkScene
 
 /**
  * The cover flow as far as it is ready: cards in play order, the one at [current] in the middle,
- * and the middle song's [lyrics] while they take the text column.
+ * and the middle song's [lyrics] or a few sentences about its artist ([bio]) while they take the
+ * text column.
  */
-data class FlowData(val cards: List<FlowEntry>, val current: Int, val lyrics: Lyrics? = null) {
+data class FlowData(val cards: List<FlowEntry>, val current: Int, val lyrics: Lyrics? = null, val bio: ArtistBio? = null) {
     val middle: FlowEntry get() = cards[current]
 
-    /** The middle card as the stage shows it: with its words. */
-    val stage: StageData get() = StageData(middle.track, middle.scene, lyrics)
+    /** The middle card as the stage shows it: with its words, or its artist's. */
+    val stage: StageData get() = StageData(middle.track, middle.scene, lyrics, bio = bio)
 }
 
 /** The settings menu while it is open: its lines and the one the cursor is on. */

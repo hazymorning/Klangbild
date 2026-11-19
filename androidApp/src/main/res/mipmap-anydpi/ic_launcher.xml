@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The white mark on black. The system crops the black to its own shape, and the mark stays whole. -->
+<!-- The white mark on black, without its outline: the shape the system crops the icon to becomes the mark's outline, and the note and the wave stay whole. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@android:color/black" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />

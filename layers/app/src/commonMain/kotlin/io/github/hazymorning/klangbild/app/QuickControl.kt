@@ -2,6 +2,7 @@ package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.ActionState
 import io.github.hazymorning.klangbild.config.FavoriteState
+import io.github.hazymorning.klangbild.config.ArtistChoice
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
@@ -118,6 +119,7 @@ internal class QuickControl(private val host: ControllerHost) {
             // On and off, at once: the stage changes its text as it does for a new song. A quiet On
             // (a song without words) goes off too.
             QuickItem.LYRICS -> host.settings.let { s -> host.applySettings(s.copy(lyrics = !s.lyrics)) }
+            QuickItem.ARTIST -> host.settings.let { s -> host.applySettings(s.copy(artistInfo = !s.artistInfo)) }
             QuickItem.FAVORITE -> addFavorite()
             QuickItem.LIGHTS -> {
                 // On and off: off remembers the level, on brings it back.
@@ -362,6 +364,18 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
+     * The artist info entry for [track]: only for a song, while Music Assistant (where the
+     * sentences come from) is connected. While it is on and Music Assistant knows nothing about
+     * the song's artist, NONE: still On, said quietly.
+     */
+    private fun artistChoice(track: TrackInfo): ArtistChoice? {
+        if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
+        if (!host.settings.artistInfo) return ArtistChoice.OFF
+        val known = host.ui.source.bio?.takeIf { it.key == track.key }
+        return if (known != null && known.bio == null) ArtistChoice.NONE else ArtistChoice.ON
+    }
+
+    /**
      * How far [track]'s way into the favorites has come: known from Music Assistant, else asked
      * here. Music Assistant's word wins, so a song that became a favorite after all says so.
      */
@@ -381,6 +395,7 @@ internal class QuickControl(private val host: ControllerHost) {
             shuffle = shuffleShown(),
             actions = actionStates(),
             lyrics = track?.let { lyricsChoice(it) },
+            artist = track?.let { artistChoice(it) },
             party = partyOn.takeIf { host.ui.source.party },
         )
     }

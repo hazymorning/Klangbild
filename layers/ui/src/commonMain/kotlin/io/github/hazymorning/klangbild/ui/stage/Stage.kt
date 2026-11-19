@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
@@ -46,6 +48,7 @@ import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.theme.Face
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.rememberFigures
+import kotlin.math.ceil
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -83,7 +86,7 @@ internal fun WallMargin(color: Color, alpha: () -> Float) {
 
 /**
  * How far [BaseWall] and the full-screen overlays reach past each screen edge (dp), more than the
- * drift (±6 dp). The cover field has its own [io.github.hazymorning.klangbild.render.CoverField.OVERSCAN_DP].
+ * drift (±3 dp). The cover field has its own [io.github.hazymorning.klangbild.render.CoverField.OVERSCAN_DP].
  */
 internal const val BEYOND_EDGES_DP = 24f
 
@@ -95,6 +98,11 @@ internal const val BEYOND_EDGES_DP = 24f
  * a change, and [shift] moves the light with Cover Flow's cards (dp) while the cover colors stay
  * where they are. In Cover Flow on the dark background the light fades out before the text
  * column, wherever it stands ([column]: its shift from the grid, dp).
+ *
+ * With [onOwnWall], the [BaseWall] below has the scene's own wall color, so only what changes the
+ * picture is drawn: nothing for paper at full strength, and the light only where it shines and
+ * the shade before the column hasn't turned it black. Each redraw repaints the whole screen, so a
+ * pass over all of it saved is a pass saved on every frame.
  */
 @Composable
 internal fun WallLayer(
@@ -104,6 +112,7 @@ internal fun WallLayer(
     lightLevel: () -> Float = { 1f },
     shift: () -> Float = { 0f },
     column: () -> Float = { 0f },
+    onOwnWall: Boolean = false,
 ) {
     // With the cover colors background, the cover's own colors are the wall.
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, lightLevel)
@@ -118,30 +127,49 @@ internal fun WallLayer(
         // At most twice as bright: well beyond the strongest Intensity.
         val l = if (dark) lightLevel().coerceIn(0f, 2f) else 1f
         if (a <= 0.002f || l <= 0.002f) return@Canvas
+        // Paper over paper of its own color at full strength adds nothing.
+        if (!dark && onOwnWall && a >= 1f) return@Canvas
         // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
         val step = (l.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
         val filter = if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
-        drawImage(
+        val dx = (shift() * density).roundToInt()
+        // Black laid over the light from where it starts to fade before the column to beyond the
+        // edge. At full strength it is black from the end of its ramp on, on black of its own.
+        val start = (scene.layout.columnLeft + column() - FlowLight.WHOLE_BEFORE_COLUMN) * density
+        // Past a whole pixel, so the shade's own edge is crisp where the light ends.
+        val shadeEnd = if (shadeColumn && onOwnWall && a >= 1f) ceil(start + shadeRamp(density)) + 1f else Float.POSITIVE_INFINITY
+        fun DrawScope.wall() = drawImage(
             image,
-            dstOffset = IntOffset((shift() * density).roundToInt(), 0),
+            dstOffset = IntOffset(dx, 0),
             dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
             alpha = a,
             colorFilter = filter,
             filterQuality = FilterQuality.Low,
         )
+        // On black of its own, the light only needs drawing where there is some.
+        val lit = scene.wallLit?.takeIf { dark && onOwnWall }
+        if (lit == null) {
+            wall()
+        } else {
+            val left = lit.left * density + dx
+            val right = minOf(lit.right * density + dx, shadeEnd)
+            if (right > left && lit.height > 0f) clipRect(left, lit.top * density, right, lit.bottom * density) { wall() }
+        }
         if (!shadeColumn) return@Canvas
-        // Black laid over the light from where it starts to fade before the column to beyond the edge.
-        val start = (scene.layout.columnLeft + column() - FlowLight.WHOLE_BEFORE_COLUMN) * density
         val m = BEYOND_EDGES_DP * density
+        val width = if (shadeEnd.isFinite()) shadeEnd - start else size.width - start + m
         translate(left = start) {
-            drawRect(shade, topLeft = Offset(0f, -m), size = Size(size.width - start + m, size.height + 2 * m), alpha = a)
+            drawRect(shade, topLeft = Offset(0f, -m), size = Size(width, size.height + 2 * m), alpha = a)
         }
     }
 }
 
+/** The shade's ramp before the column, from clear to black (px). */
+private fun shadeRamp(density: Float): Float = (FlowLight.WHOLE_BEFORE_COLUMN - FlowLight.GONE_BEFORE_COLUMN) * density
+
 /** The black over the cover flow's light toward the text column, from where it starts to fade ([FlowLight.shade]). */
 private fun columnShade(density: Float): Brush {
-    val ramp = (FlowLight.WHOLE_BEFORE_COLUMN - FlowLight.GONE_BEFORE_COLUMN) * density
+    val ramp = shadeRamp(density)
     val stops = Array(SHADE_STOPS + 1) { i ->
         val t = i / SHADE_STOPS.toFloat()
         t to Color.Black.copy(alpha = FlowLight.shade(t))
@@ -236,8 +264,9 @@ internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Flo
  * The text column. By default it holds the text block, centered on the cover from the first cap
  * height to the last baseline: (work), title, (version), artist, album · year, then the slot
  * (the progress bar, the station or a notice). The footer ends at the column's foot. With
- * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), and with [StageModel.queue] the
- * queue ([QueueText], whose plan a theater keeps through a change: [queuePlan]). [alpha] and
+ * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), with [StageModel.bio] a few
+ * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText], whose
+ * plan a theater keeps through a change: [queuePlan]). [alpha] and
  * [rise] animate a change line by line, [textLevel] dims the text in a pause, and [shift] moves
  * the column from its place in the grid (dp: Cover Flow moves it left while cards are missing).
  */
@@ -254,6 +283,11 @@ internal fun TextLayer(
     val lyrics = model.lyrics
     if (lyrics != null) {
         LyricsText(model, lyrics, modifier, alpha, rise, textLevel, shift)
+        return
+    }
+    val bio = model.bio
+    if (bio != null) {
+        BioText(model, bio, modifier, alpha, rise, textLevel, shift)
         return
     }
     if (queuePlan != null) {
@@ -412,7 +446,7 @@ internal fun StatusLayer(
     val status = model.statusLine
     if (status.isEmpty) return
     val layout = model.scene.layout
-    val styles = rememberStageStyles(model.scene.palette)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val figures = rememberFigures(styles.time, Face.TITLE)
     val clockText = status.clock
     val measurer = rememberTextMeasurer()

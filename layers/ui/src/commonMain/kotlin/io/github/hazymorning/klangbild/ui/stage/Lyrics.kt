@@ -128,7 +128,7 @@ internal class LyricRow(val layout: TextLayoutResult, val line: Int, val baselin
  * lines as far apart as the room allows ([lineGap]). A voice longer than [MAX_ROWS] rows even at
  * the smallest size ends after a whole word.
  */
-internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measurer: TextMeasurer, density: Float, faces: Faces): LyricsPlan {
+internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measurer: TextMeasurer, density: Float, faces: Faces, scale: Float = 1f): LyricsPlan {
     val colW = (columnWidth * density).roundToInt()
     val cjk = isMostlyCjk(lyrics.lines.take(CJK_SAMPLE).joinToString(" ") { it.text })
     val voices = lyrics.lines.map { line -> line.text.split('\n').map { glueShortWords(glueParentheses(AnnotatedString(it))) } }
@@ -139,10 +139,10 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measure
     // The longest voices decide, so they are tried first.
     val longest = voices.flatten().sortedByDescending { it.length }
     val step = lyricsLadder.firstOrNull { s ->
-        val style = faces.headingStyle(s, cjk)
+        val style = faces.headingStyle(s, cjk, scale = scale)
         longest.all { ends(it, style).size <= s.lines }
     } ?: lyricsLadder.last()
-    val style = faces.headingStyle(step, cjk)
+    val style = faces.headingStyle(step, cjk, scale = scale)
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT * density
     val leading = style.lineHeight.value * density
     val gap = lineGap(style, step.lines, room) * density
@@ -292,7 +292,7 @@ internal fun LyricsText(
     shift: () -> Float,
 ) {
     val layout = model.scene.layout
-    val styles = rememberStageStyles(model.scene.palette)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val room = remember(layout, styles) { LyricsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
     val states = LocalLyricsStates.current
@@ -375,8 +375,8 @@ private fun rememberLyricsPlan(state: LyricsState, layout: StageGrid, room: Floa
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val faces = faces()
-    val key = listOf(layout.columnWidth, room, density, faces)
-    fun plan() = planLyrics(state.lyrics, layout.columnWidth, room, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces)
+    val key = listOf(layout.columnWidth, room, density, faces, layout.textScale)
+    fun plan() = planLyrics(state.lyrics, layout.columnWidth, room, TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0), density, faces, layout.textScale)
     if (LocalStill.current) return remember(state, key) { state.keep(key, plan(), place()) }
     val ready = state.planFor(key)
     if (ready == null) {
@@ -474,7 +474,7 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
 
 /** The track in the footer, which has no lead here ([fitFooter]). */
 @Composable
-private fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
+internal fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
     return remember(full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { AnnotatedString(isolateRightToLeft(it)) } }
 }
@@ -504,7 +504,7 @@ private const val OUTER_GAP_SHARE = 1.6f
 private const val EDGE_FADE = 0.5f
 
 /** From the slot's baseline to the footer's cap height under it (dp). */
-private const val SLOT_GAP = 26f
+internal const val SLOT_GAP = 26f
 
 /** Each voice of a lyric line takes at most this many rows, the last one ending after a whole word. */
 private const val MAX_ROWS = 4

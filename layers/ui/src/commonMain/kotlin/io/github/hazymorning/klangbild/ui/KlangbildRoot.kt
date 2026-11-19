@@ -33,7 +33,6 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.VolumeDisplay
-import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.RestReason
@@ -219,7 +218,7 @@ private const val HINT_MS = 12_000L
  * How far the whole screen drifts against burn-in (dp): enough to soften every edge on an
  * OLED, too little to see anything stand off the middle.
  */
-private const val DRIFT_DP = 6f
+private const val DRIFT_DP = 3f
 
 /** The screen fades in from black at start over this long (ms). */
 private const val ENTRANCE_MS = 1_800
@@ -277,8 +276,8 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
     val chapter = ui.chapter
-    // The bar shows by setting, or for a moment after a key; beside lyrics only then.
-    fun barWanted(lyrics: Lyrics?) = peek || (lyrics == null && display.progressBar)
+    // The bar shows by setting, or for a moment after a key; beside lyrics or the artist's sentences only then.
+    fun barWanted(s: StageData) = peek || (s.lyrics == null && s.bio == null && display.progressBar)
     // A stage still on screen after its song has ended (the next scene still being made, or its
     // lines leaving) keeps its own time, next and chapter; only the song that plays reads them live.
     val playingKey = stageScreen?.track?.key
@@ -295,13 +294,15 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             val chapterPlace = played.chapter(key, plays, chapter)
             val nextKept = played.next(key, plays, nextTrack)
             val nextChapter = chapterPlace?.next?.takeIf { display.next }
-            // The song's words: the song itself where "Up next" stands, the bar only for a moment.
+            // The song's words, or the artist's: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
+            val bio = s.bio.takeIf { lyrics == null }
+            val words = lyrics != null || bio != null
             // The queue as a list, which names what comes next itself.
-            val queueList = s.queue?.takeIf { lyrics == null }
-            // The hint takes the place of what comes next (beside the song's words the song stays,
-            // and the list names what comes next itself).
-            val showHint = hint && lyrics == null && queueList == null
+            val queueList = s.queue?.takeIf { !words }
+            // The hint takes the place of what comes next (beside the words the song stays, and the
+            // list names what comes next itself).
+            val showHint = hint && !words && queueList == null
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -313,18 +314,18 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 lyricsDelayMs = { lyricsDelay },
                 statusLine = statusLine,
                 year = s.track.year.takeIf { display.album },
-                barShown = barWanted(lyrics),
+                barShown = barWanted(s),
                 barStays = display.progressBar,
                 slotText = StageTexts.slotText(linkDown, s.track, t),
                 footer = when {
                     showHint -> t[Strings.hintDown]
-                    lyrics != null -> StageTexts.footer(s.track, t)
+                    words -> StageTexts.footer(s.track, t)
                     queueList != null -> null
                     else -> nextChapter ?: StageTexts.footer(nextKept, t)
                 },
                 footerTitle = when {
                     showHint -> null
-                    lyrics != null -> StageTexts.footerTitle(s.track, t)
+                    words -> StageTexts.footerTitle(s.track, t)
                     queueList != null -> null
                     nextChapter != null -> null
                     else -> StageTexts.footerTitle(nextKept, t)
@@ -333,6 +334,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 chapter = chapterPlace?.label,
                 barStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,
+                bio = bio,
                 queue = queueList?.let { QueueModel.of(it, t) },
             )
         }
@@ -347,12 +349,12 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val moving = display.motion != MotionLevel.OFF && status == PlayerStatus.PLAYING && !linkDown
     val fieldTime = remember(moving, hooks) { FieldTime(hooks.fieldTime, moving) }
     // The bar moves when its length is known and nothing stands in its place.
-    val barMoves = barWanted(stage.lyrics) && !linkDown && (chapter != null || stage.track.durationMs != null)
+    val barMoves = barWanted(stage) && !linkDown && (chapter != null || stage.track.durationMs != null)
     // The stage's tick: fast while music plays. With nothing to redraw, with the settings
     // covering the stage, or with the screen going dark for no one in the room, it stops.
     val tick = rememberTickLoop(
         fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
-        running = (moving || barMoves || stage.lyrics != null) && ui.menu == null && !ui.dark,
+        running = (moving || barMoves || stage.lyrics != null || stage.bio != null) && ui.menu == null && !ui.dark,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
         theater(status, modelFor, { intensity }, linkDown)

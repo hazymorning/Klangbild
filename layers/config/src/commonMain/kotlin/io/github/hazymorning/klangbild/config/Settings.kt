@@ -180,8 +180,12 @@ data class Settings(
     val appearance: AppearanceMode = AppearanceMode.AUTO,
     /** How the queue shows: not at all, as a list, or as Cover Flow. */
     val queue: QueueDisplay = QueueDisplay.OFF,
+    /** The single cover fills the screen's height at its left edge (the menu's Cover: Edge to edge); not in Cover Flow. */
+    val edgeToEdge: Boolean = false,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
+    /** A few sentences about the artist take the text column where Music Assistant knows them and no words do (the quick settings' Artist info). */
+    val artistInfo: Boolean = false,
     /**
      * While other speakers play along, each line of the lyrics lights up this much later (ms), for
      * speakers that play later in a group than they say (the menu's Lyrics in a group); 0 for none.
