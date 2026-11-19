@@ -141,8 +141,8 @@ ffmpeg -i klangbild.mp4 -an -c:v libsvtav1 -preset 5 -crf 32 -g 300 -pix_fmt yuv
 - CI runs three jobs in parallel: the release APK (followed by the emulator smoke test and the key
   rotation checks), every module's tests with their pictures, and lint. On a pull request a fourth
   job renders the base branch's pictures. CI doesn't run for a change that only touches the
-  README, AGENTS.md, LICENSE, `docs/`, `tools/` or the issue templates. Tags and manual runs
-  always run everything.
+  README, AGENTS.md, LICENSE, `docs/`, `tools/` or the issue templates. Manual runs and the tag
+  of a release that isn't out yet always run everything.
 
 ## Modules
 
@@ -210,8 +210,9 @@ From the bottom up:
   November 2026 and `v2026.11.1` the next one that month. A beta is `v2026.11.0-beta.1`.
 - A pushed version tag publishes a release right away, but a beta tag publishes nothing. A manual
   CI run on main with the version in the `release` input makes a draft instead, and a beta draft
-  can come from any branch. Publishing a draft creates its tag, and that tag's run publishes
-  nothing more. Git in a cloud session can't push tags, so start manual runs with the GitHub tools.
+  can come from any branch. Publishing a draft creates its tag, and that tag's run skips every
+  job, since the draft's own run built and tested it. Git in a cloud session can't push tags, so
+  start manual runs with the GitHub tools.
 - The owner publishes drafts. Publish a release or push a version tag only when the owner
   explicitly tells you to. Getting a release ready means writing `docs/releases/<tag>.md`,
   checking it and the README for em dashes and emoji, and, when asked, making a draft with a
