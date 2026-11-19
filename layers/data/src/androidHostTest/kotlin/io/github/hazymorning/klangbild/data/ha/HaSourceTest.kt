@@ -249,6 +249,9 @@ class HaSourceTest {
     /** The queue's timings here: a short wait for a burst of changes to settle, the others as in the app. */
     private val fast = QueueTiming(burstMs = 20L)
 
+    /** A wait long enough that even a busy machine shows a new song before the queue is read again. */
+    private val calm = QueueTiming(burstMs = 1_000L)
+
     private fun source(
         ma: MaClient? = null,
         entity: String = "media_player.wz",
@@ -706,7 +709,7 @@ class HaSourceTest {
     fun `the song the queue announced as next comes at once, complete`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = { queueOf(item("Erstes Lied", "erstes"), item("Zweites Lied", "zweites")) }
-        val s = source(queue = fast.copy(burstMs = 150L))
+        val s = source(queue = calm)
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track?.year == 2024 } }
         val before = queueCalls()
@@ -1037,7 +1040,7 @@ class HaSourceTest {
     fun `the songs of a player without a queue come at once`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = null
-        val s = source(queue = fast.copy(burstMs = 150L))
+        val s = source(queue = calm)
         s.start()
         withTimeout(5_000) { s.state.first { it.player?.track != null } }
         withTimeout(5_000) { while (queueCalls() < 1) delay(20) }

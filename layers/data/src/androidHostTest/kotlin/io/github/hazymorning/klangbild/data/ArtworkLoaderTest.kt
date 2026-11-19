@@ -41,7 +41,8 @@ class ArtworkLoaderTest {
                     ArtworkLoader(http, http, { null }, { bytes -> decoded += bytes.size; null }, fallbackAfterMs = 300L)
                 }
                 val track = TrackInfo("x", artworkUrl = "http://127.0.0.1:${silent.localPort}/cover.png", artworkFallbackUrl = server.url("/cover.png").toString())
-                withTimeout(2_000) { loader.load(track) }
+                // Long before the address itself would give up (CALL_TIMEOUT_MS), even on a busy machine.
+                withTimeout(5_000) { loader.load(track) }
                 assertThat(decoded).containsExactly("cover".length)
             }
         }

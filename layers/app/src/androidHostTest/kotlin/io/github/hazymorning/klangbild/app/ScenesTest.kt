@@ -73,7 +73,8 @@ class ScenesTest {
             val made = CompletableDeferred<ArtworkScene>()
             val start = System.nanoTime()
             scenes.prepare(track, look) { made.complete(it) }
-            assertThat(scenes.pending(track)).isTrue()
+            // On its way, or with no cover to wait for, made already.
+            assertThat(scenes.pending(track) || made.isCompleted).isTrue()
             val scene = withTimeout(30_000) { made.await() }
             // It never waited for the cover the scene left behind was still waiting for.
             assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(Scenes.COVER_TIMEOUT_MS)
