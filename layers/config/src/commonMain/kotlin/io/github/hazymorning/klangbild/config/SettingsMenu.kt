@@ -27,8 +27,8 @@ enum class MenuSection(val title: StringId, val about: StringId) {
 
 /** One setting, in its group's order; [label] is null for a line named after what it connects to. */
 enum class MenuEntry(val section: MenuSection, val label: StringId?) {
+    VIEW(MenuSection.PICTURE, Strings.entryView),
     QUEUE(MenuSection.PICTURE, Strings.entryQueue),
-    COVER(MenuSection.PICTURE, Strings.entryCover),
     APPEARANCE(MenuSection.PICTURE, Strings.entryAppearance),
     BACKGROUND(MenuSection.PICTURE, Strings.entryBackground),
     INTENSITY(MenuSection.PICTURE, Strings.entryIntensity),
@@ -180,8 +180,8 @@ object SettingsMenu {
     }
 
     fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
+        MenuEntry.VIEW -> viewValue(s.view, t)
         MenuEntry.QUEUE -> queueValue(s.queue, t)
-        MenuEntry.COVER -> t[if (s.edgeToEdge) Strings.coverEdge else Strings.coverNormal]
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
@@ -292,11 +292,19 @@ object SettingsMenu {
     }
 
     fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
+        MenuEntry.VIEW -> t[
+            when (s.view) {
+                StageView.NORMAL -> Strings.aboutViewNormal
+                StageView.EDGE -> Strings.aboutViewEdge
+                StageView.FLOW -> Strings.aboutViewFlow
+            },
+        ]
+        // Cover Flow shows the next tracks as covers, and the list waits for the other views.
         MenuEntry.QUEUE -> t[
-            when (s.queue) {
+            when (s.shownQueue) {
                 QueueDisplay.OFF -> Strings.aboutQueueOff
                 QueueDisplay.LIST -> if (s.hasMusicAssistant) Strings.aboutQueueList else Strings.aboutQueueListSetUp
-                QueueDisplay.FLOW -> Strings.aboutQueueFlow
+                QueueDisplay.FLOW -> Strings.aboutQueueInFlow
             },
         ]
         MenuEntry.APPEARANCE -> t[
@@ -353,10 +361,6 @@ object SettingsMenu {
             else -> t.format(Strings.aboutLyricsDelayOn, seconds(s.lyricsGroupDelayMs, t))
         }
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.aboutBackgroundCover else Strings.aboutBackgroundPlain]
-        MenuEntry.COVER -> {
-            val about = t[if (s.edgeToEdge) Strings.aboutCoverEdge else Strings.aboutCoverNormal]
-            if (s.queue == QueueDisplay.FLOW) sentences(about, t[Strings.aboutCoverFlow]) else about
-        }
         MenuEntry.INTENSITY -> intensity(s, ctx, t)
         MenuEntry.MOTION -> {
             val what = when {
@@ -513,8 +517,8 @@ object SettingsMenu {
      * lines that need something set up first ([opensSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
+        MenuEntry.VIEW -> s.copy(view = move(VIEW_ORDER, s.view, direction, wrap))
         MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
-        MenuEntry.COVER -> s.copy(edgeToEdge = !s.edgeToEdge)
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
@@ -591,12 +595,21 @@ object SettingsMenu {
         else -> Strings.aboutSleepTimerEndTrack
     }
 
-    /** How the queue shows, in a word: Off, List, Cover Flow. */
+    /** The view, in a word or two: Normal, Edge to edge, Cover Flow. */
+    fun viewValue(view: StageView, t: Texts): String = t[
+        when (view) {
+            StageView.NORMAL -> Strings.viewNormal
+            StageView.EDGE -> Strings.viewEdge
+            StageView.FLOW -> Strings.viewFlow
+        },
+    ]
+
+    /** How the queue shows, in a word: Off or List (Cover Flow, while it's the view). */
     fun queueValue(queue: QueueDisplay, t: Texts): String = t[
         when (queue) {
             QueueDisplay.OFF -> Strings.off
             QueueDisplay.LIST -> Strings.queueList
-            QueueDisplay.FLOW -> Strings.queueFlow
+            QueueDisplay.FLOW -> Strings.viewFlow
         },
     ]
 
@@ -610,7 +623,8 @@ object SettingsMenu {
     ]
 
     /** From quiet to present: left means less, right means more. */
-    val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST, QueueDisplay.FLOW)
+    val VIEW_ORDER = listOf(StageView.NORMAL, StageView.EDGE, StageView.FLOW)
+    val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
     private val PLAY_HERE_ORDER = listOf(PlayHere.OFF, PlayHere.OPEN, PlayHere.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)

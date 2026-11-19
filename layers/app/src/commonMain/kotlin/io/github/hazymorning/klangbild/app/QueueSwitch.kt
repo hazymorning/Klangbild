@@ -3,10 +3,10 @@ package io.github.hazymorning.klangbild.app
 import io.github.hazymorning.klangbild.config.QueueDisplay
 
 /**
- * The queue view that was chosen but isn't on screen yet. A switch to or from Cover Flow takes a
- * few seconds, since the other view has to make its first scene before it can come. Until then
- * dots pulse after the Queue value in the quick settings and the menu, so it's clear the choice
- * is being prepared. It starts with the press (the quick settings apply a choice only once the
+ * How the queue shows ([Settings.shownQueue]) as chosen but not on screen yet. A switch to or from
+ * Cover Flow takes a few seconds, since the other view has to make its first scene before it can
+ * come. Until then dots pulse after the View value in the quick settings and the menu, so it's
+ * clear the choice is being prepared. It starts with the press (the quick settings apply a choice only once the
  * presses stop) and ends in the state that shows the new view. It only exists while a song is on
  * stage: over the clock, the setup page or a screen that says something is wrong nothing is made,
  * and a stage that comes later doesn't count as a switch. Called under the controller's lock.

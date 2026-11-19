@@ -1,7 +1,7 @@
 package io.github.hazymorning.klangbild.app
 
-import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.domain.FieldClock
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SourceState
@@ -25,7 +25,7 @@ internal class LightTargets(private val fieldClock: FieldClock, private val now:
         // By the sun: full brightness by day, dimmer from dusk, when the room around the TV is dark.
         val night = night(ui.source)
         // While a switch to or from Cover Flow waits for its first scene, what showed before still shows.
-        val shown = if (s.queue == QueueDisplay.FLOW) ui.flow?.middle?.stage ?: ui.stage else ui.stage ?: ui.flow?.middle?.stage
+        val shown = if (s.view == StageView.FLOW) ui.flow?.middle?.stage ?: ui.stage else ui.stage ?: ui.flow?.middle?.stage
         val field = shown?.scene?.field ?: return null
         return LightSync.Target(
             lights = s.roomLights,

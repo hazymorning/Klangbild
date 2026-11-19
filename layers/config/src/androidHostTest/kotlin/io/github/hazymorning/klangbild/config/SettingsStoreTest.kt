@@ -98,8 +98,8 @@ class SettingsStoreTest {
             intensity = Intensity.STRONG,
             volumeKeys = true,
             appearance = AppearanceMode.DARK,
+            view = StageView.EDGE,
             queue = QueueDisplay.LIST,
-            edgeToEdge = true,
             lyrics = true,
             artistInfo = true,
             lyricsGroupDelayMs = 800,
@@ -157,13 +157,34 @@ class SettingsStoreTest {
         assertThat(after("FLOW")[queue]).isEqualTo("FLOW")
         assertThat(after("SINGLE")[queue]).isEqualTo("OFF")
         assertThat(after("SINGLE").contains(view)).isFalse()
-        assertThat(store.read(after("FLOW")).queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(store.read(after("FLOW")).view).isEqualTo(StageView.FLOW)
         // Read before the step has run, it means the same.
-        assertThat(store.read(mapOf(view to "FLOW")).queue).isEqualTo(QueueDisplay.FLOW)
+        assertThat(store.read(mapOf(view to "FLOW")).view).isEqualTo(StageView.FLOW)
         assertThat(store.read(mapOf(view to "SINGLE")).queue).isEqualTo(QueueDisplay.OFF)
+        assertThat(store.read(mapOf(view to "SINGLE")).view).isEqualTo(StageView.NORMAL)
         // A value it does not know reads as the default, and the queue's own key wins.
         assertThat(store.read(mapOf(view to "ELSEWHERE")).queue).isEqualTo(Settings().queue)
         assertThat(store.read(mapOf(view to "FLOW", queue to "LIST")).queue).isEqualTo(QueueDisplay.LIST)
+    }
+
+    @Test
+    fun `Cover Flow stored as the queue and the edge-to-edge switch become the view`() {
+        val store = SettingsStore(settingsValues(context), FakeBox())
+        // Cover Flow was a way of showing the queue: it's the view now, and the list is off.
+        val flow = store.read(mapOf("queue" to "FLOW"))
+        assertThat(flow.view).isEqualTo(StageView.FLOW)
+        assertThat(flow.queue).isEqualTo(QueueDisplay.OFF)
+        // The cover edge to edge was a switch beside the queue, which stays as it was.
+        val edge = store.read(mapOf("queue" to "LIST", "edge_to_edge" to true))
+        assertThat(edge.view).isEqualTo(StageView.EDGE)
+        assertThat(edge.queue).isEqualTo(QueueDisplay.LIST)
+        // The view's own key wins, and once the settings are written the switch is gone.
+        assertThat(store.read(mapOf("stage_view" to "NORMAL", "queue" to "FLOW", "edge_to_edge" to true)).view).isEqualTo(StageView.NORMAL)
+        val written = mutableMapOf<String, Any>("edge_to_edge" to true)
+        store.write(written, edge)
+        assertThat(written["stage_view"]).isEqualTo("EDGE")
+        assertThat(written["queue"]).isEqualTo("LIST")
+        assertThat(written.contains("edge_to_edge")).isFalse()
     }
 
     @Test

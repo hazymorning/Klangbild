@@ -13,6 +13,7 @@ import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.data.NowPlayingSource
 import io.github.hazymorning.klangbild.data.RemoteCommand
@@ -112,9 +113,10 @@ class QuickControlTest {
     /** The quick settings have been opened once (the stage's hint ends). */
     private var quickSeen = false
 
-    /** How the queue shows, as the quick settings set it, and the choice still waiting as it was set. */
+    /** The view and the queue as the quick settings set them, and the view still waiting as it was set. */
+    private var view = StageView.NORMAL
     private var queue = QueueDisplay.OFF
-    private var pendingWhileSet: QueueDisplay? = null
+    private var pendingWhileSet: StageView? = null
 
     /** How often the settings menu opened. */
     private var menuOpened = 0
@@ -124,7 +126,7 @@ class QuickControlTest {
         override val log: Log = QuietLog
         override val scope = test
         override val now: () -> Long = { test.testScheduler.currentTime }
-        override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen, queue = queue)
+        override val settings get() = Settings(quickActions = actions, lyrics = lyrics, quickSeen = quickSeen, view = view, queue = queue)
         override val ui: UiState get() = this@QuickControlTest.ui
         override val source: NowPlayingSource = this@QuickControlTest.source
         override val texts: Texts = TestTexts.english()
@@ -140,7 +142,8 @@ class QuickControlTest {
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
             quickSeen = updated.quickSeen
-            if (updated.queue != queue) pendingWhileSet = this@QuickControlTest.quick.pending
+            if (updated.view != view) pendingWhileSet = this@QuickControlTest.quick.pending
+            view = updated.view
             queue = updated.queue
         }
         override fun send(command: RemoteCommand) = Unit
@@ -268,9 +271,9 @@ class QuickControlTest {
         ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
         fun lyricsRow() = rows().first { it.item == QuickItem.LYRICS }
         fun lyricsValue() = lyricsRow().value
-        assertThat(rows().map { it.item }.take(2)).containsExactly(QuickItem.QUEUE, QuickItem.LYRICS)
+        assertThat(rows().map { it.item }.take(3)).containsExactly(QuickItem.VIEW, QuickItem.QUEUE, QuickItem.LYRICS)
         assertThat(lyricsValue()).isEqualTo("Off")
-        quick.move(+1)
+        chooseEntry(QuickItem.LYRICS)
         quick.change()
         assertThat(lyrics).isTrue()
         // Not known yet: on. Known to have none: still on, said quietly. With words: on.
@@ -405,40 +408,54 @@ class QuickControlTest {
     }
 
     @Test
-    fun `the queue steps on from how it shows, passes the list without Music Assistant, and is taken once the presses stop`() {
+    fun `the view steps on from how it shows and is taken once the presses stop`() {
         quick.open()
-        fun queueValue() = rows().first { it.item == QuickItem.QUEUE }.value
-        assertThat(queueValue()).isEqualTo("Off")
+        fun viewValue() = rows().first { it.item == QuickItem.VIEW }.value
+        assertThat(viewValue()).isEqualTo("Normal")
         assertThat(quick.pending).isNull()
         // Stepped round to how it was, nothing changes.
-        quick.change()
-        quick.change()
-        assertThat(queueValue()).isEqualTo("Off")
-        assertThat(quick.pending).isEqualTo(QueueDisplay.OFF)
+        repeat(3) { quick.change() }
+        assertThat(viewValue()).isEqualTo("Normal")
+        assertThat(quick.pending).isEqualTo(StageView.NORMAL)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
         assertThat(quick.pending).isNull()
-        assertThat(queue).isEqualTo(QueueDisplay.OFF)
-        // Without Music Assistant only the next track is known: the list is passed over.
+        assertThat(view).isEqualTo(StageView.NORMAL)
+        // Steps that follow quickly show only the last.
         quick.change()
-        assertThat(queueValue()).isEqualTo("Cover Flow")
-        assertThat(queue).isEqualTo(QueueDisplay.OFF)
-        // Waiting from the press on (the Queue value breathes), and until the setting has it.
-        assertThat(quick.pending).isEqualTo(QueueDisplay.FLOW)
+        assertThat(viewValue()).isEqualTo("Edge to edge")
+        quick.change()
+        assertThat(viewValue()).isEqualTo("Cover Flow")
+        assertThat(view).isEqualTo(StageView.NORMAL)
+        // Waiting from the press on (the View value breathes), and until the setting has it.
+        assertThat(quick.pending).isEqualTo(StageView.FLOW)
         test.advanceTimeBy(QuickControl.SETTLE_MS + 50)
-        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
-        assertThat(pendingWhileSet).isEqualTo(QueueDisplay.FLOW)
+        assertThat(view).isEqualTo(StageView.FLOW)
+        assertThat(pendingWhileSet).isEqualTo(StageView.FLOW)
         assertThat(quick.pending).isNull()
-        // With Music Assistant, the list comes between: steps that follow quickly show only the last.
-        ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
+        // Closing takes a choice still waiting.
         quick.change()
-        assertThat(queueValue()).isEqualTo("Off")
-        quick.change()
-        assertThat(queueValue()).isEqualTo("List")
-        assertThat(queue).isEqualTo(QueueDisplay.FLOW)
-        assertThat(quick.pending).isEqualTo(QueueDisplay.LIST)
         quick.close()
-        assertThat(queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(view).isEqualTo(StageView.NORMAL)
         assertThat(quick.pending).isNull()
+    }
+
+    @Test
+    fun `the list comes and goes at once, with Music Assistant and beside a cover`() {
+        quick.open()
+        fun items() = rows().map { it.item }
+        // Without Music Assistant only the next track is known: no list to show.
+        assertThat(items()).doesNotContain(QuickItem.QUEUE)
+        ui = ui.copy(source = ui.source.copy(ma = MaLink.CONNECTED))
+        assertThat(items().take(2)).containsExactly(QuickItem.VIEW, QuickItem.QUEUE)
+        chooseEntry(QuickItem.QUEUE)
+        quick.change()
+        assertThat(queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(rows().first { it.item == QuickItem.QUEUE }.value).isEqualTo("List")
+        quick.change()
+        assertThat(queue).isEqualTo(QueueDisplay.OFF)
+        // Cover Flow shows the next tracks as covers.
+        view = StageView.FLOW
+        assertThat(items()).doesNotContain(QuickItem.QUEUE)
     }
 
     @Test

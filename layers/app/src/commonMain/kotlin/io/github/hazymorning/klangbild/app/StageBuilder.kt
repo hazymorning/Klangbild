@@ -2,10 +2,11 @@ package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.Log
-import io.github.hazymorning.klangbild.domain.CoverStrip
 import io.github.hazymorning.klangbild.domain.ArtistBio
+import io.github.hazymorning.klangbild.domain.CoverStrip
 import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.Screen
@@ -17,8 +18,8 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.UpNext
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
-import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Builds the stage for the track on it as far as its scenes are ready: the single cover with the
@@ -82,9 +83,9 @@ internal class StageBuilder(
         // Music Assistant's whole queue if it is set up, else Home Assistant's next track.
         val coming = if (src.queueKnown) src.coming.ifEmpty { listOfNotNull(stage.next) } else null
         val strip = strip.update(stage.track, coming, played = src.played).also { cards = it }
-        val flow = s.queue == QueueDisplay.FLOW && strip.cards.size > 1
+        val flow = s.view == StageView.FLOW && strip.cards.size > 1
         // The cover edge to edge is the single cover's: Cover Flow has its cards side by side.
-        val frame = scenes.frame.copy(flow = flow, edge = s.edgeToEdge && !flow)
+        val frame = scenes.frame.copy(flow = flow, edge = s.view == StageView.EDGE)
         if (frame != scenes.frame) scenes.show(frame, keep = onStage?.sceneKey)
         return flow
     }
@@ -132,7 +133,7 @@ internal class StageBuilder(
      * moves up by one, so the rows that stay glide up with the song and nothing comes twice.
      */
     private fun queueFor(s: Settings, src: SourceState, track: TrackInfo, taken: Boolean, shown: StageData?): QueueList? {
-        if (s.queue != QueueDisplay.LIST || taken || track.kind != MediaKind.MUSIC) return null
+        if (s.shownQueue != QueueDisplay.LIST || taken || track.kind != MediaKind.MUSIC) return null
         if (src.player?.track?.key != track.key) return shown?.takeIf { it.track.key == track.key }?.queue
         if (!src.queueKnown) {
             val before = shown?.queue ?: return null

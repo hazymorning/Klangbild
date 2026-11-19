@@ -27,12 +27,12 @@ import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
 import io.github.hazymorning.klangbild.config.MenuSection
-import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.RoomLights
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.config.SettingsMenu
 import io.github.hazymorning.klangbild.domain.LinkState
 import io.github.hazymorning.klangbild.domain.MaLink
@@ -183,11 +183,11 @@ class LanguageTest {
         val settings = listOf(Settings(), configured.copy(roomLights = RoomLights("light.left", null, null))).map { it.copy(quickActions = own) }
         val states = if (!buttons) listOf(emptyMap()) else ActionState.entries.map { st -> own.indices.associateWith { st } }
         for (s in settings) for (music in listOf(true, false)) for (actions in states) {
-            for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in QueueDisplay.entries + null) {
+            for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in StageView.entries + null) {
                 for (lyrics in LyricsChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
                     // The artist info entry takes each of its values along with the lyrics'.
                     val artist = lyrics?.let { ArtistChoice.entries[it.ordinal] }
-                    val rows = QuickMenu.rows(s, QuickContext(pending, music, favorite, shuffle, actions, lyrics, code, artist), t)
+                    val rows = QuickMenu.rows(s, QuickContext(pending, list = true, music, favorite, shuffle, actions, lyrics, code, artist), t)
                     add(QuickState(rows, 0))
                 }
             }

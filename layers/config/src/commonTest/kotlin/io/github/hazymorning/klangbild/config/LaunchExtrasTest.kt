@@ -153,9 +153,10 @@ class LaunchExtrasTest {
 
     @Test
     fun `how the queue shows is taken by its own name, and by the name earlier versions gave it`() {
-        // Each from a setting it changes, so a value that is not taken shows.
+        // Each from a setting it changes, so a value that is not taken shows. Cover Flow is a view,
+        // and the queue off or as a list leaves it for the normal view.
         fun queue(vararg extras: Pair<String, String>, from: QueueDisplay = QueueDisplay.FLOW) =
-            LaunchExtras.applyTo(Settings(queue = from), mapOf(*extras)).queue
+            LaunchExtras.applyTo(if (from == QueueDisplay.FLOW) Settings(view = StageView.FLOW) else Settings(queue = from), mapOf(*extras)).shownQueue
         assertThat(queue("queue" to "list")).isEqualTo(QueueDisplay.LIST)
         assertThat(queue("queue" to "Cover Flow", from = QueueDisplay.LIST)).isEqualTo(QueueDisplay.FLOW)
         assertThat(queue("queue" to "off")).isEqualTo(QueueDisplay.OFF)
