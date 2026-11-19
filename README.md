@@ -86,7 +86,7 @@ Press the down button on the remote to open the quick settings, where you can ch
 <summary><b>Automations</b></summary>
 <br>
 
-**Open Klangbild when music starts.** If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
+If your TV is connected to Home Assistant through the Android Debug Bridge integration, an automation like this one opens Klangbild whenever your speaker starts playing:
 
 ```yaml
 triggers:
@@ -103,7 +103,7 @@ actions:
 
 The two entity IDs are only examples, so put in the ones for your own speaker and TV.
 
-**Notifications on the TV.** Turn on Notifications under Information in the settings, and the TV shows up in Home Assistant as a device you can send notifications to, like a phone. Each one shows next to the time for a few seconds.
+Home Assistant can also send notifications to the TV, which show up next to the time for a few seconds. Turn on Notifications under Information in the settings, and the TV appears in Home Assistant as a device you can send them to, just like a phone.
 
 ```yaml
 actions:
