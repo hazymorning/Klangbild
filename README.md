@@ -58,27 +58,27 @@ The first time you open Klangbild, it shows a QR code. Scan it with your phone, 
 </details>
 
 <details>
-<summary><a name="queue"></a><b>The queue</b></summary>
+<summary><a name="queue"></a><b>Views and the queue</b></summary>
 <br>
 
 <table>
   <tr>
     <td width="33%" valign="top">
-      <img src="docs/screenshots/mockup-queue-off.jpg" alt="The queue off: one large album cover on its own colors, on a TV in a room lit by a lamp and candles"><br>
-      <b>Off</b>
+      <img src="docs/screenshots/mockup-queue-off.jpg" alt="The normal view: one large album cover on its own colors, on a TV in a room lit by a lamp and candles"><br>
+      <b>Normal</b>
     </td>
     <td width="33%" valign="top">
       <img src="docs/screenshots/mockup-queue-list.jpg" alt="The queue as a list: the next songs with their small covers beside the album cover, on a TV in a room lit by a lamp and candles"><br>
-      <b>List</b>
+      <b>Normal with the queue</b>
     </td>
     <td width="33%" valign="top">
-      <img src="docs/screenshots/mockup-cover-flow.jpg" alt="The queue in Cover Flow: the covers side by side, on a TV in a room lit by a lamp and candles"><br>
+      <img src="docs/screenshots/mockup-cover-flow.jpg" alt="Cover Flow: the covers side by side, on a TV in a room lit by a lamp and candles"><br>
       <b>Cover Flow</b>
     </td>
   </tr>
 </table>
 
-Press the down button on the remote to open the quick settings, where you can choose how much of your queue you see. The list only works once you've added Music Assistant during setup, and until then Cover Flow mostly shows the covers of songs you've already heard.
+Press the down button on the remote to open the quick settings. View switches between the normal view, the cover edge to edge and Cover Flow, and Queue adds a list of the next songs beside the cover. The list only works once you've added Music Assistant during setup, and until then Cover Flow mostly shows the covers of songs you've already heard.
 
 </details>
 
