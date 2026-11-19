@@ -120,7 +120,7 @@
     <string name="about_queue_flow">Das Cover in der Mitte, links die Cover davor, rechts die nächsten. Sie blättern weiter, wenn ein neues Album beginnt. Solange es nur ein Cover gibt, steht es groß neben dem Titel.</string>
     <string name="about_cover_normal">Das Cover steht mit etwas Abstand zum Bildschirmrand, der Titel daneben.</string>
     <string name="about_cover_edge">Das Cover füllt am linken Rand die ganze Höhe des Bildschirms, der Titel steht daneben.</string>
-    <string name="about_cover_flow">Nicht bei Cover Flow, das seine Cover nebeneinander zeigt.</string>
+    <string name="about_cover_flow">Cover Flow zeigt seine Cover nebeneinander, deshalb gilt das dort nicht.</string>
     <string name="about_appearance_auto">Tagsüber hell, von Sonnenuntergang bis Sonnenaufgang dunkel, nach dem Stand der Sonne in Home Assistant.</string>
     <string name="about_appearance_light">Immer hell: heller Hintergrund, dunkle Schrift.</string>
     <string name="about_appearance_dark">Immer dunkel: dunkler Hintergrund, helle Schrift.</string>
@@ -143,7 +143,7 @@
     <string name="about_lyrics_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt den Songtext, wo Music Assistant ihn hat.</string>
     <string name="about_lyrics_set_up">Der Songtext kommt von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_artist_info_on">Ein paar Sätze über den Künstler neben dem Cover, eine Seite nach der anderen. Ist Songtext an, kommt der Songtext zuerst.</string>
-    <string name="about_artist_info_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt ein paar Sätze über den Künstler, wo Music Assistant sie kennt.</string>
+    <string name="about_artist_info_off">Titel, Interpret und Album neben dem Cover. Rechts zeigt ein paar Sätze über den Künstler, wo Music Assistant sie hat.</string>
     <string name="about_artist_info_set_up">Diese Sätze kommen von Music Assistant. OK zeigt den QR-Code, um es am Handy einzurichten.</string>
     <string name="about_lyrics_delay_off">Manche Lautsprecher spielen etwas später, wenn weitere mitspielen, sodass die Zeilen zu früh aufleuchten. Rechts lässt sie so lange warten wie die Gruppenverzögerung in der App der Lautsprecher.</string>
     <string name="about_lyrics_delay_on">Spielen weitere Lautsprecher mit, leuchtet jede Zeile %1$s Sekunden später auf. Mit einem Lautsprecher allein ändert sich nichts.</string>
