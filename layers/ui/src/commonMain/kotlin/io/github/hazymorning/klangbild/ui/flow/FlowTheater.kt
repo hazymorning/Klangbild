@@ -236,10 +236,10 @@ internal fun FlowTheater(
         val oldWall = prev?.middle?.scene?.takeIf { kind == FlowChange.MOVE || restrip }
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
-            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
+            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = true)
             WallMargin(wall, alpha = newWall)
         }
-        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column })
+        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = oldWall == null)
         // One strip, also while it takes a new look: each card is the mix of its texture before
         // and its new one, so a card never shows through another and its reflection keeps its
         // strength.

@@ -402,7 +402,7 @@ object CoverField {
                 px[y * VEIL_W + x] = argb
             }
         }
-        return imageBitmapOf(px, VEIL_W, VEIL_H)
+        return imageBitmapOf(px, VEIL_W, VEIL_H).also { it.prepareToDraw() }
     }
 
     /**

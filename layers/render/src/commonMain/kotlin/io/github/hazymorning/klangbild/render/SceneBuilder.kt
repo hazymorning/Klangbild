@@ -45,6 +45,12 @@ class ArtworkScene(
     val field: FieldScene? = null,
     /** The cover's colors are the wall (the "cover colors" background) instead of [wall]. */
     val coverField: Boolean = false,
+    /**
+     * Where the dark background's [wall] has any light (dp on the screen, with the reach of its
+     * soft scaling and a little to spare): beyond it the wall is black, as [ScenePalette.wall]
+     * is. Empty where it has none, null on paper and with the cover colors.
+     */
+    val wallLit: RectDp? = null,
 ) {
     val screen: ScreenSpec get() = layout.screen
 
@@ -94,6 +100,8 @@ object SceneBuilder {
         }
         val shape = PrintShape(slotRect, corner = layout.radius)
         val cover = imageBitmapOf(coverPixels, coverSize, coverSize)
+        // On its way to the GPU now, not in the first frames of the change that shows it.
+        cover.prepareToDraw()
         val analysis = CoverPalette.analyze(thumb)
         return assemble(key, layout, cover, shape, source == null, analysis, thumb, appearance, wallTint, coverField)
     }
@@ -145,20 +153,18 @@ object SceneBuilder {
             thumb, THUMB, analysis, appearance, strength = wallTint,
             layout = layout.takeIf { coverField }, quietInk = palette.inkQuiet,
         )
-        val wall = when {
-            // The field is the wall; the plain one is only its color underneath.
-            coverField -> imageBitmapOf(IntArray(16) { palette.wall }, 4, 4)
-            flow && appearance == Appearance.DARK -> {
-                // The light above the cards takes the print's top edge.
-                imageBitmapOf(FlowLight.field(FlowLight.topEdge(thumb, THUMB), layout), FlowLight.MAP_W, FlowLight.MAP_H)
-            }
-            appearance == Appearance.DARK -> {
-                // The wall sees the outside of the picture: its edges.
-                imageBitmapOf(WallGlow.field(thumb, THUMB, shape, layout.screen), WallGlow.MAP_W, WallGlow.MAP_H)
-            }
-            // Paper, in Cover Flow as around the single print.
-            else -> imageBitmapOf(IntArray(16) { palette.wall }, 4, 4)
+        // The light on the dark background, as a map over the whole screen.
+        val light = when {
+            coverField || appearance != Appearance.DARK -> null
+            // The light above the cards takes the print's top edge.
+            flow -> Light(FlowLight.field(FlowLight.topEdge(thumb, THUMB), layout), FlowLight.MAP_W, FlowLight.MAP_H)
+            // The wall sees the outside of the picture: its edges.
+            else -> Light(WallGlow.field(thumb, THUMB, shape, layout.screen), WallGlow.MAP_W, WallGlow.MAP_H)
         }
+        // Without it, paper (in Cover Flow as around the single print), or with the cover colors
+        // the plain color under the field, which is the wall.
+        val wall = if (light == null) imageBitmapOf(IntArray(16) { palette.wall }, 4, 4) else imageBitmapOf(light.pixels, light.width, light.height)
+        wall.prepareToDraw()
         val flowCard = if (!flow) null else card ?: FlowCards.build(
             cover = cover,
             cornerPx = layout.radius * layout.screen.density,
@@ -181,6 +187,37 @@ object SceneBuilder {
             card = flowCard,
             field = field,
             coverField = coverField,
+            wallLit = light?.lit(layout.screen),
         )
     }
+
+    /** A map of the light on the dark background, [width] × [height] over the whole screen. */
+    private class Light(val pixels: IntArray, val width: Int, val height: Int) {
+        /** Where it isn't black ([ArtworkScene.wallLit]). */
+        fun lit(screen: ScreenSpec): RectDp {
+            var x0 = width
+            var y0 = height
+            var x1 = -1
+            var y1 = -1
+            for (y in 0 until height) for (x in 0 until width) {
+                if (pixels[y * width + x] and 0xFFFFFF == 0) continue
+                if (x < x0) x0 = x
+                if (x > x1) x1 = x
+                if (y < y0) y0 = y
+                if (y > y1) y1 = y
+            }
+            if (x1 < 0) return RectDp(0f, 0f, 0f, 0f)
+            // Scaled softly, a texel lights the screen up to a texel beyond its center; one more to spare.
+            val sx = screen.widthDp / width
+            val sy = screen.heightDp / height
+            val left = ((x0 - LIT_MARGIN) * sx).coerceAtLeast(0f)
+            val top = ((y0 - LIT_MARGIN) * sy).coerceAtLeast(0f)
+            val right = ((x1 + 1 + LIT_MARGIN) * sx).coerceAtMost(screen.widthDp)
+            val bottom = ((y1 + 1 + LIT_MARGIN) * sy).coerceAtMost(screen.heightDp)
+            return RectDp(left, top, right - left, bottom - top)
+        }
+    }
+
+    /** Texels around the lit ones that the soft scaling still reaches, with one to spare. */
+    private const val LIT_MARGIN = 2
 }

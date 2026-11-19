@@ -246,10 +246,10 @@ internal fun StageTheater(
         val oldWall = prev?.scene?.takeIf { coverChanges }
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
-            WallLayer(oldWall, lightLevel = lightLevel)
+            WallLayer(oldWall, lightLevel = lightLevel, onOwnWall = true)
             WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
         }
-        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel)
+        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel, onOwnWall = oldWall == null)
         if (prev != null && coverChanges) CoverLayer(prev.scene, alpha = oldCover, coverLevel = { dim.coverLevel })
         CoverLayer(cur.scene, alpha = newCover, coverLevel = { dim.coverLevel })
         // A party's code stands in the cover's place and stays while the tracks change beneath it.
