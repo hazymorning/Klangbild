@@ -292,6 +292,7 @@
     <string name="speaker_notification">Music Assistant kann hier spielen.</string>
 
     <string name="debug_frames" tools:ignore="PluralsCandidate">%1$d Bilder/s · langsamstes %2$s ms · %3$d zu spät</string>
+    <string name="debug_frames_gpu" tools:ignore="PluralsCandidate">%1$d Bilder/s · langsamstes %2$s ms, GPU %3$s ms · %4$d zu spät</string>
     <string name="debug_sound_exact">Genaue Zeit</string>
     <string name="debug_sound_close">Ungefähre Zeit</string>
     <string name="debug_sound_none">Kein Klang</string>
