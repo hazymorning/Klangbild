@@ -74,16 +74,11 @@ jobs:
             echo "::error::docs/releases/$TAG.md is missing."
             exit 1
           fi
-          # A point under New names the feature in bold, then says what it does.
+          # A point under New starts its first sentence with the feature's name in bold, not with a
+          # bold label and a period or colon.
           new="$(sed -n '/^### New$/,/^### /p' "docs/releases/$TAG.md" | grep '^- ' || true)"
-          if [ -n "$new" ] && grep -vqE '^- \*\*[^*]+\*\* .{40,}' <<< "$new"; then
-            echo "::error::Each point under New in docs/releases/$TAG.md starts with the feature's name in bold, followed by a sentence or two on what it does."
-            exit 1
-          fi
-          # A bug fix says the problem should no longer happen, never that it's fixed.
-          fixes="$(sed -n '/^### Bug fixes$/,/^### /p' "docs/releases/$TAG.md" | grep '^- ' || true)"
-          if [ -n "$fixes" ] && grep -vqi should <<< "$fixes"; then
-            echo "::error::Each point under Bug fixes in docs/releases/$TAG.md says the problem should no longer happen, not that it's fixed."
+          if [ -n "$new" ] && grep -vqE '^- \*\*[^*.:]+\*\* [a-z].{40,}' <<< "$new"; then
+            echo "::error::Each point under New in docs/releases/$TAG.md starts its first sentence with the feature's name in bold, like \"**Artist info** shows a few sentences about the artist next to the cover.\""
             exit 1
           fi
 

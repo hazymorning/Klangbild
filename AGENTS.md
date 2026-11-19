@@ -35,6 +35,10 @@ release notes, commits, pull requests, issues, discussions and code comments.
 - Keep the tone friendly and modest. Use periods and commas for most things and a colon only where
   it really helps. Don't use dashes as punctuation, emoji, exclamation points or marketing
   language.
+- These rules describe how a text should read, not phrases to reuse. Write every text fresh, the
+  way a person would, and never meet a rule with the same stock sentence or pattern each time,
+  like ending every bug fix with "That should no longer happen." or opening every point with a
+  bold label and a period or colon.
 - Only claim what has been verified, and claim behavior on a real device, like the frame rate,
   waking the TV over CEC or the screensaver, only once it has been verified there. Never say
   publicly whether something was tried on a real TV.
@@ -59,20 +63,18 @@ By kind:
   when the look changes. The download button links to `releases/latest/download/klangbild.apk`, so
   every release's APK must be named `klangbild.apk`.
 - **Release notes** go in `docs/releases/<tag>.md`, under `### New`, `### Better`, `### Gone` and
-  `### Bug fixes` as needed. Each point says plainly what changed, so that someone who has never
-  seen the feature understands it. A point under New starts with the feature's name in bold,
-  followed by a sentence or two on what it does and when, like "**Screen off when no one's
-  there.** With presence sensors from Home Assistant, Klangbild can now turn the screen black
-  once everyone has left the room, while the music keeps playing." A feature that has to be set
-  up or turned on says "can" and how to get it, so it never reads as what every TV now does.
-  Describe what happens rather than where the setting is, and don't reuse the menu's
-  explanations, which assume the reader is already looking at the setting. Use everyday words
-  without addressing the reader, leave out technical details and precise-sounding claims like "to
-  a fraction of a second", and include only what's known to work. Never claim more than that and
-  stay modest: a bug fix says the problem should no longer happen, never that it's fixed or can't
-  happen anymore.
+  `### Bug fixes` as needed. Each point tells in plain sentences what changed, so that someone who
+  has never seen the feature understands it. A point under New starts its first sentence with the
+  feature's name in bold, like "**Artist info** shows a few sentences about the artist next to
+  the cover.", and says whether it has to be set up or turned on and how, so it never reads as
+  what every TV now does. Describe what happens rather than where the setting is, and don't reuse
+  the menu's explanations, which assume the reader is already looking at the setting. Use
+  everyday words without addressing the reader, leave out technical details and precise-sounding
+  claims like "to a fraction of a second", and include only what's known to work. Stay modest by
+  saying what's different now rather than promising a result, and never call a problem fixed for
+  good.
 - **Commits and pull requests:** commit subjects under 60 characters, PR descriptions under 300
-  characters.
+  characters, both in plain sentences about what changed and why.
 - **Issues** are for bugs and use the form in `.github/ISSUE_TEMPLATE/bug_report.yml`. Ideas and
   questions go in Discussions.
 - `docs/` holds only the release notes and the README's pictures. Put the effort into the app, not
