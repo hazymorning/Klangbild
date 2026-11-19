@@ -23,7 +23,7 @@
     <string name="section_remote">Remote</string>
     <string name="section_timer">Timer</string>
     <string name="section_system">System</string>
-    <string name="about_section_picture">How the picture looks: the queue, the cover, light or dark, colors and motion.</string>
+    <string name="about_section_picture">How the picture looks: the view, the queue, light or dark, colors and motion.</string>
     <string name="about_section_info">What stands beside the cover: the clock, the progress bar, what comes next, the lyrics, the artist info and notifications.</string>
     <string name="about_section_lights">Lights in the room that glow in the music’s colors.</string>
     <string name="about_section_remote">What the remote’s keys do.</string>
@@ -32,7 +32,7 @@
 
     <!-- Settings menu: lines -->
     <string name="entry_queue">Queue</string>
-    <string name="entry_cover">Cover</string>
+    <string name="entry_view">View</string>
     <string name="entry_appearance">Appearance</string>
     <string name="entry_clock">Clock</string>
     <string name="entry_progress">Progress bar</string>
@@ -75,9 +75,9 @@
 
     <!-- Settings menu: values -->
     <string name="queue_list">List</string>
-    <string name="queue_flow">Cover Flow</string>
-    <string name="cover_normal">Normal</string>
-    <string name="cover_edge">Edge to edge</string>
+    <string name="view_flow">Cover Flow</string>
+    <string name="view_normal">Normal</string>
+    <string name="view_edge">Edge to edge</string>
     <string name="appearance_auto">Automatic</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
@@ -126,13 +126,13 @@
     </plurals>
 
     <!-- Settings menu: what each line does -->
-    <string name="about_queue_off">One large cover beside the title.</string>
+    <string name="about_queue_off">There’s no list of the next tracks beside the cover.</string>
     <string name="about_queue_list">The next tracks as a list beside the cover.</string>
     <string name="about_queue_list_set_up">The next tracks as a list beside the cover. It needs Music Assistant: without it, the last line names only the next track.</string>
-    <string name="about_queue_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts. While there’s only one cover, it shows large beside the title.</string>
-    <string name="about_cover_normal">The cover has some space around it, with the title beside it.</string>
-    <string name="about_cover_edge">The cover fills the screen’s full height at its left edge, with the title beside it.</string>
-    <string name="about_cover_flow">Cover Flow shows its covers side by side, so this doesn’t apply there.</string>
+    <string name="about_queue_in_flow">Cover Flow shows the next tracks as covers. The list shows in the other views.</string>
+    <string name="about_view_flow">The cover in the middle, earlier ones on the left, the next ones on the right. They turn when a new album starts. While there’s only one cover, it shows large beside the title.</string>
+    <string name="about_view_normal">The cover has some space around it, with the title beside it.</string>
+    <string name="about_view_edge">The cover fills the screen’s full height at its left edge, with the title beside it.</string>
     <string name="about_appearance_auto">Light by day, dark from sunset to sunrise, by the sun’s position in Home Assistant.</string>
     <string name="about_appearance_light">Always light: a light background, dark type.</string>
     <string name="about_appearance_dark">Always dark: a dark background, light type.</string>
@@ -245,6 +245,7 @@
 
     <!-- Quick settings -->
     <string name="quick_queue">Queue</string>
+    <string name="quick_view">View</string>
     <string name="quick_lyrics">Lyrics</string>
     <string name="quick_artist_info">Artist info</string>
     <string name="quick_favorite">Favorite</string>

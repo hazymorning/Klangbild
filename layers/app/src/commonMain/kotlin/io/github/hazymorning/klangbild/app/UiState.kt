@@ -103,7 +103,7 @@ data class UiState(
     val queue: QueueDisplay = QueueDisplay.OFF,
     /**
      * How the queue should show, chosen but not on screen yet, while its stage is being made
-     * ([QueueSwitch]); null while no song is on stage. Meanwhile dots pulse after the Queue value
+     * ([QueueSwitch]); null while no song is on stage. Meanwhile dots pulse after the View value
      * in the quick settings and the menu.
      */
     val queuePending: QueueDisplay? = null,

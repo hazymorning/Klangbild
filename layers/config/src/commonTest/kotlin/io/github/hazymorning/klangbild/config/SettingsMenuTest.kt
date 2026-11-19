@@ -183,7 +183,7 @@ class SettingsMenuTest {
         }
         assertThat(SettingsMenu.sections.flatMap { SettingsMenu.entriesOf(it) }).containsExactly(*(SettingsMenu.entries).toTypedArray())
         assertThat(SettingsMenu.entriesOf(MenuSection.PICTURE)).containsExactly(
-            MenuEntry.QUEUE, MenuEntry.COVER, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
+            MenuEntry.VIEW, MenuEntry.QUEUE, MenuEntry.APPEARANCE, MenuEntry.BACKGROUND, MenuEntry.INTENSITY, MenuEntry.MOTION,
         )
         assertThat(SettingsMenu.entriesOf(MenuSection.SYSTEM)).containsExactly(
             MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SPEAKER, MenuEntry.OTHER_ROOMS, MenuEntry.PLAY_HERE, MenuEntry.LANGUAGE, MenuEntry.UPDATE,
@@ -227,19 +227,37 @@ class SettingsMenuTest {
     }
 
     @Test
-    fun `the cover goes edge to edge and back, and in Cover Flow it says it stays beside the others`() {
-        val cover = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.PICTURE).first { it.entry == MenuEntry.COVER }
-        assertThat(cover.label).isEqualTo("Cover")
-        assertThat(cover.value).isEqualTo("Normal")
-        assertThat(cover.dimmed).isFalse()
-        val edge = SettingsMenu.step(MenuEntry.COVER, configured, -1)!!
-        assertThat(edge.edgeToEdge).isTrue()
-        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), de)).isEqualTo("Randlos")
-        assertThat(SettingsMenu.value(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())).isEqualTo("Edge to edge")
-        assertThat(SettingsMenu.step(MenuEntry.COVER, edge, +1, wrap = true)!!.edgeToEdge).isFalse()
-        val about = SettingsMenu.description(MenuEntry.COVER, edge, MenuContext(), TestTexts.english())
-        val inFlow = SettingsMenu.description(MenuEntry.COVER, edge.copy(queue = QueueDisplay.FLOW), MenuContext(), TestTexts.english())
-        assertThat(inFlow).isEqualTo(about + " " + TestTexts.english()[Strings.aboutCoverFlow])
+    fun `the view goes from the normal one to edge to edge and Cover Flow`() {
+        val view = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.PICTURE).first { it.entry == MenuEntry.VIEW }
+        assertThat(view.label).isEqualTo("Ansicht")
+        assertThat(view.value).isEqualTo("Normal")
+        assertThat(view.dimmed).isFalse()
+        val edge = SettingsMenu.step(MenuEntry.VIEW, configured, +1)!!
+        assertThat(edge.view).isEqualTo(StageView.EDGE)
+        assertThat(SettingsMenu.value(MenuEntry.VIEW, edge, MenuContext(), de)).isEqualTo("Randlos")
+        assertThat(SettingsMenu.value(MenuEntry.VIEW, edge, MenuContext(), TestTexts.english())).isEqualTo("Edge to edge")
+        val flow = SettingsMenu.step(MenuEntry.VIEW, edge, +1)!!
+        assertThat(flow.view).isEqualTo(StageView.FLOW)
+        assertThat(SettingsMenu.value(MenuEntry.VIEW, flow, MenuContext(), de)).isEqualTo("Cover Flow")
+        // Right stops at Cover Flow, OK goes round.
+        assertThat(SettingsMenu.step(MenuEntry.VIEW, flow, +1)!!.view).isEqualTo(StageView.FLOW)
+        assertThat(SettingsMenu.step(MenuEntry.VIEW, flow, +1, wrap = true)!!.view).isEqualTo(StageView.NORMAL)
+    }
+
+    @Test
+    fun `the queue is off or a list, and in Cover Flow it says where the list shows`() {
+        val en = TestTexts.english()
+        assertThat(SettingsMenu.value(MenuEntry.QUEUE, configured, MenuContext(), de)).isEqualTo("Aus")
+        val list = SettingsMenu.step(MenuEntry.QUEUE, configured.copy(maUrl = "http://192.168.1.5:8095", maToken = "ma"), +1)!!
+        assertThat(list.queue).isEqualTo(QueueDisplay.LIST)
+        assertThat(SettingsMenu.value(MenuEntry.QUEUE, list, MenuContext(), de)).isEqualTo("Liste")
+        assertThat(SettingsMenu.step(MenuEntry.QUEUE, list, +1, wrap = true)!!.queue).isEqualTo(QueueDisplay.OFF)
+        assertThat(SettingsMenu.description(MenuEntry.QUEUE, list, MenuContext(), en)).isEqualTo(en[Strings.aboutQueueList])
+        // Cover Flow shows the next tracks as covers: the list keeps its setting for the other views.
+        val inFlow = list.copy(view = StageView.FLOW)
+        assertThat(SettingsMenu.value(MenuEntry.QUEUE, inFlow, MenuContext(), de)).isEqualTo("Liste")
+        assertThat(SettingsMenu.description(MenuEntry.QUEUE, inFlow, MenuContext(), en)).isEqualTo(en[Strings.aboutQueueInFlow])
+        assertThat(SettingsMenu.rows(inFlow, MenuContext(), de, MenuSection.PICTURE).first { it.entry == MenuEntry.QUEUE }.dimmed).isFalse()
     }
 
     @Test

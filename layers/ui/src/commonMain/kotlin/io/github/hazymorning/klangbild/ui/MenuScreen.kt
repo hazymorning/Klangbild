@@ -119,8 +119,8 @@ object MenuGrid {
 /**
  * The settings menu, fading in over whatever is on screen and out again, on its own background
  * (black or light). The screen beneath stays composed, so it is back the moment the menu
- * closes. While the queue display just chosen is [pending], dots pulse after the Queue row's
- * value ([PendingDots]).
+ * closes. While the view just chosen is [pending], dots pulse after the View row's value
+ * ([PendingDots]).
  */
 @Composable
 fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
@@ -413,7 +413,7 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
     // While the queue display just chosen is pending, dots pulse after the Queue row's value.
-    val dots = if (row.entry == MenuEntry.QUEUE) rememberPendingDots(pending) else null
+    val dots = if (row.entry == MenuEntry.VIEW) rememberPendingDots(pending) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))

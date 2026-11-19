@@ -38,6 +38,7 @@ enum class FavoriteState {
  * all settings ([SETTINGS]).
  */
 enum class QuickItem(val label: StringId?) {
+    VIEW(Strings.quickView),
     QUEUE(Strings.quickQueue),
     LYRICS(Strings.quickLyrics),
     ARTIST(Strings.quickArtistInfo),
@@ -80,8 +81,10 @@ enum class ActionState {
 
 /** What the quick settings need to know besides the settings. */
 data class QuickContext(
-    /** How the queue should show, chosen with OK and applied once the presses stop. */
-    val pending: QueueDisplay? = null,
+    /** The view chosen with OK, applied once the presses stop. */
+    val pending: StageView? = null,
+    /** The next tracks can show as a list: Music Assistant, which tells the whole queue, is connected. */
+    val list: Boolean = false,
     /** Something plays (or is paused) on the stage. */
     val music: Boolean = false,
     /**
@@ -112,14 +115,16 @@ data class QuickContext(
  * says), up leaves the row. Entries that cannot do anything now are left out (no lyrics without
  * Music Assistant or without a song, no favorite without music, no lights before they are set
  * up, no shuffle on a player that cannot, no party code without a party playing here, no button
- * whose entity is unavailable or whose condition does not hold), and the queue's entry passes
- * over its list while Music Assistant is not connected. The buttons set up on the phone come
- * last. The sleep timer lives in the settings.
+ * whose entity is unavailable or whose condition does not hold, no queue while Music Assistant
+ * is not connected or Cover Flow shows the next tracks as covers). The buttons set up on the
+ * phone come last. The sleep timer lives in the settings.
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
         fun row(item: QuickItem, value: String, muted: Boolean = false) = add(QuickRow(QuickKey(item), t[item.label!!], value, values(item, t), muted))
-        row(QuickItem.QUEUE, SettingsMenu.queueValue(ctx.pending ?: s.queue, t))
+        val view = ctx.pending ?: s.view
+        row(QuickItem.VIEW, SettingsMenu.viewValue(view, t))
+        if (ctx.list && view != StageView.FLOW) row(QuickItem.QUEUE, SettingsMenu.queueValue(s.queue, t))
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
         if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
@@ -173,6 +178,7 @@ object QuickMenu {
      * nothing moves when a value changes (for the buttons: what any of them can show).
      */
     fun values(item: QuickItem, t: Texts): List<String> = when (item) {
+        QuickItem.VIEW -> SettingsMenu.VIEW_ORDER.map { SettingsMenu.viewValue(it, t) }
         QuickItem.QUEUE -> SettingsMenu.QUEUE_ORDER.map { SettingsMenu.queueValue(it, t) }
         QuickItem.FAVORITE -> FavoriteState.entries.map { favoriteValue(it, t) }
         QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
@@ -180,18 +186,10 @@ object QuickMenu {
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
     }
 
-    /**
-     * How the queue shows after one step from [q] (−1 or +1), from the quietest to the fullest;
-     * [wrap] goes round. The list is passed over while it cannot show ([list] false).
-     */
-    fun step(q: QueueDisplay, direction: Int, wrap: Boolean, list: Boolean): QueueDisplay {
-        val order = SettingsMenu.QUEUE_ORDER
-        var i = order.indexOf(q)
-        repeat(order.size) {
-            i += direction
-            i = if (wrap) i.mod(order.size) else i.coerceIn(0, order.size - 1)
-            if (order[i] != QueueDisplay.LIST || list) return order[i]
-        }
-        return q
+    /** The view after one step from [v] (−1 or +1), from the normal view to Cover Flow; [wrap] goes round. */
+    fun step(v: StageView, direction: Int, wrap: Boolean): StageView {
+        val order = SettingsMenu.VIEW_ORDER
+        val i = order.indexOf(v) + direction
+        return order[if (wrap) i.mod(order.size) else i.coerceIn(0, order.size - 1)]
     }
 }

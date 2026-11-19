@@ -126,7 +126,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(noWords)
-                    QuickBar(quick(QuickItem.QUEUE, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.VIEW, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
                 }
             }
         }

@@ -7,6 +7,7 @@ import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.data.AndroidPictureDecoder
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.httpClient
@@ -61,7 +62,7 @@ class MadeAheadTest {
         try {
             val builder = StageBuilder(scope, ArtworkLoader(http, http, { null }, AndroidPictureDecoder), QuietLog, System::currentTimeMillis) {}
             builder.screen(ScreenSpec(960, 540, 1f))
-            val settings = Settings(queue = QueueDisplay.FLOW)
+            val settings = Settings(view = StageView.FLOW)
             val source = SourceState(
                 link = LinkState.CONNECTED,
                 player = PlayerSnapshot(PlayerStatus.PLAYING, first),

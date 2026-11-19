@@ -99,8 +99,8 @@ object QuickGrid {
  * The quick settings along the bottom edge: they rise and fade in when down is pressed, and sink
  * back when they close. Each entry is its label over its value, and the chosen one stands in a
  * band of light like the menu's chosen row. A muted value (lyrics on, but none for this track)
- * has a quieter ink. Entries keep their places when values change. While the queue display just
- * chosen is [pending], dots pulse after its value ([PendingDots]).
+ * has a quieter ink. Entries keep their places when values change. While the view just chosen
+ * is [pending], dots pulse after its value ([PendingDots]).
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
@@ -244,7 +244,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
                 // While the queue display just chosen is pending, dots pulse after its value.
-                val dots = if (row.item == QuickItem.QUEUE) rememberPendingDots(pending) else null
+                val dots = if (row.item == QuickItem.VIEW) rememberPendingDots(pending) else null
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)
                     // A new value comes once the old one has gone, so two words never stand on each other.
@@ -289,13 +289,13 @@ private fun inView(x: Float, width: Float): Float {
 }
 
 /**
- * Each entry's width (dp): as wide as its label or its widest value, the queue's with room for the
+ * Each entry's width (dp): as wide as its label or its widest value, the view's with room for the
  * dots that pulse after it while it is pending, so a value that changes never moves the others.
  */
 internal fun quickWidths(quick: QuickState, measurer: TextMeasurer, labelStyle: TextStyle, valueStyle: TextStyle, density: Density): List<Float> =
     quick.rows.map { row ->
         fun w(text: String, style: TextStyle) = measurer.measure(AnnotatedString(text), style, maxLines = 1).size.width / density.density
-        val dots = if (row.item == QuickItem.QUEUE) PendingDots.WIDTH_EM * with(density) { valueStyle.fontSize.toDp().value } else 0f
+        val dots = if (row.item == QuickItem.VIEW) PendingDots.WIDTH_EM * with(density) { valueStyle.fontSize.toDp().value } else 0f
         max(w(row.label, labelStyle), (row.values + row.value).maxOf { w(it, valueStyle) } + dots)
     }
 

@@ -1,8 +1,8 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.ActionState
-import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.ArtistChoice
+import io.github.hazymorning.klangbild.config.FavoriteState
 import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
@@ -11,17 +11,18 @@ import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import kotlin.concurrent.Volatile
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.concurrent.Volatile
 
 /**
  * The quick settings while they are open (down on the remote): which entry the cursor is on,
@@ -32,8 +33,8 @@ internal class QuickControl(private val host: ControllerHost) {
     @Volatile private var cursor: QuickKey? = null
     @Volatile private var touchedAt = 0L
 
-    /** How the queue should show, chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
-    @Volatile private var pendingQueue: QueueDisplay? = null
+    /** The view chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
+    @Volatile private var pendingView: StageView? = null
     private var pictureJob: Job? = null
 
     /** The lights' level before they were switched off from the quick settings. */
@@ -67,7 +68,7 @@ internal class QuickControl(private val host: ControllerHost) {
     fun open() {
         synchronized(host.lock) {
             if (cursor != null) return
-            cursor = QuickKey(QuickItem.QUEUE)
+            cursor = QuickKey(QuickItem.VIEW)
             touchedAt = host.now()
             host.recompute()
         }
@@ -76,7 +77,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /** Closes the quick settings (up, back, after a while alone); a choice still waiting is taken now. */
     fun close() {
-        applyQueue()
+        applyView()
         synchronized(host.lock) { cursor = null }
         host.recompute()
     }
@@ -106,15 +107,19 @@ internal class QuickControl(private val host: ControllerHost) {
             rows.getOrNull(indexOf(rows.map { it.key }, c))
         } ?: return
         when (row.item) {
-            QuickItem.QUEUE -> synchronized(host.lock) {
-                val shown = pendingQueue ?: host.settings.queue
-                pendingQueue = QuickMenu.step(shown, +1, wrap = true, list = listCanShow())
+            QuickItem.VIEW -> synchronized(host.lock) {
+                val shown = pendingView ?: host.settings.view
+                pendingView = QuickMenu.step(shown, +1, wrap = true)
                 pictureJob?.cancel()
                 pictureJob = host.scope.launch {
                     delay(SETTLE_MS)
-                    applyQueue()
+                    applyView()
                 }
                 host.recompute()
+            }
+            // The list on and off, at once, as the lyrics.
+            QuickItem.QUEUE -> host.settings.let { s ->
+                host.applySettings(s.copy(queue = if (s.queue == QueueDisplay.LIST) QueueDisplay.OFF else QueueDisplay.LIST))
             }
             // On and off, at once: the stage changes its text as it does for a new song. A quiet On
             // (a song without words) goes off too.
@@ -146,12 +151,12 @@ internal class QuickControl(private val host: ControllerHost) {
     fun expire(t: Long, menuOpen: Boolean) {
         if (cursor != null && (t - touchedAt > IDLE_MS || menuOpen)) {
             cursor = null
-            if (pendingQueue != null) host.scope.launch { applyQueue() }
+            if (pendingView != null) host.scope.launch { applyView() }
         }
     }
 
-    /** How the queue should show, chosen with OK and not applied yet (the presses have not stopped). */
-    val pending: QueueDisplay? get() = pendingQueue
+    /** The view chosen with OK and not applied yet (the presses have not stopped). */
+    val pending: StageView? get() = pendingView
 
     /** The quick settings as they show for [screen], null while they are closed (called under the lock). */
     fun state(screen: Screen): QuickState? {
@@ -161,19 +166,19 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * Applies the queue view chosen in the quick settings; stepped round to the one it had,
-     * nothing changes. The choice counts as waiting until the setting has it, so the screen never
-     * works out a moment with neither (the dots after the Queue value would stop for it).
+     * Applies the view chosen in the quick settings; stepped round to the one it had, nothing
+     * changes. The choice counts as waiting until the setting has it, so the screen never works
+     * out a moment with neither (the dots after the View value would stop for it).
      */
-    private fun applyQueue() {
+    private fun applyView() {
         val next = synchronized(host.lock) {
             pictureJob?.cancel()
             pictureJob = null
-            pendingQueue
+            pendingView
         } ?: return
         val s = host.settings
-        if (next != s.queue) host.applySettings(s.copy(queue = next))
-        synchronized(host.lock) { if (pendingQueue == next) pendingQueue = null }
+        if (next != s.view) host.applySettings(s.copy(view = next))
+        synchronized(host.lock) { if (pendingView == next) pendingView = null }
     }
 
     /** The queue can show as a list: Music Assistant, which tells the whole queue, is connected. */
@@ -389,7 +394,8 @@ internal class QuickControl(private val host: ControllerHost) {
     private fun context(screen: Screen = host.ui.screen): QuickContext {
         val track = (screen as? Screen.Stage)?.track
         return QuickContext(
-            pending = pendingQueue,
+            pending = pendingView,
+            list = listCanShow(),
             music = track != null,
             favorite = track?.takeIf { host.ui.source.favorites }?.let { favoriteState(it) },
             shuffle = shuffleShown(),

@@ -81,9 +81,22 @@ enum class RoomLightBrightness(val brightness: Float) {
     }
 }
 
+/** How the picture is laid out around the song that plays (View in the quick settings and the menu). */
+enum class StageView {
+    /** The cover with the same room on every side, the text column beside it. */
+    NORMAL,
+
+    /** The cover at the screen's full height at its left edge, the text column beside it. */
+    EDGE,
+
+    /** Cover Flow: the cover in the middle, those before it to the left, those to come to the right. */
+    FLOW,
+}
+
 /**
- * How the stage shows the queue: not at all (one large cover, the last line naming what comes
- * next), as a list beside that same cover, or as Cover Flow.
+ * How the stage shows the queue: not at all (the last line naming what comes next), or as a list
+ * beside the cover. Cover Flow shows it as covers: a view of its own ([StageView.FLOW]), which the
+ * stage counts as a way of showing the queue too ([Settings.shownQueue]).
  */
 enum class QueueDisplay {
     OFF,
@@ -91,7 +104,7 @@ enum class QueueDisplay {
     /** What comes next as a list in the text column, beside the cover. */
     LIST,
 
-    /** Cover Flow: the cover in the middle, those before it to the left, those to come to the right. */
+    /** Cover Flow, while it's the view: never a setting of its own. */
     FLOW,
 }
 
@@ -178,10 +191,10 @@ data class Settings(
     /** Up and down on the remote change the speaker's volume (instead of opening the settings and the quick settings). */
     val volumeKeys: Boolean = false,
     val appearance: AppearanceMode = AppearanceMode.AUTO,
-    /** How the queue shows: not at all, as a list, or as Cover Flow. */
+    /** How the picture is laid out: the normal view, the cover edge to edge, or Cover Flow. */
+    val view: StageView = StageView.NORMAL,
+    /** Whether the next tracks show as a list beside the cover ([QueueDisplay.OFF] or [QueueDisplay.LIST]); not in Cover Flow. */
     val queue: QueueDisplay = QueueDisplay.OFF,
-    /** The single cover fills the screen's height at its left edge (the menu's Cover: Edge to edge); not in Cover Flow. */
-    val edgeToEdge: Boolean = false,
     /** A song's words take the text column where Music Assistant has them synced (the quick settings' Lyrics). */
     val lyrics: Boolean = false,
     /** A few sentences about the artist take the text column where Music Assistant knows them and no words do (the quick settings' Artist info). */
@@ -213,6 +226,13 @@ data class Settings(
     /** Klangbild asks GitHub for a new version of itself as it starts (the menu's Check for updates). */
     val updateCheck: Boolean = false,
 ) {
+    init {
+        require(queue != QueueDisplay.FLOW) { "Cover Flow is a view" }
+    }
+
+    /** How the stage shows the queue: Cover Flow while it's the [view], else as the [queue] says. */
+    val shownQueue: QueueDisplay get() = if (view == StageView.FLOW) QueueDisplay.FLOW else queue
+
     companion object {
         /** "Turn off after" goes up to this many minutes (twelve hours). */
         const val MAX_SLEEP_MINUTES = 720

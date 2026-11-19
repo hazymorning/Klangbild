@@ -48,7 +48,7 @@ class QuickBarTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(track, next = Fixtures.spiegel))
-                    QuickBar(state(QuickItem.QUEUE, playing), Appearance.DARK)
+                    QuickBar(state(QuickItem.VIEW, playing), Appearance.DARK)
                 }
             }
         }
@@ -74,7 +74,7 @@ class QuickBarTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(track, next = Fixtures.spiegel))
-                    QuickBar(state(QuickItem.QUEUE, QuickContext(music = true), Settings()), Appearance.DARK)
+                    QuickBar(state(QuickItem.VIEW, QuickContext(music = true), Settings()), Appearance.DARK)
                 }
             }
         }
@@ -105,7 +105,7 @@ class QuickBarTest {
                 }
             }
         }
-        shot("buttons_start", QuickKey(QuickItem.QUEUE))
+        shot("buttons_start", QuickKey(QuickItem.VIEW))
         shot("buttons_first", QuickKey(QuickItem.ACTION, 0))
         shot("buttons_end", QuickKey(QuickItem.ACTION, 2))
         shot("buttons_end_en", QuickKey(QuickItem.ACTION, 2), io.github.hazymorning.klangbild.text.TestTexts.english())

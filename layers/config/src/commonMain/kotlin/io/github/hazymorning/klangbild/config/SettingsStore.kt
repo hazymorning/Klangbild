@@ -33,7 +33,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val volumeKeys = booleanKey("volume_keys")
         val appearance = stringKey("appearance")
         val queue = stringKey("queue")
-        val edgeToEdge = booleanKey("edge_to_edge")
+        val view = stringKey("stage_view")
+
+        /** The cover edge to edge before it was a view, a switch of its own. Read, then removed. */
+        val formerEdge = booleanKey("edge_to_edge")
 
         /** The view of versions before the queue's setting: SINGLE or FLOW. Read once, then removed. */
         val formerView = stringKey("view")
@@ -141,8 +144,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             intensity = enumOr(p[Keys.intensity], defaults.intensity),
             volumeKeys = p[Keys.volumeKeys] ?: defaults.volumeKeys,
             appearance = enumOr(p[Keys.appearance], defaults.appearance),
-            queue = p[Keys.queue]?.let { enumOr(it, defaults.queue) } ?: queueOfView(p[Keys.formerView]),
-            edgeToEdge = p[Keys.edgeToEdge] ?: defaults.edgeToEdge,
+            view = p[Keys.view]?.let { enumOr(it, defaults.view) } ?: viewOf(storedQueue(p), p[Keys.formerEdge]),
+            queue = storedQueue(p).takeIf { it != QueueDisplay.FLOW } ?: defaults.queue,
             lyrics = p[Keys.lyrics] ?: defaults.lyrics,
             artistInfo = p[Keys.artistInfo] ?: defaults.artistInfo,
             lyricsGroupDelayMs = p[Keys.lyricsGroupDelay]?.takeIf { it in Settings.LYRICS_GROUP_DELAYS_MS } ?: defaults.lyricsGroupDelayMs,
@@ -162,7 +165,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             updateCheck = p[Keys.updateCheck] ?: defaults.updateCheck,
         )
 
-    private fun write(p: MutableMap<String, Any>, s: Settings) {
+    internal fun write(p: MutableMap<String, Any>, s: Settings) {
         fun putOrRemove(key: StoreKey<String>, value: String?) {
             if (value.isNullOrBlank()) p.remove(key) else p[key] = value
         }
@@ -194,8 +197,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.intensity] = s.intensity.name
         p[Keys.volumeKeys] = s.volumeKeys
         p[Keys.appearance] = s.appearance.name
+        p[Keys.view] = s.view.name
         p[Keys.queue] = s.queue.name
-        p[Keys.edgeToEdge] = s.edgeToEdge
+        p.remove(Keys.formerEdge)
         p.remove(Keys.formerView)
         p[Keys.lyrics] = s.lyrics
         p[Keys.artistInfo] = s.artistInfo
@@ -224,6 +228,17 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
      * the single cover, which had no list beside it, is the queue off.
      */
     private fun queueOfView(view: String?): QueueDisplay = if (view == "FLOW") QueueDisplay.FLOW else defaults.queue
+
+    /** The queue as stored, which before the view was a setting could be Cover Flow. */
+    private fun storedQueue(p: Map<String, Any>): QueueDisplay =
+        p[Keys.queue]?.let { enumOr(it, defaults.queue) } ?: queueOfView(p[Keys.formerView])
+
+    /** The view for settings stored before it was one: Cover Flow came with the queue, the cover edge to edge was a switch. */
+    private fun viewOf(queue: QueueDisplay, edge: Boolean?): StageView = when {
+        queue == QueueDisplay.FLOW -> StageView.FLOW
+        edge == true -> StageView.EDGE
+        else -> defaults.view
+    }
 
     /** When this TV plays for the switch an earlier version stored: on, it also played while Klangbild was closed. */
     private fun playHereOf(on: Boolean?): PlayHere = if (on == true) PlayHere.ALWAYS else defaults.playHere

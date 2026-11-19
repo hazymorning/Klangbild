@@ -129,13 +129,20 @@ object LaunchExtras {
             }?.let { out = out.copy(appearance = it) }
         }
         // Earlier versions named the queue's place the view: its single cover is the queue off.
+        // Cover Flow is a view now, and the queue off or as a list leaves it for the normal one.
         (extras[QUEUE] as? String)?.let { v ->
             when (v.trim().lowercase().replace(" ", "").replace("_", "")) {
                 "off", "aus", "single", "einzelbild", "bild" -> QueueDisplay.OFF
                 "list", "liste" -> QueueDisplay.LIST
                 "flow", "coverflow" -> QueueDisplay.FLOW
                 else -> null
-            }?.let { out = out.copy(queue = it) }
+            }?.let { q ->
+                out = when {
+                    q == QueueDisplay.FLOW -> out.copy(view = StageView.FLOW)
+                    out.view == StageView.FLOW -> out.copy(view = StageView.NORMAL, queue = q)
+                    else -> out.copy(queue = q)
+                }
+            }
         }
         (extras[BACKGROUND] as? String)?.let { v ->
             when (v.trim().lowercase().replace(" ", "").replace("_", "")) {

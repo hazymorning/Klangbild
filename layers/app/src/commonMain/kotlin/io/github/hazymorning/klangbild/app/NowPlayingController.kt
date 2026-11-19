@@ -4,11 +4,13 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.AppearanceMode
 import io.github.hazymorning.klangbild.config.BackgroundMode
 import io.github.hazymorning.klangbild.config.LaunchExtras
+import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickActions
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
 import io.github.hazymorning.klangbild.config.SessionOptions
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsStore
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.data.ArtworkLoader
 import io.github.hazymorning.klangbild.data.LightBridge
@@ -54,6 +56,9 @@ import io.github.hazymorning.klangbild.text.Localizer
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.ktor.client.HttpClient
+import kotlin.concurrent.Volatile
+import kotlin.random.Random
+import kotlin.time.Clock
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
@@ -72,9 +77,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
-import kotlin.concurrent.Volatile
-import kotlin.random.Random
-import kotlin.time.Clock
 
 /**
  * The app's single source of truth. It runs the Home Assistant source and the screen state
@@ -442,9 +444,9 @@ class NowPlayingController(
     }
 
     private fun onSettings(s: Settings): Unit = synchronized(lock) {
-        if (_ui.value.queue != s.queue) {
-            queueSwitch.chosen(s.queue)
-            _ui.value = _ui.value.copy(queue = s.queue)
+        if (_ui.value.queue != s.shownQueue) {
+            queueSwitch.chosen(s.shownQueue)
+            _ui.value = _ui.value.copy(queue = s.shownQueue)
         }
         // Turned on in the menu: ask at once.
         if (loaded && s.updateCheck && !settings.value.updateCheck) updates?.checkIfDue()
@@ -710,7 +712,9 @@ class NowPlayingController(
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
         // The queue display just chosen stays pending, with dots after its value in the quick
         // settings and the menu, until this state shows it.
-        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.queue, quick.pending, flow))
+        // A view chosen in the quick settings and not applied yet: Cover Flow, or the queue as it stands beside the cover.
+        val pendingDisplay = quick.pending?.let { if (it == StageView.FLOW) QueueDisplay.FLOW else s.queue }
+        _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.shownQueue, pendingDisplay, flow))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
         // chosen, or switched off, go back at once, and so do all of them while the screen is dark.
         val chosen = if (dark || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys

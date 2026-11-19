@@ -23,11 +23,11 @@ import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MenuEntry
-import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
+import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.textType
@@ -39,8 +39,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.test.Test
 
 /**
- * While the queue display just chosen is pending, dots pulse after the Queue value in the quick
- * settings. The labels and the value's word keep exactly their pixels, and when the wait ends the
+ * While the view just chosen is pending, dots pulse after the View value in the quick settings. The labels and the value's word keep exactly their pixels, and when the wait ends the
  * dots fade out and the bar is exactly as it was.
  */
 @RunWith(AndroidJUnit4::class)
@@ -53,8 +52,8 @@ class QuickPendingTest {
     private var pending by mutableStateOf(false)
     private var appearance by mutableStateOf(Appearance.DARK)
 
-    private val rows = QuickMenu.rows(Settings(), QuickContext(music = true, pending = QueueDisplay.FLOW), Fixtures.texts)
-    private val queue = rows.indexOfFirst { it.item == QuickItem.QUEUE }
+    private val rows = QuickMenu.rows(Settings(), QuickContext(music = true, pending = StageView.FLOW), Fixtures.texts)
+    private val view = rows.indexOfFirst { it.item == QuickItem.VIEW }
 
     /** Lets whatever is made off the main thread (the band of light under the chosen entry) come, and the inks settle. */
     private fun settle() = repeat(20) {
@@ -78,13 +77,13 @@ class QuickPendingTest {
         (y0 until y1).maxOf { y -> (0 until a.width).maxOf { x -> Pixels.apart(a[x, y], b[x, y]) } }
 
     @Test
-    fun `dots pulse after the pending queue value and nothing else changes`() {
+    fun `dots pulse after the pending view value and nothing else changes`() {
         var wordWidth = 0
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val measurer = rememberTextMeasurer()
-            wordWidth = measurer.measure(AnnotatedString(rows[queue].value), faces().textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)).size.width
-            QuickBar(QuickState(rows, queue), appearance, pending = pending)
+            wordWidth = measurer.measure(AnnotatedString(rows[view].value), faces().textType(QuickGrid.VALUE_SP, QuickGrid.VALUE_WEIGHT)).size.width
+            QuickBar(QuickState(rows, view), appearance, pending = pending)
         }
         val labels = (QuickGrid.LABEL_BASELINE - 16f).toInt() to (QuickGrid.LABEL_BASELINE + 5f).toInt()
         val values = (QuickGrid.VALUE_BASELINE - 20f).toInt() to (QuickGrid.VALUE_BASELINE + 6f).toInt()
@@ -113,7 +112,7 @@ class QuickPendingTest {
     }
 
     /**
-     * The dots over a still stage: the queue's entry chosen on both backgrounds, at rest beside
+     * The dots over a still stage: the view's entry chosen on both backgrounds, at rest beside
      * the chosen one, and the menu's Queue line.
      */
     @Category(Pictures::class)
@@ -122,7 +121,7 @@ class QuickPendingTest {
     fun pictures() {
         val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
         var menu by mutableStateOf(false)
-        var cursor by mutableIntStateOf(queue)
+        var cursor by mutableIntStateOf(view)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             Fixtures.Still {
@@ -131,7 +130,7 @@ class QuickPendingTest {
                     // The stage stands still; only the dots move.
                     CompositionLocalProvider(LocalStill provides false) {
                         if (menu) {
-                            MenuScreen(Fixtures.menu(MenuEntry.QUEUE, Settings(queue = QueueDisplay.FLOW)), pending = pending)
+                            MenuScreen(Fixtures.menu(MenuEntry.VIEW, Settings(view = StageView.FLOW)), pending = pending)
                         } else {
                             QuickBar(QuickState(rows, cursor), appearance, pending = pending)
                         }
@@ -140,10 +139,10 @@ class QuickPendingTest {
             }
         }
         for ((shot, wall, inMenu, at) in listOf(
-            Shot("dark", Appearance.DARK, false, queue),
-            Shot("light", Appearance.LIGHT, false, queue),
-            Shot("rest", Appearance.DARK, false, queue + 1),
-            Shot("menu", Appearance.DARK, true, queue),
+            Shot("dark", Appearance.DARK, false, view),
+            Shot("light", Appearance.LIGHT, false, view),
+            Shot("rest", Appearance.DARK, false, view + 1),
+            Shot("menu", Appearance.DARK, true, view),
         )) {
             pending = false
             appearance = wall
