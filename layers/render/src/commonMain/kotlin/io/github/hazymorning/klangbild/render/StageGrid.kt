@@ -12,13 +12,15 @@ package io.github.hazymorning.klangbild.render
  * never reaches past the artwork, whose own edges recede at its round corners (and on a dark
  * wall where a dark cover meets it). Every line in the column starts on one left edge.
  *
- * The group stands in the middle of the screen: as much room above the artwork as below it, as
- * much left of it as right of the column (the progress bar's end), and nearly as much at the sides
- * as above and below. It was designed with a 368 dp artwork ([DESIGN_ART]) and is set 3 % larger,
- * its text too ([textScale]).
+ * The group stands in the middle of the screen with the same room on every side: above and below
+ * the artwork, left of it and right of the column (the progress bar's end). So the gap and the
+ * column together are as wide as the screen is wider than tall, 420 dp. It was designed with a
+ * 368 dp artwork ([DESIGN_ART]) and a 352 dp column. The artwork and the gap are set 3 % larger,
+ * and the text only as much larger as the column is wider ([textScale]), so its lines break as
+ * designed.
  *
  *  ┌──────────────────────────────────────────────────────────┐
- *  │          75            380          66      363.5    75.4 │
+ *  │          80            380          66       354       80 │
  *  │        ╭──────────────╮                                  │  ← artwork top
  *  │        │              │      21:47 · Everywhere          │  ← a corner radius below
  *  │        │              │      Title                       │
@@ -52,9 +54,8 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     }
 
     /**
-     * How much larger than designed the column's text is set: the single cover's grid is the
-     * design's 3 % larger, and so is its type, also beside the cover edge to edge. Cover Flow's
-     * text is as designed.
+     * How much larger than designed the column's text is set: as much as the single cover's column
+     * is wider than designed, also beside the cover edge to edge. Cover Flow's text is as designed.
      */
     val textScale: Float get() = frame.textScale
 
@@ -118,16 +119,24 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
         /** The single cover (dp at 960 × 540): the design's 3 % larger, on whole pixels at 1080p. */
         private const val SINGLE_ART = 380f
 
-        /** How much larger than designed the single cover's grid and text are set. */
-        private const val SINGLE_SCALE = SINGLE_ART / DESIGN_ART
+        /** The room on every side of the single cover's group (dp): what the screen's height leaves above and below the artwork. */
+        private const val SINGLE_MARGIN = (540f - SINGLE_ART) / 2f
 
-        // The design's gap and column (352 dp) as much larger.
+        /** Between the single cover and its column (dp): the design's 64 dp, 3 % larger on whole pixels. */
+        private const val SINGLE_GAP = 66f
+
+        /** The single cover's column (dp): what the same margin on the right leaves. */
+        private const val SINGLE_COLUMN = GRID_WIDTH - 2 * SINGLE_MARGIN - SINGLE_ART - SINGLE_GAP
+
+        /** The column as designed beside a 368 dp artwork (dp). */
+        private const val DESIGN_COLUMN = 352f
+
         private val SINGLE = Grid(
-            margin = 75f,
+            margin = SINGLE_MARGIN,
             art = SINGLE_ART,
-            gap = ART_TEXT_GAP * SINGLE_SCALE,
-            rightMargin = 960f - 75f - SINGLE_ART - ART_TEXT_GAP * SINGLE_SCALE - 352f * SINGLE_SCALE,
-            textScale = SINGLE_SCALE,
+            gap = SINGLE_GAP,
+            rightMargin = SINGLE_MARGIN,
+            textScale = SINGLE_COLUMN / DESIGN_COLUMN,
         )
         private val FLOW = Grid(margin = 161f, art = 312f, gap = 129.75f, rightMargin = 71.25f)
 

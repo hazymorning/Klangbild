@@ -156,13 +156,14 @@ class DesignRulesTest {
         // the quiet lines frame the column within the artwork's straight edge, a corner radius in
         assertThat(layout.statusTop).isCloseTo(layout.artRect.top + layout.radius, 0.01f)
         assertThat(layout.footerBottom).isCloseTo(layout.artRect.bottom - layout.radius, 0.01f)
-        // the group stands exactly in the screen's middle: as much room above as below …
-        assertThat(layout.artRect.centerY).isCloseTo(screen.heightDp / 2f, 0.01f)
-        // … and as much left of the artwork as right of the column (to half a dp, the artwork on
-        // whole pixels), the design's 64 dp between, 3 % larger
-        assertThat(layout.artRect.left).isCloseTo(75f, 0.01f)
-        assertThat(screen.widthDp - (layout.columnLeft + layout.columnWidth)).isCloseTo(layout.artRect.left, 0.5f)
-        assertThat(layout.columnLeft - layout.artRect.right).isCloseTo(64f * 380f / 368f, 0.01f)
+        // the group stands exactly in the screen's middle, with the same room on every side: above
+        // and below the artwork, left of it and right of the column
+        val above = layout.artRect.top
+        assertThat(screen.heightDp - layout.artRect.bottom).isCloseTo(above, 0.01f)
+        assertThat(layout.artRect.left).isCloseTo(above, 0.01f)
+        assertThat(screen.widthDp - (layout.columnLeft + layout.columnWidth)).isCloseTo(above, 0.01f)
+        // the design's 64 dp between artwork and column, 3 % larger on whole pixels
+        assertThat(layout.columnLeft - layout.artRect.right).isCloseTo(66f, 0.01f)
     }
 
     @Test
