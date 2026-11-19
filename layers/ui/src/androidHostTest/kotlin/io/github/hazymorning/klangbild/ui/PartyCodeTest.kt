@@ -69,8 +69,8 @@ class PartyCodeTest {
     /** The single cover's artwork at 2 px a dp (368 dp at 88 dp from the left, centered), inside its corners. */
     private val single = intArrayOf(176 + 16, 172 + 16, 912 - 16, 908 - 16)
 
-    /** Cover Flow's middle card (300 dp, its middle 303 dp from the left and in the middle of the height), inside its corners. */
-    private val middle = intArrayOf(306 + 14, 240 + 14, 906 - 14, 840 - 14)
+    /** Cover Flow's middle card (312 dp, its middle 317 dp from the left and in the middle of the height), inside its corners. */
+    private val middle = intArrayOf(322 + 14, 228 + 14, 946 - 14, 852 - 14)
 
     @Test
     fun `where the cover stands, the code gives the party's link`() {

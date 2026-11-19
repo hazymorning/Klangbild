@@ -81,11 +81,11 @@ class NoFrameTest {
         val scenes = Fixtures.flowScenes(strip, Appearance.LIGHT)
         val model = Fixtures.model(strip[2], next = strip[3], group = "Wohnzimmer", scene = scenes[2])
         val px = render { FlowStage(model, Fixtures.restingCards(scenes, 2)) }
-        // The middle card: 300 dp, its middle 303 dp from the left and in the middle of the height; the column from 598 dp.
-        val top = 240; val bottom = 840
+        // The middle card: 312 dp, its middle 317 dp from the left and in the middle of the height; the column from 602.75 dp.
+        val top = 228; val bottom = 852
         val boxes = listOf(
-            intArrayOf(80, top - 90, 1110, top - 6),
-            intArrayOf(80, bottom + 6, 1110, bottom + 90),
+            intArrayOf(130, top - 90, 1150, top - 6),
+            intArrayOf(130, bottom + 6, 1150, bottom + 90),
         )
         assertThat(deviation(px, boxes), name = "the background above and below the cards").isLessThanOrEqualTo(3)
     }
@@ -111,9 +111,9 @@ class NoFrameTest {
 
     /** The largest difference (levels, any channel) between the middle card in [a] and in [b], [dx] px further right (round corners left out). */
     private fun middleCardDifference(a: Pixels, b: Pixels, dx: Int): Int {
-        // The middle card: 300 dp, its middle 303 dp from the left and in the middle of the height, at 2 px a dp.
+        // The middle card: 312 dp, its middle 317 dp from the left and in the middle of the height, at 2 px a dp.
         var worst = 0
-        for (y in 256 until 824) for (x in 306 until 906) worst = maxOf(worst, Pixels.apart(a[x, y], b[x + dx, y]))
+        for (y in 244 until 836) for (x in 322 until 946) worst = maxOf(worst, Pixels.apart(a[x, y], b[x + dx, y]))
         return worst
     }
 }

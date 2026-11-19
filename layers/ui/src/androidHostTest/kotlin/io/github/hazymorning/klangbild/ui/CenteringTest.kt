@@ -118,13 +118,14 @@ class CenteringTest {
             }
             val layout = scene.layout
             val left = (layout.columnLeft * 2).toInt() - 4
-            val sung = ink.lines(left, 1920, threshold = LIT).single()
+            // On one row, or on two where the column is narrower.
+            val sung = ink.lines(left, 1920, threshold = LIT)
             val case = "${if (flow) "Cover Flow" else "single cover"} in ${t.locale}"
-            // Its cap height and its baseline are as far from the artwork's middle (540) on either side.
+            // Its first cap height and its last baseline are as far from the artwork's middle (540) on either side.
             val cap = 30f * io.github.hazymorning.klangbild.ui.theme.Fonts.CAP_HEIGHT * 2f
-            assertThat(abs(sung.baseline - (540f + cap / 2f)), name = "$case: the sung line's baseline").isLessThanOrEqualTo(1.5f)
+            assertThat(abs((sung.first().baseline - cap + sung.last().baseline) / 2f - 540f), name = "$case: the sung line's middle").isLessThanOrEqualTo(1.5f)
             // It starts on the column's left edge (pulled left by large type's extra side bearing, a pixel or two).
-            assertThat(abs(sung.left - layout.columnLeft * 2f), name = "$case: the sung line's left edge").isLessThanOrEqualTo(4f)
+            for (row in sung) assertThat(abs(row.left - layout.columnLeft * 2f), name = "$case: the sung line's left edge").isLessThanOrEqualTo(4f)
         }
     }
 

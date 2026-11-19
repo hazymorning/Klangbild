@@ -31,6 +31,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.math.ceil
 import kotlin.test.Test
 
 /**
@@ -82,9 +83,10 @@ class EdgeBandTest {
             val what = "${tracks[i].title}, $left before, $right to come"
             val px = shown()
             assertThat(brightestInBand(px), name = what).isEqualTo(0)
-            // Up to the column's edge, where the first letters' soft edges may begin.
+            // From the first whole pixel where the light is gone up to the column's edge, where the
+            // first letters' soft edges may begin.
             val column = scenes[i].layout.columnLeft + geometry.balance(left, right).column
-            val before = px.brightest((column - FlowLight.GONE_BEFORE_COLUMN).toInt(), 0, (column - 2f).toInt(), px.height)
+            val before = px.brightest(ceil(column - FlowLight.GONE_BEFORE_COLUMN).toInt(), 0, (column - 2f).toInt(), px.height)
             assertThat(before, name = "$what: before the column").isEqualTo(0)
         }
     }

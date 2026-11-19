@@ -28,10 +28,11 @@ package io.github.hazymorning.klangbild.render
  *  │        ╰──────────────╯                                  │  ← artwork bottom
  *  └──────────────────────────────────────────────────────────┘
  *
- * Cover Flow ([flow]) keeps every rule but makes room for the cards beside the
- * middle one: the middle cover is 300 dp with its center 303 dp from the left, so the strip's
- * outer edge (255 dp beside it, see [FlowGeometry]) keeps 48 dp from the screen's edge. That is
- * as much as the column (from 598 dp) keeps on the right.
+ * Cover Flow ([flow]) keeps every rule but makes room for the cards beside the middle one: the
+ * middle cover is 312 dp with its center 317 dp from the left, so the strip's outer edge (245.75
+ * dp beside it, see [FlowGeometry]) keeps 71.25 dp from the screen's edge. That is as much as the
+ * column (from 602.75 dp, 286 dp wide) keeps on the right, and above and below the cover stay 114
+ * dp. The cover stands on whole pixels at 1080p.
  */
 data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
     private val sx = screen.widthDp / 960f
@@ -83,7 +84,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false) {
         const val ART_TEXT_GAP = 64f
 
         private val SINGLE = Grid(margin = 88f, art = 368f, gap = ART_TEXT_GAP, rightMargin = 88f)
-        private val FLOW = Grid(margin = 153f, art = 300f, gap = 145f, rightMargin = 48f)
+        private val FLOW = Grid(margin = 161f, art = 312f, gap = 129.75f, rightMargin = 71.25f)
 
         /** Corner radius of square artwork (dp at 960 × 540, for the single cover's 368 dp). */
         const val RADIUS = 8f

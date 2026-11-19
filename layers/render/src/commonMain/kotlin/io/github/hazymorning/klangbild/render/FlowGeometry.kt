@@ -19,8 +19,10 @@ import kotlin.math.sin
  * arithmetic on that number. The UI asks for a card's four corners every frame and draws one
  * textured quad; nothing is laid out, measured or allocated.
  *
- * Measured from the design (at 960 × 540 dp): the middle cover is 300 dp, and the outer edges
- * of the side cards stand 222.5 and 255 dp beside its center, at 92 % of its height.
+ * Measured from the design (at 960 × 540 dp) for a middle cover of 300 dp, to which every measure
+ * here belongs: the outer edges of the side cards stand 222.5 and 236.3 dp beside its center, at
+ * 92 % of its height. The second card steps out only a little behind the first, so the strip and
+ * the text leave room at the screen's sides.
  */
 class FlowGeometry(val layout: StageGrid) {
     /** Side of a card (dp). */
@@ -205,7 +207,7 @@ class FlowGeometry(val layout: StageGrid) {
 
         const val CAMERA = 1000f
         const val FIRST_X = 166f
-        const val STEP_X = 35.3f
+        const val STEP_X = 15f
         const val SIDE_Z = 213.3f
         const val GAP = 4f
         const val REFLECTION = 90f
