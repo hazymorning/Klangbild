@@ -4,7 +4,9 @@ import assertk.assertThat
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
 import kotlin.math.abs
+import kotlin.math.round
 import kotlin.test.Test
 
 /** The stage's grid for the single cover, Cover Flow and the cover edge to edge (dp at 960 × 540). */
@@ -49,7 +51,7 @@ class StageGridTest {
     fun `every cover stands on whole pixels at 1080p`() {
         for (grid in listOf(single, edge, StageGrid(ScreenSpec.TV_1080, flow = true))) {
             val r = grid.artRect
-            for (v in listOf(r.left, r.top, r.width)) assertThat(abs(v * 2f % 1f), name = "$grid").isEqualTo(0f)
+            for (v in listOf(r.left, r.top, r.width)) assertThat(abs(v * 2f - round(v * 2f)), name = "$grid").isLessThan(0.001f)
         }
     }
 }

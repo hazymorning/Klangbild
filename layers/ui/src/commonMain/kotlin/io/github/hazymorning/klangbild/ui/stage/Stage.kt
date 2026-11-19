@@ -446,7 +446,7 @@ internal fun StatusLayer(
     val status = model.statusLine
     if (status.isEmpty) return
     val layout = model.scene.layout
-    val styles = rememberStageStyles(model.scene.palette)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val figures = rememberFigures(styles.time, Face.TITLE)
     val clockText = status.clock
     val measurer = rememberTextMeasurer()

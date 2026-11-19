@@ -55,9 +55,9 @@ import kotlin.math.roundToInt
  * title is in the title face, large and light (at least 24 sp, Chinese, Japanese and Korean
  * titles 12% smaller). Everything else is in the text face (at most 21 sp): the artist a little
  * heavier, so the two balance each other, and everything else quiet. Times take the title face's
- * figures.
+ * figures. Sizes are as designed times [scale], the grid's [io.github.hazymorning.klangbild.render.StageGrid.textScale].
  */
-internal class StageStyles(palette: ScenePalette, val faces: Faces) {
+internal class StageStyles(palette: ScenePalette, val faces: Faces, val scale: Float = 1f) {
     val ink = palette.ink.asColor()
     val muted = palette.inkMuted.asColor()
     val quiet = palette.inkQuiet.asColor()
@@ -69,32 +69,32 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
     val barGroove = if (palette.accent == palette.inkMuted) ink.copy(alpha = 0.16f) else barFill.copy(alpha = 0.24f)
 
     /** The title at one step of [titleLadder] ([headingStyle]). */
-    fun title(step: TitleStep, cjk: Boolean = false): TextStyle = faces.headingStyle(step, cjk, ink)
+    fun title(step: TitleStep, cjk: Boolean = false): TextStyle = faces.headingStyle(step, cjk, ink, scale)
 
     /** The version under the title ("Radio Edit"): a quiet subtitle at half the title's size, 17 to 21 sp. */
-    fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f), 420, quiet).leftAligned()
+    fun version(titleSize: Float): TextStyle = faces.textType((titleSize * 0.5f).coerceIn(17f, 21f) * scale, 420, quiet).leftAligned()
 
-    val work = faces.textType(17f, 440, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
-    val artist = faces.textType(21f, 500, muted, lineHeight = 27f).leftAligned()
-    val artistSmall = faces.textType(19f, 500, muted, lineHeight = 25f).leftAligned()
-    val album = faces.textType(17f, 400, quiet, lineHeight = 23f, tracking = 0.005f).leftAligned()
+    val work = faces.textType(17f * scale, 440, quiet, lineHeight = 23f * scale, tracking = 0.005f).leftAligned()
+    val artist = faces.textType(21f * scale, 500, muted, lineHeight = 27f * scale).leftAligned()
+    val artistSmall = faces.textType(19f * scale, 500, muted, lineHeight = 25f * scale).leftAligned()
+    val album = faces.textType(17f * scale, 400, quiet, lineHeight = 23f * scale, tracking = 0.005f).leftAligned()
 
     /** A few sentences about the artist ([BioText]): between the artist and the album, on balanced lines. */
-    val bio = faces.textType(18f, 420, muted, lineHeight = 26f).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
+    val bio = faces.textType(18f * scale, 420, muted, lineHeight = 26f * scale).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
 
     /** The status line and the station: 15 sp with slight tracking, since light text on dark looks tighter. */
-    val label = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
+    val label = faces.textType(15f * scale, 440, quiet, lineHeight = 20f * scale, tracking = 0.015f)
 
     /** Times (the clock, the progress bar's times): figures in the title face, whose digits are even. */
-    val time = faces.titleType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f)
+    val time = faces.titleType(15f * scale, 440, quiet, lineHeight = 20f * scale, tracking = 0.015f)
     /** The footer: left to right, so "Up next" stays first even before right-to-left text. */
-    val footer = faces.textType(15f, 440, quiet, lineHeight = 20f, tracking = 0.015f).leftToRight()
+    val footer = faces.textType(15f * scale, 440, quiet, lineHeight = 20f * scale, tracking = 0.015f).leftToRight()
 
     /** "Up next" differs from what follows by weight alone. */
     val footerLead = SpanStyle(fontWeight = FontWeight(560))
 
     /** A queue row's title. */
-    val rowTitle = faces.textType(17f, 500, muted, lineHeight = 23f).leftToRight()
+    val rowTitle = faces.textType(17f * scale, 500, muted, lineHeight = 23f * scale).leftToRight()
 
     /** A queue row's artists, under its title. */
     val rowArtists = label.leftToRight()
@@ -107,16 +107,16 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces) {
 }
 
 /**
- * A title or the lyrics at [step], with balanced breaks. Chinese, Japanese and Korean are set
- * [CJK_SCALE] smaller, [CJK_EXTRA_LEADING] farther apart and without tracking.
+ * A title or the lyrics at [step], [scale] times as large, with balanced breaks. Chinese, Japanese
+ * and Korean are set [CJK_SCALE] smaller, [CJK_EXTRA_LEADING] farther apart and without tracking.
  */
-internal fun Faces.headingStyle(step: TitleStep, cjk: Boolean, color: Color = Color.Unspecified): TextStyle {
-    val size = if (cjk) step.size * CJK_SCALE else step.size
+internal fun Faces.headingStyle(step: TitleStep, cjk: Boolean, color: Color = Color.Unspecified, scale: Float = 1f): TextStyle {
+    val size = (if (cjk) step.size * CJK_SCALE else step.size) * scale
     return titleType(
         size = size,
         weight = step.weight,
         color = color,
-        lineHeight = size * step.leading + if (cjk) CJK_EXTRA_LEADING else 0f,
+        lineHeight = size * step.leading + if (cjk) CJK_EXTRA_LEADING * scale else 0f,
         tracking = if (cjk) 0f else step.tracking,
     ).merge(TextStyle(lineBreak = LineBreak.Heading, textDirection = TextDirection.Content, textAlign = TextAlign.Left))
 }
@@ -127,11 +127,11 @@ private const val CJK_SCALE = 0.88f
 /** The lines of Chinese, Japanese and Korean titles and lyrics stand this much farther apart (sp): their characters fill most of the em. */
 private const val CJK_EXTRA_LEADING = 6f
 
-/** The stage's styles for [palette], in the composition's faces. */
+/** The stage's styles for [palette], in the composition's faces, [scale] times as large as designed. */
 @Composable
-internal fun rememberStageStyles(palette: ScenePalette): StageStyles {
+internal fun rememberStageStyles(palette: ScenePalette, scale: Float): StageStyles {
     val faces = faces()
-    return remember(palette, faces) { StageStyles(palette, faces) }
+    return remember(palette, faces, scale) { StageStyles(palette, faces, scale) }
 }
 
 /**
@@ -245,7 +245,7 @@ private fun planText(
     val layout = model.scene.layout
     val d = density.density
     val colW = (layout.columnWidth * d).roundToInt()
-    val styles = StageStyles(model.scene.palette, faces)
+    val styles = StageStyles(model.scene.palette, faces, layout.textScale)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
 

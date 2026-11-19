@@ -149,8 +149,8 @@ class DesignRulesTest {
 
     @Test
     fun `the artwork is the heaviest element and sets the height`() {
-        // two thirds of the screen's height
-        assertThat(layout.art).isCloseTo(368f, 0.01f)
+        // a little over two thirds of the screen's height: the design's 368 dp, 3 % larger
+        assertThat(layout.art).isCloseTo(380f, 0.01f)
         // the text block takes clearly less height than the artwork
         assertThat(BLOCK_SHARE).isLessThanOrEqualTo(0.65f)
         // the quiet lines frame the column within the artwork's straight edge, a corner radius in
@@ -158,10 +158,11 @@ class DesignRulesTest {
         assertThat(layout.footerBottom).isCloseTo(layout.artRect.bottom - layout.radius, 0.01f)
         // the group stands exactly in the screen's middle: as much room above as below …
         assertThat(layout.artRect.centerY).isCloseTo(screen.heightDp / 2f, 0.01f)
-        // … and as much left of the artwork as right of the column; 64 dp between
-        assertThat(layout.artRect.left).isCloseTo(88f, 0.01f)
-        assertThat(screen.widthDp - (layout.columnLeft + layout.columnWidth)).isCloseTo(layout.artRect.left, 0.01f)
-        assertThat(layout.columnLeft - layout.artRect.right).isCloseTo(64f, 0.01f)
+        // … and as much left of the artwork as right of the column (to half a dp, the artwork on
+        // whole pixels), the design's 64 dp between, 3 % larger
+        assertThat(layout.artRect.left).isCloseTo(75f, 0.01f)
+        assertThat(screen.widthDp - (layout.columnLeft + layout.columnWidth)).isCloseTo(layout.artRect.left, 0.5f)
+        assertThat(layout.columnLeft - layout.artRect.right).isCloseTo(64f * 380f / 368f, 0.01f)
     }
 
     @Test

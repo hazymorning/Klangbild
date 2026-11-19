@@ -127,7 +127,7 @@ internal fun BioText(
     shift: () -> Float,
 ) {
     val layout = model.scene.layout
-    val styles = rememberStageStyles(model.scene.palette)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val density = LocalDensity.current.density
     val resolver = LocalFontFamilyResolver.current
     val colW = (layout.columnWidth * density).roundToInt()

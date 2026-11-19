@@ -57,8 +57,8 @@ class NoFrameTest {
         for (cover in listOf(SyntheticCover.NIGHT_DRIVE, SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS)) {
             val model = Fixtures.model(Fixtures.track(cover), next = Fixtures.spiegel, group = "Wohnzimmer", appearance = Appearance.LIGHT)
             val px = render { Stage(model) }
-            // The artwork: 368 dp at 88 dp from the left, centered, at 2 px a dp. A ring from 3 to 40 dp around it.
-            val l = 176; val t = 172; val r = 912; val b = 908
+            // The artwork: 380 dp at 75 dp from the left, centered, at 2 px a dp. A ring from 3 to 40 dp around it.
+            val l = 150; val t = 160; val r = 910; val b = 920
             val boxes = listOf(
                 intArrayOf(l - 80, t - 80, r + 80, t - 6),
                 intArrayOf(l - 80, b + 6, r + 80, b + 80),
