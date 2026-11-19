@@ -45,10 +45,10 @@ env:
 
 jobs:
   # Publishing a draft creates its tag. The run that made the draft built and tested that release
-  # already, so the tag's own run skips everything else.
+  # already, so the tag's own run skips everything else. This job runs in every run, since GitHub
+  # also skips every job after a skipped one.
   published:
-    name: Release published already
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Release check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -56,6 +56,7 @@ jobs:
     steps:
       - name: Look for the release published from its draft
         id: look
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -68,7 +69,7 @@ jobs:
   apk:
     name: Release APK
     needs: published
-    if: ${{ !cancelled() && needs.published.outputs.already != 'true' }}
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -134,7 +135,7 @@ jobs:
   tests:
     name: Tests and pictures
     needs: published
-    if: ${{ !cancelled() && needs.published.outputs.already != 'true' }}
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -306,7 +307,7 @@ jobs:
   lint:
     name: Android Lint
     needs: published
-    if: ${{ !cancelled() && needs.published.outputs.already != 'true' }}
+    if: needs.published.outputs.already != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
