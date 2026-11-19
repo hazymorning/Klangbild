@@ -134,7 +134,7 @@ With Music Assistant 2.10.7 or later, the TV can become one of its speakers and 
 <summary><b>Compatibility</b></summary>
 <br>
 
-Klangbild needs Android TV 9 or later, or a streaming stick whose system is built on Android 9 or newer. This means older fire TV sticks probably won't work.
+Klangbild needs Android TV 9 or later. Streaming sticks work too if their system is based on Android 9 or newer, which rules out some older ones.
 
 Since the TV can stay on for hours, the whole picture drifts slowly by a few pixels, which helps keep an OLED screen from burning in.
 
