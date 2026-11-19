@@ -66,8 +66,8 @@ class PartyCodeTest {
 
     private val song = Fixtures.track(SyntheticCover.BAUHAUS)
 
-    /** The single cover's artwork at 2 px a dp (380 dp at 75 dp from the left, centered), inside its corners. */
-    private val single = intArrayOf(150 + 16, 160 + 16, 910 - 16, 920 - 16)
+    /** The single cover's artwork at 2 px a dp (380 dp with 80 dp above, below and to its left), inside its corners. */
+    private val single = intArrayOf(160 + 16, 160 + 16, 920 - 16, 920 - 16)
 
     /** Cover Flow's middle card (312 dp, its middle 317 dp from the left and in the middle of the height), inside its corners. */
     private val middle = intArrayOf(322 + 14, 228 + 14, 946 - 14, 852 - 14)
