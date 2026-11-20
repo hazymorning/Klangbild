@@ -487,10 +487,13 @@ internal fun isMostlyCjk(text: String): Boolean {
 
 /**
  * The footer's track: [full] (title and artist) if it fits [width] on one line in [style] as [set]
- * sets it, else its [title] alone rather than a cut-off artist.
+ * sets it, else its [title] alone rather than a cut-off artist. What is still too long ends after
+ * a whole word ([fitWords]), never inside one.
  */
-internal fun fitFooter(measurer: TextMeasurer, full: String, title: String?, style: TextStyle, width: Int, set: (String) -> AnnotatedString): String =
-    if (title == null || measurer.measure(set(full), style, maxLines = 1, softWrap = false).size.width <= width) full else title
+internal fun fitFooter(measurer: TextMeasurer, full: String, title: String?, style: TextStyle, width: Int, set: (String) -> AnnotatedString): String {
+    fun fits(s: String) = measurer.measure(set(s), style, maxLines = 1, softWrap = false).size.width <= width
+    return if (fits(full)) full else fitWords(title ?: full, ::fits)
+}
 
 /**
  * The footer: the track's position in the queue ([place], "3 of 45"), then "Up next" ([lead]) in
@@ -522,8 +525,11 @@ internal fun opticalIndent(size: Float): Float = -(0.065f * (size - 15f)).coerce
  * for an ellipsis ("Conversation with Mrs. Grubach, then …"). A single word too long for the
  * line is left to the line's own ellipsis.
  */
-internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): String {
-    fun fits(s: String) = measurer.measure(AnnotatedString(s), style, maxLines = 1, softWrap = false).size.width <= width
+internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): String =
+    fitWords(text) { s -> measurer.measure(AnnotatedString(s), style, maxLines = 1, softWrap = false).size.width <= width }
+
+/** [text] whole if it [fits], else cut after its last whole word that leaves room for an ellipsis (as above). */
+internal fun fitWords(text: String, fits: (String) -> Boolean): String {
     if (fits(text)) return text
     var end = text.length
     while (true) {
