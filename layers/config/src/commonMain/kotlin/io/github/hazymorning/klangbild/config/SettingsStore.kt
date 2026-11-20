@@ -26,6 +26,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val remote = booleanKey("remote_control")
         val progressBar = booleanKey("show_time_line")
         val next = booleanKey("show_next")
+        val trackNumber = booleanKey("show_track_number")
         val album = booleanKey("show_album")
         val group = booleanKey("show_group")
         val volume = stringKey("volume_display")
@@ -138,6 +139,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             remoteControl = p[Keys.remote] ?: defaults.remoteControl,
             showProgressBar = p[Keys.progressBar] ?: defaults.showProgressBar,
             showNext = p[Keys.next] ?: defaults.showNext,
+            showTrackNumber = p[Keys.trackNumber] ?: defaults.showTrackNumber,
             showAlbum = p[Keys.album] ?: defaults.showAlbum,
             showGroup = p[Keys.group] ?: defaults.showGroup,
             volumeDisplay = enumOr(p[Keys.volume], defaults.volumeDisplay),
@@ -191,6 +193,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.remote] = s.remoteControl
         p[Keys.progressBar] = s.showProgressBar
         p[Keys.next] = s.showNext
+        p[Keys.trackNumber] = s.showTrackNumber
         p[Keys.album] = s.showAlbum
         p[Keys.group] = s.showGroup
         p[Keys.volume] = s.volumeDisplay.name

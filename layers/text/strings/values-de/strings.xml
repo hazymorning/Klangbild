@@ -29,6 +29,7 @@
     <string name="entry_clock">Uhrzeit</string>
     <string name="entry_progress">Fortschrittsbalken</string>
     <string name="entry_next">Nächster Titel</string>
+    <string name="entry_track_number">Titelnummer</string>
     <string name="entry_album">Album und Jahr</string>
     <string name="entry_group">Lautsprechergruppe</string>
     <string name="entry_volume">Lautstärke</string>
@@ -127,6 +128,8 @@
     <string name="about_clock">Die Uhrzeit oben in der ersten Zeile.</string>
     <string name="about_progress">Der Balken mit gespielter Zeit und Länge. Ausgeschaltet zeigt ihn ein Tastendruck trotzdem kurz.</string>
     <string name="about_next">Der nächste Titel aus der Warteschlange, in der letzten Zeile.</string>
+    <string name="about_track_number">Die letzte Zeile beginnt mit der Position des Titels in der Warteschlange, etwa 3 von 45. Das gibt es bei Lautsprechern von Music Assistant, aber nicht bei Radio, Hörbüchern und Podcasts.</string>
+    <string name="about_track_number_list">Die Liste der nächsten Titel steht an der Stelle der letzten Zeile. Ohne die Liste beginnt die letzte Zeile mit der Position des Titels in der Warteschlange, etwa 3 von 45.</string>
     <string name="about_album">Name und Jahr des Albums unter den Künstlern.</string>
     <string name="about_group">Spielen weitere Lautsprecher mit, steht neben der Uhrzeit etwa „Wohnzimmer + 5“ oder „Überall“.</string>
     <string name="about_volume_on_change">Ändert sich die Lautstärke, steht sie ein paar Sekunden lang neben der Uhrzeit.</string>
@@ -277,6 +280,7 @@
     </string-array>
     <string name="stage_link_down">Verbindung wird wiederhergestellt …</string>
     <string name="stage_next">Als Nächstes</string>
+    <string name="stage_place">%1$s von %2$s</string>
     <string name="hint_down_key">Pfeil runter</string>
     <string name="hint_down">öffnet die Schnelleinstellungen</string>
     <string name="chapter_number">Kapitel %d</string>

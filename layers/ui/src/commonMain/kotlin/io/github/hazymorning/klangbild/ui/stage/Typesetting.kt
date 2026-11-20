@@ -93,6 +93,9 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces, val scale: F
     /** "Up next" differs from what follows by weight alone. */
     val footerLead = SpanStyle(fontWeight = FontWeight(560))
 
+    /** The track's position in the queue ("3 of 45"), first in the footer: in the title face, like the clock above it. */
+    val footerPlace = SpanStyle(fontFamily = time.fontFamily)
+
     /** A queue row's title. */
     val rowTitle = faces.textType(17f * scale, 500, muted, lineHeight = 23f * scale).leftToRight()
 
@@ -217,6 +220,8 @@ internal class TextPlan(
     val footer: String?,
     /** The footer's lead ("Up next"). */
     val footerLead: String,
+    /** The track's position in the queue, first in the footer ("3 of 45"). */
+    val footerPlace: String?,
 )
 
 /** Measures the block once per model. */
@@ -227,8 +232,8 @@ internal fun rememberTextPlan(model: StageModel): TextPlan {
     val footerLead = model.footerLead ?: texts()[Strings.stageNext]
     val faces = faces()
     return remember(
-        model.text, model.year, model.footer, model.footerTitle, model.scene.layout, model.scene.palette, model.barShown, model.slotText, model.durationMs == null,
-        model.chapter != null, localDensity, footerLead, faces,
+        model.text, model.year, model.footer, model.footerTitle, model.footerPlace, model.scene.layout, model.scene.palette, model.barShown, model.slotText,
+        model.durationMs == null, model.chapter != null, localDensity, footerLead, faces,
     ) {
         planText(model, measurer, localDensity, footerLead, faces)
     }
@@ -306,7 +311,7 @@ private fun planText(
     // The album with its year. The year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
-    val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(footerLead, s, styles) } }
+    val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(model.footerPlace, footerLead, s, styles) } }
     return TextPlan(
         title = choice.layout.layoutInput.text,
         titleStyle = choice.layout.layoutInput.style,
@@ -321,6 +326,7 @@ private fun planText(
         album = album,
         footer = footer,
         footerLead = footerLead,
+        footerPlace = model.footerPlace,
     )
 }
 
@@ -486,11 +492,22 @@ internal fun isMostlyCjk(text: String): Boolean {
 internal fun fitFooter(measurer: TextMeasurer, full: String, title: String?, style: TextStyle, width: Int, set: (String) -> AnnotatedString): String =
     if (title == null || measurer.measure(set(full), style, maxLines = 1, softWrap = false).size.width <= width) full else title
 
-/** "Up next" ([lead]) in a heavier weight, 12 dp, then what comes next (isolated if right-to-left). */
-internal fun footerText(lead: String, text: String, styles: StageStyles): AnnotatedString = buildAnnotatedString {
-    withStyle(styles.footerLead) { append(lead) }
-    // A no-break space widened by 0.55 em: about 12 dp at the footer's 15 sp.
-    withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(NBSP) }
+/**
+ * The footer: the track's position in the queue ([place], "3 of 45"), then "Up next" ([lead]) in
+ * a heavier weight, 12 dp, and [text], what comes next (isolated if right-to-left). Without a
+ * lead [text] follows the position alone, and without [text] the position stands alone.
+ */
+internal fun footerText(place: String?, lead: String?, text: String?, styles: StageStyles): AnnotatedString = buildAnnotatedString {
+    if (place != null) {
+        withStyle(styles.footerPlace) { append(place) }
+        if (text != null) append(TimeText.SEPARATOR)
+    }
+    if (text == null) return@buildAnnotatedString
+    if (lead != null) {
+        withStyle(styles.footerLead) { append(lead) }
+        // A no-break space widened by 0.55 em: about 12 dp at the footer's 15 sp.
+        withStyle(SpanStyle(letterSpacing = 0.55.em)) { append(NBSP) }
+    }
     append(isolateRightToLeft(text))
 }
 

@@ -30,6 +30,8 @@ sealed interface Screen {
          * dimmed like a pause, and says so until [Timing.linkGiveUpMs].
          */
         val linkDown: Boolean = false,
+        /** Where [track] stands in its queue, as far as Music Assistant tells. */
+        val place: QueuePlace? = null,
     ) : Screen
 
     data class Rest(val reason: RestReason, val speaker: String? = null) : Screen
@@ -125,7 +127,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
             val downFor = s.linkDownSinceMs?.let { now - it } ?: 0L
             val track = player.track
             return if (track != null && player.status in stagedStatuses && downFor < timing.linkGiveUpMs) {
-                Screen.Stage(track, player.status, s.next, linkDown = downFor >= timing.linkGraceMs)
+                Screen.Stage(track, player.status, s.next, linkDown = downFor >= timing.linkGraceMs, place = s.place)
             } else {
                 Screen.Rest(RestReason.OFFLINE, speaker)
             }
@@ -135,7 +137,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
         if (player.status == PlayerStatus.UNAVAILABLE) return Screen.Rest(RestReason.UNAVAILABLE, speaker)
         val track = player.track
         if (track != null && player.status in stagedStatuses) {
-            return Screen.Stage(track, player.status, s.next)
+            return Screen.Stage(track, player.status, s.next, place = s.place)
         }
         return Screen.Rest(RestReason.IDLE, speaker)
     }

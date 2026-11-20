@@ -13,6 +13,7 @@ import assertk.assertions.isTrue
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -135,8 +136,10 @@ class PlayerParserTest {
         assertThat(q.next!!.artworkUrl).isEqualTo("http://192.168.1.5:8123/api/x.png")
         // The active queue's name: the group player the speaker plays in.
         assertThat(q.name).isEqualTo("Erdgeschoss")
-        // Where the queue stands.
+        // Where the queue stands: the sixth of twelve items.
         assertThat(q.currentIndex).isEqualTo(5)
+        assertThat(q.items).isEqualTo(12)
+        assertThat(q.place).isEqualTo(QueuePlace(6, 12))
     }
 
     @Test

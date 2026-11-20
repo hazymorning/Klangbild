@@ -23,6 +23,7 @@ import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Progress
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.QuickAction
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
@@ -689,6 +690,17 @@ class HaSourceTest {
         """{"media_player.wz":{"queue_id":"q1","current_index":0,"current_item":$current,"next_item":${next ?: "null"}}}"""
 
     @Test
+    fun `where the song stands in its queue comes with Home Assistant's queue`() = runBlocking {
+        player = maPlayer("Erstes Lied", "c1")
+        queueAnswer = { """{"media_player.wz":{"queue_id":"q1","current_index":2,"items":45,"current_item":${item("Erstes Lied", "erstes")},"next_item":null}}""" }
+        val s = source()
+        s.start()
+        val known = withTimeout(5_000) { s.state.first { it.queueKnown } }
+        assertThat(known.place).isEqualTo(QueuePlace(3, 45))
+        s.stop()
+    }
+
+    @Test
     fun `a Music Assistant song comes once, with its own picture and the album's year`() = runBlocking {
         player = maPlayer("Erstes Lied", "c1")
         queueAnswer = { queueOf(item("Erstes Lied", "erstes"), null) }
@@ -885,9 +897,11 @@ class HaSourceTest {
             titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied")
             val changed = withTimeout(5_000) { s.state.first { it.next?.title == "Eingeschoben" } }
             assertThat(changed.coming.map { it.title }).containsExactly("Eingeschoben", "Zweites Lied")
+            // The queue has grown, and the song's place in it says so.
+            assertThat(changed.place).isEqualTo(QueuePlace(1, 3))
             // A song moved further down: the same song next and as many to come, yet the order follows.
             titles = listOf("Erstes Lied", "Eingeschoben", "Zweites Lied", "Drittes Lied")
-            withTimeout(5_000) { s.state.first { it.coming.size == 3 } }
+            assertThat(withTimeout(5_000) { s.state.first { it.coming.size == 3 } }.place).isEqualTo(QueuePlace(1, 4))
             titles = listOf("Erstes Lied", "Eingeschoben", "Drittes Lied", "Zweites Lied")
             val moved = withTimeout(5_000) { s.state.first { it.coming.map { c -> c.title } == listOf("Eingeschoben", "Drittes Lied", "Zweites Lied") } }
             assertThat(moved.next?.title).isEqualTo("Eingeschoben")

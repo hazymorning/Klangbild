@@ -5,7 +5,9 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -64,6 +66,20 @@ class StageTextsTest {
         assertThat(StageTexts.footer(next, de)).isEqualTo("Spiegel im Spiegel · Arvo Pärt")
         assertThat(StageTexts.footerTitle(next, de)).isEqualTo("Spiegel im Spiegel")
         assertThat(StageTexts.footer(null, de)).isNull()
+    }
+
+    @Test
+    fun `a song's place in its queue, only for music in a queue of more than one`() {
+        val song = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
+        assertThat(StageTexts.place(QueuePlace(3, 45), song, en)).isEqualTo("3 of 45")
+        assertThat(StageTexts.place(QueuePlace(3, 45), song, de)).isEqualTo("3 von 45")
+        assertThat(StageTexts.place(QueuePlace(1234, 2000), song, en)).isEqualTo("1,234 of 2,000")
+        assertThat(StageTexts.place(QueuePlace(1234, 2000), song, de)).isEqualTo("1.234 von 2.000")
+        assertThat(StageTexts.place(QueuePlace(1, 1), song, en)).isNull()
+        assertThat(StageTexts.place(null, song, en)).isNull()
+        assertThat(StageTexts.place(QueuePlace(2, 9), song.copy(kind = MediaKind.RADIO), en)).isNull()
+        assertThat(StageTexts.place(QueuePlace(2, 9), song.copy(kind = MediaKind.AUDIOBOOK), en)).isNull()
+        assertThat(StageTexts.place(QueuePlace(2, 9), song.copy(kind = MediaKind.PODCAST), en)).isNull()
     }
 
     @Test

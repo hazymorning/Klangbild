@@ -341,7 +341,7 @@ internal fun TextLayer(
             // 5: the slot, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "slot")
             // 6: the footer, at the column's foot
-            FooterLine(plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
+            FooterLine(plan.footerPlace, plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
@@ -411,20 +411,25 @@ internal fun TextLayer(
 }
 
 /**
- * The footer: [text] after its [lead] ("Up next"), or nothing while [text] is null. A new one
- * (the next chapter while a book plays on, or the hint for the quick settings) crossfades in
- * place, and so does one that comes or goes.
+ * The footer: the track's position in the queue ([place]), then [text] after its [lead] ("Up
+ * next"), or nothing while both are null. A new one (the next chapter while a book plays on, the
+ * hint for the quick settings, or a queue that has grown) crossfades in place, and so does one
+ * that comes or goes.
  */
 @Composable
-internal fun FooterLine(text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
-    Crossfade(text?.let { lead to it }, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { line ->
+internal fun FooterLine(place: String?, text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
+    val parts = if (place == null && text == null) null else FooterParts(place, lead, text)
+    Crossfade(parts, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { line ->
         if (line == null) {
             Box(Modifier)
         } else {
-            BasicText(footerText(line.first, line.second, styles), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(footerText(line.place, line.lead, line.text, styles), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
+
+/** What the footer holds: the position in the queue, the lead and what comes next. */
+private data class FooterParts(val place: String?, val lead: String, val text: String?)
 
 /**
  * The status line at the top of the column: the time, the custom values, then the lead, where

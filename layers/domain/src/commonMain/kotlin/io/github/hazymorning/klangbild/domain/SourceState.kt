@@ -31,6 +31,8 @@ data class SourceState(
     /** True when connected but the configured entity does not exist. */
     val entityMissing: Boolean = false,
     val next: TrackInfo? = null,
+    /** Where the current track stands in Music Assistant's queue; null without one. */
+    val place: QueuePlace? = null,
     val sunElevation: Double? = null,
     /** Local time the player snapshot was received (for extrapolation without timestamps). */
     val receivedAtMs: Long = 0,

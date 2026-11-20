@@ -16,6 +16,7 @@ import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.Catalog
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
@@ -57,6 +58,9 @@ class LyricsStageTest {
     }
 
     @Test fun dark() = shot("single_dark", Fixtures.lyricsModel(neon, neonLyrics))
+
+    /** The last line names the song itself, after its place in the queue. */
+    @Test fun trackNumber() = shot("single_track_number", Fixtures.lyricsModel(neon, neonLyrics, place = QueuePlace(3, 45)))
 
     @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, edge = true)))
 

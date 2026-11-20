@@ -52,6 +52,7 @@ object Fixtures : AppFixtures() {
         progress: Boolean = true,
         linkDown: Boolean = false,
         values: List<String> = emptyList(),
+        place: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
     ): StageModel {
         val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers])
         return StageModel(
@@ -65,6 +66,7 @@ object Fixtures : AppFixtures() {
             slotText = StageTexts.slotText(linkDown, track, t),
             footer = StageTexts.footer(next, t),
             footerTitle = StageTexts.footerTitle(next, t),
+            footerPlace = StageTexts.place(place, track, t),
             statusLine = StatusLine(lead, clock, values),
         )
     }
@@ -121,6 +123,7 @@ object Fixtures : AppFixtures() {
         t: Texts = texts,
         peek: Boolean = false,
         linkDown: Boolean = false,
+        place: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
     ): StageModel {
         val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
         return StageModel(
@@ -134,6 +137,7 @@ object Fixtures : AppFixtures() {
             slotText = StageTexts.slotText(linkDown, track, t),
             footer = StageTexts.footer(track, t),
             footerTitle = StageTexts.footerTitle(track, t),
+            footerPlace = StageTexts.place(place, track, t),
             statusLine = StatusLine(lead, clock),
             lyrics = lyrics,
         )

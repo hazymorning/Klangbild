@@ -91,6 +91,7 @@ class SettingsStoreTest {
             remoteControl = false,
             showProgressBar = false,
             showNext = false,
+            showTrackNumber = true,
             showAlbum = false,
             showGroup = false,
             volumeDisplay = VolumeDisplay.ALWAYS,

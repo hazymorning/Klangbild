@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import kotlin.test.Test
 
@@ -30,6 +31,26 @@ class ScreenStateMachineTest {
         val d = m.decide(src(), now = 0)
         assertThat(d.screen).isEqualTo(Screen.Stage(song, PlayerStatus.PLAYING, null))
         assertThat(d.asleep).isFalse()
+    }
+
+    @Test
+    fun `the stage knows where its song stands in the queue, also while the link is down`() {
+        val m = ScreenStateMachine(timing)
+        val place = QueuePlace(3, 45)
+        assertThat((m.decide(src().copy(place = place), now = 0).screen as Screen.Stage).place).isEqualTo(place)
+        val down = src(link = LinkState.RECONNECTING, downSince = 0).copy(place = place)
+        assertThat((m.decide(down, now = 30_000).screen as Screen.Stage).place).isEqualTo(place)
+    }
+
+    @Test
+    fun `a place in the queue counts from one and needs a queue that holds it`() {
+        assertThat(QueuePlace.of(0, 45)).isEqualTo(QueuePlace(1, 45))
+        assertThat(QueuePlace.of(44, 45)).isEqualTo(QueuePlace(45, 45))
+        assertThat(QueuePlace.of(45, 45)).isNull()
+        assertThat(QueuePlace.of(-1, 45)).isNull()
+        assertThat(QueuePlace.of(null, 45)).isNull()
+        assertThat(QueuePlace.of(2, null)).isNull()
+        assertThat(QueueInfo(current = null, next = null, currentIndex = 2, items = 45).place).isEqualTo(QueuePlace(3, 45))
     }
 
     @Test
