@@ -275,6 +275,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val statusLine = statusLineOf(ui, status, peek, wall.value, t)
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
+    val place = stageScreen?.place?.takeIf { display.trackNumber }
     val chapter = ui.chapter
     // The bar shows by setting, or for a moment after a key; beside lyrics or the artist's sentences only then.
     fun barWanted(s: StageData) = peek || (s.lyrics == null && s.bio == null && display.progressBar)
@@ -284,7 +285,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val playingNow by rememberUpdatedState(playingKey)
     val lyricsDelay by rememberUpdatedState(ui.lyricsDelayMs)
     val played = remember { PlayedLines() }
-    val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, statusLine, linkDown, display, peek, chapter, hint, t, hooks) {
+    val modelFor: (StageData) -> StageModel = remember(playingKey, status, nextTrack, place, statusLine, linkDown, display, peek, chapter, hint, t, hooks) {
         { s: StageData ->
             val key = s.track.key
             val plays = key == playingKey
@@ -293,6 +294,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             // the chapter, the next chapter after it.
             val chapterPlace = played.chapter(key, plays, chapter)
             val nextKept = played.next(key, plays, nextTrack)
+            val placeKept = played.place(key, plays, place)
             val nextChapter = chapterPlace?.next?.takeIf { display.next }
             // The song's words, or the artist's: the song itself where "Up next" stands, the bar only for a moment.
             val lyrics = s.lyrics
@@ -331,6 +333,8 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                     else -> StageTexts.footerTitle(nextKept, t)
                 },
                 footerLead = if (showHint) t[Strings.hintDownKey] else null,
+                // The hint and the list take the footer's place, the position in the queue with it.
+                footerPlace = if (showHint || queueList != null) null else StageTexts.place(placeKept, s.track, t),
                 chapter = chapterPlace?.label,
                 barStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,

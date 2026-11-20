@@ -49,6 +49,9 @@ class Texts internal constructor(
         return fontSafe(formatted((if (count == 1) words.one else words.other)[id.index], arrayOf(number)))
     }
 
+    /** A whole number as the language groups it: "1,234", "1.234". */
+    fun integer(value: Int): String = fontSafe(region.integer(value.toLong()))
+
     /** "35%", "35 %": a whole percent as the language writes it. */
     fun percent(percent: Int): String = fontSafe(region.integer(percent.toLong()) + region.percentSuffix)
 

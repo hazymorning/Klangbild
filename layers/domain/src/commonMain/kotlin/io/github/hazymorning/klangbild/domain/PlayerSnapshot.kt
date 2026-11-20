@@ -78,4 +78,18 @@ data class QueueInfo(
     /** Music Assistant's id of the queue and the current item's place in it (to read the whole queue). */
     val queueId: String? = null,
     val currentIndex: Int? = null,
-)
+    /** How many items the queue holds. */
+    val items: Int? = null,
+) {
+    /** Where the current item stands in the queue; null when the queue doesn't say. */
+    val place: QueuePlace? get() = QueuePlace.of(currentIndex, items)
+}
+
+/** Where a track stands in its queue: the [number]th (from 1) of [count] items. */
+data class QueuePlace(val number: Int, val count: Int) {
+    companion object {
+        /** The place of the item at [index] (from 0) in a queue of [items]; null unless both are known and agree. */
+        fun of(index: Int?, items: Int?): QueuePlace? =
+            if (index == null || items == null || index < 0 || index >= items) null else QueuePlace(index + 1, items)
+    }
+}

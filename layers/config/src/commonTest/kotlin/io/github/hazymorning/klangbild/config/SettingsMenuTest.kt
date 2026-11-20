@@ -261,6 +261,28 @@ class SettingsMenuTest {
     }
 
     @Test
+    fun `the track number is off at first, and with the list in its place it says so`() {
+        val en = TestTexts.english()
+        val row = SettingsMenu.rows(configured, MenuContext(), en, MenuSection.INFO).first { it.entry == MenuEntry.TRACK_NUMBER }
+        assertThat(row.label).isEqualTo("Track number")
+        assertThat(row.value).isEqualTo("Off")
+        // Home Assistant asks Music Assistant for the queue: nothing to set up in Klangbild.
+        assertThat(row.dimmed).isFalse()
+        assertThat(row.description).isEqualTo(en[Strings.aboutTrackNumber])
+        val on = SettingsMenu.step(MenuEntry.TRACK_NUMBER, configured, +1)!!
+        assertThat(on.showTrackNumber).isTrue()
+        assertThat(on.display.trackNumber).isTrue()
+        assertThat(SettingsMenu.value(MenuEntry.TRACK_NUMBER, on, MenuContext(), de)).isEqualTo("An")
+        // The list beside the cover takes the last line's place; without Music Assistant it can't show.
+        val list = on.copy(queue = QueueDisplay.LIST)
+        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, list, MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumber])
+        val withMa = list.copy(maUrl = "http://192.168.1.5:8095", maToken = "ma")
+        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, withMa, MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumberList])
+        // Cover Flow keeps the last line.
+        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, withMa.copy(view = StageView.FLOW), MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumber])
+    }
+
+    @Test
     fun `the song's words are a setting too, and without Music Assistant they say what they need`() {
         val lyrics = SettingsMenu.rows(configured, MenuContext(), de, MenuSection.INFO).first { it.entry == MenuEntry.LYRICS }
         assertThat(lyrics.label).isEqualTo("Songtext")
@@ -288,7 +310,7 @@ class SettingsMenuTest {
         assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, on, MenuContext(), de)).isEqualTo("An")
         assertThat(SettingsMenu.value(MenuEntry.ARTIST_INFO, withMa, MenuContext(), TestTexts.english())).isEqualTo("Off")
         assertThat(SettingsMenu.rows(on, MenuContext(), de, MenuSection.INFO).map { it.entry }).containsExactly(
-            MenuEntry.CLOCK, MenuEntry.PROGRESS_BAR, MenuEntry.NEXT, MenuEntry.ALBUM, MenuEntry.GROUP, MenuEntry.VOLUME, MenuEntry.VALUES,
+            MenuEntry.CLOCK, MenuEntry.PROGRESS_BAR, MenuEntry.NEXT, MenuEntry.TRACK_NUMBER, MenuEntry.ALBUM, MenuEntry.GROUP, MenuEntry.VOLUME, MenuEntry.VALUES,
             MenuEntry.NOTIFICATIONS, MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.ARTIST_INFO,
         )
     }

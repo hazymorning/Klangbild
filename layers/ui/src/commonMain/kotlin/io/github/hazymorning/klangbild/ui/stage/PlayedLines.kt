@@ -1,18 +1,20 @@
 package io.github.hazymorning.klangbild.ui.stage
 
 import io.github.hazymorning.klangbild.domain.ChapterPlace
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.math.RecentMap
 
 /**
  * What each track's lines showed while it played, so that a stage still on screen after its track
  * has ended (the next track's scene still being made, or its lines leaving in a change) keeps its
- * own position, its own next track and its own chapter.
+ * own position, its own next track, its own place in the queue and its own chapter.
  */
 internal class PlayedLines {
     private class Played {
         var position: Long? = null
         var next: TrackInfo? = null
+        var place: QueuePlace? = null
         var chapter: ChapterPlace? = null
 
         /** It played at the last read of its position. */
@@ -29,6 +31,13 @@ internal class PlayedLines {
         val p = of(key)
         if (plays) p.next = now
         return p.next
+    }
+
+    /** Where [key] stands in its queue: [now] while it [plays] (and kept), else where it stood. */
+    fun place(key: String, plays: Boolean, now: QueuePlace?): QueuePlace? {
+        val p = of(key)
+        if (plays) p.place = now
+        return p.place
     }
 
     /** The chapter [key] stands in: [now] while it [plays] (and kept), else the last one. */

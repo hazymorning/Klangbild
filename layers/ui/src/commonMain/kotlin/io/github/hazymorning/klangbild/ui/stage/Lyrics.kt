@@ -346,8 +346,8 @@ internal fun LyricsText(
             // 1: the slot above the footer, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
             // 2: the footer, which names the track itself
-            val track = model.footer?.let { rememberFooter(it, model.footerTitle, styles, colW) }
-            if (track != null) BasicText(AnnotatedString(isolateRightToLeft(track)), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            val track = model.footer?.let { rememberFooter(model.footerPlace, it, model.footerTitle, styles, colW) }
+            if (track != null) BasicText(footerText(model.footerPlace, null, track, styles), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
         val lyricLines = measurables[0].measure(constraints)
@@ -472,11 +472,11 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
     return (1f - abs(off) / step).coerceIn(0f, 1f)
 }
 
-/** The track in the footer, which has no lead here ([fitFooter]). */
+/** The track in the footer, after its position in the queue ([place]) and without a lead ([fitFooter]). */
 @Composable
-internal fun rememberFooter(full: String, title: String?, styles: StageStyles, width: Int): String {
+internal fun rememberFooter(place: String?, full: String, title: String?, styles: StageStyles, width: Int): String {
     val measurer = rememberTextMeasurer(cacheSize = 4)
-    return remember(full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { AnnotatedString(isolateRightToLeft(it)) } }
+    return remember(place, full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { footerText(place, null, it, styles) } }
 }
 
 /**

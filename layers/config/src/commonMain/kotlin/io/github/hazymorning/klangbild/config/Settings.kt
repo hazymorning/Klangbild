@@ -134,6 +134,8 @@ data class DisplayOptions(
     val progressBar: Boolean = true,
     /** What comes next, on the artwork's bottom edge. */
     val next: Boolean = true,
+    /** The track's position in its queue ("3 of 45"), first in the last line. */
+    val trackNumber: Boolean = false,
     val album: Boolean = true,
     /** "Living room + 5" while other speakers play along. */
     val group: Boolean = true,
@@ -182,6 +184,8 @@ data class Settings(
     val remoteControl: Boolean = true,
     val showProgressBar: Boolean = true,
     val showNext: Boolean = true,
+    /** The last line starts with the track's position in the queue (the menu's Track number). */
+    val showTrackNumber: Boolean = false,
     val showAlbum: Boolean = true,
     val showGroup: Boolean = true,
     val volumeDisplay: VolumeDisplay = VolumeDisplay.ON_CHANGE,
@@ -321,6 +325,7 @@ data class Settings(
             clock = showClock,
             progressBar = showProgressBar,
             next = showNext,
+            trackNumber = showTrackNumber,
             album = showAlbum,
             group = showGroup,
             volume = volumeDisplay,

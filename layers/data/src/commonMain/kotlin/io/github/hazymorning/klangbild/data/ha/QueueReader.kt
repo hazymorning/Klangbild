@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.SongBio
 import io.github.hazymorning.klangbild.domain.SongLyrics
 import io.github.hazymorning.klangbild.domain.TrackInfo
@@ -325,6 +326,15 @@ internal class QueueReader(
         val mine = maNext?.takeIf { q != null && it.key == key } ?: return ha?.pictured(windowFor(key)?.coming?.firstOrNull())
         val next = mine.next ?: return null
         return if (ha != null && ha.kind == next.kind && sameTitle(ha.title, next.title)) ha.pictured(next) else next
+    }
+
+    /**
+     * Where the song [key] stands in its queue: as Music Assistant itself last told while it
+     * plays (songs added or removed since Home Assistant's read), else as Home Assistant's [q] says.
+     */
+    fun placeOf(q: QueueInfo?, key: String?): QueuePlace? {
+        val shape = maNext?.takeIf { q != null && it.key == key }?.shape
+        return shape?.let { QueuePlace.of(it.index, it.items) } ?: q?.place
     }
 
     /**

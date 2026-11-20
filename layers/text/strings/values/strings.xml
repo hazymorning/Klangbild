@@ -37,6 +37,7 @@
     <string name="entry_clock">Clock</string>
     <string name="entry_progress">Progress bar</string>
     <string name="entry_next">Next track</string>
+    <string name="entry_track_number">Track number</string>
     <string name="entry_album">Album and year</string>
     <string name="entry_group">Speaker group</string>
     <string name="entry_volume">Volume</string>
@@ -139,6 +140,8 @@
     <string name="about_clock">The time in the top line.</string>
     <string name="about_progress">The bar with the time played and the length. Turned off, a key press still shows it briefly.</string>
     <string name="about_next">The next track in the queue, in the last line.</string>
+    <string name="about_track_number">The last line begins with the track’s position in the queue, like 3 of 45. It shows for Music Assistant’s speakers, but not with radio, audiobooks and podcasts.</string>
+    <string name="about_track_number_list">The list of the next tracks has taken the last line’s place. Without the list, the last line begins with the track’s position in the queue, like 3 of 45.</string>
     <string name="about_album">The album’s name and year below the artists.</string>
     <string name="about_group">When other speakers play along, the time is followed by “Living room + 5” or “Everywhere”.</string>
     <string name="about_volume_on_change">When the volume changes, it shows next to the clock for a few seconds.</string>
@@ -293,6 +296,7 @@
     </string-array>
     <string name="stage_link_down">Reconnecting…</string>
     <string name="stage_next">Up next</string>
+    <string name="stage_place">%1$s of %2$s</string>
     <string name="hint_down_key">Arrow down</string>
     <string name="hint_down">opens the quick settings</string>
     <string name="chapter_number">Chapter %d</string>

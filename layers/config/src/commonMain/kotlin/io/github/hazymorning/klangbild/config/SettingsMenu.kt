@@ -36,6 +36,7 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     CLOCK(MenuSection.INFO, Strings.entryClock),
     PROGRESS_BAR(MenuSection.INFO, Strings.entryProgress),
     NEXT(MenuSection.INFO, Strings.entryNext),
+    TRACK_NUMBER(MenuSection.INFO, Strings.entryTrackNumber),
     ALBUM(MenuSection.INFO, Strings.entryAlbum),
     GROUP(MenuSection.INFO, Strings.entryGroup),
     VOLUME(MenuSection.INFO, Strings.entryVolume),
@@ -185,6 +186,7 @@ object SettingsMenu {
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
+        MenuEntry.TRACK_NUMBER -> onOff(s.showTrackNumber, t)
         MenuEntry.ALBUM -> onOff(s.showAlbum, t)
         MenuEntry.GROUP -> onOff(s.showGroup, t)
         MenuEntry.VOLUME -> t[
@@ -317,6 +319,8 @@ object SettingsMenu {
         MenuEntry.CLOCK -> t[Strings.aboutClock]
         MenuEntry.PROGRESS_BAR -> t[Strings.aboutProgress]
         MenuEntry.NEXT -> t[Strings.aboutNext]
+        // The list takes the last line's place (it shows only with Music Assistant set up).
+        MenuEntry.TRACK_NUMBER -> t[if (s.shownQueue == QueueDisplay.LIST && s.hasMusicAssistant) Strings.aboutTrackNumberList else Strings.aboutTrackNumber]
         MenuEntry.ALBUM -> t[Strings.aboutAlbum]
         MenuEntry.GROUP -> t[Strings.aboutGroup]
         MenuEntry.VOLUME -> t[
@@ -522,6 +526,7 @@ object SettingsMenu {
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
+        MenuEntry.TRACK_NUMBER -> s.copy(showTrackNumber = !s.showTrackNumber)
         MenuEntry.ALBUM -> s.copy(showAlbum = !s.showAlbum)
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))

@@ -5,7 +5,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.domain.QueuePlace
+import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.Fixtures.spiegel
+import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import org.junit.experimental.categories.Category
@@ -20,6 +23,8 @@ import kotlin.test.Test
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi")
 class StageTest {
+    private val en = TestTexts.english()
+
     private fun shot(name: String, model: StageModel) =
         captureRoboImage("build/screenshots/stage/$name.png") { Fixtures.Still { Stage(model) } }
 
@@ -44,6 +49,24 @@ class StageTest {
     private fun edge(name: String, cover: SyntheticCover, appearance: Appearance = Appearance.DARK, coverField: Boolean = false) {
         val track = Fixtures.track(cover)
         shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, edge = true)))
+    }
+
+    /** The last line starts with the song's place in the queue, in German and English, and stands alone on the last song. */
+    @Test fun trackNumber() = shot("track_number", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, group = "Wohnzimmer", place = QueuePlace(3, 45)))
+
+    @Test fun trackNumberEnglish() = captureRoboImage("build/screenshots/stage/track_number_en.png") {
+        Fixtures.Still(en) { Stage(Fixtures.model(Fixtures.track(SyntheticCover.MIST), next = spiegel, group = "Living room", t = en, place = QueuePlace(12, 1240))) }
+    }
+
+    @Test fun trackNumberLast() = shot("track_number_last", Fixtures.model(Fixtures.track(SyntheticCover.BAUHAUS), place = QueuePlace(45, 45)))
+
+    @Test fun trackNumberFlow() {
+        val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
+        val tracks = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS).map(Fixtures::track) + neon +
+            listOf(SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS).map(Fixtures::track)
+        val scenes = Fixtures.flowScenes(tracks, Appearance.DARK)
+        val model = Fixtures.model(neon, next = tracks[3], group = "Wohnzimmer", scene = scenes[2], place = QueuePlace(3, 5))
+        captureRoboImage("build/screenshots/stage/track_number_flow.png") { Fixtures.Still { FlowStage(model, Fixtures.restingCards(scenes, 2)) } }
     }
 
     /** A short word never ends a title line; a long "Up next" line drops its artist rather than cutting it. */

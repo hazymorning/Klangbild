@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import io.github.hazymorning.klangbild.domain.ArtistBio
 import io.github.hazymorning.klangbild.domain.Lyrics
+import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
@@ -43,6 +45,8 @@ internal class StageModel(
     val footerTitle: String? = null,
     /** The footer's lead in place of "Up next": "Arrow down" while the hint for the quick settings shows. */
     val footerLead: String? = null,
+    /** The track's position in its queue, first in the footer ("3 of 45"); it shows alone when nothing follows it there. */
+    val footerPlace: String? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */
     val chapter: String? = null,
     /** Where the progress bar starts in the track's time: the chapter's start. */
@@ -120,6 +124,14 @@ internal object StageTexts {
 
     /** [track]'s title alone in the footer: "Spiegel im Spiegel". */
     fun footerTitle(track: TrackInfo?, t: Texts): String? = track?.let { TrackText.from(it, t[Strings.artistsOthers]).title }
+
+    /**
+     * Where [track] stands in its queue, as the footer starts with it: "3 of 45". Only for music
+     * in a queue of more than one track: a station's or a book's place says nothing of what plays.
+     */
+    fun place(place: QueuePlace?, track: TrackInfo, t: Texts): String? =
+        place?.takeIf { track.kind == MediaKind.MUSIC && it.count > 1 }
+            ?.let { t.format(Strings.stagePlace, t.integer(it.number), t.integer(it.count)) }
 
     /** The slot text: the lost connection, or a radio's station. */
     fun slotText(linkDown: Boolean, track: TrackInfo, t: Texts): String? = when {
