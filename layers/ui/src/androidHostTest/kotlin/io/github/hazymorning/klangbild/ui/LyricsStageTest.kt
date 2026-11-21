@@ -9,8 +9,8 @@ import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
@@ -105,7 +105,7 @@ class LyricsStageTest {
      */
     @Test
     fun quickSettings() {
-        fun quick(focus: QuickItem, lyrics: LyricsChoice, t: Texts): QuickState {
+        fun quick(focus: QuickItem, lyrics: ColumnChoice, t: Texts): QuickState {
             val rows = QuickMenu.rows(Settings(), QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = lyrics), t)
             return QuickState(rows, rows.indexOfFirst { it.item == focus })
         }
@@ -113,7 +113,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.lyricsModel(neon, neonLyrics))
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.ON, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.ON, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -122,7 +122,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(noWords)
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.NONE, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -130,7 +130,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(noWords)
-                    QuickBar(quick(QuickItem.VIEW, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.VIEW, ColumnChoice.NONE, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -138,7 +138,7 @@ class LyricsStageTest {
             Fixtures.Still(en) {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(Fixtures.night, next = Fixtures.spiegel, t = en, appearance = Appearance.LIGHT))
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.NONE, en), Appearance.LIGHT)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.NONE, en), Appearance.LIGHT)
                 }
             }
         }

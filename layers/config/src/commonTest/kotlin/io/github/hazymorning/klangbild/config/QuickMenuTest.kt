@@ -30,23 +30,23 @@ class QuickMenuTest {
 
     @Test
     fun `the song's words stand after the view, only with Music Assistant and a song`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.ON)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.ON)
         val rows = QuickMenu.rows(lights, ctx, de)
         assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.LYRICS, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN)
         assertThat(rows[1].label).isEqualTo("Songtext")
         assertThat(rows[1].value).isEqualTo("An")
         assertThat(rows[1].muted).isFalse()
-        val off = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.OFF), de)[1]
+        val off = QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.OFF), de)[1]
         assertThat(off.value).isEqualTo("Aus")
         assertThat(off.muted).isFalse()
         // On, but this song has no synced words: still On, said quietly (a word of its own read
         // like the words switched off).
-        val none = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de)[1]
+        val none = QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), de)[1]
         assertThat(none.value).isEqualTo("An")
         assertThat(none.muted).isTrue()
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), TestTexts.english())[1].value).isEqualTo("On")
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), TestTexts.english())[1].value).isEqualTo("On")
         // No other entry is ever quiet.
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de).filter { it.muted }.map { it.item }).containsExactlyInAnyOrder(QuickItem.LYRICS)
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), de).filter { it.muted }.map { it.item }).containsExactlyInAnyOrder(QuickItem.LYRICS)
         // Its place is as wide as any of its values.
         assertThat(rows[1].values).containsExactlyInAnyOrder("An", "Aus")
         // Without Music Assistant, or without a song: no entry.
@@ -56,16 +56,16 @@ class QuickMenuTest {
 
     @Test
     fun `the artist info stands after the song's words, only with Music Assistant and a song`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.ON, artist = ArtistChoice.ON)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.ON, artist = ColumnChoice.ON)
         val rows = QuickMenu.rows(lights, ctx, de)
         assertThat(rows.map { it.item }).containsExactly(
             QuickItem.VIEW, QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN,
         )
         assertThat(rows[2].label).isEqualTo("Künstlerinfo")
         assertThat(rows[2].value).isEqualTo("An")
-        assertThat(QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.OFF), de)[2].value).isEqualTo("Aus")
+        assertThat(QuickMenu.rows(lights, ctx.copy(artist = ColumnChoice.OFF), de)[2].value).isEqualTo("Aus")
         // On, but Music Assistant knows nothing about this artist: still On, said quietly.
-        val none = QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.NONE), de)[2]
+        val none = QuickMenu.rows(lights, ctx.copy(artist = ColumnChoice.NONE), de)[2]
         assertThat(none.value).isEqualTo("An")
         assertThat(none.muted).isTrue()
         assertThat(rows[2].values).containsExactlyInAnyOrder("An", "Aus")
@@ -75,7 +75,7 @@ class QuickMenuTest {
 
     @Test
     fun `the party code stands with what the screen shows, only while a party plays here`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.OFF, party = false)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.OFF, party = false)
         val rows = QuickMenu.rows(lights, ctx, de)
         assertThat(rows.map { it.item }).containsExactly(
             QuickItem.VIEW, QuickItem.LYRICS, QuickItem.PARTY, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN,

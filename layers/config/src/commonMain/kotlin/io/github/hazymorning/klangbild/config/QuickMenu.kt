@@ -6,16 +6,11 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 
 /**
- * The song's words in the text column: on, off, or on while this song has no synced words
- * (NONE: the entry still says On, in a quieter ink).
+ * What takes the text column, the song's words or a few sentences about its artist, as its entry
+ * in the quick settings says: on, off, or on while there are none for this song (NONE: the entry
+ * still says On, in a quieter ink).
  */
-enum class LyricsChoice { ON, OFF, NONE }
-
-/**
- * A few sentences about the artist in the text column: on, off, or on while Music Assistant
- * knows none about this song's artist (NONE: the entry still says On, in a quieter ink).
- */
-enum class ArtistChoice { ON, OFF, NONE }
+enum class ColumnChoice { ON, OFF, NONE }
 
 /** How far the current song's way into the favorites has come. */
 enum class FavoriteState {
@@ -103,11 +98,11 @@ data class QuickContext(
      */
     val actions: Map<Int, ActionState> = emptyMap(),
     /** The song's words as the entry says it; null without Music Assistant or without a song. */
-    val lyrics: LyricsChoice? = null,
+    val lyrics: ColumnChoice? = null,
     /** Whether a party's code shows; null while no party of Music Assistant's plays to this speaker. */
     val party: Boolean? = null,
     /** What is known about the artist as the entry says it; null without Music Assistant or without a song. */
-    val artist: ArtistChoice? = null,
+    val artist: ColumnChoice? = null,
 )
 
 /**
@@ -130,12 +125,12 @@ object QuickMenu {
         if (ctx.list && view != StageView.FLOW) row(QuickItem.QUEUE, SettingsMenu.queueValue(s.queue, t))
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
-        if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
-        if (ctx.artist != null) row(QuickItem.ARTIST, t[if (ctx.artist == ArtistChoice.OFF) Strings.off else Strings.on], muted = ctx.artist == ArtistChoice.NONE)
-        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) Strings.on else Strings.off])
+        if (ctx.lyrics != null) row(QuickItem.LYRICS, SettingsMenu.onOff(ctx.lyrics != ColumnChoice.OFF, t), muted = ctx.lyrics == ColumnChoice.NONE)
+        if (ctx.artist != null) row(QuickItem.ARTIST, SettingsMenu.onOff(ctx.artist != ColumnChoice.OFF, t), muted = ctx.artist == ColumnChoice.NONE)
+        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, SettingsMenu.onOff(ctx.party, t))
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
-        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) Strings.off else Strings.on])
-        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) Strings.on else Strings.off])
+        if (s.roomLights.isSet) row(QuickItem.LIGHTS, SettingsMenu.onOff(s.roomLightBrightness != RoomLightBrightness.OFF, t))
+        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, SettingsMenu.onOff(ctx.shuffle, t))
         s.quickActions.forEachIndexed { i, a ->
             val kind = a.kind ?: return@forEachIndexed
             val state = ctx.actions[i] ?: return@forEachIndexed
@@ -144,8 +139,6 @@ object QuickMenu {
         row(QuickItem.SETTINGS, t[Strings.quickOpen])
         if (ctx.music) row(QuickItem.SCREEN, t[Strings.quickTurnOff])
     }
-
-    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) Strings.off else Strings.on]
 
     fun favoriteValue(f: FavoriteState, t: Texts): String = t[
         when (f) {

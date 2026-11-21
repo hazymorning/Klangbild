@@ -1,9 +1,8 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.ActionState
-import io.github.hazymorning.klangbild.config.ArtistChoice
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
@@ -364,27 +363,30 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * The lyrics entry for [track]: only for a song, while Music Assistant (where the words come
-     * from) is connected. While it is on and Music Assistant has no synced words for the song (or
-     * the song has no length for them to follow), NONE: still On, said quietly.
+     * The lyrics entry for [track]. While it is on and Music Assistant has no synced words for the
+     * song (or the song has no length for them to follow), NONE.
      */
-    private fun lyricsChoice(track: TrackInfo): LyricsChoice? {
-        if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
-        if (!host.settings.lyrics) return LyricsChoice.OFF
+    private fun lyricsChoice(track: TrackInfo): ColumnChoice? {
         val known = host.ui.source.lyrics?.takeIf { it.key == track.key }
-        return if ((known != null && known.lyrics == null) || track.durationMs == null) LyricsChoice.NONE else LyricsChoice.ON
+        return columnChoice(track, host.settings.lyrics, none = (known != null && known.lyrics == null) || track.durationMs == null)
+    }
+
+    /** The artist info entry for [track]. While it is on and Music Assistant knows nothing about the song's artist, NONE. */
+    private fun artistChoice(track: TrackInfo): ColumnChoice? {
+        val known = host.ui.source.bio?.takeIf { it.key == track.key }
+        return columnChoice(track, host.settings.artistInfo, none = known != null && known.bio == null)
     }
 
     /**
-     * The artist info entry for [track]: only for a song, while Music Assistant (where the
-     * sentences come from) is connected. While it is on and Music Assistant knows nothing about
-     * the song's artist, NONE: still On, said quietly.
+     * The entry for what takes [track]'s text column from Music Assistant: only for a song, while
+     * Music Assistant is connected. Switched [on] while there is [none] for the song, NONE: still
+     * On, said quietly.
      */
-    private fun artistChoice(track: TrackInfo): ArtistChoice? {
-        if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
-        if (!host.settings.artistInfo) return ArtistChoice.OFF
-        val known = host.ui.source.bio?.takeIf { it.key == track.key }
-        return if (known != null && known.bio == null) ArtistChoice.NONE else ArtistChoice.ON
+    private fun columnChoice(track: TrackInfo, on: Boolean, none: Boolean): ColumnChoice? = when {
+        track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED -> null
+        !on -> ColumnChoice.OFF
+        none -> ColumnChoice.NONE
+        else -> ColumnChoice.ON
     }
 
     /**

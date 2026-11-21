@@ -9,7 +9,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
-import io.github.hazymorning.klangbild.config.LyricsChoice
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.Settings
@@ -306,7 +306,7 @@ class QuickControlTest {
         // A station's song: no entry.
         ui = ui.copy(screen = Screen.Stage(song.copy(kind = MediaKind.RADIO), PlayerStatus.PLAYING, null))
         assertThat(rows().map { it.item }).doesNotContain(QuickItem.LYRICS)
-        assertThat(LyricsChoice.entries).hasSize(3)
+        assertThat(ColumnChoice.entries).hasSize(3)
     }
 
     @Test

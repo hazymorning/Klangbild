@@ -666,7 +666,7 @@ object SettingsMenu {
         }
     }
 
-    private fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
+    internal fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
 
     /** [ms] as seconds to a tenth, as the language writes them: "0.8", "0,8". */
     private fun seconds(ms: Int, t: Texts) = t.number(ms / 1_000.0, 1)
