@@ -311,9 +311,7 @@ internal fun TextLayer(
     val footerLine = rememberFooter(model.footer, styles, colW)
 
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
+        modifier = modifier.textColumn(textLevel),
         content = {
             // 0: work line
             val work = t.work
@@ -382,14 +380,7 @@ internal fun TextLayer(
             // The bar's block measures from the bar's top to the labels' baseline. A line of text in
             // its place is aligned by its own cap height.
             val isText = slotText != null
-            val first = if (isText) slot.firstBaselineOrHeight() else 0
-            parts += Part(
-                slot,
-                capTop = if (isText) first - capOf(styles.label) else 0,
-                baseline = if (isText) first else slot.height,
-                descent = 0f,
-                gap = outerGap(rhythm, plan.artistStyle),
-            )
+            parts += Part(slot, capTop = slotCapTop(slot, isText, styles), baseline = slotBaseline(slot, isText), descent = 0f, gap = outerGap(rhythm, plan.artistStyle))
         }
         // Positions of each cap height, relative to the first one: the gap above it from the
         // descenders of the line before.
@@ -405,7 +396,7 @@ internal fun TextLayer(
         val blockH = parts.lastOrNull()?.let { capY.last() - it.capTop + it.baseline } ?: 0
         val top = (layout.textCenter * density).roundToInt() - blockH / 2
         // The footer's descenders end where the column ends.
-        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val footerBaseline = footerBaseline(layout, styles)
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
@@ -527,7 +518,7 @@ internal fun StatusLayer(
         val used = before.sumOf { it.width + space }
         val lead = measurables.last().measure(Constraints(maxWidth = (column - used).coerceAtLeast(0)))
         // Cap height where the column begins.
-        val baseline = (layout.statusTop * density).roundToInt() + (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
+        val baseline = statusBaseline(layout, styles)
         layout(constraints.maxWidth, constraints.maxHeight) {
             var x = ((layout.columnLeft + shift()) * density).roundToInt()
             for (p in before) {

@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.ui.stage
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.entryGap
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
@@ -222,10 +224,7 @@ internal fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
     val faces = faces()
-    return remember(
-        model.text, model.year, model.scene.layout, model.scene.palette, model.barShown, model.slotText,
-        model.durationMs == null, model.chapter != null, localDensity, faces,
-    ) {
+    return remember(model.text, model.year, model.scene.layout, model.scene.palette, slotOf(model) != null, model.chapter != null, localDensity, faces) {
         planText(model, measurer, localDensity, faces)
     }
 }
@@ -243,6 +242,7 @@ private fun planText(
     val styles = StageStyles(model.scene.palette, faces, layout.textScale)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
+    val slotted = slotOf(model) != null
 
     val title = EmojiText.annotate(t.title, styles.ink)
 
@@ -270,7 +270,7 @@ private fun planText(
             rest += descent(last) + innerGap(last, styles.album) + cap(styles.album)
             last = styles.album
         }
-        if (model.slotText != null || (model.barShown && model.durationMs != null)) {
+        if (slotted) {
             rest += descent(last) + outerGap(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
         layout.columnArt * BLOCK_SHARE * d - rest
@@ -333,6 +333,30 @@ internal fun Placeable.firstBaselineOrHeight(): Int = this[FirstBaseline].takeIf
 
 /** The last baseline of a text, or the bottom of anything else. */
 internal fun Placeable.lastBaselineOrHeight(): Int = this[LastBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
+
+/** The text column over the whole screen, dimmed by [textLevel] (a pause). */
+internal fun Modifier.textColumn(textLevel: () -> Float): Modifier = fillMaxSize().graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) }
+
+/**
+ * How far below its top the measured [slot]'s cap height stands (px): a line of text ([isText]) is
+ * aligned by its own cap height, the bar by its top.
+ */
+internal fun Density.slotCapTop(slot: Placeable, isText: Boolean, styles: StageStyles): Int =
+    if (isText) slot.firstBaselineOrHeight() - (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() else 0
+
+/**
+ * How far below its top the measured [slot]'s baseline stands (px): a line of text's own
+ * ([isText]), or the bar's labels', where the bar's block ends.
+ */
+internal fun slotBaseline(slot: Placeable, isText: Boolean): Int = if (isText) slot.firstBaselineOrHeight() else slot.height
+
+/** Where the status line's baseline stands (px): its cap height hangs at the grid's status top. */
+internal fun Density.statusBaseline(layout: StageGrid, styles: StageStyles): Int =
+    (layout.statusTop * density).roundToInt() + (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
+
+/** Where the footer's baseline stands (px): its descenders end where the column ends. */
+internal fun Density.footerBaseline(layout: StageGrid, styles: StageStyles): Int =
+    (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
 
 /** The title's step, and the title laid out at it as it is set: at most the step's lines, the last one ellipsized. */
 internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)

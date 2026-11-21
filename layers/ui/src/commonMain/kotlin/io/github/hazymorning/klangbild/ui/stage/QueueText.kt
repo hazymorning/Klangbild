@@ -322,7 +322,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     // The rows under the track, lower by the room the slot takes: as many whole ones as fit with
     // the room it takes at rest, every one as tall as its row cover, the last one ending on the
     // column's foot. The track stands in the middle between the status line and the first row.
-    val statusBaseline = (layout.statusTop * d).roundToInt() + (with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
+    val statusBaseline = with(density) { statusBaseline(layout, styles) }
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
     val rowTextLeft = coverPx + ROW_TEXT_GAP * d
@@ -473,9 +473,7 @@ internal fun QueueText(
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
+        modifier = modifier.textColumn(textLevel),
         content = {
             if (plan.work != null) BasicText(plan.work, line(TextLine.WORK), style = styles.work, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
             BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
@@ -511,9 +509,7 @@ internal fun QueueText(
             version.at(plan.versionTop, plan.versionStyle)
             meta.at(plan.metaTop, plan.metaStyle)
             // The slot stays in its place while it fades, and the rows make room for it as it comes.
-            if (slot.height > 0) {
-                if (slotText != null) slot.at(plan.slotTop, styles.label) else slot.place(x, plan.slotTop.roundToInt())
-            }
+            if (slot.height > 0) slot.place(x, plan.slotTop.roundToInt() - slotCapTop(slot, slotText != null, styles))
         }
     }
 }

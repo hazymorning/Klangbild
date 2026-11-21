@@ -18,7 +18,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
@@ -170,9 +169,7 @@ internal fun BioText(
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
+        modifier = modifier.textColumn(textLevel),
         content = {
             // 0: the page
             Canvas(Modifier.fillMaxSize()) {
@@ -197,14 +194,14 @@ internal fun BioText(
         val page = measurables[0].measure(constraints)
         val slot = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
         val footer = measurables[2].measure(Constraints(maxWidth = colW))
-        // The footer's descenders end where the column ends, and the slot's baseline stands above it.
-        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
-        val slotBaseline = footerBaseline - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
+        // The footer's descenders end where the column ends, and the slot stands on a line above it.
+        val footerBaseline = footerBaseline(layout, styles)
+        val slotLine = footerBaseline - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
             page.place(0, 0)
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
-            if (slot.height > 0) slot.place(x, slotBaseline - if (model.slotText != null) slot.firstBaselineOrHeight() else slot.height)
+            if (slot.height > 0) slot.place(x, slotLine - slotBaseline(slot, model.slotText != null))
             if (footer.height > 0) footer.place(x, footerBaseline - footer.firstBaselineOrHeight())
         }
     }
