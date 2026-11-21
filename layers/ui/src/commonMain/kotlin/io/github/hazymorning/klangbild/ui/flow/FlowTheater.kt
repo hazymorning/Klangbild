@@ -30,14 +30,14 @@ import io.github.hazymorning.klangbild.ui.RisingText
 import io.github.hazymorning.klangbild.ui.TextRise
 import io.github.hazymorning.klangbild.ui.playChange
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
-import io.github.hazymorning.klangbild.ui.stage.LocalLyricsStates
-import io.github.hazymorning.klangbild.ui.stage.LyricsStates
+import io.github.hazymorning.klangbild.ui.stage.LocalWordsStates
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StatusLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLayer
 import io.github.hazymorning.klangbild.ui.stage.TextLine
 import io.github.hazymorning.klangbild.ui.stage.WallLayer
 import io.github.hazymorning.klangbild.ui.stage.WallMargin
+import io.github.hazymorning.klangbild.ui.stage.WordsStates
 import io.github.hazymorning.klangbild.ui.stage.asColor
 import io.github.hazymorning.klangbild.ui.stage.drawnAlike
 import io.github.hazymorning.klangbild.ui.stage.partyCard
@@ -229,9 +229,9 @@ internal fun FlowTheater(
     // The text so far leaves from where it stood. A new look of the same track crossfades in place.
     val oldLevel: (TextLine) -> Float = { line -> if (kind.isSoft) text.level(line) else text.leaving(line) }
 
-    // The lyrics of the track shown and of the one leaving keep their places through a change.
-    val lyricsStates = remember { LyricsStates() }
-    SideEffect { lyricsStates.keep(curStage.lyrics, prevStage?.lyrics) }
+    // The words of the stage shown and of the one leaving keep their places through a change.
+    val wordsStates = remember { WordsStates() }
+    SideEffect { wordsStates.keep(curStage, prevStage) }
 
     Box(modifier.fillMaxSize()) {
         // As on the single stage: the old background stays whole until the new one has come up over it.
@@ -262,7 +262,7 @@ internal fun FlowTheater(
             before = before,
             look = { if (restrip) p(0, total, Motion.Sine) else 1f },
         )
-        CompositionLocalProvider(LocalLyricsStates provides lyricsStates) {
+        CompositionLocalProvider(LocalWordsStates provides wordsStates) {
             if (prevModel != null && kind != FlowChange.SIDES) {
                 TextLayer(
                     prevModel,

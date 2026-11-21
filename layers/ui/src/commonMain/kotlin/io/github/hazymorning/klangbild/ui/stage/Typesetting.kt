@@ -79,8 +79,11 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces, val scale: F
     val artistSmall = faces.textType(19f * scale, 500, muted, lineHeight = 25f * scale).leftAligned()
     val album = faces.textType(17f * scale, 400, quiet, lineHeight = 23f * scale, tracking = 0.005f).leftAligned()
 
-    /** A few sentences about the artist ([BioText]): between the artist and the album, on balanced lines. */
-    val bio = faces.textType(18f * scale, 420, muted, lineHeight = 26f * scale).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
+    /**
+     * A few sentences about the artist ([BioText]): between the artist and the album, on balanced
+     * lines. They are set without ink and drawn in the artist's ([muted]).
+     */
+    val bio = faces.textType(18f * scale, 420, lineHeight = 26f * scale).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
 
     /** The status line and the station: 15 sp with slight tracking, since light text on dark looks tighter. */
     val label = faces.textType(15f * scale, 440, quiet, lineHeight = 20f * scale, tracking = 0.015f)

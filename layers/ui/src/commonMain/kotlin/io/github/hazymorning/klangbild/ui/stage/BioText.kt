@@ -5,14 +5,17 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
@@ -26,13 +29,15 @@ import androidx.compose.ui.unit.LayoutDirection
 import io.github.hazymorning.klangbild.domain.ArtistBio
 import io.github.hazymorning.klangbild.domain.BioPacing
 import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.ui.LocalStill
 import io.github.hazymorning.klangbild.ui.Motion
-import io.github.hazymorning.klangbild.ui.rememberOffMain
 import io.github.hazymorning.klangbild.ui.rememberTick
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.theme.Fonts
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /*
@@ -102,6 +107,54 @@ internal fun bioRows(layout: StageGrid, style: TextStyle, room: WordsRoom): Int 
     return (((most - cap) / line).toInt() + 1).coerceAtLeast(1)
 }
 
+/**
+ * A stage's pages about its artist, kept while its text shows or leaves: how they are set, the
+ * page the song has come to, and the one before while it fades. The theater keeps them for each
+ * stage ([WordsStates]), so a page that leaves in a change goes from where it stood.
+ */
+@Stable
+internal class BioState(val bio: ArtistBio) {
+    /** The pages as set, for the column they were set for ([pagesKey]). */
+    private var pages by mutableStateOf<List<BioPage>?>(null)
+    private var pagesKey: Any? = null
+
+    /** The page that stands, -1 until the first does. */
+    var shown by mutableIntStateOf(-1)
+        private set
+
+    /** The page before, while it fades as [turn] runs from 0 to 1. */
+    var before by mutableIntStateOf(-1)
+        private set
+
+    val turn = Animatable(1f)
+
+    /** The pages as set for the column [key], once they are. */
+    fun pagesFor(key: Any): List<BioPage>? = pages?.takeIf { pagesKey == key }
+
+    /** Keeps [p] as the pages set for the column [key]. Pages another column set first for it stay. */
+    fun keep(key: Any, p: List<BioPage>): List<BioPage> {
+        if (pagesKey == key) pages?.let { return it }
+        pagesKey = key
+        pages = p
+        return p
+    }
+
+    /** Turns to [page], the one the song has come to. */
+    suspend fun turnTo(page: Int) {
+        when {
+            page == shown -> Unit
+            // The first page stands at once: the column's own change brings it.
+            shown < 0 -> shown = page
+            else -> {
+                before = shown
+                shown = page
+                turn.snapTo(0f)
+                turn.animateTo(1f, tween(PAGE_TURN_MS, easing = LinearEasing))
+            }
+        }
+    }
+}
+
 /** The text column with a page about the artist in its middle ([TextLayer] while [StageModel.bio] is set). */
 @Composable
 internal fun BioText(
@@ -113,72 +166,72 @@ internal fun BioText(
     textLevel: () -> Float,
     shift: () -> Float,
 ) {
-    val layout = model.scene.layout
     val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
-    val density = LocalDensity.current.density
-    val resolver = LocalFontFamilyResolver.current
-    val colW = (layout.columnWidth * density).roundToInt()
-    val style = styles.bio
-    val rows = remember(layout, styles) { bioRows(layout, style, WordsRoom(layout, styles)) }
-    val pages = rememberOffMain(bio, colW, rows, style, density, resolver) {
-        val measurer = TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0)
-        planBio(bio, style, colW, rows, lineBalancer(measurer))
-    }
-
-    // The page the song has come to, and the one before while it fades ([turn]: 0 to 1).
-    val position by rememberUpdatedState(model.positionMs)
-    var shown by remember(bio) { mutableIntStateOf(-1) }
-    var before by remember(bio) { mutableIntStateOf(-1) }
-    val turn = remember(bio) { Animatable(1f) }
+    val state = LocalWordsStates.current?.of(model.scene.key, bio) ?: remember(bio) { BioState(bio) }
+    val pages = rememberBioPages(state, model.scene.layout, styles)
     // The page follows the song on the stage's tick (in a still, once).
+    val position by rememberUpdatedState(model.positionMs)
     val tick = rememberTick(fast = model.playing)
     if (pages != null) {
-        LaunchedEffect(pages) {
+        LaunchedEffect(state, pages) {
             val chars = IntArray(pages.size) { pages[it].chars }
             snapshotFlow {
                 tick.value
                 BioPacing.pageAt(position(), chars)
-            }.distinctUntilChanged().collect { page ->
-                when {
-                    page == shown -> Unit
-                    // The first page stands at once: the column's own change brings it.
-                    shown < 0 -> shown = page
-                    else -> {
-                        before = shown
-                        shown = page
-                        turn.snapTo(0f)
-                        turn.animateTo(1f, tween(PAGE_TURN_MS, easing = LinearEasing))
-                    }
-                }
-            }
+            }.distinctUntilChanged().collect { state.turnTo(it) }
         }
     }
-
+    val style = styles.bio
+    val ink = styles.muted
     val words = pages?.let { p ->
         ColumnWords { x, center, a ->
             val left = x.toFloat()
-            val t = turn.value
+            val t = state.turn.value
             val gone = Motion.phase(t, 0f, OUT_SHARE)
             val come = Motion.phase(t, IN_SHARE, 1f)
-            p.getOrNull(before)?.takeIf { t < 1f }?.let { drawPage(it, left, center, a * (1f - gone), 0f, style) }
-            p.getOrNull(shown)?.let { drawPage(it, left, center, a * come, Motion.RISE_DP * (1f - come), style) }
+            p.getOrNull(state.before)?.takeIf { t < 1f }?.let { drawPage(it, left, center, a * (1f - gone), 0f, style, ink) }
+            p.getOrNull(state.shown)?.let { drawPage(it, left, center, a * come, Motion.RISE_DP * (1f - come), style, ink) }
         }
     }
     WordsColumn(model, styles, modifier, alpha, rise, textLevel, shift, words)
 }
 
 /**
- * [page] from [x], centered on [center] (px) from its first cap height to its last baseline,
- * [riseDp] lower, at [alpha].
+ * [state]'s pages as set for the column of [layout] ([planBio]): at once in a still, else off the
+ * main thread (nothing until then). They are set without ink, so a new palette keeps them.
  */
-private fun DrawScope.drawPage(page: BioPage, x: Float, center: Float, alpha: Float, riseDp: Float, style: TextStyle) {
+@Composable
+private fun rememberBioPages(state: BioState, layout: StageGrid, styles: StageStyles): List<BioPage>? {
+    val density = LocalDensity.current.density
+    val resolver = LocalFontFamilyResolver.current
+    val colW = (layout.columnWidth * density).roundToInt()
+    val style = styles.bio
+    val rows = remember(layout, styles) { bioRows(layout, style, WordsRoom(layout, styles)) }
+    val key = listOf(colW, rows, style, density, resolver)
+    fun plan() = planBio(state.bio, style, colW, rows, lineBalancer(TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0)))
+    if (LocalStill.current) return remember(state, key) { state.keep(key, plan()) }
+    val ready = state.pagesFor(key)
+    if (ready == null) {
+        LaunchedEffect(state, key) {
+            val p = withContext(Dispatchers.Default) { plan() }
+            state.keep(key, p)
+        }
+    }
+    return ready
+}
+
+/**
+ * [page], set in [style], from [x] in [ink], centered on [center] (px) from its first cap height
+ * to its last baseline, [riseDp] lower, at [alpha].
+ */
+private fun DrawScope.drawPage(page: BioPage, x: Float, center: Float, alpha: Float, riseDp: Float, style: TextStyle, ink: Color) {
     if (alpha <= 0.002f) return
     val l = page.layout
     val cap = style.fontSize.toPx() * Fonts.CAP_HEIGHT
     val first = l.getLineBaseline(0)
     val last = l.getLineBaseline(l.lineCount - 1)
     val top = (center - (first - cap + last) / 2f + riseDp * density).roundToInt().toFloat()
-    drawText(l, topLeft = Offset(x, top), alpha = alpha)
+    drawText(l, color = ink, topLeft = Offset(x, top), alpha = alpha)
 }
 
 /** A page turns over this long (ms): the one before fades out, then the next fades in. */

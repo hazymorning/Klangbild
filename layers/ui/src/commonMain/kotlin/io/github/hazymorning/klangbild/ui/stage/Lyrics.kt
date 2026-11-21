@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -166,7 +165,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measure
 
 /**
  * A track's lyrics on the stage, kept while its text shows or leaves: how they are set, and where
- * they stand. The theater keeps one per track ([LyricsStates]), so the lyrics that leave in a
+ * they stand. The theater keeps one per track ([WordsStates]), so the lyrics that leave in a
  * change go from where they stood.
  */
 @Stable
@@ -251,21 +250,6 @@ internal class LyricsState(val lyrics: Lyrics) {
     }
 }
 
-/** The lyrics of a theater's tracks: those shown and those leaving keep their places. */
-internal class LyricsStates {
-    private val states = HashMap<Lyrics, LyricsState>()
-
-    fun of(lyrics: Lyrics): LyricsState = states.getOrPut(lyrics) { LyricsState(lyrics) }
-
-    /** Drops the state of all lyrics except [kept]. */
-    fun keep(vararg kept: Lyrics?) {
-        states.keys.retainAll(kept.filterNotNull().toSet())
-    }
-}
-
-/** The theater's lyrics states. Without one (a still), each column keeps its own. */
-internal val LocalLyricsStates = staticCompositionLocalOf<LyricsStates?> { null }
-
 /** The text column with the lyrics in its middle ([TextLayer] while [StageModel.lyrics] is set). */
 @Composable
 internal fun LyricsText(
@@ -281,8 +265,7 @@ internal fun LyricsText(
     val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
     val room = remember(layout, styles) { WordsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
-    val states = LocalLyricsStates.current
-    val state = states?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
+    val state = LocalWordsStates.current?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
     val delay by rememberUpdatedState(model.lyricsDelayMs)
     val current by rememberUpdatedState(model.current)

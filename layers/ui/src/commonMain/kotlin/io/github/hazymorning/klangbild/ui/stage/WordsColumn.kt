@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import io.github.hazymorning.klangbild.app.StageData
+import io.github.hazymorning.klangbild.domain.ArtistBio
+import io.github.hazymorning.klangbild.domain.Lyrics
 import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import kotlin.math.roundToInt
@@ -96,6 +100,33 @@ internal class WordsRoom(layout: StageGrid, styles: StageStyles) {
      */
     fun around(slot: Float = 0f): Float = minOf(status, footer + (bar - footer) * slot)
 }
+
+/**
+ * The words of the stages a theater shows, so the words that leave in a change go from where
+ * they stood: each track's lyrics ([LyricsState]), and each stage's pages about its artist
+ * ([BioState]). Those are the stage's own, since the songs of one artist share the artist's bio.
+ */
+internal class WordsStates {
+    private val lyricsStates = HashMap<Lyrics, LyricsState>()
+    private val bioStates = HashMap<StageBio, BioState>()
+
+    fun of(lyrics: Lyrics): LyricsState = lyricsStates.getOrPut(lyrics) { LyricsState(lyrics) }
+
+    /** The pages about [bio] of the stage whose scene has the key [stage]. */
+    fun of(stage: String, bio: ArtistBio): BioState = bioStates.getOrPut(StageBio(stage, bio)) { BioState(bio) }
+
+    /** Drops the words of every stage but those [kept]. */
+    fun keep(vararg kept: StageData?) {
+        val stages = kept.filterNotNull()
+        lyricsStates.keys.retainAll(stages.mapNotNullTo(HashSet()) { it.lyrics })
+        bioStates.keys.retainAll(stages.mapNotNullTo(HashSet()) { s -> s.bio?.let { StageBio(s.scene.key, it) } })
+    }
+
+    private data class StageBio(val stage: String, val bio: ArtistBio)
+}
+
+/** The theater's words. Without one (a still), each column keeps its own. */
+internal val LocalWordsStates = staticCompositionLocalOf<WordsStates?> { null }
 
 /** From the slot's baseline to the footer's cap height under it (dp). */
 private const val SLOT_GAP = 26f
