@@ -7,9 +7,9 @@ import io.github.hazymorning.klangbild.data.ma.MaAuthException
 import io.github.hazymorning.klangbild.data.ma.MaClient
 import io.github.hazymorning.klangbild.data.ma.MaBios
 import io.github.hazymorning.klangbild.data.ma.MaLyrics
+import io.github.hazymorning.klangbild.data.ma.MaPosition
 import io.github.hazymorning.klangbild.data.ma.MaQueue
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
-import io.github.hazymorning.klangbild.data.ma.QueuePosition
 import io.github.hazymorning.klangbild.data.ma.QueueState
 import io.github.hazymorning.klangbild.data.ma.QueueWindow
 import io.github.hazymorning.klangbild.domain.EntityState
@@ -32,8 +32,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.Volatile
-import kotlin.math.abs
-import kotlin.math.roundToLong
 
 /** How often [QueueReader] reads the queue and how long it waits; shorter in tests. */
 data class QueueTiming(
@@ -65,7 +63,7 @@ data class QueueTiming(
  * read at a time: a new song cancels the read under way, so quick skips leave nothing running. A
  * Music Assistant song waits for its queue to describe it ([awaitsDetails]), and the song is
  * enriched with what the queue knows ([enrich]), its position too: Home Assistant rounds it down
- * to whole seconds, Music Assistant does not ([readPosition]).
+ * to whole seconds, Music Assistant does not ([MaPosition]).
  *
  * It shares [HaSource]'s [lock]; what it learns it hands on by [publish].
  */
@@ -89,9 +87,6 @@ internal class QueueReader(
     private var queuePoller: Job? = null
     private var maPoller: Job? = null
     private var positionPoller: Job? = null
-
-    /** The one question under way of where the song stands. */
-    private var positionJob: Job? = null
 
     /** The one queue read under way: a newer track cancels it (quick skips leave nothing running). */
     private var queueJob: Job? = null
@@ -134,6 +129,18 @@ internal class QueueReader(
     /** What was last known about the artist of the song that plays (only touched while publishing). */
     private var lastBio: SongBio? = null
 
+    /** Where the song that plays stands, from Music Assistant's queue as it stands. */
+    private val maPosition: MaPosition? = ma?.let { client ->
+        MaPosition(
+            client,
+            scope,
+            now,
+            song = { trackKey },
+            queue = { key -> maQueueId(queueFor(key))?.let { queueAsItStands(client, it)?.first } },
+            changed = publish,
+        )
+    }
+
     /**
      * What comes next as Music Assistant itself has it, for the track [key]: [next] (null: nothing
      * follows), and the [shape] of the queue that said so.
@@ -144,15 +151,6 @@ internal class QueueReader(
     private data class QueueShape(val index: Int?, val nextId: String?, val items: Int?)
 
     @Volatile private var maNext: MaNext? = null
-
-    /** Where Music Assistant's queue stood in the song [key], on the local clock ([QueuePosition.atMs]). */
-    private class MaPosition(val key: String, val position: QueuePosition)
-
-    @Volatile private var maPosition: MaPosition? = null
-
-    /** The local wall clock minus Music Assistant's, in milliseconds, and when it was measured; null until known. */
-    @Volatile private var maClock: Long? = null
-    private var maClockAt = 0L
 
     /** When Music Assistant's queue was last read, and for which of Home Assistant's queues. */
     private var windowReadAt = 0L
@@ -188,12 +186,12 @@ internal class QueueReader(
                 }
             }
         }
-        positionPoller = ma?.let { client ->
+        positionPoller = maPosition?.let { position ->
             scope.launch {
                 while (isActive) {
                     delay(timing.positionMs)
                     val p = shown()
-                    if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant) startPositionRead(client)
+                    if (p?.status == PlayerStatus.PLAYING && p.isMusicAssistant) position.ask()
                 }
             }
         }
@@ -204,7 +202,7 @@ internal class QueueReader(
         maPoller?.cancel()
         positionPoller?.cancel()
         queueJob?.cancel()
-        positionJob?.cancel()
+        maPosition?.stop()
         awaitEnd?.cancel()
         lyrics?.stop()
         bios?.stop()
@@ -216,7 +214,7 @@ internal class QueueReader(
      */
     fun retarget() {
         queueJob?.cancel()
-        positionJob?.cancel()
+        maPosition?.forget()
         awaitEnd?.cancel()
         queue = null
         window = null
@@ -226,7 +224,6 @@ internal class QueueReader(
         queueWorks = null
         awaited = null
         windowReadFor = null
-        maPosition = null
     }
 
     /** The song [key] plays on [player]: a new one starts its queue's read (called under the [lock]). */
@@ -239,8 +236,7 @@ internal class QueueReader(
         if (player.isMusicAssistant) {
             startFirstRead()
             // Where the new song stands is asked at once: its first lines may come soon.
-            positionJob?.cancel()
-            ma?.let(::startPositionRead)
+            maPosition?.askAnew()
         }
     }
 
@@ -362,30 +358,10 @@ internal class QueueReader(
      * the address Klangbild reaches it by. [skewMs] is the local clock minus Home Assistant's, the
      * one the position is published on.
      */
-    fun enrich(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot = position(details(p), skewMs)
-
-    /**
-     * [p] at Music Assistant's position while it plays the song [p] plays and agrees with Home
-     * Assistant's within [AGREE_MS] (Home Assistant's whole seconds, moved on only after about a
-     * second); a jump Home Assistant has heard of and Music Assistant has not yet told wins.
-     */
-    private fun position(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot {
-        val track = p.track ?: return p
-        if (p.status != PlayerStatus.PLAYING) {
-            // A pause ends what Music Assistant last said; its next read says where it stands.
-            maPosition = null
-            return p
-        }
-        val m = maPosition?.takeIf { it.key == TrackMatch.looseKey(track) } ?: return p
-        // The moment Music Assistant's position was valid, on Home Assistant's clock.
-        val at = m.position.atMs - skewMs
-        val reported = p.positionMs
-        val reportedAt = p.positionAtEpochMs
-        if (reported != null && reportedAt != null) {
-            val then = reported + ((at - reportedAt) * p.speed.toDouble()).roundToLong()
-            if (abs(then - m.position.elapsedMs) > AGREE_MS) return p
-        }
-        return p.copy(positionMs = m.position.elapsedMs, positionAtEpochMs = at)
+    fun enrich(p: PlayerSnapshot, skewMs: Long): PlayerSnapshot {
+        val detailed = details(p)
+        val track = detailed.track ?: return detailed
+        return maPosition?.appliedTo(detailed, TrackMatch.looseKey(track), skewMs) ?: detailed
     }
 
     private fun details(p: PlayerSnapshot): PlayerSnapshot {
@@ -478,31 +454,6 @@ internal class QueueReader(
         publish()
     }
 
-    /** Asks Music Assistant where the song stands, unless it is being asked already. */
-    private fun startPositionRead(client: MaClient) {
-        synchronized(lock) {
-            if (positionJob?.isActive == true) return
-            positionJob = scope.launch { readPosition(client) }
-        }
-    }
-
-    /**
-     * Where Music Assistant's queue stands in the song that plays, on the local clock: kept while
-     * it plays the song shown, and published when it moved. Its players report every few seconds,
-     * many of them in whole seconds, so each answer can be a little late; [PositionReports] keeps
-     * the best of them.
-     */
-    private suspend fun readPosition(client: MaClient) {
-        val key = trackKey ?: return
-        val id = maQueueId(queueFor(key)) ?: return
-        val (answer, _) = queueAsItStands(client, id) ?: return
-        val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } } ?: return
-        if (trackKey != key) return
-        val moved = position != maPosition?.takeIf { it.key == key }?.position
-        maPosition = MaPosition(key, position).takeIf { position.playing }
-        if (moved) publish()
-    }
-
     /**
      * Music Assistant's queue [id] as it stands (`player_queues/get`): its answer and what that
      * says. Null when it cannot be read, and when Music Assistant has moved on to another item
@@ -529,37 +480,6 @@ internal class QueueReader(
 
     /** The id Music Assistant knows the queue [q] by, else the player's active queue. */
     private fun maQueueId(q: QueueInfo?): String? = q?.queueId ?: latest()?.activeQueue
-
-    /**
-     * The local wall clock minus Music Assistant's, measured with its `time` command (the best of a
-     * few round trips) and again after [MA_CLOCK_MS]; null while it cannot be told.
-     */
-    private suspend fun clockOf(client: MaClient): Long? {
-        val known = maClock
-        if (known != null && now() - maClockAt < MA_CLOCK_MS) return known
-        var best: Long? = null
-        var bestTrip = Long.MAX_VALUE
-        repeat(CLOCK_TRIPS) {
-            val sent = now()
-            val server = try {
-                client.serverTime()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: MaUnknownCommandException) {
-                return null
-            } catch (_: Exception) {
-                return known
-            }
-            val back = now()
-            if (back - sent < bestTrip) {
-                bestTrip = back - sent
-                best = (sent + back) / 2 - (server * 1_000).roundToLong()
-            }
-        }
-        maClock = best
-        maClockAt = now()
-        return best
-    }
 
     /** Reads the queue for a new track, canceling a read under way for the one before. */
     private fun startFirstRead() {
@@ -673,12 +593,5 @@ internal class QueueReader(
 
         /** A book without chapters is asked once more after this long. */
         const val CHAPTERS_AGAIN_MS = 10_000L
-
-        /** Music Assistant's position counts while it is this close to Home Assistant's. */
-        const val AGREE_MS = 1_500L
-
-        /** Music Assistant's clock is measured again after this long. */
-        const val MA_CLOCK_MS = 10 * 60_000L
-        private const val CLOCK_TRIPS = 3
     }
 }
