@@ -39,14 +39,8 @@ internal class StageModel(
     val barStays: Boolean = true,
     /** The slot text, in place of the bar: the station of a radio without a duration, or a notice ("Reconnecting…"). */
     val slotText: String? = null,
-    /** The footer's track: what comes next ("Spiegel im Spiegel · Arvo Pärt"), or with lyrics the track itself. */
-    val footer: String? = null,
-    /** The footer's title alone, for when title and artist don't both fit. */
-    val footerTitle: String? = null,
-    /** The footer's lead in place of "Up next": "Arrow down" while the hint for the quick settings shows. */
-    val footerLead: String? = null,
-    /** The track's position in its queue, first in the footer ("3 of 45"); it shows alone when nothing follows it there. */
-    val footerPlace: String? = null,
+    /** The line at the column's foot, or null for none. */
+    val footer: Footer? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */
     val chapter: String? = null,
     /** Where the progress bar starts in the track's time: the chapter's start. */
@@ -81,6 +75,16 @@ internal class StageModel(
 internal data class StatusLine(val lead: String?, val clock: String?, val values: List<String> = emptyList()) {
     val isEmpty get() = lead == null && clock == null && values.isEmpty()
 }
+
+/**
+ * The line at the foot of the text column: the track's [place] in its queue ("3 of 45"), then
+ * [text] after its [lead]. That is what comes next after "Up next" ("Spiegel im Spiegel · Arvo
+ * Pärt"), the hint for the quick settings after the key it names, or beside the song's or the
+ * artist's words the track itself, without a lead. When [text] doesn't fit, its [title] alone
+ * takes its place, and without any text the place stands alone.
+ */
+@Immutable
+internal data class Footer(val place: String?, val lead: String?, val text: String?, val title: String? = null)
 
 /** The stage's strings for the status line, the slot and the footer. */
 internal object StageTexts {

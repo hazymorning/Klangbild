@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
-import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.entryGap
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
@@ -36,7 +35,6 @@ import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
-import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
@@ -216,26 +214,19 @@ internal class TextPlan(
     val artistStyle: TextStyle,
     /** "Album · 2024", or only the album when both don't fit. */
     val album: String?,
-    /** The footer's track: title and artist, or only the title when both don't fit. */
-    val footer: String?,
-    /** The footer's lead ("Up next"). */
-    val footerLead: String,
-    /** The track's position in the queue, first in the footer ("3 of 45"). */
-    val footerPlace: String?,
 )
 
-/** Measures the block once per model. */
+/** Measures the block anew only when what it measures changes. */
 @Composable
 internal fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val footerLead = model.footerLead ?: texts()[Strings.stageNext]
     val faces = faces()
     return remember(
-        model.text, model.year, model.footer, model.footerTitle, model.footerPlace, model.scene.layout, model.scene.palette, model.barShown, model.slotText,
-        model.durationMs == null, model.chapter != null, localDensity, footerLead, faces,
+        model.text, model.year, model.scene.layout, model.scene.palette, model.barShown, model.slotText,
+        model.durationMs == null, model.chapter != null, localDensity, faces,
     ) {
-        planText(model, measurer, localDensity, footerLead, faces)
+        planText(model, measurer, localDensity, faces)
     }
 }
 
@@ -243,7 +234,6 @@ private fun planText(
     model: StageModel,
     measurer: TextMeasurer,
     density: Density,
-    footerLead: String,
     faces: Faces,
 ): TextPlan {
     val t = model.text
@@ -311,7 +301,6 @@ private fun planText(
     // The album with its year. The year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
-    val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(model.footerPlace, footerLead, s, styles) } }
     return TextPlan(
         title = choice.layout.layoutInput.text,
         titleStyle = choice.layout.layoutInput.style,
@@ -324,9 +313,6 @@ private fun planText(
         artists = artists,
         artistStyle = artistStyle,
         album = album,
-        footer = footer,
-        footerLead = footerLead,
-        footerPlace = model.footerPlace,
     )
 }
 

@@ -37,7 +37,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
@@ -346,8 +345,8 @@ internal fun LyricsText(
             // 1: the slot above the footer, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
             // 2: the footer, which names the track itself
-            val track = model.footer?.let { rememberFooter(model.footerPlace, it, model.footerTitle, styles, colW) }
-            if (track != null) BasicText(footerText(model.footerPlace, null, track, styles), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            val footer = rememberFooter(model.footer, styles, colW)
+            if (footer != null) BasicText(footer, line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
         val lyricLines = measurables[0].measure(constraints)
@@ -470,13 +469,6 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
     // A line without a neighbor on that side takes three cap heights as the step to one.
     val step = neighbor?.let { abs(c[line] - it) } ?: (plan.cap * 3f)
     return (1f - abs(off) / step).coerceIn(0f, 1f)
-}
-
-/** The track in the footer, after its position in the queue ([place]) and without a lead ([fitFooter]). */
-@Composable
-internal fun rememberFooter(place: String?, full: String, title: String?, styles: StageStyles, width: Int): String {
-    val measurer = rememberTextMeasurer(cacheSize = 4)
-    return remember(place, full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { footerText(place, null, it, styles) } }
 }
 
 /**

@@ -63,7 +63,7 @@ class LyricsMotionTest {
             val m = Fixtures.model(s.track, next = Fixtures.spiegel, scene = s.scene, lead = lead)
             StageModel(
                 scene = m.scene, text = m.text, status = m.status, durationMs = m.durationMs, positionMs = playing, year = m.year,
-                barShown = m.barShown, slotText = m.slotText, footer = m.footer, footerTitle = m.footerTitle, statusLine = m.statusLine,
+                barShown = m.barShown, slotText = m.slotText, footer = m.footer, statusLine = m.statusLine,
             )
         }
     }

@@ -49,6 +49,7 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
+import io.github.hazymorning.klangbild.ui.stage.Footer
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
@@ -311,6 +312,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             // The hint takes the place of what comes next (beside the words the song stays, and the
             // list names what comes next itself).
             val showHint = hint && !words && queueList == null
+            val placeText = StageTexts.place(placeKept, s.track, t)
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -325,22 +327,14 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 barShown = barWanted(s),
                 barStays = display.progressBar,
                 slotText = StageTexts.slotText(linkDown, s.track, t),
-                footer = when {
-                    showHint -> t[Strings.hintDown]
-                    words -> StageTexts.footer(s.track, t)
-                    queueList != null -> null
-                    else -> nextChapter ?: StageTexts.footer(nextKept, t)
-                },
-                footerTitle = when {
-                    showHint -> null
-                    words -> StageTexts.footerTitle(s.track, t)
-                    queueList != null -> null
-                    nextChapter != null -> null
-                    else -> StageTexts.footerTitle(nextKept, t)
-                },
-                footerLead = if (showHint) t[Strings.hintDownKey] else null,
                 // The hint and the list take the footer's place, the position in the queue with it.
-                footerPlace = if (showHint || queueList != null) null else StageTexts.place(placeKept, s.track, t),
+                footer = when {
+                    showHint -> Footer(place = null, lead = t[Strings.hintDownKey], text = t[Strings.hintDown])
+                    words -> Footer(placeText, lead = null, text = StageTexts.footer(s.track, t), title = StageTexts.footerTitle(s.track, t))
+                    queueList != null -> null
+                    nextChapter != null -> Footer(placeText, t[Strings.stageNext], nextChapter)
+                    else -> Footer(placeText, t[Strings.stageNext], StageTexts.footer(nextKept, t), StageTexts.footerTitle(nextKept, t))
+                },
                 chapter = chapterPlace?.label,
                 barStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,

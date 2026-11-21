@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
+import io.github.hazymorning.klangbild.ui.stage.Footer
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
@@ -66,9 +67,7 @@ object Fixtures : AppFixtures() {
             year = track.year.takeIf { album },
             barShown = progress,
             slotText = StageTexts.slotText(linkDown, track, t),
-            footer = StageTexts.footer(next, t),
-            footerTitle = StageTexts.footerTitle(next, t),
-            footerPlace = StageTexts.place(place, track, t),
+            footer = Footer(StageTexts.place(place, track, t), t[Strings.stageNext], StageTexts.footer(next, t), StageTexts.footerTitle(next, t)),
             statusLine = StatusLine(lead, clock, values),
         )
     }
@@ -98,8 +97,12 @@ object Fixtures : AppFixtures() {
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
             positionMs = { position },
-            footer = chapter?.next ?: StageTexts.footer(next, t),
-            footerTitle = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
+            footer = Footer(
+                place = null,
+                lead = t[Strings.stageNext],
+                text = chapter?.next ?: StageTexts.footer(next, t),
+                title = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
+            ),
             statusLine = StatusLine(lead, "21:47"),
             chapter = chapter?.label,
             barStartMs = chapter?.startMs ?: 0L,
@@ -137,9 +140,7 @@ object Fixtures : AppFixtures() {
             year = track.year,
             barShown = peek,
             slotText = StageTexts.slotText(linkDown, track, t),
-            footer = StageTexts.footer(track, t),
-            footerTitle = StageTexts.footerTitle(track, t),
-            footerPlace = StageTexts.place(place, track, t),
+            footer = Footer(StageTexts.place(place, track, t), lead = null, StageTexts.footer(track, t), StageTexts.footerTitle(track, t)),
             statusLine = StatusLine(lead, clock),
             lyrics = lyrics,
         )
@@ -184,8 +185,7 @@ object Fixtures : AppFixtures() {
             positionMs = position,
             year = track.year,
             barShown = peek,
-            footer = StageTexts.footer(track, t),
-            footerTitle = StageTexts.footerTitle(track, t),
+            footer = Footer(place = null, lead = null, StageTexts.footer(track, t), StageTexts.footerTitle(track, t)),
             statusLine = StatusLine(lead, "21:47"),
             bio = bio,
         )

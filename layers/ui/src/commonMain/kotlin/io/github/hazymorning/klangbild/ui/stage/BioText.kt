@@ -190,8 +190,8 @@ internal fun BioText(
             // 1: the slot above the footer, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "bio-slot")
             // 2: the footer, which names the track itself
-            val track = model.footer?.let { rememberFooter(model.footerPlace, it, model.footerTitle, styles, colW) }
-            if (track != null) BasicText(footerText(model.footerPlace, null, track, styles), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
+            val footer = rememberFooter(model.footer, styles, colW)
+            if (footer != null) BasicText(footer, line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
         },
     ) { measurables, constraints ->
         val page = measurables[0].measure(constraints)

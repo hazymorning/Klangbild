@@ -308,6 +308,7 @@ internal fun TextLayer(
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
     val slotText = model.slotText
     val measurer = rememberTextMeasurer(cacheSize = 4)
+    val footerLine = rememberFooter(model.footer, styles, colW)
 
     Layout(
         modifier = modifier
@@ -345,7 +346,7 @@ internal fun TextLayer(
             // 5: the slot, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "slot")
             // 6: the footer, at the column's foot
-            FooterLine(plan.footerPlace, plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
+            FooterLine(footerLine, styles, line(TextLine.FOOTER))
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
@@ -415,25 +416,34 @@ internal fun TextLayer(
 }
 
 /**
- * The footer: the track's position in the queue ([place]), then [text] after its [lead] ("Up
- * next"), or nothing while both are null. A new one (the next chapter while a book plays on, the
- * hint for the quick settings, or a queue that has grown) crossfades in place, and so does one
- * that comes or goes.
+ * The footer's [line] ([rememberFooter]), or nothing while it is null. A new one (the next chapter
+ * while a book plays on, the hint for the quick settings, or a queue that has grown) crossfades in
+ * place, and so does one that comes or goes.
  */
 @Composable
-internal fun FooterLine(place: String?, text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
-    val parts = if (place == null && text == null) null else FooterParts(place, lead, text)
-    Crossfade(parts, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { line ->
-        if (line == null) {
+internal fun FooterLine(line: AnnotatedString?, styles: StageStyles, modifier: Modifier) {
+    Crossfade(line, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { shown ->
+        if (shown == null) {
             Box(Modifier)
         } else {
-            BasicText(footerText(line.place, line.lead, line.text, styles), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(shown, style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
-/** What the footer holds: the position in the queue, the lead and what comes next. */
-private data class FooterParts(val place: String?, val lead: String, val text: String?)
+/**
+ * [footer] as one line of a column [width] px wide: its text whole if it fits, else its title
+ * alone rather than a cut-off artist ([fitFooter]). Null while it holds nothing.
+ */
+@Composable
+internal fun rememberFooter(footer: Footer?, styles: StageStyles, width: Int): AnnotatedString? {
+    val measurer = rememberTextMeasurer(cacheSize = 4)
+    return remember(footer, styles, width) {
+        if (footer == null || (footer.place == null && footer.text == null)) return@remember null
+        val text = footer.text?.let { full -> fitFooter(measurer, full, footer.title, styles.footer, width) { footerText(footer.place, footer.lead, it, styles) } }
+        footerText(footer.place, footer.lead, text, styles)
+    }
+}
 
 /**
  * The status line at the top of the column: the time, the custom values, then the lead, where
