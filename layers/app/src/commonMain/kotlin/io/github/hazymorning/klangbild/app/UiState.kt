@@ -77,7 +77,7 @@ data class MenuState(
 /** The notes of a new [version] ("2026.11.0"), point by point. */
 data class MenuNotes(val version: String, val points: List<NotePoint>)
 
-/** The quick menu while it is open: its lines and the one the cursor is on. */
+/** The quick settings while they are open: their entries and the one the cursor is on. */
 data class QuickState(val rows: List<QuickRow>, val cursor: Int)
 
 /** Everything the UI renders. */
@@ -89,7 +89,10 @@ data class UiState(
      * open: the screen may turn off, or the app close.
      */
     val asleep: Boolean = false,
-    /** No one is in the room, as the presence sensors chosen on the phone tell: the screen is dark while the music plays on. */
+    /**
+     * No one is in the room, as the presence sensors chosen on the phone tell, or the screen was
+     * turned off from the quick settings: the screen is dark while the music plays on.
+     */
     val dark: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**
@@ -120,7 +123,7 @@ data class UiState(
     val setup: SetupInfo? = null,
     /** The settings menu, null while it is closed. */
     val menu: MenuState? = null,
-    /** The quick menu, null while it is closed. */
+    /** The quick settings, null while they are closed. */
     val quick: QuickState? = null,
     /** The volume just changed: the status line shows it for a moment. */
     val volumeFlash: Boolean = false,

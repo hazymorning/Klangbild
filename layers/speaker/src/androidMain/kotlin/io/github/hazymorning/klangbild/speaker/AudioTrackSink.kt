@@ -37,12 +37,7 @@ class AudioTrackSink(
         if (min <= 0) return false
         val t = try {
             AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build(),
-                )
+                .setAudioAttributes(ATTRIBUTES)
                 .setAudioFormat(
                     AudioFormat.Builder()
                         .setSampleRate(rate)
@@ -131,6 +126,12 @@ class AudioTrackSink(
     }
 
     companion object {
+        /** Music on the media stream, for the track and for the audio focus it needs. */
+        val ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+
         /** How much audio the output holds, and so how far ahead it is written. */
         const val BUFFER_MS = 200
 

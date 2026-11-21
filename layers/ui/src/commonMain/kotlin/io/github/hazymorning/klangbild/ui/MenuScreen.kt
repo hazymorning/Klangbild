@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,8 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -74,6 +71,7 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
+import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.firstBaseline
@@ -124,28 +122,19 @@ object MenuGrid {
  */
 @Composable
 fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
-    // The last menu stays while it fades out.
-    val last = remember { arrayOfNulls<MenuState>(1) }
-    if (menu != null) last[0] = menu
-    val shown = remember { Animatable(0f) }
-    // Composition only asks whether it shows, so the fade redraws without composing anew.
-    val gone by remember { derivedStateOf { shown.value <= 0f } }
-    LaunchedEffect(menu != null) {
-        shown.animateTo(if (menu != null) 1f else 0f, tween(if (menu != null) MENU_IN_MS else MENU_OUT_MS, easing = Motion.Dimmer))
+    FadingOverlay(menu, MENU_IN_MS, MENU_OUT_MS) { state, shown ->
+        // Faded draw by draw, not through a layer of the screen's size: the menu's background
+        // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
+        MenuScreen(
+            state,
+            modifier.graphicsLayer {
+                alpha = shown()
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
+            appearance,
+            pending,
+        )
     }
-    if (menu == null && gone) return
-    val state = menu ?: last[0] ?: return
-    // Faded draw by draw, not through a layer of the screen's size: the menu's background
-    // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
-    MenuScreen(
-        state,
-        modifier.graphicsLayer {
-            alpha = shown.value
-            compositingStrategy = CompositingStrategy.ModulateAlpha
-        },
-        appearance,
-        pending,
-    )
 }
 
 /** The menu's colors: near-neutral white on black, or near-black on the light background. */
@@ -208,6 +197,7 @@ private class MenuColors(
 @Composable
 fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, pending: Boolean = false) {
     val colors = remember(appearance) { MenuColors.of(appearance) }
+    val bandTint = remember(colors.band) { ColorFilter.tint(colors.band, BlendMode.Modulate) }
     // The level left keeps showing as it was while it fades.
     val levels = remember { HashMap<Any?, MenuState>() }
     val level: Any? = if (menu.notes != null) NotesLevelKey else menu.section
@@ -229,7 +219,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
             drawImage(
                 map,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                colorFilter = ColorFilter.tint(colors.band, BlendMode.Modulate),
+                colorFilter = bandTint,
                 alpha = band,
                 filterQuality = FilterQuality.Low,
                 blendMode = BlendMode.Plus,
@@ -260,14 +250,9 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
     // The list moves so that the chosen row comes to rest in the light; a held key runs it on evenly.
     val offset = animateGlide(focusY - (cursor * MenuGrid.ROW + MenuGrid.ROW / 2f), GLIDE_MS)
 
-    // Left: the heading's cap height on the artwork's top edge, the description level with the
-    // chosen row.
+    // Left: the heading, the chosen row's description and the hint.
     val faces = faces()
-    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
-    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
-    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
-        BasicText(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], style = headingStyle)
-    }
+    MenuHeading(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], layout, faces, colors)
     // While a key is held the list runs on under the light: the description goes, and comes
     // back with the row the key is let go on.
     Crossfade(
@@ -275,13 +260,9 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         animationSpec = tween(320, easing = Motion.Dimmer),
         label = "menu-description",
     ) { text ->
-        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-            BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
-        }
+        if (text != null) MenuDescription(text, layout, focusY, faces, colors)
     }
-    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
-        BasicText(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
-    }
+    MenuHint(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], layout, faces, colors)
 
     // Right: the rows in the text column.
     val labelStyle = faces.textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
@@ -333,31 +314,24 @@ private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, foc
     val offset = animateGlide(if (heights.isEmpty()) focusY else focusY - (tops[cursor] + heights[cursor] / 2f), GLIDE_MS)
     val chosen = set.indices.map { i -> animateFloatAsState(if (i == cursor) 1f else 0f, tween(260, easing = Motion.Dimmer), label = "note") }
 
-    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
-    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
-    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
-        BasicText(t.format(Strings.notesHeading, notes.version), style = headingStyle)
-    }
-    BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-        BalancedText(AnnotatedString(t[Strings.aboutUpdateInstall]), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
-    }
-    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
-        BasicText(t[Strings.menuHintNotes], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
-    }
+    MenuHeading(t.format(Strings.notesHeading, notes.version), layout, faces, colors)
+    MenuDescription(t[Strings.aboutUpdateInstall], layout, focusY, faces, colors)
+    MenuHint(t[Strings.menuHintNotes], layout, faces, colors)
 
     // Right: the points, each line faded as a row would be where it stands, so a long point is
     // gone before the screen's edge as rows are.
+    val paint = remember { Paint() }
     Canvas(Modifier.fillMaxSize()) {
         val x = (layout.columnLeft * this.density).roundToInt().toFloat()
         set.forEachIndexed { i, p ->
             var top = tops[i] + offset.value
             p.part?.let {
-                drawFaded(it, x, top, focusY)
+                drawFaded(it, x, top, focusY, paint)
                 top += it.size.height / this.density + NOTES_PART_GAP
             }
             val f = chosen[i].value
-            if (f < 1f) drawFaded(p.rest, x, top, focusY, 1f - f)
-            if (f > 0f) drawFaded(p.chosen, x, top, focusY, f)
+            if (f < 1f) drawFaded(p.rest, x, top, focusY, paint, 1f - f)
+            if (f > 0f) drawFaded(p.chosen, x, top, focusY, paint, f)
         }
     }
 }
@@ -365,10 +339,12 @@ private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, foc
 /** A point of the notes as set: its part's name, if it opens one, and the point at rest and chosen. */
 private class SetPoint(val part: TextLayoutResult?, val rest: TextLayoutResult, val chosen: TextLayoutResult)
 
-/** [text] from [x] px and [top] dp, each line as faded as a row standing there ([MenuGrid.fade] from [focusY]), times [alpha]. */
-private fun DrawScope.drawFaded(text: TextLayoutResult, x: Float, top: Float, focusY: Float, alpha: Float = 1f) {
+/**
+ * [text] from [x] px and [top] dp, each line as faded as a row standing there ([MenuGrid.fade]
+ * from [focusY]), times [alpha]. Each line's layer is laid with [paint].
+ */
+private fun DrawScope.drawFaded(text: TextLayoutResult, x: Float, top: Float, focusY: Float, paint: Paint, alpha: Float = 1f) {
     val y = (top * density).roundToInt().toFloat()
-    val paint = Paint()
     for (line in 0 until text.lineCount) {
         val lineTop = y + text.getLineTop(line)
         val lineBottom = y + text.getLineBottom(line)
@@ -412,7 +388,7 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
     val labelColor by animateColorAsState(label, tween(260, easing = Motion.Dimmer), label = "label")
     val valueColor by animateColorAsState(value, tween(260, easing = Motion.Dimmer), label = "value")
     val lift = with(LocalDensity.current) { SLIDER_LIFT.dp.roundToPx() }
-    // While the queue display just chosen is pending, dots pulse after the Queue row's value.
+    // While the view just chosen is pending, dots pulse after the View row's value.
     val dots = if (row.entry == MenuEntry.VIEW) rememberPendingDots(pending) else null
     Row(Modifier.fillMaxWidth()) {
         BasicText(row.label, Modifier.alignByBaseline(), style = labelStyle, color = { labelColor }, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -439,6 +415,32 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
         ) { value ->
             ValueText(value, valueStyle, color = { valueColor }, dots)
         }
+    }
+}
+
+/** A level's heading on the left, its cap height on the artwork's top edge. */
+@Composable
+private fun MenuHeading(text: String, layout: StageGrid, faces: Faces, colors: MenuColors) {
+    val style = faces.titleType(HEADING_SP, 420, colors.heading)
+    val cap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
+    BaselineAt(x = layout.margin, baseline = layout.artTop + cap, width = layout.art) {
+        BasicText(text, style = style)
+    }
+}
+
+/** A description on the left, its first line level with the chosen row. */
+@Composable
+private fun MenuDescription(text: String, layout: StageGrid, focusY: Float, faces: Faces, colors: MenuColors) {
+    BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
+        BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
+    }
+}
+
+/** The hint on the left, its baseline on the artwork's bottom edge: what the keys do here. */
+@Composable
+private fun MenuHint(text: String, layout: StageGrid, faces: Faces, colors: MenuColors) {
+    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
+        BasicText(text, style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
     }
 }
 

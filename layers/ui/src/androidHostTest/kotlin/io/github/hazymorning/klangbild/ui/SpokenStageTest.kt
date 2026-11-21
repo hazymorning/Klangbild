@@ -8,6 +8,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import io.github.hazymorning.klangbild.ui.stage.StageModel
@@ -33,8 +34,8 @@ class SpokenStageTest {
     private val book = Catalog.book
     private val episode = Catalog.episode
 
-    private fun spokenModel(track: TrackInfo, position: Long, lead: String?, appearance: Appearance = Appearance.DARK, flow: Boolean = false, next: TrackInfo? = null) =
-        Fixtures.spokenModel(track, position, lead, appearance, flow, next)
+    private fun spokenModel(track: TrackInfo, position: Long, lead: String?, appearance: Appearance = Appearance.DARK, kind: StageGrid.Kind = StageGrid.Kind.SINGLE, next: TrackInfo? = null) =
+        Fixtures.spokenModel(track, position, lead, appearance, kind, next)
 
     private fun lead(pace: String?) = pace
 
@@ -48,6 +49,6 @@ class SpokenStageTest {
 
     @Test fun podcastFlow() = captureRoboImage("build/screenshots/spoken/podcast_flow.png") {
         val scenes = Fixtures.flowScenes(listOf(Fixtures.track(SyntheticCover.MOSS), episode, Fixtures.track(SyntheticCover.TERRACOTTA)))
-        Fixtures.Still { FlowStage(spokenModel(episode, 1_163_000L, lead(null), flow = true), Fixtures.restingCards(scenes, 1)) }
+        Fixtures.Still { FlowStage(spokenModel(episode, 1_163_000L, lead(null), kind = StageGrid.Kind.FLOW), Fixtures.restingCards(scenes, 1)) }
     }
 }

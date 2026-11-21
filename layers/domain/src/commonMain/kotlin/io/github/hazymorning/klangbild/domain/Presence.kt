@@ -18,7 +18,7 @@ class Presence(private val delayMs: Long = DELAY_MS) {
 
     /** Decides again from the sensors' [states] at [t]; returns whether no one is in the room. */
     fun nobodyThere(states: List<String?>, t: Long): Boolean {
-        if (states.isEmpty() || states.any { it != OFF }) {
+        if (states.isEmpty() || states.any { it != EntityState.OFF }) {
             offSince = null
             nobodySince = null
             return false
@@ -38,8 +38,5 @@ class Presence(private val delayMs: Long = DELAY_MS) {
     companion object {
         /** No one counts as there once the sensors have seen no one for this long. */
         const val DELAY_MS = 60_000L
-
-        /** A sensor's state while it sees no one. */
-        const val OFF = "off"
     }
 }

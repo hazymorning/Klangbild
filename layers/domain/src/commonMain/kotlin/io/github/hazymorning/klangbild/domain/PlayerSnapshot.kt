@@ -3,6 +3,9 @@ package io.github.hazymorning.klangbild.domain
 /** Playback state of the speaker, independent of Home Assistant's string values. */
 enum class PlayerStatus { PLAYING, PAUSED, BUFFERING, IDLE, OFF, UNAVAILABLE, UNKNOWN }
 
+/** Music plays, or is about to while the speaker fills its buffer. */
+val PlayerStatus?.sounding: Boolean get() = this == PlayerStatus.PLAYING || this == PlayerStatus.BUFFERING
+
 /**
  * One consistent view of the speaker. [positionMs] was valid at [positionAtEpochMs]
  * (wall clock of the *server*); [Progress.positionAt] extrapolates from there.

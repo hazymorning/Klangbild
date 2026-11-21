@@ -12,7 +12,7 @@ import kotlin.test.Test
 /** The stage's grid for the single cover, Cover Flow and the cover edge to edge (dp at 960 × 540). */
 class StageGridTest {
     private val single = StageGrid(ScreenSpec.TV_1080)
-    private val edge = StageGrid(ScreenSpec.TV_1080, edge = true)
+    private val edge = StageGrid(ScreenSpec.TV_1080, StageGrid.Kind.EDGE)
 
     @Test
     fun `edge to edge, the cover reaches past the left, the top and the bottom, square and uncut`() {
@@ -43,13 +43,8 @@ class StageGridTest {
     }
 
     @Test
-    fun `Cover Flow takes the cover edge to edge for its own grid`() {
-        assertThat(StageGrid(ScreenSpec.TV_1080, flow = true, edge = true).artRect).isEqualTo(StageGrid(ScreenSpec.TV_1080, flow = true).artRect)
-    }
-
-    @Test
     fun `every cover stands on whole pixels at 1080p`() {
-        for (grid in listOf(single, edge, StageGrid(ScreenSpec.TV_1080, flow = true))) {
+        for (grid in listOf(single, edge, StageGrid(ScreenSpec.TV_1080, StageGrid.Kind.FLOW))) {
             val r = grid.artRect
             for (v in listOf(r.left, r.top, r.width)) assertThat(abs(v * 2f - round(v * 2f)), name = "$grid").isLessThan(0.001f)
         }

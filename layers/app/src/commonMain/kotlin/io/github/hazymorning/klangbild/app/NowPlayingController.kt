@@ -48,6 +48,7 @@ import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.DiscoverResult
+import io.github.hazymorning.klangbild.setup.Discovery
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.sound.SoundFeed
@@ -143,6 +144,9 @@ class NowPlayingController(
     /** Whether someone is in the room, by the presence sensors chosen on the phone and the keys pressed. */
     private var presence = Presence()
 
+    /** The screen was turned off from the quick settings: black while the music and the lights go on, until a key is pressed. */
+    private var turnedOff = false
+
     /** The notification the status line shows, from Home Assistant. */
     private val messages = StatusMessage()
     private var pushJob: Job? = null
@@ -176,7 +180,7 @@ class NowPlayingController(
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
         override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
         override val notifyFailed: Boolean get() = this@NowPlayingController.notifyFailed
-        override fun update() {
+        override fun updateOk() {
             updates?.ok()
         }
         override var language: AppLanguage
@@ -188,6 +192,7 @@ class NowPlayingController(
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
         override fun openMenu(): Unit = menu.open()
+        override fun turnScreenOff() = this@NowPlayingController.turnScreenOff()
         override fun applySettings(updated: Settings) {
             save(updated)
         }
@@ -216,7 +221,7 @@ class NowPlayingController(
         settings = { settings.value },
         texts = { localizer.texts.value },
         discover = { url, credentials ->
-            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
+            Discovery.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
                 if (r is DiscoverResult.Failed && r.refused) refused(credentials)
             }
         },
@@ -293,14 +298,7 @@ class NowPlayingController(
         ticker?.cancel()
         setupJob?.cancel()
         setupServer.stop()
-        sourceJob?.cancel()
-        pushJob?.cancel()
-        // A report held back belongs to the source that sent it.
-        heldJob?.cancel()
-        heldJob = null
-        flips = FlipGuard()
-        stopSource(source)
-        source = null
+        dropSource()
         sourceKey = null
         sleep.stop()
         seeking.clear()
@@ -312,9 +310,9 @@ class NowPlayingController(
         }
         // The next start begins afresh: a pause from last night must not send a new launch to
         // sleep (or close it) before the music has been heard of.
-        val setup = machine.isSetupRequested
-        machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
+        restartMachine()
         presence = Presence()
+        turnedOff = false
         lastReportKey = null
         volumeFlash.reset()
         _ui.value = _ui.value.copy(
@@ -356,14 +354,21 @@ class NowPlayingController(
     }
 
     /**
-     * A key was pressed: someone is in the room. True while the screen was dark for no one being
-     * there: then the key only brings the picture back.
+     * A key was pressed: someone is in the room, and wants to see. True while the screen was dark
+     * (no one was there, or it was turned off): then the key only brings the picture back.
      */
     fun keyPressed(): Boolean = synchronized(lock) {
         val dark = _ui.value.dark
         presence.keyPressed(now())
+        turnedOff = false
         if (dark) recompute()
         dark
+    }
+
+    /** Turns the screen off: black, while the music and the lights go on, until a key is pressed. */
+    fun turnScreenOff(): Unit = synchronized(lock) {
+        turnedOff = true
+        recompute()
     }
 
     fun networkAvailable() {
@@ -452,10 +457,7 @@ class NowPlayingController(
         if (loaded && s.updateCheck && !settings.value.updateCheck) updates?.checkIfDue()
         settings.value = s
         val timing = timingFor(s)
-        if (timing != machine.timing) {
-            val setup = machine.isSetupRequested
-            machine = ScreenStateMachine(timing).also { it.requestSetup(setup) }
-        }
+        if (timing != machine.timing) restartMachine(timing)
         reconcileSource()
         // The quick settings' own buttons show only while their entities are there (and their
         // conditions hold); the values in the status line follow their entities.
@@ -533,12 +535,7 @@ class NowPlayingController(
         if (key == sourceKey || viewers == 0) return
         sourceKey = key
         log.info(if (s.isConfigured) "Connecting to Home Assistant (${s.entityId})" else "No connection set: setup")
-        sourceJob?.cancel()
-        // A report held back belongs to the source that sent it.
-        heldJob?.cancel()
-        heldJob = null
-        flips = FlipGuard()
-        stopSource(source)
+        dropSource()
         stageBuilder.newSource()
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
         soundSelection.useMilkdrop(if (s.hasMusicAssistant) MilkdropSound(tokenHttp, scope, s.maUrl!!, s.maToken!!) else null)
@@ -557,7 +554,6 @@ class NowPlayingController(
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
         }
-        pushJob?.cancel()
         pushJob = scope.launch { newSource.notifications.collect { onPush(it) } }
     }
 
@@ -615,6 +611,21 @@ class NowPlayingController(
     private var heldJob: Job? = null
 
     /**
+     * Lets go of the connection: what follows its reports and notifications, a report from it
+     * held back, and the connection itself.
+     */
+    private fun dropSource() {
+        sourceJob?.cancel()
+        pushJob?.cancel()
+        // A report held back belongs to the source that sent it.
+        heldJob?.cancel()
+        heldJob = null
+        flips = FlipGuard()
+        stopSource(source)
+        source = null
+    }
+
+    /**
      * Stops [old] once the lights it was lighting have been given back through it (a few
      * seconds at most): the connection must still be there for that.
      */
@@ -629,6 +640,12 @@ class NowPlayingController(
     }
 
     private fun timingFor(s: Settings) = Timing(sleepAfterMs = s.sleepAfterMinutes * 60_000L)
+
+    /** A new screen state machine on [timing], which keeps the setup page if it was asked for. */
+    private fun restartMachine(timing: Timing = machine.timing) {
+        val setup = machine.isSetupRequested
+        machine = ScreenStateMachine(timing).also { it.requestSetup(setup) }
+    }
 
     private fun recompute(): Unit = synchronized(lock) {
         val s = settings.value
@@ -663,13 +680,16 @@ class NowPlayingController(
         val quickState = quick.state(decision.screen)
         // No one in the room, as the presence sensors tell: the screen goes dark and the music
         // plays on, never on the setup screen or under a menu. An empty room lets the screen
-        // sleep as no music does, after the same time.
+        // sleep as no music does, after the same time. The screen turned off from the quick
+        // settings goes dark the same way, and the lights go on with the music.
         val sensors = if (s.darkWhenNobody) s.presenceSensors.map { src.entities[it]?.state } else emptyList()
         val nobody = presence.nobodyThere(sensors, t)
-        val dark = nobody && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val darkable = decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val empty = nobody && darkable
+        val dark = (nobody || turnedOff) && darkable
         val nobodyLong = presence.nobodySince?.let { t - it >= machine.timing.sleepAfterMs } == true
         // A notification shows where it can be seen: on the stage or the rest screen, with no menu over it.
-        val seen = !dark && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val seen = !dark && darkable
         val message = messages.line(seen && s.notifications, t)
         // Cover Flow or the single cover, as the song's queue allows.
         val flow = stage?.let { stageBuilder.follow(s, src, it, onStage = previous.stage?.track ?: previous.flow?.middle?.track) } ?: stageBuilder.flowing
@@ -706,19 +726,20 @@ class NowPlayingController(
         fieldClock.run(if (playing) s.motion.speed else 0f)
         val ready = if (stage == null) decided else stageBuilder.build(decided, s, stage, look, previous.stage)
         // Meanwhile the clock stays, never the dark, and the keys and the lights act on what shows;
-        // the quick settings' Queue still names the choice made. One state is published, never one
+        // the quick settings' View still names the choice made. One state is published, never one
         // with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
-        // The queue display just chosen stays pending, with dots after its value in the quick
-        // settings and the menu, until this state shows it.
-        // A view chosen in the quick settings and not applied yet: Cover Flow, or the queue as it stands beside the cover.
+        // The view just chosen stays pending, with dots after its value in the quick settings and
+        // the menu, until this state shows it. One the quick settings haven't applied yet shows the
+        // queue as Cover Flow, or as it stands beside the cover.
         val pendingDisplay = quick.pending?.let { if (it == StageView.FLOW) QueueDisplay.FLOW else s.queue }
         _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.shownQueue, pendingDisplay, flow))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
-        // chosen, or switched off, go back at once, and so do all of them while the screen is dark.
-        val chosen = if (dark || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
-        lightSync.update(lightTargets.target(s, _ui.value, stage, playing).takeUnless { dark }, chosen)
+        // chosen, or switched off, go back at once, and so do all of them while no one is in the
+        // room. With the screen turned off by hand they go on.
+        val chosen = if (empty || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
+        lightSync.update(lightTargets.target(s, _ui.value, stage, playing).takeUnless { empty }, chosen)
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()
     }

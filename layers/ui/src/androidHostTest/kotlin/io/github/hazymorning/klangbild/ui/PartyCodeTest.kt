@@ -18,6 +18,7 @@ import com.google.zxing.qrcode.QRCodeReader
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.render.StageGrid
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -103,7 +104,7 @@ class PartyCodeTest {
     fun `in Cover Flow the code stands in the middle card's place`() {
         val strip = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.BAUHAUS, SyntheticCover.WHITE_SPACE, SyntheticCover.NIGHT_DRIVE)
         for (wall in Appearance.entries) {
-            val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, flow = true) }.toMap()
+            val scenes = strip.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), appearance = wall, kind = StageGrid.Kind.FLOW) }.toMap()
             val name = "flow_${wall.name.lowercase()}"
             val px = render(name) { Fixtures.FlowTheaterOf(Fixtures.flow(scenes, listOf(0, 1, 2, 3, 4), 2), partyCode = LINK) }
             assertThat(scan(px, middle), name = name).isEqualTo(LINK)

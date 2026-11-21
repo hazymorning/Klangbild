@@ -13,8 +13,11 @@ object EntityId {
     /** Whether [name] can be an attribute's name. */
     fun isAttribute(name: String): Boolean = ATTRIBUTE.matches(name)
 
+    /** An entity of [domain] (`binary_sensor` for `binary_sensor.couch`). */
+    fun isIn(domain: String, s: String): Boolean = s.startsWith("$domain.") && isValid(s)
+
     /** A light (`light.living_room_left`). */
-    fun isLight(s: String): Boolean = s.startsWith("light.") && isValid(s)
+    fun isLight(s: String): Boolean = isIn("light", s)
 
     /**
      * The speaker chosen as "This TV" on the setup page: this TV's own speaker in Music

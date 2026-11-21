@@ -22,8 +22,8 @@ import kotlin.math.cos
 import kotlin.math.floor
 
 /**
- * Three dots after a value while what it names is being prepared (the queue display just chosen,
- * until the screen shows it), the way an ellipsis says that something is in progress. They fade
+ * Three dots after a value while what it names is being prepared (the view just chosen, until
+ * the screen shows it), the way an ellipsis says that something is in progress. They fade
  * in, pulse one after another for as long as the wait lasts, and fade out when it ends. The value
  * itself keeps its ink. Their alpha is read while drawing, so the pulse only redraws.
  */

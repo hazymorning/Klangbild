@@ -69,10 +69,11 @@ class SeekingTest {
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
         override val update = io.github.hazymorning.klangbild.domain.UpdateInfo()
-        override fun update() = Unit
+        override fun updateOk() = Unit
         override fun recompute() = Unit
         override fun showMenu() = Unit
         override fun openMenu() = Unit
+        override fun turnScreenOff() = Unit
         override fun applySettings(updated: Settings) = Unit
         override fun send(command: RemoteCommand) = Unit
         override fun requestSetup(show: Boolean) = Unit

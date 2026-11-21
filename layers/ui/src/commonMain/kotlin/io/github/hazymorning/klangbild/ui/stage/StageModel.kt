@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
+import io.github.hazymorning.klangbild.domain.sounding
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
@@ -39,14 +40,8 @@ internal class StageModel(
     val barStays: Boolean = true,
     /** The slot text, in place of the bar: the station of a radio without a duration, or a notice ("Reconnecting…"). */
     val slotText: String? = null,
-    /** The footer's track: what comes next ("Spiegel im Spiegel · Arvo Pärt"), or with lyrics the track itself. */
-    val footer: String? = null,
-    /** The footer's title alone, for when title and artist don't both fit. */
-    val footerTitle: String? = null,
-    /** The footer's lead in place of "Up next": "Arrow down" while the hint for the quick settings shows. */
-    val footerLead: String? = null,
-    /** The track's position in its queue, first in the footer ("3 of 45"); it shows alone when nothing follows it there. */
-    val footerPlace: String? = null,
+    /** The line at the column's foot, or null for none. */
+    val footer: Footer? = null,
     /** The chapter of a book or an episode, in the album's place ("The Arrest", "Chapter 7"). */
     val chapter: String? = null,
     /** Where the progress bar starts in the track's time: the chapter's start. */
@@ -61,7 +56,10 @@ internal class StageModel(
      * the track itself, and the progress bar shows only for a moment after a key ([barShown]).
      */
     val bio: ArtistBio? = null,
-    /** The queue as a list in the text column, while it shows and no lyrics fill the column. The track then stands at its top. */
+    /**
+     * The queue as a list in the text column, while it shows and neither the lyrics nor the
+     * artist's page fill the column. The track then stands at its top.
+     */
     val queue: QueueModel? = null,
     /** Whether the player still reports this track. Once it reports the next one, its lyrics are over. */
     val current: Boolean = true,
@@ -69,7 +67,7 @@ internal class StageModel(
     val lyricsDelayMs: () -> Long = { 0L },
 ) {
     /** Whether the track plays or is about to: the progress bar and the lyrics move on. */
-    val playing: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING
+    val playing: Boolean get() = status.sounding
 }
 
 /**
@@ -82,13 +80,23 @@ internal data class StatusLine(val lead: String?, val clock: String?, val values
     val isEmpty get() = lead == null && clock == null && values.isEmpty()
 }
 
+/**
+ * The line at the foot of the text column: the track's [place] in its queue ("3 of 45"), then
+ * [text] after its [lead]. That is what comes next after "Up next" ("Spiegel im Spiegel · Arvo
+ * Pärt"), the hint for the quick settings after the key it names, or beside the song's or the
+ * artist's words the track itself, without a lead. When [text] doesn't fit, its [title] alone
+ * takes its place, and without any text the place stands alone.
+ */
+@Immutable
+internal data class Footer(val place: String?, val lead: String?, val text: String?, val title: String? = null)
+
 /** The stage's strings for the status line, the slot and the footer. */
 internal object StageTexts {
     /**
      * The status line's lead. A volume change shows briefly ("Volume 35%") unless the speaker is
-     * muted. Muted or paused, the lead is the [group] and the state ("Living room · Paused"),
-     * otherwise the [group], the [pace] ("Pauses at 11:10 PM", "Speed 1.5×") and, with
-     * [volumeAlways], the volume.
+     * muted. Muted or paused, the lead is the [group], the track's [place] in its queue and the
+     * state ("Living room · 3 of 45 · Paused"), otherwise the [group], the [place], the [pace]
+     * ("Pauses at 11:10 PM", "Speed 1.5×") and, with [volumeAlways], the volume.
      */
     fun lead(
         status: PlayerStatus,
@@ -99,11 +107,12 @@ internal object StageTexts {
         volumeAlways: Boolean,
         t: Texts,
         pace: String? = null,
+        place: String? = null,
     ): String? = when {
         volumeFlash && !muted && volume != null -> t.format(Strings.statusVolume, volume)
-        muted -> listOfNotNull(group, t[Strings.statusMuted]).joinToString(TimeText.SEPARATOR)
-        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR)
-        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
+        muted -> listOfNotNull(group, place, t[Strings.statusMuted]).joinToString(TimeText.SEPARATOR)
+        status == PlayerStatus.PAUSED -> listOfNotNull(group, place, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR)
+        else -> listOfNotNull(group, place, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
 
     /**

@@ -3,22 +3,20 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -104,31 +102,22 @@ object QuickGrid {
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
-    // The last state stays while the bar sinks away.
-    val last = remember { arrayOfNulls<QuickState>(1) }
-    if (quick != null) last[0] = quick
     val density = LocalDensity.current.density
-    val shown = remember { Animatable(0f) }
-    // Composition only asks whether it shows, so the fade redraws without composing anew.
-    val gone by remember { derivedStateOf { shown.value <= 0f } }
-    LaunchedEffect(quick != null) {
-        shown.animateTo(if (quick != null) 1f else 0f, tween(if (quick != null) BAR_IN_MS else BAR_OUT_MS, easing = Motion.Dimmer))
+    FadingOverlay(quick, BAR_IN_MS, BAR_OUT_MS) { state, shown ->
+        // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's
+        // size, which would cut its veil off at the screen's edges while it moves.
+        QuickBar(
+            state,
+            appearance,
+            modifier.graphicsLayer {
+                val v = shown()
+                alpha = v
+                translationY = (1f - v) * QuickGrid.RISE * density
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
+            pending,
+        )
     }
-    if (quick == null && gone) return
-    val state = quick ?: last[0] ?: return
-    // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's size,
-    // which would cut its veil off at the screen's edges while it moves.
-    QuickBar(
-        state,
-        appearance,
-        modifier.graphicsLayer {
-            val v = shown.value
-            alpha = v
-            translationY = (1f - v) * QuickGrid.RISE * density
-            compositingStrategy = CompositingStrategy.ModulateAlpha
-        },
-        pending,
-    )
 }
 
 /**
@@ -201,39 +190,46 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
     val glowX by animateGlide(lefts[cursor] + widths[cursor] / 2f, ROW_GLIDE_MS)
     val glowSigma by animateGlide(widths[cursor] / 2f * QuickGrid.GLOW_SHARE + QuickGrid.GLOW_PAD, ROW_GLIDE_MS)
     val glow = rememberOffMain(colors.band) { glowBlob(colors.band.toArgb()) }
+    val glowTint = remember(colors.band) { ColorFilter.tint(colors.band, BlendMode.Modulate) }
 
     Box(modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) {
-            val d = density.density
-            // The veil reaches beyond the screen's sides and bottom (and below, where the bar rises
-            // from), so it leaves no gap at the edges, whatever the drift against burn-in.
-            val m = BEYOND_EDGES_DP * d
-            drawRect(
-                Brush.verticalGradient(
+        // Drawn anew on every frame of the light's glide; the veil's gradient is made once for its size.
+        Spacer(
+            Modifier.fillMaxSize().drawWithCache {
+                val d = density.density
+                val veil = Brush.verticalGradient(
                     0f to colors.veil.copy(alpha = 0f),
                     ((QuickGrid.VEIL_FULL - QuickGrid.VEIL_TOP) / (540f - QuickGrid.VEIL_TOP)) to colors.veil,
                     1f to colors.veil,
                     startY = QuickGrid.VEIL_TOP * d,
                     endY = size.height,
-                ),
-                topLeft = Offset(-m, QuickGrid.VEIL_TOP * d),
-                size = Size(size.width + 2 * m, size.height - QuickGrid.VEIL_TOP * d + m + QuickGrid.RISE * d),
-            )
-            val g = glow ?: return@Canvas
-            // The band of light, centered on the value's middle; it adds to the veil. The blob
-            // holds ±3 σ.
-            val cy = (QuickGrid.VALUE_BASELINE - QuickGrid.VALUE_SP * Fonts.CAP_HEIGHT / 2f) * d
-            val hw = glowSigma * 3f * d
-            val hh = QuickGrid.GLOW_SIGMA_Y * 3f * d
-            drawImage(
-                g,
-                dstOffset = IntOffset(((glowX - shift) * d - hw).roundToInt(), (cy - hh).roundToInt()),
-                dstSize = IntSize((2 * hw).roundToInt(), (2 * hh).roundToInt()),
-                colorFilter = ColorFilter.tint(colors.band, BlendMode.Modulate),
-                filterQuality = FilterQuality.Low,
-                blendMode = BlendMode.Plus,
-            )
-        }
+                )
+                onDrawBehind {
+                    // The veil reaches beyond the screen's sides and bottom (and below, where the bar
+                    // rises from), so it leaves no gap at the edges, whatever the drift against burn-in.
+                    val m = BEYOND_EDGES_DP * d
+                    drawRect(
+                        veil,
+                        topLeft = Offset(-m, QuickGrid.VEIL_TOP * d),
+                        size = Size(size.width + 2 * m, size.height - QuickGrid.VEIL_TOP * d + m + QuickGrid.RISE * d),
+                    )
+                    val g = glow ?: return@onDrawBehind
+                    // The band of light, centered on the value's middle; it adds to the veil. The
+                    // blob holds ±3 σ.
+                    val cy = (QuickGrid.VALUE_BASELINE - QuickGrid.VALUE_SP * Fonts.CAP_HEIGHT / 2f) * d
+                    val hw = glowSigma * 3f * d
+                    val hh = QuickGrid.GLOW_SIGMA_Y * 3f * d
+                    drawImage(
+                        g,
+                        dstOffset = IntOffset(((glowX - shift) * d - hw).roundToInt(), (cy - hh).roundToInt()),
+                        dstSize = IntSize((2 * hw).roundToInt(), (2 * hh).roundToInt()),
+                        colorFilter = glowTint,
+                        filterQuality = FilterQuality.Low,
+                        blendMode = BlendMode.Plus,
+                    )
+                }
+            },
+        )
         quick.rows.forEachIndexed { i, row ->
             key(row.key) {
                 val focused = i == cursor
@@ -243,7 +239,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
-                // While the queue display just chosen is pending, dots pulse after its value.
+                // While the view just chosen is pending, dots pulse after its value.
                 val dots = if (row.item == QuickItem.VIEW) rememberPendingDots(pending) else null
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)

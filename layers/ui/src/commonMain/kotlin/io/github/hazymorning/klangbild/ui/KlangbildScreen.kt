@@ -23,8 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
  * loaded once for all of it. [keyHint] false (a screensaver, which any key ends) hides the hint
  * that tells which key opens the quick settings. [overlay] lies on top, given the state.
  *
- * While no one is in the room ([UiState.dark]) the whole picture fades to black, slowly, and
- * comes back in about a second once someone is.
+ * While no one is in the room, or the screen was turned off ([UiState.dark]), the whole picture
+ * fades to black, slowly, and comes back in about a second once someone is, or presses a key.
  */
 @Composable
 fun KlangbildScreen(ui: StateFlow<UiState>, screen: ScreenSpec, hooks: RootHooks, keyHint: Boolean = true, overlay: @Composable (UiState) -> Unit = {}) {

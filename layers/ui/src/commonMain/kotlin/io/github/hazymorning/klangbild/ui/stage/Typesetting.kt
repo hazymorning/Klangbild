@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.ui.stage
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
 import io.github.hazymorning.klangbild.color.ScenePalette
 import io.github.hazymorning.klangbild.domain.TimeText
-import io.github.hazymorning.klangbild.text.Strings
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.descent
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.entryGap
 import io.github.hazymorning.klangbild.ui.stage.Rhythm.innerGap
@@ -36,7 +37,6 @@ import io.github.hazymorning.klangbild.ui.stage.Rhythm.outerGap
 import io.github.hazymorning.klangbild.ui.text.LineBalancer
 import io.github.hazymorning.klangbild.ui.text.lineBalancer
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
-import io.github.hazymorning.klangbild.ui.texts
 import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
@@ -79,8 +79,11 @@ internal class StageStyles(palette: ScenePalette, val faces: Faces, val scale: F
     val artistSmall = faces.textType(19f * scale, 500, muted, lineHeight = 25f * scale).leftAligned()
     val album = faces.textType(17f * scale, 400, quiet, lineHeight = 23f * scale, tracking = 0.005f).leftAligned()
 
-    /** A few sentences about the artist ([BioText]): between the artist and the album, on balanced lines. */
-    val bio = faces.textType(18f * scale, 420, muted, lineHeight = 26f * scale).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
+    /**
+     * A few sentences about the artist ([BioText]): between the artist and the album, on balanced
+     * lines. They are set without ink and drawn in the artist's ([muted]).
+     */
+    val bio = faces.textType(18f * scale, 420, lineHeight = 26f * scale).leftAligned().merge(TextStyle(lineBreak = sentenceLineBreak))
 
     /** The status line and the station: 15 sp with slight tracking, since light text on dark looks tighter. */
     val label = faces.textType(15f * scale, 440, quiet, lineHeight = 20f * scale, tracking = 0.015f)
@@ -216,26 +219,16 @@ internal class TextPlan(
     val artistStyle: TextStyle,
     /** "Album · 2024", or only the album when both don't fit. */
     val album: String?,
-    /** The footer's track: title and artist, or only the title when both don't fit. */
-    val footer: String?,
-    /** The footer's lead ("Up next"). */
-    val footerLead: String,
-    /** The track's position in the queue, first in the footer ("3 of 45"). */
-    val footerPlace: String?,
 )
 
-/** Measures the block once per model. */
+/** Measures the block anew only when what it measures changes. */
 @Composable
 internal fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val footerLead = model.footerLead ?: texts()[Strings.stageNext]
-    val faces = faces()
-    return remember(
-        model.text, model.year, model.footer, model.footerTitle, model.footerPlace, model.scene.layout, model.scene.palette, model.barShown, model.slotText,
-        model.durationMs == null, model.chapter != null, localDensity, footerLead, faces,
-    ) {
-        planText(model, measurer, localDensity, footerLead, faces)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
+    return remember(model.text, model.year, model.scene.layout, styles, slotOf(model) != null, model.chapter != null, localDensity) {
+        planText(model, measurer, localDensity, styles)
     }
 }
 
@@ -243,16 +236,15 @@ private fun planText(
     model: StageModel,
     measurer: TextMeasurer,
     density: Density,
-    footerLead: String,
-    faces: Faces,
+    styles: StageStyles,
 ): TextPlan {
     val t = model.text
     val layout = model.scene.layout
     val d = density.density
     val colW = (layout.columnWidth * d).roundToInt()
-    val styles = StageStyles(model.scene.palette, faces, layout.textScale)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
+    val slotted = slotOf(model) != null
 
     val title = EmojiText.annotate(t.title, styles.ink)
 
@@ -280,7 +272,7 @@ private fun planText(
             rest += descent(last) + innerGap(last, styles.album) + cap(styles.album)
             last = styles.album
         }
-        if (model.slotText != null || (model.barShown && model.durationMs != null)) {
+        if (slotted) {
             rest += descent(last) + outerGap(title, styles.artist) + (BAR_THICKNESS + BAR_LABEL_GAP) * d + cap(styles.time)
         }
         layout.columnArt * BLOCK_SHARE * d - rest
@@ -311,7 +303,6 @@ private fun planText(
     // The album with its year. The year goes first when both don't fit.
     val albumYear = listOfNotNull(t.album, model.year?.toString()).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     val album = if (albumYear != null && t.album != null && model.year != null && !fits(albumYear, styles.album)) t.album else albumYear
-    val footer = model.footer?.let { fitFooter(measurer, it, model.footerTitle, styles.footer, colW) { s -> footerText(model.footerPlace, footerLead, s, styles) } }
     return TextPlan(
         title = choice.layout.layoutInput.text,
         titleStyle = choice.layout.layoutInput.style,
@@ -324,9 +315,6 @@ private fun planText(
         artists = artists,
         artistStyle = artistStyle,
         album = album,
-        footer = footer,
-        footerLead = footerLead,
-        footerPlace = model.footerPlace,
     )
 }
 
@@ -347,6 +335,30 @@ internal fun Placeable.firstBaselineOrHeight(): Int = this[FirstBaseline].takeIf
 
 /** The last baseline of a text, or the bottom of anything else. */
 internal fun Placeable.lastBaselineOrHeight(): Int = this[LastBaseline].takeIf { it != AlignmentLine.Unspecified } ?: height
+
+/** The text column over the whole screen, dimmed by [textLevel] (a pause). */
+internal fun Modifier.textColumn(textLevel: () -> Float): Modifier = fillMaxSize().graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) }
+
+/**
+ * How far below its top the measured [slot]'s cap height stands (px): a line of text ([isText]) is
+ * aligned by its own cap height, the bar by its top.
+ */
+internal fun Density.slotCapTop(slot: Placeable, isText: Boolean, styles: StageStyles): Int =
+    if (isText) slot.firstBaselineOrHeight() - (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() else 0
+
+/**
+ * How far below its top the measured [slot]'s baseline stands (px): a line of text's own
+ * ([isText]), or the bar's labels', where the bar's block ends.
+ */
+internal fun slotBaseline(slot: Placeable, isText: Boolean): Int = if (isText) slot.firstBaselineOrHeight() else slot.height
+
+/** Where the status line's baseline stands (px): its cap height hangs at the grid's status top. */
+internal fun Density.statusBaseline(layout: StageGrid, styles: StageStyles): Int =
+    (layout.statusTop * density).roundToInt() + (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
+
+/** Where the footer's baseline stands (px): its descenders end where the column ends. */
+internal fun Density.footerBaseline(layout: StageGrid, styles: StageStyles): Int =
+    (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
 
 /** The title's step, and the title laid out at it as it is set: at most the step's lines, the last one ellipsized. */
 internal class TitleChoice(val step: TitleStep, val layout: TextLayoutResult)
@@ -531,12 +543,25 @@ internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, wi
 /** [text] whole if it [fits], else cut after its last whole word that leaves room for an ellipsis (as above). */
 internal fun fitWords(text: String, fits: (String) -> Boolean): String {
     if (fits(text)) return text
+    return cutAfterWord(text, cut = { "${text.substring(0, it)}$NBSP…" }, fits = fits) ?: text
+}
+
+/**
+ * [text] cut after its last whole word that [fits]: [cut] makes the cut of its first that many
+ * characters, with the ellipsis. A cut never ends on what [trimBeforeEllipsis] trims, and with
+ * [closeParentheses] it ends before a parenthesis it would leave open. Null when none fits.
+ */
+internal fun <T : Any> cutAfterWord(text: String, closeParentheses: Boolean = false, cut: (Int) -> T, fits: (T) -> Boolean): T? {
     var end = text.length
     while (true) {
         end = text.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
-        if (end <= 0) return text
-        val head = trimBeforeEllipsis(text.substring(0, end))
-        if (head.isNotEmpty() && fits("$head$NBSP…")) return "$head$NBSP…"
+        if (end <= 0) return null
+        var head = text.substring(0, end)
+        if (closeParentheses && head.count { it == '(' } > head.count { it == ')' }) head = head.substring(0, head.lastIndexOf('('))
+        head = trimBeforeEllipsis(head)
+        if (head.isEmpty()) continue
+        val c = cut(head.length)
+        if (fits(c)) return c
     }
 }
 

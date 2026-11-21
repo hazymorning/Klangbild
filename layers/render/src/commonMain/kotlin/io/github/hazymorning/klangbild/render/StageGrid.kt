@@ -32,26 +32,41 @@ package io.github.hazymorning.klangbild.render
  *  │        ╰──────────────╯                                  │  ← artwork bottom
  *  └──────────────────────────────────────────────────────────┘
  *
- * Cover Flow ([flow]) keeps every rule but makes room for the cards beside the middle one: the
+ * Cover Flow ([Kind.FLOW]) keeps every rule but makes room for the cards beside the middle one: the
  * middle cover is 312 dp with its center 317 dp from the left, so the strip's outer edge (245.75
  * dp beside it, see [FlowGeometry]) keeps 71.25 dp from the screen's edge. That is as much as the
  * column (from 602.75 dp, 286 dp wide) keeps on the right, and above and below the cover stay 114
  * dp. The cover stands on whole pixels at 1080p.
  *
- * With the cover edge to edge ([edge], beside a single cover only), it fills the screen's height
- * at its left edge, square and uncut, its corners square. It reaches [BLEED] past the top, the
- * bottom and the left, so the drift against burn-in never shows an edge. The column stands in the
- * middle of what is left, as far from the cover as from the screen's edge, and its frame (the
+ * With the cover edge to edge ([Kind.EDGE], beside a single cover only), it fills the screen's
+ * height at its left edge, square and uncut, its corners square. It reaches [BLEED] past the top,
+ * the bottom and the left, so the drift against burn-in never shows an edge. The column stands in
+ * the middle of what is left, as far from the cover as from the screen's edge, and its frame (the
  * status line, the footer) stands where it does beside the single cover.
  */
-data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge: Boolean = false) {
+data class StageGrid(val screen: ScreenSpec, val kind: Kind = Kind.SINGLE) {
+    /**
+     * Which of the three grids it is, with what differs between them: its own measures ([grid]),
+     * those its column's frame and a queue row's small cover take ([frame]), and whether its
+     * cover's corners are round.
+     */
+    enum class Kind(internal val grid: Grid, internal val frame: Grid = grid, internal val round: Boolean = true) {
+        /** The single cover. */
+        SINGLE(Grid.SINGLE),
+
+        /** Cover Flow. */
+        FLOW(Grid.FLOW),
+
+        /** The cover edge to edge: its corners square, its column framed as beside the single cover. */
+        EDGE(Grid.EDGE, frame = Grid.SINGLE, round = false),
+    }
+
     private val sx = screen.widthDp / 960f
     private val sy = screen.heightDp / 540f
-    private val grid = when {
-        flow -> FLOW
-        edge -> EDGE
-        else -> SINGLE
-    }
+    private val grid = kind.grid
+
+    /** Whether it is Cover Flow's grid. */
+    val flow: Boolean get() = kind == Kind.FLOW
 
     /**
      * How much larger than designed the column's text is set: as much as the single cover's column
@@ -60,7 +75,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     val textScale: Float get() = frame.textScale
 
     /** The cover the column's frame and a queue row's small cover take their measures from: the single cover's when the cover goes edge to edge. */
-    private val frame = if (grid === EDGE) SINGLE else grid
+    private val frame = kind.frame
     private val frameArt = frame.art * sy
     private val frameTop = (screen.heightDp - frameArt) / 2f
 
@@ -73,7 +88,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     /** Side of the artwork's square. */
     val art = grid.art * sy
     val artTop = (screen.heightDp - art) / 2f
-    val artRect: RectDp get() = RectDp(margin, artTop, art, art)
+    val artRect = RectDp(margin, artTop, art, art)
 
     /** Space between artwork and text. */
     val gap = grid.gap * sx
@@ -93,7 +108,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     val footerBottom get() = frameTop + frameArt - frameRadius
 
     /** Corner radius of a square artwork (dp): a hair over 2 % of its side; none for a cover edge to edge. */
-    val radius get() = if (grid === EDGE) 0f else frameRadius
+    val radius get() = if (kind.round) frameRadius else 0f
 
     private val frameRadius get() = RADIUS * frameArt / DESIGN_ART
 
@@ -104,7 +119,21 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     val rowCover get() = ROW_COVER * frameArt / DESIGN_ART
 
     /** Margins, artwork and gap at 960 × 540 dp: the single cover's, Cover Flow's, or the cover's edge to edge. */
-    private class Grid(val margin: Float, val art: Float, val gap: Float, val rightMargin: Float, val textScale: Float = 1f)
+    internal class Grid(val margin: Float, val art: Float, val gap: Float, val rightMargin: Float, val textScale: Float = 1f) {
+        companion object {
+            val SINGLE = Grid(
+                margin = SINGLE_MARGIN,
+                art = SINGLE_ART,
+                gap = SINGLE_GAP,
+                rightMargin = SINGLE_MARGIN,
+                textScale = SINGLE_COLUMN / DESIGN_COLUMN,
+            )
+            val FLOW = Grid(margin = 161f, art = 312f, gap = 129.75f, rightMargin = 71.25f)
+
+            /** The cover edge to edge, and the column in the middle of the 416 dp it leaves. */
+            val EDGE = Grid(margin = -BLEED, art = 540f + 2 * BLEED, gap = 64f, rightMargin = 64f)
+        }
+    }
 
     companion object {
         /** The grid's width (dp): every measure here is for a screen this wide, scaled to the real one. */
@@ -131,20 +160,8 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
         /** The column as designed beside a 368 dp artwork (dp). */
         private const val DESIGN_COLUMN = 352f
 
-        private val SINGLE = Grid(
-            margin = SINGLE_MARGIN,
-            art = SINGLE_ART,
-            gap = SINGLE_GAP,
-            rightMargin = SINGLE_MARGIN,
-            textScale = SINGLE_COLUMN / DESIGN_COLUMN,
-        )
-        private val FLOW = Grid(margin = 161f, art = 312f, gap = 129.75f, rightMargin = 71.25f)
-
         /** How far a cover edge to edge reaches past the screen's edges (dp): more than the drift against burn-in. */
         const val BLEED = 4f
-
-        /** The cover edge to edge, and the column in the middle of the 416 dp it leaves. */
-        private val EDGE = Grid(margin = -BLEED, art = 540f + 2 * BLEED, gap = 64f, rightMargin = 64f)
 
         /** Corner radius of square artwork (dp at 960 × 540, for the design's 368 dp). */
         const val RADIUS = 8f

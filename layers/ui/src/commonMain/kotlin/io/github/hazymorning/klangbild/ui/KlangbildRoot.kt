@@ -32,6 +32,7 @@ import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
+import io.github.hazymorning.klangbild.config.TrackNumber
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
@@ -41,6 +42,7 @@ import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
+import io.github.hazymorning.klangbild.domain.sounding
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
@@ -48,6 +50,7 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
+import io.github.hazymorning.klangbild.ui.stage.Footer
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
 import io.github.hazymorning.klangbild.ui.stage.PlayedLines
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
@@ -169,8 +172,8 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             }
         }
         // The quick settings rise from the bottom edge over whatever shows; the settings menu lies
-        // over everything. Both come and go on their own. While the queue display just chosen is
-        // being prepared, dots pulse after their Queue value.
+        // over everything. Both come and go on their own. While the view just chosen is being
+        // prepared, dots pulse after their View value.
         val pending = ui.queuePending != null
         QuickBarOverlay(ui.quick, ui.appearance, pending = pending)
         MenuOverlay(ui.menu, ui.appearance, pending = pending)
@@ -237,7 +240,7 @@ private const val CLOCK_TICK_MS = 5_000L
 
 private fun contentOf(ui: UiState, quietStart: Boolean): Content = when (val s = ui.screen) {
     is Screen.Stage -> {
-        // Cover Flow or the single cover, as the queue shows, once its first scene is made;
+        // Cover Flow while it's the view, else the single cover, once its first scene is made;
         // until then what showed before stays.
         val flow = ui.flow?.let { Content.FlowContent(it) }
         val single = ui.stage?.let { Content.StageContent(it) }
@@ -272,10 +275,15 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val peek = rememberPeek(hooks)
     val hint = rememberHint(ui.downHint)
     val t = texts()
-    val statusLine = statusLineOf(ui, status, peek, wall.value, t)
+    // The track's position in the queue stands in the line the setting says, and in the top line
+    // while the list beside the cover takes the last line's place.
+    val list = stage.queue != null && stage.lyrics == null && stage.bio == null
+    val top = display.trackNumber == TrackNumber.TOP || (display.trackNumber == TrackNumber.BOTTOM && list)
+    val topPlace = stageScreen?.takeIf { top }?.let { StageTexts.place(it.place, it.track, t) }
+    val statusLine = statusLineOf(ui, status, peek, wall.value, t, topPlace)
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
-    val place = stageScreen?.place?.takeIf { display.trackNumber }
+    val place = stageScreen?.place?.takeIf { display.trackNumber == TrackNumber.BOTTOM }
     val chapter = ui.chapter
     // The bar shows by setting, or for a moment after a key; beside lyrics or the artist's sentences only then.
     fun barWanted(s: StageData) = peek || (s.lyrics == null && s.bio == null && display.progressBar)
@@ -305,6 +313,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
             // The hint takes the place of what comes next (beside the words the song stays, and the
             // list names what comes next itself).
             val showHint = hint && !words && queueList == null
+            val placeText = StageTexts.place(placeKept, s.track, t)
             StageModel(
                 scene = s.scene,
                 text = if (display.album) text else text.copy(album = null),
@@ -319,22 +328,14 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
                 barShown = barWanted(s),
                 barStays = display.progressBar,
                 slotText = StageTexts.slotText(linkDown, s.track, t),
-                footer = when {
-                    showHint -> t[Strings.hintDown]
-                    words -> StageTexts.footer(s.track, t)
-                    queueList != null -> null
-                    else -> nextChapter ?: StageTexts.footer(nextKept, t)
-                },
-                footerTitle = when {
-                    showHint -> null
-                    words -> StageTexts.footerTitle(s.track, t)
-                    queueList != null -> null
-                    nextChapter != null -> null
-                    else -> StageTexts.footerTitle(nextKept, t)
-                },
-                footerLead = if (showHint) t[Strings.hintDownKey] else null,
                 // The hint and the list take the footer's place, the position in the queue with it.
-                footerPlace = if (showHint || queueList != null) null else StageTexts.place(placeKept, s.track, t),
+                footer = when {
+                    showHint -> Footer(place = null, lead = t[Strings.hintDownKey], text = t[Strings.hintDown])
+                    words -> Footer(placeText, lead = null, text = StageTexts.footer(s.track, t), title = StageTexts.footerTitle(s.track, t))
+                    queueList != null -> null
+                    nextChapter != null -> Footer(placeText, t[Strings.stageNext], nextChapter)
+                    else -> Footer(placeText, t[Strings.stageNext], StageTexts.footer(nextKept, t), StageTexts.footerTitle(nextKept, t))
+                },
                 chapter = chapterPlace?.label,
                 barStartMs = chapterPlace?.startMs ?: 0L,
                 lyrics = lyrics,
@@ -357,7 +358,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // The stage's tick: fast while music plays. With nothing to redraw, with the settings
     // covering the stage, or with the screen going dark for no one in the room, it stops.
     val tick = rememberTickLoop(
-        fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
+        fast = status.sounding,
         running = (moving || barMoves || stage.lyrics != null || stage.bio != null) && ui.menu == null && !ui.dark,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
@@ -400,8 +401,11 @@ private fun rememberHint(downHint: Boolean): Boolean {
     return if (still) downHint else hinting
 }
 
-/** The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a notification), the hidden parts back while [peek]. */
-private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts): StatusLine {
+/**
+ * The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a
+ * notification) with the track's [place] in its queue, the hidden parts back while [peek].
+ */
+private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts, place: String?): StatusLine {
     val display = ui.display
     val player = ui.source.player
     val clock = if (display.clock || peek) t.clock(nowMs) else null
@@ -416,7 +420,7 @@ private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs
     val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
     // A notification takes the lead's place while it shows; a volume change still shows for its moment.
     val lead = ui.message?.takeUnless { ui.volumeFlash }
-        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
+        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace, place = place)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     return StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
 }

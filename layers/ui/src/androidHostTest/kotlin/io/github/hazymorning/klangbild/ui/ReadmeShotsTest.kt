@@ -36,17 +36,15 @@ import kotlin.test.Test
 class ReadmeShotsTest {
     private val en = TestTexts.english()
 
-    private fun cover(c: SyntheticCover) = Catalog.SCHEME + c.name
-
-    private val polarNight = TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Lights", 2025, 258_000, artworkUrl = cover(SyntheticCover.AURORA))
-    private val saltWater = TrackInfo("Salt Water", listOf("Northern Light Collective"), "Tides", 2023, 214_000, artworkUrl = cover(SyntheticCover.SALT_WATER))
-    private val desertSong = TrackInfo("Desert Song", listOf("Amal Haddad"), "Cairo Nights", 2016, 289_000, artworkUrl = cover(SyntheticCover.TERRACOTTA))
-    private val neonHighway = TrackInfo("Neon Highway", listOf("Lumen Drive"), "Night Drive", 2024, 251_000, artworkUrl = cover(SyntheticCover.NIGHT_DRIVE))
-    private val morningFog = TrackInfo("Morning Fog", listOf("Theo Lind"), "Low Hills", 2022, 236_000, artworkUrl = cover(SyntheticCover.MOSS))
+    private val polarNight = TrackInfo("Polar Night", listOf("Ida Holm"), "Northern Lights", 2025, 258_000, artworkUrl = Catalog.cover(SyntheticCover.AURORA))
+    private val saltWater = TrackInfo("Salt Water", listOf("Northern Light Collective"), "Tides", 2023, 214_000, artworkUrl = Catalog.cover(SyntheticCover.SALT_WATER))
+    private val desertSong = TrackInfo("Desert Song", listOf("Amal Haddad"), "Cairo Nights", 2016, 289_000, artworkUrl = Catalog.cover(SyntheticCover.TERRACOTTA))
+    private val neonHighway = TrackInfo("Neon Highway", listOf("Lumen Drive"), "Night Drive", 2024, 251_000, artworkUrl = Catalog.cover(SyntheticCover.NIGHT_DRIVE))
+    private val morningFog = TrackInfo("Morning Fog", listOf("Theo Lind"), "Low Hills", 2022, 236_000, artworkUrl = Catalog.cover(SyntheticCover.MOSS))
 
     // The first picture's song is the one the promo film opens and ends with: the app's own name
     // by its maker over its tagline, and the film's middle song up next.
-    private val klangbild = TrackInfo("Klangbild", listOf("hazymorning"), "See what you\u2019re listening to.", null, 302_000, artworkUrl = cover(SyntheticCover.AURORA))
+    private val klangbild = TrackInfo("Klangbild", listOf("hazymorning"), "See what you\u2019re listening to.", null, 302_000, artworkUrl = Catalog.cover(SyntheticCover.AURORA))
     private val essentialMix = TrackInfo("Essential Mix, Vol. 1", listOf("Klangbild"), "Essential Mix", 2026, 198_000)
 
     private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) =
@@ -116,10 +114,10 @@ class ReadmeShotsTest {
     fun queueList() {
         val coming = listOf(
             desertSong,
-            TrackInfo("Lantern Field", listOf("Ines Moreau"), "Paper Boats", 2023, 221_000, artworkUrl = cover(SyntheticCover.PASTEL)),
-            TrackInfo("Snowfield", listOf("Ida Holm"), "Northern Lights", 2025, 280_000, artworkUrl = cover(SyntheticCover.AURORA)),
-            TrackInfo("Grey Ridge", listOf("Theo Lind"), "Stone Paths", 2024, 306_000, artworkUrl = cover(SyntheticCover.MIST)),
-            TrackInfo("Blue Hour", listOf("Northern Light Collective"), "Tides", 2023, 247_000, artworkUrl = cover(SyntheticCover.SALT_WATER)),
+            TrackInfo("Lantern Field", listOf("Ines Moreau"), "Paper Boats", 2023, 221_000, artworkUrl = Catalog.cover(SyntheticCover.PASTEL)),
+            TrackInfo("Snowfield", listOf("Ida Holm"), "Northern Lights", 2025, 280_000, artworkUrl = Catalog.cover(SyntheticCover.AURORA)),
+            TrackInfo("Grey Ridge", listOf("Theo Lind"), "Stone Paths", 2024, 306_000, artworkUrl = Catalog.cover(SyntheticCover.MIST)),
+            TrackInfo("Blue Hour", listOf("Northern Light Collective"), "Tides", 2023, 247_000, artworkUrl = Catalog.cover(SyntheticCover.SALT_WATER)),
         )
         val scene = Fixtures.scene(morningFog)
         val list = Fixtures.queueList(coming)

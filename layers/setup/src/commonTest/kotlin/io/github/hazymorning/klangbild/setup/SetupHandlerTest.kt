@@ -73,7 +73,7 @@ class SetupHandlerTest {
             discovered += url to credentials
             DiscoverResult.Ok(
                 listOf(SpeakerOption("media_player.wz", "Wohnzimmer", "spielt", true)),
-                listOf(LightOption("light.tv_left", "TV links", "an"), LightOption("light.tv_right", "TV rechts", "aus")),
+                listOf(StateOption("light.tv_left", "TV links", "an"), StateOption("light.tv_right", "TV rechts", "aus")),
                 listOf(ActionOption("script.ungroup_speakers", "Lautsprecher trennen"), ActionOption("scene.movie", "Kino")),
             )
         },
@@ -266,7 +266,7 @@ class SetupHandlerTest {
 
     @Test
     fun `speaker list prefers music assistant and hides displays`() = runTest {
-        val r = SetupServer.parseSpeakers(
+        val r = Discovery.options(
             """[
               {"entity_id":"light.x","state":"on","attributes":{}},
               {"entity_id":"media_player.kueche","state":"idle","attributes":{"friendly_name":"Küche"}},
@@ -321,7 +321,7 @@ class SetupHandlerTest {
         assertThat(post("/api/save", """{$base,"actions":[]}""").status).isEqualTo(200)
         assertThat(stored.quickActions).isEmpty()
         // The list from Home Assistant: what a button can work, scripts first, by name.
-        val r = SetupServer.parseSpeakers(
+        val r = Discovery.options(
             """[{"entity_id":"switch.socket","state":"on","attributes":{"friendly_name":"Steckdose"}},
                {"entity_id":"lock.door","state":"locked","attributes":{}},
                {"entity_id":"script.b","state":"off","attributes":{"friendly_name":"Beta"}},
@@ -401,7 +401,7 @@ class SetupHandlerTest {
 
     @Test
     fun `binary sensors are offered for presence, presence sensors first`() = runTest {
-        val found = SetupServer.parseSpeakers(
+        val found = Discovery.options(
             """[{"entity_id":"binary_sensor.door","state":"off","attributes":{"friendly_name":"Door","device_class":"door"}},
                {"entity_id":"binary_sensor.hall","state":"on","attributes":{"friendly_name":"Hall","device_class":"motion"}},
                {"entity_id":"binary_sensor.couch","state":"off","attributes":{"friendly_name":"Couch","device_class":"occupancy"}},
@@ -413,7 +413,7 @@ class SetupHandlerTest {
 
     @Test
     fun `every entity is offered for values and conditions, without what only describes it`() = runTest {
-        val r = SetupServer.parseSpeakers(
+        val r = Discovery.options(
             """[{"entity_id":"sensor.outside","state":"12.345","attributes":{"friendly_name":"Outside","unit_of_measurement":"°C","device_class":"temperature"}},
                {"entity_id":"media_player.wz","state":"playing","attributes":{"friendly_name":"Wohnzimmer","group_members":["media_player.wz","media_player.k"],
                  "source_list":["a","b"],"volume_level":0.35,"media_title":"${"x".repeat(80)}","entity_picture":"/api/x","nested":{"a":1}}}]""",
@@ -445,7 +445,7 @@ class SetupHandlerTest {
                 "bad key":{}
               }},
               "plain":{"name":"Plain"}}}]"""
-        val fields = SetupServer.scriptFields(services)
+        val fields = Discovery.scriptFields(services)
         val group = fields.getValue("group")
         assertThat(group.map { it.key }).containsExactly("player", "mode", "volume", "announce", "rooms", "delay")
         assertThat(group[0].type).isEqualTo(ScriptField.ENTITY)
@@ -461,14 +461,14 @@ class SetupHandlerTest {
         assertThat(group[4].type).isEqualTo(ScriptField.TEXT)
         assertThat(fields.getValue("plain")).isEmpty()
         // The page gets them with the script.
-        val r = SetupServer.parseSpeakers("""[{"entity_id":"script.group","state":"off","attributes":{"friendly_name":"Group"}}]""", texts, services) as DiscoverResult.Ok
+        val r = Discovery.options("""[{"entity_id":"script.group","state":"off","attributes":{"friendly_name":"Group"}}]""", texts, services) as DiscoverResult.Ok
         assertThat(r.actions.single().fields.map { it.key }).contains("mode")
-        assertThat(SetupServer.scriptFields("not json")).isEmpty()
+        assertThat(Discovery.scriptFields("not json")).isEmpty()
     }
 
     @Test
     fun `every light is offered, whatever it can show`() = runTest {
-        val r = SetupServer.parseSpeakers(
+        val r = Discovery.options(
             """[
               {"entity_id":"light.tv_left","state":"off","attributes":{"friendly_name":"TV links","supported_color_modes":["color_temp","xy"]}},
               {"entity_id":"light.flur","state":"on","attributes":{"friendly_name":"Flur","supported_color_modes":["brightness"]}},
@@ -480,7 +480,7 @@ class SetupHandlerTest {
         assertThat(r.lights.map { it.entityId }).containsExactly("light.band", "light.flur", "light.tv_left")
         assertThat(r.lights.last().state).isEqualTo("aus")
         // In English the states are English words.
-        val en = SetupServer.parseSpeakers("""[{"entity_id":"light.flur","state":"on","attributes":{}}]""", TestTexts.english()) as DiscoverResult.Ok
+        val en = Discovery.options("""[{"entity_id":"light.flur","state":"on","attributes":{}}]""", TestTexts.english()) as DiscoverResult.Ok
         assertThat(en.lights.single().state).isEqualTo("on")
     }
 

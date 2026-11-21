@@ -208,7 +208,7 @@ class SetupServerTest {
             }
             ha.start()
             val t = TestTexts.english()
-            val found = SetupServer.discover(httpClient(OkHttp.create()), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
+            val found = Discovery.discover(httpClient(OkHttp.create()), ha.url("/").toString().trimEnd('/'), HaCredentials.LongLived("t"), t)
             assertThat((found as DiscoverResult.Failed).message).isEqualTo(t.format(Strings.discoverUnexpected, 502))
         }
     }

@@ -5,7 +5,9 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueuePlace
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.Fixtures.spiegel
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -48,7 +50,7 @@ class StageTest {
 
     private fun edge(name: String, cover: SyntheticCover, appearance: Appearance = Appearance.DARK, coverField: Boolean = false) {
         val track = Fixtures.track(cover)
-        shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, edge = true)))
+        shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, kind = StageGrid.Kind.EDGE)))
     }
 
     /** The last line starts with the song's place in the queue, in German and English, and stands alone on the last song. */
@@ -59,6 +61,15 @@ class StageTest {
     }
 
     @Test fun trackNumberLast() = shot("track_number_last", Fixtures.model(Fixtures.track(SyntheticCover.BAUHAUS), place = QueuePlace(45, 45)))
+
+    /** Track number: Top. The place stands in the top line after the room, the state after it. */
+    @Test fun trackNumberTop() = shot("track_number_top", Fixtures.model(Fixtures.track(SyntheticCover.NIGHT_DRIVE), next = spiegel, group = "Wohnzimmer", topPlace = QueuePlace(3, 45)))
+
+    @Test fun trackNumberTopPaused() = captureRoboImage("build/screenshots/stage/track_number_top_paused_en.png") {
+        Fixtures.Still(en) {
+            Stage(Fixtures.model(Fixtures.track(SyntheticCover.MIST), next = spiegel, status = PlayerStatus.PAUSED, group = "Living room", t = en, topPlace = QueuePlace(12, 1240)))
+        }
+    }
 
     @Test fun trackNumberFlow() {
         val neon = Fixtures.track(SyntheticCover.NIGHT_DRIVE)

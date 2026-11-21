@@ -50,7 +50,7 @@ internal interface ControllerHost {
     val notifyFailed: Boolean get() = false
 
     /** OK on the menu's Update line: installs a new version, or asks for one now. */
-    fun update()
+    fun updateOk()
 
     /** Works out the screen again (takes [lock]). */
     fun recompute()
@@ -60,6 +60,9 @@ internal interface ControllerHost {
 
     /** Opens the settings menu on its groups. */
     fun openMenu()
+
+    /** Turns the screen off (the quick settings' Screen): black while the music and the lights go on, until a key is pressed. */
+    fun turnScreenOff()
 
     /** A change from one of the menus: applied at once and written behind it; ignored until the stored settings are in. */
     fun applySettings(updated: Settings)

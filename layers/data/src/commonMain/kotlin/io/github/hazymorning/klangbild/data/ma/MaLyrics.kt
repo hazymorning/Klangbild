@@ -7,10 +7,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 /**
@@ -25,10 +21,10 @@ import kotlin.time.Clock
  */
 class MaLyrics(
     private val client: MaClient,
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** Something new is known about a song that plays or comes next. */
-    private val changed: () -> Unit,
+    changed: () -> Unit,
 ) {
     /** What is known of a song's words: synced [lyrics], or null for none. A failed call has [failedAt]. */
     class Known(val lyrics: Lyrics?, internal val failedAt: Long? = null)
@@ -36,90 +32,49 @@ class MaLyrics(
     private val known = RecentMap<String, Known>(KEEP)
     private val lock = SynchronizedObject()
 
-    /** The songs still to ask about, the one that plays first. */
-    private var wanted: List<QueueSong> = emptyList()
-
-    /** The call that is out, and the song it is for. */
-    private var job: Job? = null
-    private var asking: String? = null
-
     /** Music Assistant knows the call (false after a version without it said so). */
     private var supported = true
+
+    private val calls = OneAtATime(scope, lock, QueueSong::uri, ::ask, ::keep, changed)
 
     /** What is known of the words of the song at [uri]; null while nothing is. */
     fun known(uri: String): Known? = synchronized(lock) { known[uri] }
 
     /** The songs whose words are wanted now: the one that plays, then the one up next. */
-    fun want(songs: List<QueueSong>) {
-        var found = false
-        synchronized(lock) {
-            val t = now()
-            for (song in songs) {
-                // A failed call is tried again after a while, should the song come again.
-                val failedAt = known[song.uri]?.failedAt
-                if (failedAt != null && t - failedAt >= RETRY_MS) known.remove(song.uri)
-                if (song.uri in known) continue
-                if (song.lyrics != null || song.lrcLyrics != null || !supported) {
-                    known[song.uri] = Known(Lrc.of(song.lyrics, song.lrcLyrics))
-                    found = true
-                }
+    fun want(songs: List<QueueSong>): Unit = synchronized(lock) {
+        val t = now()
+        for (song in songs) {
+            // A failed call is tried again after a while, should the song come again.
+            val failedAt = known[song.uri]?.failedAt
+            if (failedAt != null && t - failedAt >= RETRY_MS) known.remove(song.uri)
+            if (song.uri in known) continue
+            if (song.lyrics != null || song.lrcLyrics != null || !supported) {
+                known[song.uri] = Known(Lrc.of(song.lyrics, song.lrcLyrics))
             }
-            wanted = songs.filter { it.uri !in known }
-            if (asking != null && wanted.none { it.uri == asking }) {
-                job?.cancel()
-                job = null
-                asking = null
-            }
-            askNext()
         }
-        if (found) changed()
+        calls.want(songs.filter { it.uri !in known })
     }
 
     /** Stops asking (the connection ends). */
-    fun stop(): Unit = synchronized(lock) {
-        job?.cancel()
-        job = null
-        asking = null
-        wanted = emptyList()
+    fun stop(): Unit = calls.stop()
+
+    /** The words Music Assistant has for [song]: none on a version without the call, and none for a while after a failed call. */
+    private suspend fun ask(song: QueueSong): Known = try {
+        val (plain, lrc) = client.lyrics(song.item)
+        Known(Lrc.of(plain, lrc))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: MaUnknownCommandException) {
+        synchronized(lock) { supported = false }
+        Known(null)
+    } catch (_: Exception) {
+        Known(null, failedAt = now())
     }
 
-    /**
-     * Asks about the first song still wanted, unless a call is out (called under the lock). The
-     * call is known as [job] before it starts, so even an answer that comes at once finds it.
-     */
-    private fun askNext() {
-        if (job != null) return
-        val song = wanted.firstOrNull() ?: return
-        asking = song.uri
-        val call = scope.launch(start = CoroutineStart.LAZY) {
-            val answer = try {
-                val (plain, lrc) = client.lyrics(song.item)
-                Known(Lrc.of(plain, lrc))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: MaUnknownCommandException) {
-                synchronized(lock) { supported = false }
-                Known(null)
-            } catch (_: Exception) {
-                Known(null, failedAt = now())
-            }
-            val me = coroutineContext.job
-            val kept = synchronized(lock) {
-                // Canceled after the answer came (its song is no longer wanted, or asking stopped): dropped.
-                if (job !== me) return@launch
-                job = null
-                asking = null
-                val still = wanted.any { it.uri == song.uri }
-                if (still) known[song.uri] = answer
-                if (!supported) wanted.forEach { known.getOrPut(it.uri) { Known(null) } }
-                wanted = wanted.filter { it.uri !in known }
-                askNext()
-                still || !supported
-            }
-            if (kept) changed()
-        }
-        job = call
-        call.start()
+    /** Keeps the answer about [song]; every answer is news. */
+    private fun keep(song: QueueSong, answer: Known): Boolean {
+        known[song.uri] = answer
+        return true
     }
 
     companion object {

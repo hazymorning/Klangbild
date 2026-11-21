@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.formBody
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.textBelow
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -19,8 +20,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
@@ -158,7 +157,7 @@ class HaAuth(
             HaTokens(
                 accessToken = o.string("access_token") ?: throw IOException("No access token"),
                 refreshToken = o.string("refresh_token"),
-                expiresInS = (o["expires_in"] as? JsonPrimitive)?.intOrNull ?: DEFAULT_EXPIRY_S,
+                expiresInS = o.int("expires_in") ?: DEFAULT_EXPIRY_S,
             )
         }
 

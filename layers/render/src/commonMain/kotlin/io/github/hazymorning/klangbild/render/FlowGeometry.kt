@@ -235,9 +235,6 @@ class FlowGeometry(val layout: StageGrid) {
  * by [column].
  */
 data class Balance(val cards: Float, val column: Float) {
-    /** On the way from here to [to], at [s] (0..1). */
-    fun towards(to: Balance, s: Float) = Balance(cards + (to.cards - cards) * s, column + (to.column - column) * s)
-
     companion object {
         /** The full strip: everything where the grid has it. */
         val NONE = Balance(0f, 0f)

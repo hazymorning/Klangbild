@@ -79,9 +79,7 @@ internal class OwnSpeaker(
     }
 
     private suspend fun matching(player: String): String? {
-        val candidates = connection.registry.value
-            ?.filter { it.platform == HaSource.MA_PLATFORM && it.entityId.startsWith("media_player.") }
-            ?.map { it.entityId }
+        val candidates = connection.registry.value?.maSpeakerIds()
         if (candidates.isNullOrEmpty()) return null
         return connection.uniqueIds(candidates).entries.firstOrNull { it.value == player }?.key
     }

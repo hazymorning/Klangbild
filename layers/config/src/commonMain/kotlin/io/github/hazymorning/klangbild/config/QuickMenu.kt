@@ -6,16 +6,11 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 
 /**
- * The song's words in the text column: on, off, or on while this song has no synced words
- * (NONE: the entry still says On, in a quieter ink).
+ * What takes the text column, the song's words or a few sentences about its artist, as its entry
+ * in the quick settings says: on, off, or on while there are none for this song (NONE: the entry
+ * still says On, in a quieter ink).
  */
-enum class LyricsChoice { ON, OFF, NONE }
-
-/**
- * A few sentences about the artist in the text column: on, off, or on while Music Assistant
- * knows none about this song's artist (NONE: the entry still says On, in a quieter ink).
- */
-enum class ArtistChoice { ON, OFF, NONE }
+enum class ColumnChoice { ON, OFF, NONE }
 
 /** How far the current song's way into the favorites has come. */
 enum class FavoriteState {
@@ -35,7 +30,8 @@ enum class FavoriteState {
 /**
  * One entry of the quick settings, in their order along the bottom edge: the built-in ones,
  * then the buttons set up on the phone ([ACTION], whose names are their own), then the way into
- * all settings ([SETTINGS]).
+ * all settings ([SETTINGS]), and last, while music plays, the screen ([SCREEN]): it goes black
+ * while the music and the lights go on, until a key is pressed.
  */
 enum class QuickItem(val label: StringId?) {
     VIEW(Strings.quickView),
@@ -48,6 +44,7 @@ enum class QuickItem(val label: StringId?) {
     SHUFFLE(Strings.quickShuffle),
     ACTION(null),
     SETTINGS(Strings.quickSettings),
+    SCREEN(Strings.quickScreen),
 }
 
 /** Which entry: a built-in one, or the button at [action] (its place among the buttons set up). */
@@ -101,11 +98,11 @@ data class QuickContext(
      */
     val actions: Map<Int, ActionState> = emptyMap(),
     /** The song's words as the entry says it; null without Music Assistant or without a song. */
-    val lyrics: LyricsChoice? = null,
+    val lyrics: ColumnChoice? = null,
     /** Whether a party's code shows; null while no party of Music Assistant's plays to this speaker. */
     val party: Boolean? = null,
     /** What is known about the artist as the entry says it; null without Music Assistant or without a song. */
-    val artist: ArtistChoice? = null,
+    val artist: ColumnChoice? = null,
 )
 
 /**
@@ -116,8 +113,9 @@ data class QuickContext(
  * Music Assistant or without a song, no favorite without music, no lights before they are set
  * up, no shuffle on a player that cannot, no party code without a party playing here, no button
  * whose entity is unavailable or whose condition does not hold, no queue while Music Assistant
- * is not connected or Cover Flow shows the next tracks as covers). The buttons set up on the
- * phone come last. The sleep timer lives in the settings.
+ * is not connected or Cover Flow shows the next tracks as covers, no screen without music). The
+ * buttons set up on the phone come after the built-in entries, the way into the settings and
+ * the screen last. The sleep timer lives in the settings.
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
@@ -127,21 +125,20 @@ object QuickMenu {
         if (ctx.list && view != StageView.FLOW) row(QuickItem.QUEUE, SettingsMenu.queueValue(s.queue, t))
         // While this song has no synced lyrics it still says On, only quieter, since a word like
         // "None" would look as if they had been switched off.
-        if (ctx.lyrics != null) row(QuickItem.LYRICS, lyricsValue(ctx.lyrics, t), muted = ctx.lyrics == LyricsChoice.NONE)
-        if (ctx.artist != null) row(QuickItem.ARTIST, t[if (ctx.artist == ArtistChoice.OFF) Strings.off else Strings.on], muted = ctx.artist == ArtistChoice.NONE)
-        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, t[if (ctx.party) Strings.on else Strings.off])
+        if (ctx.lyrics != null) row(QuickItem.LYRICS, SettingsMenu.onOff(ctx.lyrics != ColumnChoice.OFF, t), muted = ctx.lyrics == ColumnChoice.NONE)
+        if (ctx.artist != null) row(QuickItem.ARTIST, SettingsMenu.onOff(ctx.artist != ColumnChoice.OFF, t), muted = ctx.artist == ColumnChoice.NONE)
+        if (ctx.music && ctx.party != null) row(QuickItem.PARTY, SettingsMenu.onOff(ctx.party, t))
         if (ctx.music && ctx.favorite != null) row(QuickItem.FAVORITE, favoriteValue(ctx.favorite, t))
-        if (s.roomLights.isSet) row(QuickItem.LIGHTS, t[if (s.roomLightBrightness == RoomLightBrightness.OFF) Strings.off else Strings.on])
-        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, t[if (ctx.shuffle) Strings.on else Strings.off])
+        if (s.roomLights.isSet) row(QuickItem.LIGHTS, SettingsMenu.onOff(s.roomLightBrightness != RoomLightBrightness.OFF, t))
+        if (ctx.music && ctx.shuffle != null) row(QuickItem.SHUFFLE, SettingsMenu.onOff(ctx.shuffle, t))
         s.quickActions.forEachIndexed { i, a ->
             val kind = a.kind ?: return@forEachIndexed
             val state = ctx.actions[i] ?: return@forEachIndexed
             add(QuickRow(QuickKey(QuickItem.ACTION, i), a.name, actionValue(kind, state, t), actionValues(kind, t)))
         }
         row(QuickItem.SETTINGS, t[Strings.quickOpen])
+        if (ctx.music) row(QuickItem.SCREEN, t[Strings.quickTurnOff])
     }
-
-    fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) Strings.off else Strings.on]
 
     fun favoriteValue(f: FavoriteState, t: Texts): String = t[
         when (f) {
@@ -184,12 +181,6 @@ object QuickMenu {
         QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
-    }
-
-    /** The view after one step from [v] (−1 or +1), from the normal view to Cover Flow; [wrap] goes round. */
-    fun step(v: StageView, direction: Int, wrap: Boolean): StageView {
-        val order = SettingsMenu.VIEW_ORDER
-        val i = order.indexOf(v) + direction
-        return order[if (wrap) i.mod(order.size) else i.coerceIn(0, order.size - 1)]
+        QuickItem.SCREEN -> listOf(t[Strings.quickTurnOff])
     }
 }

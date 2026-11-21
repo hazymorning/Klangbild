@@ -26,7 +26,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         val remote = booleanKey("remote_control")
         val progressBar = booleanKey("show_time_line")
         val next = booleanKey("show_next")
-        val trackNumber = booleanKey("show_track_number")
+        val trackNumber = stringKey("track_number")
+
+        /** Track number when it was a switch, the last line or none. Read once, then removed. */
+        val formerTrackNumber = booleanKey("show_track_number")
         val album = booleanKey("show_album")
         val group = booleanKey("show_group")
         val volume = stringKey("volume_display")
@@ -113,6 +116,10 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             if (Keys.playHere !in p) p[Keys.playHere] = playHereOf(on).name
             p.remove(Keys.formerTvSpeaker)
         }
+        p[Keys.formerTrackNumber]?.let { on ->
+            if (Keys.trackNumber !in p) p[Keys.trackNumber] = trackNumberOf(on).name
+            p.remove(Keys.formerTrackNumber)
+        }
     }
 
     /** The settings as [p] stores them; what an earlier version stored is read with its current meaning. */
@@ -139,7 +146,7 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
             remoteControl = p[Keys.remote] ?: defaults.remoteControl,
             showProgressBar = p[Keys.progressBar] ?: defaults.showProgressBar,
             showNext = p[Keys.next] ?: defaults.showNext,
-            showTrackNumber = p[Keys.trackNumber] ?: defaults.showTrackNumber,
+            trackNumber = p[Keys.trackNumber]?.let { enumOr(it, defaults.trackNumber) } ?: trackNumberOf(p[Keys.formerTrackNumber]),
             showAlbum = p[Keys.album] ?: defaults.showAlbum,
             showGroup = p[Keys.group] ?: defaults.showGroup,
             volumeDisplay = enumOr(p[Keys.volume], defaults.volumeDisplay),
@@ -193,7 +200,8 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
         p[Keys.remote] = s.remoteControl
         p[Keys.progressBar] = s.showProgressBar
         p[Keys.next] = s.showNext
-        p[Keys.trackNumber] = s.showTrackNumber
+        p[Keys.trackNumber] = s.trackNumber.name
+        p.remove(Keys.formerTrackNumber)
         p[Keys.album] = s.showAlbum
         p[Keys.group] = s.showGroup
         p[Keys.volume] = s.volumeDisplay.name
@@ -245,6 +253,9 @@ class SettingsStore(private val store: ValueStore, private val secrets: SecretBo
 
     /** When this TV plays for the switch an earlier version stored: on, it also played while Klangbild was closed. */
     private fun playHereOf(on: Boolean?): PlayHere = if (on == true) PlayHere.ALWAYS else defaults.playHere
+
+    /** Track number when it was a switch: on, it stood first in the last line. */
+    private fun trackNumberOf(on: Boolean?): TrackNumber = if (on == true) TrackNumber.BOTTOM else defaults.trackNumber
 
     /** The constant named [name], or [default] for none or a name this version does not know. */
     private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E =

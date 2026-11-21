@@ -7,10 +7,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,14 +18,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
@@ -37,9 +30,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.hazymorning.klangbild.domain.LyricPlace
@@ -175,7 +165,7 @@ internal fun planLyrics(lyrics: Lyrics, columnWidth: Float, room: Float, measure
 
 /**
  * A track's lyrics on the stage, kept while its text shows or leaves: how they are set, and where
- * they stand. The theater keeps one per track ([LyricsStates]), so the lyrics that leave in a
+ * they stand. The theater keeps one per track ([WordsStates]), so the lyrics that leave in a
  * change go from where they stood.
  */
 @Stable
@@ -260,27 +250,7 @@ internal class LyricsState(val lyrics: Lyrics) {
     }
 }
 
-/** The lyrics of a theater's tracks: those shown and those leaving keep their places. */
-internal class LyricsStates {
-    private val states = HashMap<Lyrics, LyricsState>()
-
-    fun of(lyrics: Lyrics): LyricsState = states.getOrPut(lyrics) { LyricsState(lyrics) }
-
-    /** Drops the state of all lyrics except [kept]. */
-    fun keep(vararg kept: Lyrics?) {
-        states.keys.retainAll(kept.filterNotNull().toSet())
-    }
-}
-
-/** The theater's lyrics states. Without one (a still), each column keeps its own. */
-internal val LocalLyricsStates = staticCompositionLocalOf<LyricsStates?> { null }
-
-/**
- * The text column with the lyrics ([TextLayer] while [StageModel.lyrics] is set): the lyrics in
- * the middle, the track's title and artist in the footer, and the slot above them while it shows.
- * [alpha] and [rise] animate a change as for the text block: the lyrics as the title, the slot
- * and the footer as themselves.
- */
+/** The text column with the lyrics in its middle ([TextLayer] while [StageModel.lyrics] is set). */
 @Composable
 internal fun LyricsText(
     model: StageModel,
@@ -293,10 +263,9 @@ internal fun LyricsText(
 ) {
     val layout = model.scene.layout
     val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
-    val room = remember(layout, styles) { LyricsRoom(layout, styles) }
+    val room = remember(layout, styles) { WordsRoom(layout, styles) }
     val inks = remember(styles) { Array(INK_STEPS + 1) { lerp(styles.quiet, styles.ink, it / INK_STEPS.toFloat()) } }
-    val states = LocalLyricsStates.current
-    val state = states?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
+    val state = LocalWordsStates.current?.of(lyrics) ?: remember(lyrics) { LyricsState(lyrics) }
     val position by rememberUpdatedState(model.positionMs)
     val delay by rememberUpdatedState(model.lyricsDelayMs)
     val current by rememberUpdatedState(model.current)
@@ -315,55 +284,22 @@ internal fun LyricsText(
         }
     }
 
-    val slotText = model.slotText
     // While the slot shows above the footer, the lyrics make room for it.
     val slotShown = animateFloatAsState(if (slotOf(model) != null) 1f else 0f, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "lyrics-slot-shown")
-    val colW = (layout.columnWidth * LocalDensity.current.density).roundToInt()
-
-    fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
-
-    Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
-        content = {
-            // 0: the lyrics
-            Canvas(Modifier.fillMaxSize()) {
-                val p = plan ?: return@Canvas
-                val a = alpha(TextLine.TITLE).coerceIn(0f, 1f)
-                if (a <= 0.002f) return@Canvas
-                val x = (((layout.columnLeft + shift()) * density).roundToInt() + p.indent).toFloat()
-                val focus = layout.textCenter * density + (rise(TextLine.TITLE) * density).roundToInt()
-                val around = room.around(slotShown.value)
-                val highlight = state.highlight.value
-                // A jump: the lyrics that stood go first, then the new ones come, never both at once.
-                val j = state.jump.value
-                val gone = Motion.phase(j, 0f, JUMP_OUT, Motion.Dimmer)
-                val come = Motion.phase(j, JUMP_IN, 1f, Motion.Dimmer)
-                if (j < 1f) drawLyrics(p, state.from, x, focus, around, inks, highlight, a * state.fromAlpha * (1f - gone))
-                drawLyrics(p, state.scroll.value, x, focus, around, inks, highlight, a * come)
-            }
-            // 1: the slot above the footer, whose changes crossfade
-            SlotContent(model, styles, line(TextLine.SLOT), label = "lyrics-slot")
-            // 2: the footer, which names the track itself
-            val track = model.footer?.let { rememberFooter(model.footerPlace, it, model.footerTitle, styles, colW) }
-            if (track != null) BasicText(footerText(model.footerPlace, null, track, styles), line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-        },
-    ) { measurables, constraints ->
-        val lyricLines = measurables[0].measure(constraints)
-        val slot = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
-        val footer = measurables[2].measure(Constraints(maxWidth = colW))
-        // The footer's descenders end where the column ends, and the slot's baseline stands above it.
-        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
-        val slotBaseline = footerBaseline - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            lyricLines.place(0, 0)
-            // Read while placing: a column that glides is only placed anew.
-            val x = ((layout.columnLeft + shift()) * density).roundToInt()
-            if (slot.height > 0) slot.place(x, slotBaseline - if (slotText != null) slot.firstBaselineOrHeight() else slot.height)
-            if (footer.height > 0) footer.place(x, footerBaseline - footer.firstBaselineOrHeight())
+    val words = plan?.let { p ->
+        ColumnWords { x, focus, a ->
+            val left = (x + p.indent).toFloat()
+            val around = room.around(slotShown.value)
+            val highlight = state.highlight.value
+            // A jump: the lyrics that stood go first, then the new ones come, never both at once.
+            val j = state.jump.value
+            val gone = Motion.phase(j, 0f, JUMP_OUT, Motion.Dimmer)
+            val come = Motion.phase(j, JUMP_IN, 1f, Motion.Dimmer)
+            if (j < 1f) drawLyrics(p, state.from, left, focus, around, inks, highlight, a * state.fromAlpha * (1f - gone))
+            drawLyrics(p, state.scroll.value, left, focus, around, inks, highlight, a * come)
         }
     }
+    WordsColumn(model, styles, modifier, alpha, rise, textLevel, shift, words)
 }
 
 /**
@@ -386,21 +322,6 @@ private fun rememberLyricsPlan(state: LyricsState, layout: StageGrid, room: Floa
         }
     }
     return ready
-}
-
-/** The lyrics' room around the middle (dp). */
-internal class LyricsRoom(layout: StageGrid, styles: StageStyles) {
-    private val status = layout.textCenter - (layout.statusTop + styles.label.fontSize.value * Fonts.CAP_HEIGHT)
-    private val footer = layout.footerBottom - styles.footer.fontSize.value * (Fonts.DESCENT + Fonts.CAP_HEIGHT) - layout.textCenter
-    // The bar's block from its top to its labels' baseline.
-    private val bar = footer - SLOT_GAP - (BAR_THICKNESS + BAR_LABEL_GAP + styles.time.fontSize.value * Fonts.CAP_HEIGHT)
-
-    /**
-     * As much above the middle as below, so the lyrics fade alike up and down: to the status
-     * line's baseline or to the footer's cap height, whichever is nearer, and to the bar's top
-     * while it shows ([slot] 0 to 1).
-     */
-    fun around(slot: Float = 0f): Float = minOf(status, footer + (bar - footer) * slot)
 }
 
 /**
@@ -472,13 +393,6 @@ private fun highlightOf(plan: LyricsPlan, line: Int, scroll: Float): Float {
     return (1f - abs(off) / step).coerceIn(0f, 1f)
 }
 
-/** The track in the footer, after its position in the queue ([place]) and without a lead ([fitFooter]). */
-@Composable
-internal fun rememberFooter(place: String?, full: String, title: String?, styles: StageStyles, width: Int): String {
-    val measurer = rememberTextMeasurer(cacheSize = 4)
-    return remember(place, full, title, styles, width) { fitFooter(measurer, full, title, styles.footer, width) { footerText(place, null, it, styles) } }
-}
-
 /**
  * The gap from a lyric line's last baseline to the next line's cap height (dp) for lyrics in
  * [style] on at most [rows] rows a line, with [room] above and below the middle: as much as lets
@@ -502,9 +416,6 @@ private const val OUTER_GAP_SHARE = 1.6f
 
 /** A line leaving at an edge fades over this share of the gap between lines. */
 private const val EDGE_FADE = 0.5f
-
-/** From the slot's baseline to the footer's cap height under it (dp). */
-internal const val SLOT_GAP = 26f
 
 /** Each voice of a lyric line takes at most this many rows, the last one ending after a whole word. */
 private const val MAX_ROWS = 4

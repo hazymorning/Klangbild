@@ -20,7 +20,7 @@ class QuickMenuTest {
     @Test
     fun `shuffle stands where the sleep timer stood, only where the player can shuffle`() {
         val rows = QuickMenu.rows(lights, QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false), de)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS)
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN)
         assertThat(rows.first { it.item == QuickItem.SHUFFLE }.value).isEqualTo("Aus")
         assertThat(QuickMenu.rows(lights, QuickContext(music = true, shuffle = true), de).first { it.item == QuickItem.SHUFFLE }.value).isEqualTo("An")
         // A player that cannot shuffle, and no music: no entry.
@@ -30,23 +30,23 @@ class QuickMenuTest {
 
     @Test
     fun `the song's words stand after the view, only with Music Assistant and a song`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.ON)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.ON)
         val rows = QuickMenu.rows(lights, ctx, de)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.LYRICS, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS)
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.LYRICS, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN)
         assertThat(rows[1].label).isEqualTo("Songtext")
         assertThat(rows[1].value).isEqualTo("An")
         assertThat(rows[1].muted).isFalse()
-        val off = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.OFF), de)[1]
+        val off = QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.OFF), de)[1]
         assertThat(off.value).isEqualTo("Aus")
         assertThat(off.muted).isFalse()
         // On, but this song has no synced words: still On, said quietly (a word of its own read
         // like the words switched off).
-        val none = QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de)[1]
+        val none = QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), de)[1]
         assertThat(none.value).isEqualTo("An")
         assertThat(none.muted).isTrue()
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), TestTexts.english())[1].value).isEqualTo("On")
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), TestTexts.english())[1].value).isEqualTo("On")
         // No other entry is ever quiet.
-        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = LyricsChoice.NONE), de).filter { it.muted }.map { it.item }).containsExactlyInAnyOrder(QuickItem.LYRICS)
+        assertThat(QuickMenu.rows(lights, ctx.copy(lyrics = ColumnChoice.NONE), de).filter { it.muted }.map { it.item }).containsExactlyInAnyOrder(QuickItem.LYRICS)
         // Its place is as wide as any of its values.
         assertThat(rows[1].values).containsExactlyInAnyOrder("An", "Aus")
         // Without Music Assistant, or without a song: no entry.
@@ -56,16 +56,16 @@ class QuickMenuTest {
 
     @Test
     fun `the artist info stands after the song's words, only with Music Assistant and a song`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.ON, artist = ArtistChoice.ON)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.ON, artist = ColumnChoice.ON)
         val rows = QuickMenu.rows(lights, ctx, de)
         assertThat(rows.map { it.item }).containsExactly(
-            QuickItem.VIEW, QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS,
+            QuickItem.VIEW, QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN,
         )
         assertThat(rows[2].label).isEqualTo("Künstlerinfo")
         assertThat(rows[2].value).isEqualTo("An")
-        assertThat(QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.OFF), de)[2].value).isEqualTo("Aus")
+        assertThat(QuickMenu.rows(lights, ctx.copy(artist = ColumnChoice.OFF), de)[2].value).isEqualTo("Aus")
         // On, but Music Assistant knows nothing about this artist: still On, said quietly.
-        val none = QuickMenu.rows(lights, ctx.copy(artist = ArtistChoice.NONE), de)[2]
+        val none = QuickMenu.rows(lights, ctx.copy(artist = ColumnChoice.NONE), de)[2]
         assertThat(none.value).isEqualTo("An")
         assertThat(none.muted).isTrue()
         assertThat(rows[2].values).containsExactlyInAnyOrder("An", "Aus")
@@ -75,10 +75,10 @@ class QuickMenuTest {
 
     @Test
     fun `the party code stands with what the screen shows, only while a party plays here`() {
-        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = LyricsChoice.OFF, party = false)
+        val ctx = QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = ColumnChoice.OFF, party = false)
         val rows = QuickMenu.rows(lights, ctx, de)
         assertThat(rows.map { it.item }).containsExactly(
-            QuickItem.VIEW, QuickItem.LYRICS, QuickItem.PARTY, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS,
+            QuickItem.VIEW, QuickItem.LYRICS, QuickItem.PARTY, QuickItem.FAVORITE, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.SETTINGS, QuickItem.SCREEN,
         )
         assertThat(rows[2].label).isEqualTo("Party-Code")
         assertThat(rows[2].value).isEqualTo("Aus")
@@ -118,7 +118,7 @@ class QuickMenuTest {
 
     @Test
     fun `the view steps from the normal one to Cover Flow`() {
-        fun step(v: StageView, direction: Int = 1, wrap: Boolean = true) = QuickMenu.step(v, direction, wrap)
+        fun step(v: StageView, direction: Int = 1, wrap: Boolean = true) = SettingsMenu.VIEW_ORDER.step(v, direction, wrap)
         assertThat(step(StageView.NORMAL)).isEqualTo(StageView.EDGE)
         assertThat(step(StageView.EDGE)).isEqualTo(StageView.FLOW)
         assertThat(step(StageView.FLOW)).isEqualTo(StageView.NORMAL)
@@ -141,5 +141,17 @@ class QuickMenuTest {
         assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.LIGHTS, QuickItem.ACTION, QuickItem.SETTINGS)
         assertThat(rows.last().label).isEqualTo("Einstellungen")
         assertThat(rows.last().value).isEqualTo("Öffnen")
+    }
+
+    @Test
+    fun `the screen comes last, only while music plays, and turns off`() {
+        val rows = QuickMenu.rows(lights, QuickContext(music = true), de)
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.LIGHTS, QuickItem.SETTINGS, QuickItem.SCREEN)
+        assertThat(rows.last().label).isEqualTo("Bildschirm")
+        assertThat(rows.last().value).isEqualTo("Ausschalten")
+        assertThat(rows.last().values).containsExactly("Ausschalten")
+        assertThat(QuickMenu.rows(lights, QuickContext(music = true), TestTexts.english()).last().let { it.label to it.value }).isEqualTo("Screen" to "Turn off")
+        // Without music there is nothing to keep playing in the dark.
+        assertThat(QuickMenu.rows(lights, QuickContext(music = false), de).map { it.item }).doesNotContain(QuickItem.SCREEN)
     }
 }

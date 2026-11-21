@@ -84,6 +84,8 @@
     <string name="appearance_dark">Dark</string>
     <string name="volume_on_change">When it changes</string>
     <string name="volume_always">Always</string>
+    <string name="track_number_top">Top</string>
+    <string name="track_number_bottom">Bottom</string>
     <string name="play_here_open">While open</string>
     <string name="play_here_always">Always</string>
     <string name="background_plain">Plain</string>
@@ -140,8 +142,10 @@
     <string name="about_clock">The time in the top line.</string>
     <string name="about_progress">The bar with the time played and the length. Turned off, a key press still shows it briefly.</string>
     <string name="about_next">The next track in the queue, in the last line.</string>
-    <string name="about_track_number">The last line begins with the track’s position in the queue, like 3 of 45. It shows for Music Assistant’s speakers, but not with radio, audiobooks and podcasts.</string>
-    <string name="about_track_number_list">The list of the next tracks has taken the last line’s place. Without the list, the last line begins with the track’s position in the queue, like 3 of 45.</string>
+    <string name="about_track_number_off">The track’s position in the queue stays hidden. Right shows it, like 3 of 45, in the top or the last line.</string>
+    <string name="about_track_number_top">The top line shows the track’s position in the queue, like 3 of 45.</string>
+    <string name="about_track_number_bottom">The last line begins with the track’s position in the queue, like 3 of 45. While the next tracks show as a list, it stands in the top line.</string>
+    <string name="about_track_number_needs">It needs a speaker from Music Assistant and doesn’t show for radio, audiobooks and podcasts.</string>
     <string name="about_album">The album’s name and year below the artists.</string>
     <string name="about_group">When other speakers play along, the time is followed by “Living room + 5” or “Everywhere”.</string>
     <string name="about_volume_on_change">When the volume changes, it shows next to the clock for a few seconds.</string>
@@ -257,6 +261,8 @@
     <string name="quick_party">Party code</string>
     <string name="quick_settings">Settings</string>
     <string name="quick_open">Open</string>
+    <string name="quick_screen">Screen</string>
+    <string name="quick_turn_off">Turn off</string>
     <string name="favorite_add">Add</string>
     <string name="favorite_adding">Adding…</string>
     <string name="favorite_added">Added</string>

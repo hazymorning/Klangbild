@@ -117,7 +117,7 @@ internal fun WallLayer(
     // With the cover colors background, the cover's own colors are the wall.
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, lightLevel)
     val image = scene.wall
-    val filters = remember { HashMap<Int, ColorFilter>() }
+    val filters = remember { LightFilters() }
     val dark = scene.appearance == Appearance.DARK
     val shadeColumn = dark && scene.layout.flow
     val density = LocalDensity.current.density
@@ -129,9 +129,7 @@ internal fun WallLayer(
         if (a <= 0.002f || l <= 0.002f) return@Canvas
         // Paper over paper of its own color at full strength adds nothing.
         if (!dark && onOwnWall && a >= 1f) return@Canvas
-        // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
-        val step = (l.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
-        val filter = if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
+        val filter = filters.at(l)
         val dx = (shift() * density).roundToInt()
         // Black laid over the light from where it starts to fade before the column to beyond the
         // edge. At full strength it is black from the end of its ramp on, on black of its own.
@@ -180,13 +178,6 @@ private fun columnShade(density: Float): Brush {
 /** Steps of the shade's ramp: a smooth curve, closely enough. */
 private const val SHADE_STOPS = 24
 
-/** The background's light in steps of this many to full brightness, each step's filter made once. */
-private const val LIGHT_STEPS = 40
-
-private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
-    ColorMatrix(floatArrayOf(k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, 1f, 0f)),
-)
-
 /**
  * The cover, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display size)
  * with softly rounded corners. [coverLevel] (a pause) darkens it through the color matrix, not
@@ -205,7 +196,11 @@ internal fun CoverLayer(
     Canvas(
         modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
+            // Faded in its one draw call, without a layer of the screen's size.
+            .graphicsLayer {
+                this.alpha = alpha().coerceIn(0f, 1f)
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
     ) {
         val filter = filters.at(coverLevel(), scene.appearance)
         val w = scene.cover.width.toFloat()
@@ -227,16 +222,7 @@ internal fun CoverLayer(
  */
 internal fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(level, appearance)
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                r, 0f, 0f, 0f, 0f,
-                0f, g, 0f, 0f, 0f,
-                0f, 0f, b, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        ),
-    )
+    return scaleFilter(r, g, b)
 }
 
 /** [coverFilter] by level, in fiftieths, each made once: a pause dims the cover through a few dozen. */
@@ -253,6 +239,36 @@ internal class CoverFilters {
     }
 }
 
+/**
+ * The background's light at a level in linear light as a filter on its sRGB bitmap, in steps of a
+ * fortieth to full brightness, each step's filter made once. At full brightness it needs none.
+ */
+internal class LightFilters {
+    private val filters = HashMap<Int, ColorFilter>()
+
+    fun at(level: Float): ColorFilter? {
+        // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
+        val step = (level.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
+        return if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
+    }
+
+    private companion object {
+        const val LIGHT_STEPS = 40
+    }
+}
+
+/** A filter that scales the color channels: red by [r], green by [g] and blue by [b]. */
+private fun scaleFilter(r: Float, g: Float = r, b: Float = r) = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            r, 0f, 0f, 0f, 0f,
+            0f, g, 0f, 0f, 0f,
+            0f, 0f, b, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
+
 /** The per-channel scale of [coverFilter] (red, green, blue). */
 internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float> {
     val k = level * if (appearance == Appearance.LIGHT) 1.06f else 1f
@@ -265,10 +281,11 @@ internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Flo
  * height to the last baseline: (work), title, (version), artist, album · year, then the slot
  * (the progress bar, the station or a notice). The footer ends at the column's foot. With
  * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), with [StageModel.bio] a few
- * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText], whose
- * plan a theater keeps through a change: [queuePlan]). [alpha] and
- * [rise] animate a change line by line, [textLevel] dims the text in a pause, and [shift] moves
- * the column from its place in the grid (dp: Cover Flow moves it left while cards are missing).
+ * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText]) as
+ * [queuePlan] has it. A theater plans it for the rows too ([QueueRowsLayer]) and keeps each
+ * stage's slot room through a change ([QueueRooms]). [alpha] and [rise] animate a change line by
+ * line, [textLevel] dims the text in a pause, and [shift] moves the column from its place in the
+ * grid (dp: Cover Flow moves it left while cards are missing).
  */
 @Composable
 internal fun TextLayer(
@@ -304,11 +321,10 @@ internal fun TextLayer(
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
     val slotText = model.slotText
     val measurer = rememberTextMeasurer(cacheSize = 4)
+    val footerLine = rememberFooter(model.footer, styles, colW)
 
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
+        modifier = modifier.textColumn(textLevel),
         content = {
             // 0: work line
             val work = t.work
@@ -341,7 +357,7 @@ internal fun TextLayer(
             // 5: the slot, whose changes crossfade
             SlotContent(model, styles, line(TextLine.SLOT), label = "slot")
             // 6: the footer, at the column's foot
-            FooterLine(plan.footerPlace, plan.footer, plan.footerLead, styles, line(TextLine.FOOTER))
+            FooterLine(footerLine, styles, line(TextLine.FOOTER))
         },
     ) { measurables, constraints ->
         val c = Constraints(maxWidth = colW)
@@ -377,14 +393,7 @@ internal fun TextLayer(
             // The bar's block measures from the bar's top to the labels' baseline. A line of text in
             // its place is aligned by its own cap height.
             val isText = slotText != null
-            val first = if (isText) slot.firstBaselineOrHeight() else 0
-            parts += Part(
-                slot,
-                capTop = if (isText) first - capOf(styles.label) else 0,
-                baseline = if (isText) first else slot.height,
-                descent = 0f,
-                gap = outerGap(rhythm, plan.artistStyle),
-            )
+            parts += Part(slot, capTop = slotCapTop(slot, isText, styles), baseline = slotBaseline(slot, isText), descent = 0f, gap = outerGap(rhythm, plan.artistStyle))
         }
         // Positions of each cap height, relative to the first one: the gap above it from the
         // descenders of the line before.
@@ -400,7 +409,7 @@ internal fun TextLayer(
         val blockH = parts.lastOrNull()?.let { capY.last() - it.capTop + it.baseline } ?: 0
         val top = (layout.textCenter * density).roundToInt() - blockH / 2
         // The footer's descenders end where the column ends.
-        val footerBaseline = (layout.footerBottom * density - styles.footer.fontSize.toPx() * Fonts.DESCENT).roundToInt()
+        val footerBaseline = footerBaseline(layout, styles)
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Read while placing: a column that glides is only placed anew.
             val x = ((layout.columnLeft + shift()) * density).roundToInt()
@@ -411,25 +420,34 @@ internal fun TextLayer(
 }
 
 /**
- * The footer: the track's position in the queue ([place]), then [text] after its [lead] ("Up
- * next"), or nothing while both are null. A new one (the next chapter while a book plays on, the
- * hint for the quick settings, or a queue that has grown) crossfades in place, and so does one
- * that comes or goes.
+ * The footer's [line] ([rememberFooter]), or nothing while it is null. A new one (the next chapter
+ * while a book plays on, the hint for the quick settings, or a queue that has grown) crossfades in
+ * place, and so does one that comes or goes.
  */
 @Composable
-internal fun FooterLine(place: String?, text: String?, lead: String, styles: StageStyles, modifier: Modifier) {
-    val parts = if (place == null && text == null) null else FooterParts(place, lead, text)
-    Crossfade(parts, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { line ->
-        if (line == null) {
+internal fun FooterLine(line: AnnotatedString?, styles: StageStyles, modifier: Modifier) {
+    Crossfade(line, modifier, tween(Motion.LINE_FADE_MS, easing = Motion.Dimmer), label = "footer") { shown ->
+        if (shown == null) {
             Box(Modifier)
         } else {
-            BasicText(footerText(line.place, line.lead, line.text, styles), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(shown, style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
-/** What the footer holds: the position in the queue, the lead and what comes next. */
-private data class FooterParts(val place: String?, val lead: String, val text: String?)
+/**
+ * [footer] as one line of a column [width] px wide: its text whole if it fits, else its title
+ * alone rather than a cut-off artist ([fitFooter]). Null while it holds nothing.
+ */
+@Composable
+internal fun rememberFooter(footer: Footer?, styles: StageStyles, width: Int): AnnotatedString? {
+    val measurer = rememberTextMeasurer(cacheSize = 4)
+    return remember(footer, styles, width) {
+        if (footer == null || (footer.place == null && footer.text == null)) return@remember null
+        val text = footer.text?.let { full -> fitFooter(measurer, full, footer.title, styles.footer, width) { footerText(footer.place, footer.lead, it, styles) } }
+        footerText(footer.place, footer.lead, text, styles)
+    }
+}
 
 /**
  * The status line at the top of the column: the time, the custom values, then the lead, where
@@ -513,7 +531,7 @@ internal fun StatusLayer(
         val used = before.sumOf { it.width + space }
         val lead = measurables.last().measure(Constraints(maxWidth = (column - used).coerceAtLeast(0)))
         // Cap height where the column begins.
-        val baseline = (layout.statusTop * density).roundToInt() + (styles.label.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt()
+        val baseline = statusBaseline(layout, styles)
         layout(constraints.maxWidth, constraints.maxHeight) {
             var x = ((layout.columnLeft + shift()) * density).roundToInt()
             for (p in before) {

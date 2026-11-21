@@ -9,8 +9,8 @@ import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
 import io.github.hazymorning.klangbild.config.QuickMenu
@@ -18,6 +18,7 @@ import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -53,7 +54,7 @@ class LyricsStageTest {
         val tracks = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS).map(Fixtures::track) + track +
             listOf(SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS).map(Fixtures::track)
         val scenes = Fixtures.flowScenes(tracks, appearance, coverField = coverField)
-        val model = Fixtures.lyricsModel(track, words, appearance = appearance, flow = true, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
+        val model = Fixtures.lyricsModel(track, words, appearance = appearance, kind = StageGrid.Kind.FLOW, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { FlowStage(model, Fixtures.restingCards(scenes, 2)) } }
     }
 
@@ -62,7 +63,7 @@ class LyricsStageTest {
     /** The last line names the song itself, after its place in the queue. */
     @Test fun trackNumber() = shot("single_track_number", Fixtures.lyricsModel(neon, neonLyrics, place = QueuePlace(3, 45)))
 
-    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, edge = true)))
+    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, kind = StageGrid.Kind.EDGE)))
 
     @Test fun light() = shot("single_light", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT))
 
@@ -105,7 +106,7 @@ class LyricsStageTest {
      */
     @Test
     fun quickSettings() {
-        fun quick(focus: QuickItem, lyrics: LyricsChoice, t: Texts): QuickState {
+        fun quick(focus: QuickItem, lyrics: ColumnChoice, t: Texts): QuickState {
             val rows = QuickMenu.rows(Settings(), QuickContext(music = true, favorite = FavoriteState.NONE, shuffle = false, lyrics = lyrics), t)
             return QuickState(rows, rows.indexOfFirst { it.item == focus })
         }
@@ -113,7 +114,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.lyricsModel(neon, neonLyrics))
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.ON, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.ON, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -122,7 +123,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(noWords)
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.NONE, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -130,7 +131,7 @@ class LyricsStageTest {
             Fixtures.Still {
                 Box(Modifier.fillMaxSize()) {
                     Stage(noWords)
-                    QuickBar(quick(QuickItem.VIEW, LyricsChoice.NONE, Fixtures.texts), Appearance.DARK)
+                    QuickBar(quick(QuickItem.VIEW, ColumnChoice.NONE, Fixtures.texts), Appearance.DARK)
                 }
             }
         }
@@ -138,7 +139,7 @@ class LyricsStageTest {
             Fixtures.Still(en) {
                 Box(Modifier.fillMaxSize()) {
                     Stage(Fixtures.model(Fixtures.night, next = Fixtures.spiegel, t = en, appearance = Appearance.LIGHT))
-                    QuickBar(quick(QuickItem.LYRICS, LyricsChoice.NONE, en), Appearance.LIGHT)
+                    QuickBar(quick(QuickItem.LYRICS, ColumnChoice.NONE, en), Appearance.LIGHT)
                 }
             }
         }

@@ -322,7 +322,7 @@ private fun planQueue(model: StageModel, queue: QueueModel, styles: StageStyles,
     // The rows under the track, lower by the room the slot takes: as many whole ones as fit with
     // the room it takes at rest, every one as tall as its row cover, the last one ending on the
     // column's foot. The track stands in the middle between the status line and the first row.
-    val statusBaseline = (layout.statusTop * d).roundToInt() + (with(density) { styles.label.fontSize.toPx() } * Fonts.CAP_HEIGHT).roundToInt()
+    val statusBaseline = with(density) { statusBaseline(layout, styles) }
     val foot = layout.footerBottom * d
     val coverPx = (layout.rowCover * d).roundToInt()
     val rowTextLeft = coverPx + ROW_TEXT_GAP * d
@@ -436,22 +436,14 @@ private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyl
 private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
     fun fits(s: AnnotatedString) = balancer.lineEnds(s, style, width).size <= lines
     if (fits(text)) return text
-    val plain = text.text
-    var end = plain.length
-    while (true) {
-        end = plain.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
-        if (end <= 0) return text
-        var head = plain.substring(0, end)
-        if (head.count { it == '(' } > head.count { it == ')' }) head = head.substring(0, head.lastIndexOf('('))
-        head = trimBeforeEllipsis(head)
-        if (head.isEmpty()) continue
-        // The ellipsis stays with the last word, as in [fitWords].
-        val cut = buildAnnotatedString {
-            append(text.subSequence(0, head.length))
+    // The ellipsis stays with the last word, as in [fitWords].
+    val cut = { n: Int ->
+        buildAnnotatedString {
+            append(text.subSequence(0, n))
             append("$NBSP…")
         }
-        if (fits(cut)) return cut
     }
+    return cutAfterWord(text.text, closeParentheses = true, cut = cut, fits = ::fits) ?: text
 }
 
 /**
@@ -473,9 +465,7 @@ internal fun QueueText(
     fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
 
     Layout(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { this.alpha = textLevel().coerceIn(0f, 1f) },
+        modifier = modifier.textColumn(textLevel),
         content = {
             if (plan.work != null) BasicText(plan.work, line(TextLine.WORK), style = styles.work, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
             BasicText(plan.title, line(TextLine.TITLE), style = plan.titleStyle, maxLines = plan.titleLines, overflow = TextOverflow.Ellipsis)
@@ -511,9 +501,7 @@ internal fun QueueText(
             version.at(plan.versionTop, plan.versionStyle)
             meta.at(plan.metaTop, plan.metaStyle)
             // The slot stays in its place while it fades, and the rows make room for it as it comes.
-            if (slot.height > 0) {
-                if (slotText != null) slot.at(plan.slotTop, styles.label) else slot.place(x, plan.slotTop.roundToInt())
-            }
+            if (slot.height > 0) slot.place(x, plan.slotTop.roundToInt() - slotCapTop(slot, slotText != null, styles))
         }
     }
 }
@@ -568,7 +556,8 @@ internal fun QueueRowsLayer(
         val textNow = textLevel().coerceIn(0f, 1f)
         val coverNow = coverLevel()
         fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverNow, appearance)
-        val g = motion.glide().coerceIn(0f, 1f)
+        // Only rows that glide read how far the glide has come.
+        val g = if (glidingRows.isEmpty()) 1f else motion.glide().coerceIn(0f, 1f)
         if (prev != null) {
             val a = motion.oldAlpha()
             val r = motion.oldRise() * density

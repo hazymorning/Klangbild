@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.json.double
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import io.ktor.client.request.setBody
@@ -15,6 +16,8 @@ import io.ktor.http.HeaderValueParam
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
 import io.ktor.http.isSuccess
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,9 +26,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 
 /** Music Assistant rejected the token. */
@@ -55,6 +56,9 @@ class MaClient(
     /** How long a lyrics request may take, and wait for its next bytes. */
     private val lyricsTimeoutMs: Long = LYRICS_TIMEOUT_MS,
 ) {
+    /** The commands Music Assistant has said it does not know. */
+    private val unknown = HashSet<String>()
+    private val lock = SynchronizedObject()
 
     /** The items of queue [queueId] from [offset], at most [limit], in play order. */
     suspend fun items(queueId: String, offset: Int, limit: Int): JsonArray {
@@ -103,7 +107,7 @@ class MaClient(
 
     /** Music Assistant's own clock (`time`, its wall clock in seconds), for its queue's times. */
     suspend fun serverTime(): Double =
-        (command("time", JsonObject(emptyMap())) as? JsonPrimitive)?.doubleOrNull ?: throw IOException("Unexpected answer to time")
+        command("time", JsonObject(emptyMap())).double() ?: throw IOException("Unexpected answer to time")
 
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {
@@ -162,8 +166,10 @@ class MaClient(
     /**
      * One command; canceling the coroutine cancels the request. It may take [timeoutMs], reading
      * included, and wait [readTimeoutMs] for the next bytes instead of as long as the engine lets it.
+     * A command Music Assistant has said it does not know fails at once, without a request.
      */
     private suspend fun command(name: String, args: JsonObject, timeoutMs: Long = callTimeoutMs, readTimeoutMs: Long? = null): JsonElement {
+        if (synchronized(lock) { name in unknown }) throw MaUnknownCommandException(name)
         val body = buildJsonObject {
             put("message_id", name)
             put("command", name)
@@ -182,7 +188,10 @@ class MaClient(
             val code = response.status.value
             if (code == 401 || code == 403) throw MaAuthException()
             // An older version says so in words: "Invalid Command: …".
-            if (code == 400 && response.bodyBytes(UNKNOWN_PEEK_BYTES).decodeToString().startsWith("Invalid Command")) throw MaUnknownCommandException(name)
+            if (code == 400 && response.bodyBytes(UNKNOWN_PEEK_BYTES).decodeToString().startsWith("Invalid Command")) {
+                synchronized(lock) { unknown += name }
+                throw MaUnknownCommandException(name)
+            }
             if (!response.status.isSuccess()) throw HttpStatusException("Music Assistant", code)
             response.textBelow(MAX_ANSWER_BYTES)
         }

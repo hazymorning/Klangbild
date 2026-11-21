@@ -1,12 +1,11 @@
 package io.github.hazymorning.klangbild.domain
 
+import io.github.hazymorning.klangbild.json.double
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
 import kotlin.time.Instant
 
 /**
@@ -25,9 +24,18 @@ data class EntityState(
 ) {
     fun attr(name: String): JsonElement? = attributes[name]?.takeUnless { it is JsonNull }
     fun string(name: String): String? = attr(name).string()
-    fun number(name: String): Double? = (attr(name) as? JsonPrimitive)?.doubleOrNull
+    fun number(name: String): Double? = attr(name).double()
+
+    /** A whole number such as a brightness, with any fraction dropped. */
+    fun int(name: String): Int? = number(name)?.toInt()
 
     companion object {
+        /** Home Assistant's words for an entity's state. */
+        const val ON = "on"
+        const val OFF = "off"
+        const val UNAVAILABLE = "unavailable"
+        const val UNKNOWN = "unknown"
+
         /**
          * A state object as the REST API and state events carry it (`entity_id`, `state`,
          * `attributes`, `last_changed`, `last_updated`, `context`); null when it is not one.
@@ -38,7 +46,7 @@ data class EntityState(
             val context = o["context"] as? JsonObject
             return EntityState(
                 entityId = id,
-                state = o.string("state") ?: "unknown",
+                state = o.string("state") ?: UNKNOWN,
                 attributes = o["attributes"] as? JsonObject ?: JsonObject(emptyMap()),
                 lastUpdated = seconds(o.string("last_updated")) ?: seconds(o.string("last_changed")) ?: 0.0,
                 context = context?.string("id"),

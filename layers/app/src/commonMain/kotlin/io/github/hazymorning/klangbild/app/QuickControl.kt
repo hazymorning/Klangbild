@@ -1,9 +1,8 @@
 package io.github.hazymorning.klangbild.app
 
 import io.github.hazymorning.klangbild.config.ActionState
-import io.github.hazymorning.klangbild.config.ArtistChoice
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.config.QuickContext
 import io.github.hazymorning.klangbild.config.QuickItem
@@ -11,8 +10,11 @@ import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
+import io.github.hazymorning.klangbild.config.SettingsMenu
 import io.github.hazymorning.klangbild.config.StageView
+import io.github.hazymorning.klangbild.config.step
 import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.QuickAction
@@ -35,7 +37,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /** The view chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
     @Volatile private var pendingView: StageView? = null
-    private var pictureJob: Job? = null
+    private var viewJob: Job? = null
 
     /** The lights' level before they were switched off from the quick settings. */
     private var lightsBefore = RoomLightBrightness.DEFAULT
@@ -64,7 +66,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     val isOpen: Boolean get() = cursor != null
 
-    /** Opens the quick settings on the queue's entry. Once opened, the stage no longer tells how. */
+    /** Opens the quick settings on their first entry, View. Once opened, the stage no longer tells how. */
     fun open() {
         synchronized(host.lock) {
             if (cursor != null) return
@@ -109,9 +111,9 @@ internal class QuickControl(private val host: ControllerHost) {
         when (row.item) {
             QuickItem.VIEW -> synchronized(host.lock) {
                 val shown = pendingView ?: host.settings.view
-                pendingView = QuickMenu.step(shown, +1, wrap = true)
-                pictureJob?.cancel()
-                pictureJob = host.scope.launch {
+                pendingView = SettingsMenu.VIEW_ORDER.step(shown, +1, wrap = true)
+                viewJob?.cancel()
+                viewJob = host.scope.launch {
                     delay(SETTLE_MS)
                     applyView()
                 }
@@ -140,6 +142,11 @@ internal class QuickControl(private val host: ControllerHost) {
             QuickItem.SETTINGS -> {
                 close()
                 host.openMenu()
+            }
+            // The row goes, then the screen fades to black.
+            QuickItem.SCREEN -> {
+                close()
+                host.turnScreenOff()
             }
         }
     }
@@ -172,8 +179,8 @@ internal class QuickControl(private val host: ControllerHost) {
      */
     private fun applyView() {
         val next = synchronized(host.lock) {
-            pictureJob?.cancel()
-            pictureJob = null
+            viewJob?.cancel()
+            viewJob = null
             pendingView
         } ?: return
         val s = host.settings
@@ -218,7 +225,7 @@ internal class QuickControl(private val host: ControllerHost) {
             if (index in running) return
             if (kind == ActionKind.TOGGLE) {
                 val on = switchShown(entity) ?: return
-                switchWanted[entity] = !on to host.now() + SWITCH_TRUST_MS
+                switchWanted[entity] = !on to host.now() + TRUST_MS
             }
             running += index
             outcome.remove(index)
@@ -290,7 +297,7 @@ internal class QuickControl(private val host: ControllerHost) {
         val src = host.source ?: return
         val on = synchronized(host.lock) {
             val now = shuffleShown() ?: return
-            shuffleWanted = !now to host.now() + SHUFFLE_TRUST_MS
+            shuffleWanted = !now to host.now() + TRUST_MS
             !now
         }
         host.recompute()
@@ -303,28 +310,29 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Shuffle as the quick settings show it: what was just asked for, else what the player says. */
     private fun shuffleShown(): Boolean? {
         val reported = host.ui.source.player?.shuffle ?: return null
-        val wanted = shuffleWanted
-        if (wanted == null || host.now() > wanted.second || wanted.first == reported) {
-            shuffleWanted = null
-            return reported
-        }
-        return wanted.first
+        stillWanted(shuffleWanted, reported)?.let { return it }
+        shuffleWanted = null
+        return reported
     }
 
     /** Whether the switch [entity] shows as on: what was just asked for, else what Home Assistant says; null without a state. */
     private fun switchShown(entity: String): Boolean? {
         val reported = when (host.ui.source.entities[entity]?.state) {
-            "on" -> true
-            "off" -> false
+            EntityState.ON -> true
+            EntityState.OFF -> false
             else -> null
         }
-        val wanted = switchWanted[entity]
-        if (wanted == null || host.now() > wanted.second || wanted.first == reported) {
-            switchWanted.remove(entity)
-            return reported
-        }
-        return wanted.first
+        stillWanted(switchWanted[entity], reported)?.let { return it }
+        switchWanted.remove(entity)
+        return reported
     }
+
+    /**
+     * What [wanted] asked for (the value, and until when it shows), while [reported] is still
+     * something else and that time has not passed; null once it is over.
+     */
+    private fun stillWanted(wanted: Pair<Boolean, Long>?, reported: Boolean?): Boolean? =
+        wanted?.takeIf { (value, until) -> value != reported && host.now() <= until }?.first
 
     /**
      * How each button stands now, by its place among the buttons. A button whose entity Home
@@ -339,7 +347,7 @@ internal class QuickControl(private val host: ControllerHost) {
         for ((i, a) in host.settings.quickActions.withIndex()) {
             val kind = a.kind ?: continue
             val state = entities[a.entity]?.state ?: continue
-            if (state == UNAVAILABLE) continue
+            if (state == EntityState.UNAVAILABLE) continue
             val said = outcome[i]?.takeIf { t < it.second }?.first
             val c = a.condition
             if (c != null && i !in running && said == null && !entities[c.entity].let { e -> c.holds(e?.state, e?.attributes) }) continue
@@ -357,27 +365,30 @@ internal class QuickControl(private val host: ControllerHost) {
     }
 
     /**
-     * The lyrics entry for [track]: only for a song, while Music Assistant (where the words come
-     * from) is connected. While it is on and Music Assistant has no synced words for the song (or
-     * the song has no length for them to follow), NONE: still On, said quietly.
+     * The lyrics entry for [track]. While it is on and Music Assistant has no synced words for the
+     * song (or the song has no length for them to follow), NONE.
      */
-    private fun lyricsChoice(track: TrackInfo): LyricsChoice? {
-        if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
-        if (!host.settings.lyrics) return LyricsChoice.OFF
+    private fun lyricsChoice(track: TrackInfo): ColumnChoice? {
         val known = host.ui.source.lyrics?.takeIf { it.key == track.key }
-        return if ((known != null && known.lyrics == null) || track.durationMs == null) LyricsChoice.NONE else LyricsChoice.ON
+        return columnChoice(track, host.settings.lyrics, none = (known != null && known.lyrics == null) || track.durationMs == null)
+    }
+
+    /** The artist info entry for [track]. While it is on and Music Assistant knows nothing about the song's artist, NONE. */
+    private fun artistChoice(track: TrackInfo): ColumnChoice? {
+        val known = host.ui.source.bio?.takeIf { it.key == track.key }
+        return columnChoice(track, host.settings.artistInfo, none = known != null && known.bio == null)
     }
 
     /**
-     * The artist info entry for [track]: only for a song, while Music Assistant (where the
-     * sentences come from) is connected. While it is on and Music Assistant knows nothing about
-     * the song's artist, NONE: still On, said quietly.
+     * The entry for what takes [track]'s text column from Music Assistant: only for a song, while
+     * Music Assistant is connected. Switched [on] while there is [none] for the song, NONE: still
+     * On, said quietly.
      */
-    private fun artistChoice(track: TrackInfo): ArtistChoice? {
-        if (track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED) return null
-        if (!host.settings.artistInfo) return ArtistChoice.OFF
-        val known = host.ui.source.bio?.takeIf { it.key == track.key }
-        return if (known != null && known.bio == null) ArtistChoice.NONE else ArtistChoice.ON
+    private fun columnChoice(track: TrackInfo, on: Boolean, none: Boolean): ColumnChoice? = when {
+        track.kind != MediaKind.MUSIC || host.ui.source.ma != MaLink.CONNECTED -> null
+        !on -> ColumnChoice.OFF
+        none -> ColumnChoice.NONE
+        else -> ColumnChoice.ON
     }
 
     /**
@@ -422,14 +433,11 @@ internal class QuickControl(private val host: ControllerHost) {
         /** Untouched quick settings close after this long: they are for a moment's choice. */
         const val IDLE_MS = 20_000L
 
-        /** The queue view chosen in the quick settings is applied this long after the last press. */
+        /** The view chosen in the quick settings is applied this long after the last press. */
         const val SETTLE_MS = 900L
 
-        /** Shuffle just asked for is shown this long before the player has reported it. */
-        const val SHUFFLE_TRUST_MS = 6_000L
-
-        /** A switch just turned is shown as asked this long before Home Assistant has reported it. */
-        const val SWITCH_TRUST_MS = 6_000L
+        /** Shuffle or a switch just turned is shown as asked this long at most before it is reported. */
+        const val TRUST_MS = 6_000L
 
         /** How long a button says how its call went before it says again what it does. */
         const val RESULT_MS = 4_000L
@@ -439,8 +447,5 @@ internal class QuickControl(private val host: ControllerHost) {
 
         /** When the party's link could not be fetched, it is asked for again after this long. */
         const val PARTY_RETRY_MS = 5_000L
-
-        /** Home Assistant's state for an entity that is there but cannot be used. */
-        private const val UNAVAILABLE = "unavailable"
     }
 }

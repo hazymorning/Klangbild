@@ -1,13 +1,13 @@
 package io.github.hazymorning.klangbild.sendspin
 
 import dev.whyoleg.cryptography.random.CryptographyRandom
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.int
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlin.random.Random
 
 /** How a connection carries messages; the session never sees the WebSocket itself. */
@@ -463,9 +463,9 @@ class Session(
         if (Roles.PLAYER !in roles) return
         val p = m.obj("player") ?: return
         when ((p["command"] as? JsonPrimitive)?.content) {
-            "volume" -> (p["volume"] as? JsonPrimitive)?.intOrNull?.let { listener.volume(it.coerceIn(0, 100)) }
-            "mute" -> (p["mute"] as? JsonPrimitive)?.booleanOrNull?.let { listener.mute(it) }
-            "set_output_delay" -> (p["output_delay_ms"] as? JsonPrimitive)?.intOrNull?.let { listener.outputDelay(it.coerceIn(0, 5_000)) }
+            "volume" -> p.int("volume")?.let { listener.volume(it.coerceIn(0, 100)) }
+            "mute" -> p.boolean("mute")?.let { listener.mute(it) }
+            "set_output_delay" -> p.int("output_delay_ms")?.let { listener.outputDelay(it.coerceIn(0, 5_000)) }
             else -> return
         }
         sendState()

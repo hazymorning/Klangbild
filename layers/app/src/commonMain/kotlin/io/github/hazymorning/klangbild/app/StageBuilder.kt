@@ -85,7 +85,12 @@ internal class StageBuilder(
         val strip = strip.update(stage.track, coming, played = src.played).also { cards = it }
         val flow = s.view == StageView.FLOW && strip.cards.size > 1
         // The cover edge to edge is the single cover's: Cover Flow has its cards side by side.
-        val frame = scenes.frame.copy(flow = flow, edge = s.view == StageView.EDGE)
+        val kind = when {
+            flow -> StageGrid.Kind.FLOW
+            s.view == StageView.EDGE -> StageGrid.Kind.EDGE
+            else -> StageGrid.Kind.SINGLE
+        }
+        val frame = scenes.frame.copy(kind = kind)
         if (frame != scenes.frame) scenes.show(frame, keep = onStage?.sceneKey)
         return flow
     }

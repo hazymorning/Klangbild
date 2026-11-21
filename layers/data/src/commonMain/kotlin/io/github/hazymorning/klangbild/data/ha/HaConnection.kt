@@ -5,6 +5,8 @@ import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.WebSocketLink
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.domain.EntityState
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.atomic
@@ -36,10 +38,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
@@ -80,6 +80,13 @@ data class RegistryEntry(
     val translationKey: String?,
     val displayPrecision: Int? = null,
 )
+
+/** Music Assistant's integration in Home Assistant's entity registry. */
+internal const val MA_PLATFORM = "music_assistant"
+
+/** The entities of Music Assistant's media players among these entries. */
+internal fun List<RegistryEntry>.maSpeakerIds(): List<String> =
+    filter { it.platform == MA_PLATFORM && it.entityId.startsWith("media_player.") }.map { it.entityId }
 
 /**
  * The WebSocket connection to Home Assistant, using only its documented commands
@@ -191,8 +198,7 @@ class HaConnection(
 
     /** Reads the entity registry as listed for display again ([registry]): an entity Home Assistant has added since. */
     suspend fun refreshRegistry() {
-        val s = session ?: return
-        registryOf(optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } })?.let { _registry.value = it }
+        readRegistry(session ?: return)
     }
 
     /**
@@ -432,10 +438,7 @@ class HaConnection(
                 val unit = ((config?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content
                 unit?.takeIf { it.isNotBlank() }?.let { _temperatureUnit.value = it }
             }
-            sessionScope.launch {
-                val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
-                registryOf(list)?.let { _registry.value = it }
-            }
+            sessionScope.launch { readRegistry(s) }
             val pinger = sessionScope.launch { ping() }
             val extraWatcher = sessionScope.launch { extraIds.collect { extraChanges.send(it) } }
             val pushWatcher = sessionScope.launch { pushWebhook.collect { pushChanges.send(it) } }
@@ -497,7 +500,7 @@ class HaConnection(
                 return null
             }
             for (msg in parseMessages(text)) {
-                val id = (msg["id"] as? JsonPrimitive)?.intOrNull
+                val id = msg.int("id")
                 when (msg.type()) {
                     "event" -> if (id != null && id == pushSub) onPush(msg) else if (id != null && (id == mainSub || id == extraSub)) onEvent(msg)
                     "result" -> onResult(id, msg)?.let { return it }
@@ -522,7 +525,7 @@ class HaConnection(
 
         /** A command's result, for a call that waits for it or for a subscription; ends the session when the main subscription failed. */
         private fun onResult(id: Int?, msg: JsonObject): SessionEnd? {
-            val ok = (msg["success"] as? JsonPrimitive)?.booleanOrNull == true
+            val ok = msg.boolean("success") == true
             val error = msg["error"] as? JsonObject
             val waiter = id?.let { s.waiter(it) }
             when {
@@ -657,6 +660,12 @@ class HaConnection(
     /** A command whose answer is welcome but not needed: null when it fails. */
     private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(answerTimeoutMs, build) }
 
+    /** Reads the entity registry as listed for display into [registry]; a read that fails keeps what was known. */
+    private suspend fun readRegistry(s: Session) {
+        val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
+        registryOf(list)?.let { _registry.value = it }
+    }
+
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
         val (entity, state) = when (feed) {
@@ -676,7 +685,7 @@ class HaConnection(
                 deviceId = o.string("di"),
                 translationKey = o.string("tk"),
                 // Home Assistant offers up to six decimals.
-                displayPrecision = (o["dp"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..6 },
+                displayPrecision = o.int("dp")?.takeIf { it in 0..6 },
             )
         }
     }

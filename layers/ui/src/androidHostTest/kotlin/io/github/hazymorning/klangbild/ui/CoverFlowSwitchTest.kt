@@ -30,7 +30,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.test.Test
 
 /**
- * The queue goes to or from Cover Flow: what showed stays on screen until the first scene of the
+ * The view goes to or from Cover Flow: what showed stays on screen until the first scene of the
  * other is made, then the two cross through the background at once: black, or by day the light
  * background. The screen never waits in the dark, and by day it never goes dark.
  */

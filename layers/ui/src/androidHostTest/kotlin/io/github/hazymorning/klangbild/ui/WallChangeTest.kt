@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -50,7 +51,7 @@ class WallChangeTest {
     fun coverFlowStatusLineCrossFadesWithTheWall() {
         val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.NOCTURNE, SyntheticCover.MOSS)
         fun flow(wall: Appearance) = Fixtures.flow(
-            covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = wall, flow = true) }.toMap(),
+            covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = wall, kind = StageGrid.Kind.FLOW) }.toMap(),
             listOf(0L, 1L, 2L),
             1L,
         )

@@ -91,7 +91,7 @@ class SettingsStoreTest {
             remoteControl = false,
             showProgressBar = false,
             showNext = false,
-            showTrackNumber = true,
+            trackNumber = TrackNumber.TOP,
             showAlbum = false,
             showGroup = false,
             volumeDisplay = VolumeDisplay.ALWAYS,
@@ -207,6 +207,19 @@ class SettingsStoreTest {
         assertThat(store.read(mapOf(former to true)).playHere).isEqualTo(PlayHere.ALWAYS)
         assertThat(store.read(mapOf(former to false)).playHere).isEqualTo(PlayHere.OFF)
         assertThat(store.read(mapOf(former to true, "play_here" to "OPEN")).playHere).isEqualTo(PlayHere.OPEN)
+    }
+
+    @Test
+    fun `Track number switched on as a switch stays in the last line, and its key goes`() {
+        val store = SettingsStore(settingsValues(context), FakeBox())
+        val former = "show_track_number"
+        fun after(on: Boolean): Map<String, Any> = mutableMapOf<String, Any>(former to on).also { store.migrate(it) }
+        assertThat(after(true)).isEqualTo(mapOf("track_number" to "BOTTOM"))
+        assertThat(after(false)).isEqualTo(mapOf("track_number" to "OFF"))
+        // Read before the step has run, it means the same, and its own key wins.
+        assertThat(store.read(mapOf(former to true)).trackNumber).isEqualTo(TrackNumber.BOTTOM)
+        assertThat(store.read(mapOf(former to false)).trackNumber).isEqualTo(TrackNumber.OFF)
+        assertThat(store.read(mapOf(former to true, "track_number" to "TOP")).trackNumber).isEqualTo(TrackNumber.TOP)
     }
 
     @Test

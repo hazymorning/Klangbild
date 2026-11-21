@@ -45,9 +45,8 @@ import kotlin.time.Clock
 
 /**
  * Home Assistant as the source: the configured media_player plus `sun.sun` and the entities
- * of one's own, enriched with what its queue says ([QueueReader]: what comes next,
- * full-size artwork, with Music Assistant itself the whole queue and the words of the song).
- * Remote commands go out only where the player supports them.
+ * of one's own, enriched with what its queue says ([QueueReader]). Remote commands go out only
+ * where the player supports them.
  *
  * While this TV plays as a speaker ([speaker]), its own entity ([OwnSpeaker]) is followed too,
  * and music that starts on it shows instead of the chosen speaker until it has stopped
@@ -131,9 +130,6 @@ class HaSource(
 
     /** The latest reports of where the song stands, the best of which is published (only touched while publishing). */
     private val positions = PositionReports()
-
-    /** What the connection was asked to follow besides the chosen speaker and the sun. */
-    private var alsoFollowed: Set<String> = emptySet()
 
     /** The lights that join in, followed for `LightSync` alongside the group's speakers. */
     @Volatile private var lightIds: Set<String> = emptySet()
@@ -349,12 +345,8 @@ class HaSource(
         val others = player?.groupMembers.orEmpty()
         val followed = others.toSet() + lightIds + ownIds + otherIds + setOfNotNull(own?.entity) +
             (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
-        if (followed != alsoFollowed) {
-            alsoFollowed = followed
-            connection.followAlso(followed)
-        }
-        val lightStates = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
-        if (lightStates != _lights.value) _lights.value = lightStates
+        connection.followAlso(followed)
+        _lights.value = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
         val queueKnown = queue.knows(key)
         val currentQueue = queue.queueFor(key)
         val currentWindow = queue.windowFor(key)
@@ -445,6 +437,8 @@ class HaSource(
     /** This state with the player, its queue and its time as [shown] has them, and the speaker they belong to. */
     private fun SourceState.showing(shown: SourceState) = copy(
         speaker = shown.speaker,
+        elsewhere = shown.elsewhere,
+        party = shown.party,
         player = shown.player,
         receivedAtMs = shown.receivedAtMs,
         next = shown.next,
@@ -471,9 +465,7 @@ class HaSource(
     }
 
     /** Music Assistant's media players, as the entity registry lists them. */
-    private fun maSpeakers(): Set<String> =
-        connection.registry.value?.filter { it.platform == MA_PLATFORM && it.entityId.startsWith("media_player.") }
-            ?.map { it.entityId }?.toSet().orEmpty()
+    private fun maSpeakers(): Set<String> = connection.registry.value?.maSpeakerIds()?.toSet().orEmpty()
 
     /**
      * All of the house's speakers play together (and there are at least [EVERYWHERE_MIN]): the
@@ -484,7 +476,7 @@ class HaSource(
         if (g.name != null) return false
         val all = maSpeakers().count { id ->
             val e = entities[id] ?: return@count false
-            e.state != "unavailable" && e.string("mass_player_type") == "player"
+            e.state != EntityState.UNAVAILABLE && e.string("mass_player_type") == "player"
         }
         return all >= EVERYWHERE_MIN && g.others.size + 1 >= all
     }
@@ -495,9 +487,6 @@ class HaSource(
 
         /** After this many failed questions in a row, a party counts as over. */
         const val PARTY_FAILURES = 2
-
-        /** Music Assistant's integration in Home Assistant's entity registry. */
-        const val MA_PLATFORM = "music_assistant"
 
         /** The translation key of Music Assistant's "Favorite current song" button. */
         const val FAVORITE_KEY = "favorite_now_playing"

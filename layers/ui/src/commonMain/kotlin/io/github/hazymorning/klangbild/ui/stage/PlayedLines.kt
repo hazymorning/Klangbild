@@ -11,11 +11,21 @@ import io.github.hazymorning.klangbild.math.RecentMap
  * own position, its own next track, its own place in the queue and its own chapter.
  */
 internal class PlayedLines {
+    /** What a line showed: [now] while its track [plays] (and kept), else what it had. */
+    private class Kept<T : Any> {
+        private var value: T? = null
+
+        fun at(plays: Boolean, now: T?): T? {
+            if (plays) value = now
+            return value
+        }
+    }
+
     private class Played {
         var position: Long? = null
-        var next: TrackInfo? = null
-        var place: QueuePlace? = null
-        var chapter: ChapterPlace? = null
+        val next = Kept<TrackInfo>()
+        val place = Kept<QueuePlace>()
+        val chapter = Kept<ChapterPlace>()
 
         /** It played at the last read of its position. */
         var plays = false
@@ -27,25 +37,13 @@ internal class PlayedLines {
     private fun of(key: String) = tracks.getOrPut(key) { Played() }
 
     /** The track after [key]: [now] while it [plays] (and kept), else the one it had. */
-    fun next(key: String, plays: Boolean, now: TrackInfo?): TrackInfo? {
-        val p = of(key)
-        if (plays) p.next = now
-        return p.next
-    }
+    fun next(key: String, plays: Boolean, now: TrackInfo?): TrackInfo? = of(key).next.at(plays, now)
 
     /** Where [key] stands in its queue: [now] while it [plays] (and kept), else where it stood. */
-    fun place(key: String, plays: Boolean, now: QueuePlace?): QueuePlace? {
-        val p = of(key)
-        if (plays) p.place = now
-        return p.place
-    }
+    fun place(key: String, plays: Boolean, now: QueuePlace?): QueuePlace? = of(key).place.at(plays, now)
 
     /** The chapter [key] stands in: [now] while it [plays] (and kept), else the last one. */
-    fun chapter(key: String, plays: Boolean, now: ChapterPlace?): ChapterPlace? {
-        val p = of(key)
-        if (plays) p.chapter = now
-        return p.chapter
-    }
+    fun chapter(key: String, plays: Boolean, now: ChapterPlace?): ChapterPlace? = of(key).chapter.at(plays, now)
 
     /**
      * Where [key] stands: read [now] while it [plays] and kept, else where it stood last. A read

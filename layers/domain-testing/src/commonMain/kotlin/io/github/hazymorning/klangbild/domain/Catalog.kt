@@ -12,7 +12,11 @@ object Catalog {
     /** Artwork URLs with this prefix name a [SyntheticCover], which the tests' artwork loader paints. */
     const val SCHEME = "test://cover/"
 
-    private fun cover(c: SyntheticCover) = SCHEME + c.name
+    /** The artwork URL that names [c]. */
+    fun cover(c: SyntheticCover): String = SCHEME + c.name
+
+    /** The test cover [url] names, or null for a URL that names none. */
+    fun coverOf(url: String?): SyntheticCover? = SyntheticCover.entries.firstOrNull { cover(it) == url }
 
     /** An audiobook with chapters (named and numbered), read at its own pace or faster. */
     val book = TrackInfo(

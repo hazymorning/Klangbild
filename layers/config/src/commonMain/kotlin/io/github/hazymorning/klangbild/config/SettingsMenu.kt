@@ -25,8 +25,39 @@ enum class MenuSection(val title: StringId, val about: StringId) {
     SYSTEM(Strings.sectionSystem, Strings.aboutSectionSystem),
 }
 
-/** One setting, in its group's order; [label] is null for a line named after what it connects to. */
-enum class MenuEntry(val section: MenuSection, val label: StringId?) {
+/** What a setting can need set up on the phone before it works. */
+internal enum class Prerequisite {
+    MUSIC_ASSISTANT,
+
+    /** The lights behind the TV. */
+    LIGHTS,
+
+    /** Values of one's own for the status line. */
+    VALUES,
+
+    /** Speakers in other rooms. */
+    OTHER_ROOMS,
+    PRESENCE_SENSORS,
+    ;
+
+    /** Whether [s] still lacks it. */
+    fun missingIn(s: Settings): Boolean = when (this) {
+        MUSIC_ASSISTANT -> !s.hasMusicAssistant
+        LIGHTS -> !s.roomLights.isSet
+        VALUES -> s.ownValues.isEmpty()
+        OTHER_ROOMS -> s.otherRooms.isEmpty()
+        PRESENCE_SENSORS -> s.presenceSensors.isEmpty()
+    }
+}
+
+/** What a setting needs set up first ([what]), and what its line says until then: its [value] and the explanation ([about]). */
+internal class Needs(val what: Prerequisite, val value: StringId, val about: StringId)
+
+/**
+ * One setting, in its group's order; [label] is null for a line named after what it connects to.
+ * A setting that [needs] something set up first is dimmed until then, and OK sets it up.
+ */
+enum class MenuEntry(val section: MenuSection, val label: StringId?, internal val needs: Needs? = null) {
     VIEW(MenuSection.PICTURE, Strings.entryView),
     QUEUE(MenuSection.PICTURE, Strings.entryQueue),
     APPEARANCE(MenuSection.PICTURE, Strings.entryAppearance),
@@ -40,26 +71,27 @@ enum class MenuEntry(val section: MenuSection, val label: StringId?) {
     ALBUM(MenuSection.INFO, Strings.entryAlbum),
     GROUP(MenuSection.INFO, Strings.entryGroup),
     VOLUME(MenuSection.INFO, Strings.entryVolume),
-    VALUES(MenuSection.INFO, Strings.entryValues),
+    VALUES(MenuSection.INFO, Strings.entryValues, Needs(Prerequisite.VALUES, Strings.setUp, Strings.aboutValuesSetUp)),
     NOTIFICATIONS(MenuSection.INFO, Strings.entryNotifications),
-    LYRICS(MenuSection.INFO, Strings.entryLyrics),
-    LYRICS_DELAY(MenuSection.INFO, Strings.entryLyricsDelay),
-    ARTIST_INFO(MenuSection.INFO, Strings.entryArtistInfo),
-    BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness),
-    OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights),
+    LYRICS(MenuSection.INFO, Strings.entryLyrics, Needs(Prerequisite.MUSIC_ASSISTANT, Strings.needsMusicAssistant, Strings.aboutLyricsSetUp)),
+    // "Needs Music Assistant" would not fit beside these two labels in German.
+    LYRICS_DELAY(MenuSection.INFO, Strings.entryLyricsDelay, Needs(Prerequisite.MUSIC_ASSISTANT, Strings.setUp, Strings.aboutLyricsSetUp)),
+    ARTIST_INFO(MenuSection.INFO, Strings.entryArtistInfo, Needs(Prerequisite.MUSIC_ASSISTANT, Strings.setUp, Strings.aboutArtistInfoSetUp)),
+    BRIGHTNESS(MenuSection.LIGHTS, Strings.entryBrightness, Needs(Prerequisite.LIGHTS, Strings.setUp, Strings.aboutLightsSetUp)),
+    OFF_LIGHTS(MenuSection.LIGHTS, Strings.entryOffLights, Needs(Prerequisite.LIGHTS, Strings.setUp, Strings.aboutLightsSetUp)),
     REMOTE(MenuSection.REMOTE, Strings.entryRemote),
     UP_DOWN(MenuSection.REMOTE, Strings.entryUpDown),
     SPOKEN(MenuSection.REMOTE, Strings.entrySpoken),
     SLEEP_TIMER(MenuSection.TIMER, Strings.entrySleepTimer),
     SLEEP_AFTER(MenuSection.TIMER, Strings.entrySleepAfter),
     SLEEP_ACTION(MenuSection.TIMER, Strings.entrySleepAction),
-    SCREEN_OFF(MenuSection.TIMER, Strings.entryScreenOff),
+    SCREEN_OFF(MenuSection.TIMER, Strings.entryScreenOff, Needs(Prerequisite.PRESENCE_SENSORS, Strings.setUp, Strings.aboutScreenOffSetUp)),
     PHONE_SETUP(MenuSection.SYSTEM, Strings.entryPhoneSetup),
     CONNECTION(MenuSection.SYSTEM, null),
     MUSIC_ASSISTANT(MenuSection.SYSTEM, null),
-    SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker),
-    OTHER_ROOMS(MenuSection.SYSTEM, Strings.entryOtherRooms),
-    PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere),
+    SPEAKER(MenuSection.SYSTEM, Strings.entrySpeaker, Needs(Prerequisite.MUSIC_ASSISTANT, Strings.needsMusicAssistant, Strings.aboutPlayHereSetUp)),
+    OTHER_ROOMS(MenuSection.SYSTEM, Strings.entryOtherRooms, Needs(Prerequisite.OTHER_ROOMS, Strings.setUp, Strings.aboutOtherRoomsSetUp)),
+    PLAY_HERE(MenuSection.SYSTEM, Strings.entryPlayHere, Needs(Prerequisite.MUSIC_ASSISTANT, Strings.needsMusicAssistant, Strings.aboutPlayHereSetUp)),
     LANGUAGE(MenuSection.SYSTEM, Strings.entryLanguage),
     UPDATE(MenuSection.SYSTEM, Strings.entryUpdate),
     UPDATE_CHECK(MenuSection.SYSTEM, Strings.entryUpdateCheck),
@@ -104,6 +136,16 @@ data class MenuRow(
 )
 
 /**
+ * The choice one step from [current] along these: [direction] -1 (left) or +1 (right, OK). Left
+ * and right stop at the ends, [wrap] goes round. A [current] that is none of them counts as the
+ * first.
+ */
+fun <T> List<T>.step(current: T, direction: Int, wrap: Boolean): T {
+    val i = indexOf(current).coerceAtLeast(0) + direction
+    return if (wrap) this[i.mod(size)] else this[i.coerceIn(0, size - 1)]
+}
+
+/**
  * The settings menu, operated with the remote, in two levels: first the groups, then the
  * settings of the one opened. Up and down choose a line, OK (or right) opens a group, left and
  * right (or OK) change a setting at once; there is nothing to confirm. Back goes up a level.
@@ -133,18 +175,14 @@ object SettingsMenu {
         MenuRow(e, label(e, t), value(e, s, ctx, t), description(e, s, ctx, t), level(e, s), dimmed = needsSetup(e, s))
 
     /**
-     * Whether [e] cannot work until something is set up on the phone: lyrics and playing here
-     * without Music Assistant, the lights, the values, the other rooms and the presence sensors
-     * while none are chosen. OK opens the setup.
+     * Whether [e] cannot work until something is set up on the phone ([MenuEntry.needs]): lyrics
+     * and playing here without Music Assistant, the lights, the values, the other rooms and the
+     * presence sensors while none are chosen. OK opens the setup.
      */
-    fun needsSetup(e: MenuEntry, s: Settings): Boolean = when (e) {
-        MenuEntry.LYRICS, MenuEntry.LYRICS_DELAY, MenuEntry.ARTIST_INFO, MenuEntry.SPEAKER, MenuEntry.PLAY_HERE -> !s.hasMusicAssistant
-        MenuEntry.BRIGHTNESS, MenuEntry.OFF_LIGHTS -> !s.roomLights.isSet
-        MenuEntry.VALUES -> s.ownValues.isEmpty()
-        MenuEntry.OTHER_ROOMS -> s.otherRooms.isEmpty()
-        MenuEntry.SCREEN_OFF -> s.presenceSensors.isEmpty()
-        else -> false
-    }
+    fun needsSetup(e: MenuEntry, s: Settings): Boolean = missing(e, s) != null
+
+    /** What [e] needs set up first and [s] still lacks; null while nothing is missing. */
+    private fun missing(e: MenuEntry, s: Settings): Needs? = e.needs?.takeIf { it.what.missingIn(s) }
 
     /**
      * Whether Klangbild follows this TV's own speaker ("This TV"): then it keeps playing here, and
@@ -153,15 +191,15 @@ object SettingsMenu {
     fun followsThisTv(s: Settings): Boolean = s.entityId == EntityId.THIS_TV && s.tvSpeaker
 
     /**
-     * Whether a step of [e] ([direction] and [wrap] as in [step]) opens the setup: what needs
-     * setting up first, and leaving this TV while no other speaker was ever followed, by Speaker
-     * or by turning playing here off.
+     * Whether a step of [e] ([direction] and [wrap] as in [step]) opens the setup: always on Set up
+     * on phone and the connections, on what needs setting up first, and on leaving this TV while no
+     * other speaker was ever followed, by Speaker or by turning playing here off.
      */
     fun opensSetup(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean): Boolean {
-        if (needsSetup(e, s)) return true
+        if (e == MenuEntry.PHONE_SETUP || e == MenuEntry.CONNECTION || e == MenuEntry.MUSIC_ASSISTANT || needsSetup(e, s)) return true
         val leavesThisTv = when (e) {
             MenuEntry.SPEAKER -> true
-            MenuEntry.PLAY_HERE -> move(PLAY_HERE_ORDER, s.playHere, direction, wrap) == PlayHere.OFF
+            MenuEntry.PLAY_HERE -> PLAY_HERE_ORDER.step(s.playHere, direction, wrap) == PlayHere.OFF
             else -> false
         }
         return leavesThisTv && followsThisTv(s) && s.otherSpeaker == null
@@ -175,18 +213,24 @@ object SettingsMenu {
     }
 
     /** Where a slider stands: the lights' brightness. */
-    fun level(e: MenuEntry, s: Settings): Float? = when (e) {
-        MenuEntry.BRIGHTNESS -> s.roomLightBrightness.brightness.takeIf { s.roomLights.isSet }
+    fun level(e: MenuEntry, s: Settings): Float? = if (needsSetup(e, s)) null else when (e) {
+        MenuEntry.BRIGHTNESS -> s.roomLightBrightness.brightness
         else -> null
     }
 
-    fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
+    fun value(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = missing(e, s)?.let { t[it.value] } ?: when (e) {
         MenuEntry.VIEW -> viewValue(s.view, t)
         MenuEntry.QUEUE -> queueValue(s.queue, t)
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
-        MenuEntry.TRACK_NUMBER -> onOff(s.showTrackNumber, t)
+        MenuEntry.TRACK_NUMBER -> t[
+            when (s.trackNumber) {
+                TrackNumber.OFF -> Strings.off
+                TrackNumber.TOP -> Strings.trackNumberTop
+                TrackNumber.BOTTOM -> Strings.trackNumberBottom
+            },
+        ]
         MenuEntry.ALBUM -> onOff(s.showAlbum, t)
         MenuEntry.GROUP -> onOff(s.showGroup, t)
         MenuEntry.VOLUME -> t[
@@ -196,17 +240,14 @@ object SettingsMenu {
                 VolumeDisplay.OFF -> Strings.off
             },
         ]
-        MenuEntry.VALUES -> if (s.ownValues.isEmpty()) t[Strings.setUp] else onOff(s.showValues, t)
+        MenuEntry.VALUES -> onOff(s.showValues, t)
         MenuEntry.NOTIFICATIONS -> onOff(s.notifications, t)
-        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) t[Strings.needsMusicAssistant] else onOff(s.lyrics, t)
-        // "Needs Music Assistant" would not fit beside its label in German.
+        MenuEntry.LYRICS -> onOff(s.lyrics, t)
         MenuEntry.LYRICS_DELAY -> when {
-            !s.hasMusicAssistant -> t[Strings.setUp]
             s.lyricsGroupDelayMs == 0 -> t[Strings.off]
             else -> t.format(Strings.lyricsDelayLater, seconds(s.lyricsGroupDelayMs, t))
         }
-        // "Needs Music Assistant" would not fit beside its label in German.
-        MenuEntry.ARTIST_INFO -> if (!s.hasMusicAssistant) t[Strings.setUp] else onOff(s.artistInfo, t)
+        MenuEntry.ARTIST_INFO -> onOff(s.artistInfo, t)
         MenuEntry.BACKGROUND -> t[if (s.background == BackgroundMode.COVER) Strings.backgroundCover else Strings.backgroundPlain]
         MenuEntry.MOTION -> t[
             when (s.motion) {
@@ -217,13 +258,11 @@ object SettingsMenu {
             },
         ]
         MenuEntry.BRIGHTNESS -> when {
-            !s.roomLights.isSet -> t[Strings.setUp]
             s.roomLightBrightness == RoomLightBrightness.OFF -> t[Strings.off]
             else -> t.percent(s.roomLightBrightness.percent)
         }
         MenuEntry.OFF_LIGHTS -> t[
             when {
-                !s.roomLights.isSet -> Strings.setUp
                 s.lightsOnlyOn -> Strings.offLightsLeave
                 else -> Strings.offLightsTurnOn
             },
@@ -251,7 +290,6 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.sleepActionClose else Strings.sleepActionRelease]
         MenuEntry.SCREEN_OFF -> t[
             when {
-                s.presenceSensors.isEmpty() -> Strings.setUp
                 s.screenOff -> Strings.screenOffNobody
                 else -> Strings.screenOffNever
             },
@@ -275,14 +313,12 @@ object SettingsMenu {
             },
         ]
         MenuEntry.SPEAKER -> when {
-            !s.hasMusicAssistant -> t[Strings.needsMusicAssistant]
             s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
-            else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
+            else -> ctx.speakerName ?: s.entityId?.let(QuickActions::nameOf) ?: t[Strings.setUp]
         }
-        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) t[Strings.setUp] else onOff(s.showOtherRooms, t)
+        MenuEntry.OTHER_ROOMS -> onOff(s.showOtherRooms, t)
         MenuEntry.PLAY_HERE -> t[
             when {
-                !s.hasMusicAssistant -> Strings.needsMusicAssistant
                 s.playHere == PlayHere.OPEN -> Strings.playHereOpen
                 s.playHere == PlayHere.ALWAYS -> Strings.playHereAlways
                 else -> Strings.off
@@ -293,7 +329,7 @@ object SettingsMenu {
         MenuEntry.UPDATE_CHECK -> onOff(s.updateCheck, t)
     }
 
-    fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = when (e) {
+    fun description(e: MenuEntry, s: Settings, ctx: MenuContext, t: Texts): String = missing(e, s)?.let { t[it.about] } ?: when (e) {
         MenuEntry.VIEW -> t[
             when (s.view) {
                 StageView.NORMAL -> Strings.aboutViewNormal
@@ -320,7 +356,11 @@ object SettingsMenu {
         MenuEntry.PROGRESS_BAR -> t[Strings.aboutProgress]
         MenuEntry.NEXT -> t[Strings.aboutNext]
         // The list takes the last line's place (it shows only with Music Assistant set up).
-        MenuEntry.TRACK_NUMBER -> t[if (s.shownQueue == QueueDisplay.LIST && s.hasMusicAssistant) Strings.aboutTrackNumberList else Strings.aboutTrackNumber]
+        MenuEntry.TRACK_NUMBER -> when (s.trackNumber) {
+            TrackNumber.OFF -> t[Strings.aboutTrackNumberOff]
+            TrackNumber.TOP -> sentences(t[Strings.aboutTrackNumberTop], t[Strings.aboutTrackNumberNeeds])
+            TrackNumber.BOTTOM -> sentences(t[Strings.aboutTrackNumberBottom], t[Strings.aboutTrackNumberNeeds])
+        }
         MenuEntry.ALBUM -> t[Strings.aboutAlbum]
         MenuEntry.GROUP -> t[Strings.aboutGroup]
         MenuEntry.VOLUME -> t[
@@ -332,7 +372,6 @@ object SettingsMenu {
         ]
         MenuEntry.VALUES -> t[
             when {
-                s.ownValues.isEmpty() -> Strings.aboutValuesSetUp
                 s.showValues -> Strings.aboutValuesOn
                 else -> Strings.aboutValuesOff
             },
@@ -347,20 +386,17 @@ object SettingsMenu {
         ]
         MenuEntry.LYRICS -> t[
             when {
-                !s.hasMusicAssistant -> Strings.aboutLyricsSetUp
                 s.lyrics -> Strings.aboutLyricsOn
                 else -> Strings.aboutLyricsOff
             },
         ]
         MenuEntry.ARTIST_INFO -> t[
             when {
-                !s.hasMusicAssistant -> Strings.aboutArtistInfoSetUp
                 s.artistInfo -> Strings.aboutArtistInfoOn
                 else -> Strings.aboutArtistInfoOff
             },
         ]
         MenuEntry.LYRICS_DELAY -> when {
-            !s.hasMusicAssistant -> t[Strings.aboutLyricsSetUp]
             s.lyricsGroupDelayMs == 0 -> t[Strings.aboutLyricsDelayOff]
             else -> t.format(Strings.aboutLyricsDelayOn, seconds(s.lyricsGroupDelayMs, t))
         }
@@ -382,14 +418,12 @@ object SettingsMenu {
         }
         MenuEntry.BRIGHTNESS -> t[
             when {
-                !s.roomLights.isSet -> Strings.aboutLightsSetUp
                 s.roomLightBrightness == RoomLightBrightness.OFF -> Strings.aboutLightsOff
                 else -> Strings.aboutLightsOn
             },
         ]
         MenuEntry.OFF_LIGHTS -> t[
             when {
-                !s.roomLights.isSet -> Strings.aboutLightsSetUp
                 s.lightsOnlyOn -> Strings.aboutLightsOnlyOn
                 else -> Strings.aboutLightsSwitchOn
             },
@@ -406,7 +440,6 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> t[if (s.sleepAction == SleepAction.CLOSE) Strings.aboutSleepActionClose else Strings.aboutSleepActionRelease]
         MenuEntry.SCREEN_OFF -> t[
             when {
-                s.presenceSensors.isEmpty() -> Strings.aboutScreenOffSetUp
                 s.screenOff -> Strings.aboutScreenOffOn
                 else -> Strings.aboutScreenOffOff
             },
@@ -416,14 +449,12 @@ object SettingsMenu {
         MenuEntry.MUSIC_ASSISTANT -> t[if (!s.hasMusicAssistant) Strings.aboutMaSetUp else Strings.aboutMa]
         MenuEntry.SPEAKER -> t[
             when {
-                !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
                 followsThisTv(s) && s.otherSpeaker == null -> Strings.aboutSpeakerThisTv
                 else -> Strings.aboutSpeaker
             },
         ]
         MenuEntry.OTHER_ROOMS -> t[
             when {
-                s.otherRooms.isEmpty() -> Strings.aboutOtherRoomsSetUp
                 s.showOtherRooms -> Strings.aboutOtherRoomsOn
                 else -> Strings.aboutOtherRoomsOff
             },
@@ -472,7 +503,6 @@ object SettingsMenu {
      * also while this TV is the speaker followed.
      */
     private fun playHere(s: Settings, speaker: SpeakerLink): StringId = when {
-        !s.hasMusicAssistant -> Strings.aboutPlayHereSetUp
         !s.tvSpeaker -> Strings.aboutPlayHereOff
         else -> when (speaker) {
             SpeakerLink.UNREACHABLE -> Strings.aboutPlayHereUnreachable
@@ -520,44 +550,41 @@ object SettingsMenu {
      * the lines that are no setting (the connections, the sleep timer, the language) and for the
      * lines that need something set up first ([opensSetup]: OK sets it up).
      */
-    fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
-        MenuEntry.VIEW -> s.copy(view = move(VIEW_ORDER, s.view, direction, wrap))
-        MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
+    fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = if (needsSetup(e, s)) null else when (e) {
+        MenuEntry.VIEW -> s.copy(view = VIEW_ORDER.step(s.view, direction, wrap))
+        MenuEntry.QUEUE -> s.copy(queue = QUEUE_ORDER.step(s.queue, direction, wrap))
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
-        MenuEntry.TRACK_NUMBER -> s.copy(showTrackNumber = !s.showTrackNumber)
+        MenuEntry.TRACK_NUMBER -> s.copy(trackNumber = TRACK_NUMBER_ORDER.step(s.trackNumber, direction, wrap))
         MenuEntry.ALBUM -> s.copy(showAlbum = !s.showAlbum)
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
-        MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
-        MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
+        MenuEntry.VOLUME -> s.copy(volumeDisplay = VOLUME_ORDER.step(s.volumeDisplay, direction, wrap))
+        MenuEntry.VALUES -> s.copy(showValues = !s.showValues)
         MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
-        MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
-        MenuEntry.ARTIST_INFO -> if (!s.hasMusicAssistant) null else s.copy(artistInfo = !s.artistInfo)
-        MenuEntry.LYRICS_DELAY ->
-            if (!s.hasMusicAssistant) null else s.copy(lyricsGroupDelayMs = move(Settings.LYRICS_GROUP_DELAYS_MS, s.lyricsGroupDelayMs, direction, wrap))
+        MenuEntry.LYRICS -> s.copy(lyrics = !s.lyrics)
+        MenuEntry.ARTIST_INFO -> s.copy(artistInfo = !s.artistInfo)
+        MenuEntry.LYRICS_DELAY -> s.copy(lyricsGroupDelayMs = Settings.LYRICS_GROUP_DELAYS_MS.step(s.lyricsGroupDelayMs, direction, wrap))
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
         MenuEntry.SPEAKER -> when {
-            !s.hasMusicAssistant -> null
             s.entityId == EntityId.THIS_TV -> s.otherSpeaker?.let(s::following)
             else -> s.following(EntityId.THIS_TV).withPlayHere(true)
         }
-        MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) null else s.copy(showOtherRooms = !s.showOtherRooms)
+        MenuEntry.OTHER_ROOMS -> s.copy(showOtherRooms = !s.showOtherRooms)
         MenuEntry.PLAY_HERE -> {
-            val next = move(PLAY_HERE_ORDER, s.playHere, direction, wrap)
+            val next = PLAY_HERE_ORDER.step(s.playHere, direction, wrap)
             when {
-                !s.hasMusicAssistant -> null
                 // Turned off while this TV is followed, it goes back to the speaker followed before.
                 next == PlayHere.OFF && followsThisTv(s) -> s.otherSpeaker?.let { s.following(it).copy(playHere = next) }
                 else -> s.copy(playHere = next)
             }
         }
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
-        MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
-        MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null
-        MenuEntry.OFF_LIGHTS -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
-        MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
-        MenuEntry.INTENSITY -> s.copy(intensity = move(INTENSITY_ORDER, s.intensity, direction, wrap))
+        MenuEntry.MOTION -> s.copy(motion = MOTION_ORDER.step(s.motion, direction, wrap))
+        MenuEntry.BRIGHTNESS -> s.copy(roomLightBrightness = BRIGHTNESS_ORDER.step(s.roomLightBrightness, direction, wrap))
+        MenuEntry.OFF_LIGHTS -> s.copy(lightsOnlyOn = !s.lightsOnlyOn)
+        MenuEntry.APPEARANCE -> s.copy(appearance = APPEARANCE_ORDER.step(s.appearance, direction, wrap))
+        MenuEntry.INTENSITY -> s.copy(intensity = INTENSITY_ORDER.step(s.intensity, direction, wrap))
         MenuEntry.REMOTE -> s.copy(remoteControl = !s.remoteControl)
         MenuEntry.UP_DOWN -> s.copy(volumeKeys = !s.volumeKeys)
         MenuEntry.SPOKEN -> s.copy(spokenSkip = !s.spokenSkip)
@@ -565,14 +592,11 @@ object SettingsMenu {
         MenuEntry.SLEEP_ACTION -> s.copy(
             sleepAction = if (s.sleepAction == SleepAction.CLOSE) SleepAction.RELEASE else SleepAction.CLOSE,
         )
-        MenuEntry.SCREEN_OFF -> if (s.presenceSensors.isEmpty()) null else s.copy(screenOff = !s.screenOff)
+        MenuEntry.SCREEN_OFF -> s.copy(screenOff = !s.screenOff)
         MenuEntry.UPDATE_CHECK -> s.copy(updateCheck = !s.updateCheck)
         // OK on Update installs a new version or asks for one (MenuControl).
         MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
     }
-
-    /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */
-    fun stepLanguage(language: AppLanguage, direction: Int, wrap: Boolean): AppLanguage = move(LANGUAGE_ORDER, language, direction, wrap)
 
     /** "Ten minutes", "One hour", "90 minutes", "Two hours": numbers up to twelve in words. */
     fun duration(minutes: Int, t: Texts): String =
@@ -631,17 +655,13 @@ object SettingsMenu {
     val VIEW_ORDER = listOf(StageView.NORMAL, StageView.EDGE, StageView.FLOW)
     val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
+    private val TRACK_NUMBER_ORDER = listOf(TrackNumber.OFF, TrackNumber.TOP, TrackNumber.BOTTOM)
     private val PLAY_HERE_ORDER = listOf(PlayHere.OFF, PlayHere.OPEN, PlayHere.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)
     private val MOTION_ORDER = listOf(MotionLevel.OFF, MotionLevel.GENTLE, MotionLevel.MEDIUM, MotionLevel.LIVELY)
     private val BRIGHTNESS_ORDER = RoomLightBrightness.entries
-    private val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
-
-    private fun <T> move(order: List<T>, current: T, direction: Int, wrap: Boolean): T {
-        val i = order.indexOf(current).coerceAtLeast(0) + direction
-        return if (wrap) order[i.mod(order.size)] else order[i.coerceIn(0, order.size - 1)]
-    }
+    val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
 
     /** The next offered value from [minutes] (which may be any value set from outside). */
     fun nextSleep(minutes: Int, direction: Int, wrap: Boolean = false): Int {
@@ -653,7 +673,7 @@ object SettingsMenu {
         }
     }
 
-    private fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
+    internal fun onOff(on: Boolean, t: Texts) = t[if (on) Strings.on else Strings.off]
 
     /** [ms] as seconds to a tenth, as the language writes them: "0.8", "0,8". */
     private fun seconds(ms: Int, t: Texts) = t.number(ms / 1_000.0, 1)

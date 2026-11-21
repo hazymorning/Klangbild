@@ -13,10 +13,12 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
+import io.github.hazymorning.klangbild.ui.stage.Footer
 import io.github.hazymorning.klangbild.ui.stage.QueueModel
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
@@ -45,7 +47,9 @@ object Fixtures : AppFixtures() {
         clock: String? = "21:47",
         group: String? = null,
         t: Texts = texts,
-        lead: String? = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t),
+        /** The track's place in its queue in the top line (Track number: Top). */
+        topPlace: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
+        lead: String? = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, place = StageTexts.place(topPlace, track, t)),
         appearance: Appearance = Appearance.DARK,
         scene: ArtworkScene = scene(track, screen, appearance),
         album: Boolean = true,
@@ -64,9 +68,7 @@ object Fixtures : AppFixtures() {
             year = track.year.takeIf { album },
             barShown = progress,
             slotText = StageTexts.slotText(linkDown, track, t),
-            footer = StageTexts.footer(next, t),
-            footerTitle = StageTexts.footerTitle(next, t),
-            footerPlace = StageTexts.place(place, track, t),
+            footer = Footer(StageTexts.place(place, track, t), t[Strings.stageNext], StageTexts.footer(next, t), StageTexts.footerTitle(next, t)),
             statusLine = StatusLine(lead, clock, values),
         )
     }
@@ -80,7 +82,7 @@ object Fixtures : AppFixtures() {
         position: Long,
         pace: String?,
         appearance: Appearance = Appearance.DARK,
-        flow: Boolean = false,
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         next: TrackInfo? = null,
         coverField: Boolean = false,
         group: String? = "Wohnzimmer",
@@ -91,13 +93,17 @@ object Fixtures : AppFixtures() {
         }
         val lead = StageTexts.lead(PlayerStatus.PLAYING, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, pace = pace)
         return StageModel(
-            scene = scene(track, appearance = appearance, flow = flow, coverField = coverField),
+            scene = scene(track, appearance = appearance, kind = kind, coverField = coverField),
             text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers]),
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
             positionMs = { position },
-            footer = chapter?.next ?: StageTexts.footer(next, t),
-            footerTitle = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
+            footer = Footer(
+                place = null,
+                lead = t[Strings.stageNext],
+                text = chapter?.next ?: StageTexts.footer(next, t),
+                title = if (chapter?.next != null) null else StageTexts.footerTitle(next, t),
+            ),
             statusLine = StatusLine(lead, "21:47"),
             chapter = chapter?.label,
             barStartMs = chapter?.startMs ?: 0L,
@@ -114,10 +120,10 @@ object Fixtures : AppFixtures() {
         position: () -> Long? = { 84_000L },
         status: PlayerStatus = PlayerStatus.PLAYING,
         appearance: Appearance = Appearance.DARK,
-        flow: Boolean = false,
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         coverField: Boolean = false,
         screen: ScreenSpec = ScreenSpec.TV_1080,
-        scene: ArtworkScene = scene(track, screen, appearance, flow, coverField),
+        scene: ArtworkScene = scene(track, screen, appearance, kind, coverField),
         clock: String? = "21:47",
         group: String? = "Wohnzimmer",
         t: Texts = texts,
@@ -135,9 +141,7 @@ object Fixtures : AppFixtures() {
             year = track.year,
             barShown = peek,
             slotText = StageTexts.slotText(linkDown, track, t),
-            footer = StageTexts.footer(track, t),
-            footerTitle = StageTexts.footerTitle(track, t),
-            footerPlace = StageTexts.place(place, track, t),
+            footer = Footer(StageTexts.place(place, track, t), lead = null, StageTexts.footer(track, t), StageTexts.footerTitle(track, t)),
             statusLine = StatusLine(lead, clock),
             lyrics = lyrics,
         )
@@ -182,8 +186,7 @@ object Fixtures : AppFixtures() {
             positionMs = position,
             year = track.year,
             barShown = peek,
-            footer = StageTexts.footer(track, t),
-            footerTitle = StageTexts.footerTitle(track, t),
+            footer = Footer(place = null, lead = null, StageTexts.footer(track, t), StageTexts.footerTitle(track, t)),
             statusLine = StatusLine(lead, "21:47"),
             bio = bio,
         )
@@ -205,8 +208,10 @@ object Fixtures : AppFixtures() {
         barStays: Boolean = progress,
         positionMs: Long? = track.durationMs?.let { it / 3 },
         album: Boolean = true,
+        /** The track's place in its queue, which stands in the top line beside the list. */
+        place: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
     ): StageModel {
-        val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
+        val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, place = StageTexts.place(place, track, t))
         val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers])
         return StageModel(
             scene = scene,

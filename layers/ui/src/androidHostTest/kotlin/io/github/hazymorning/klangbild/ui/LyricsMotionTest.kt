@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.flow.FlowTheater
 import io.github.hazymorning.klangbild.ui.stage.StageModel
 import io.github.hazymorning.klangbild.ui.stage.StageTexts
@@ -63,7 +64,7 @@ class LyricsMotionTest {
             val m = Fixtures.model(s.track, next = Fixtures.spiegel, scene = s.scene, lead = lead)
             StageModel(
                 scene = m.scene, text = m.text, status = m.status, durationMs = m.durationMs, positionMs = playing, year = m.year,
-                barShown = m.barShown, slotText = m.slotText, footer = m.footer, footerTitle = m.footerTitle, statusLine = m.statusLine,
+                barShown = m.barShown, slotText = m.slotText, footer = m.footer, statusLine = m.statusLine,
             )
         }
     }
@@ -189,7 +190,7 @@ class LyricsMotionTest {
     private val flowCovers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE, SyntheticCover.SALT_WATER, SyntheticCover.BAUHAUS)
 
     private fun flowScenes() = flowCovers.mapIndexed { i, c ->
-        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, flow = true)
+        i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, kind = StageGrid.Kind.FLOW)
     }.toMap()
 
     @Test

@@ -13,6 +13,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.Fixtures
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -30,7 +31,7 @@ class FlowChangeTest {
 
     /** A strip of one card: [track] with the cover of [first] on the [appearance] background. */
     private fun strip(track: TrackInfo, appearance: Appearance = Appearance.DARK): FlowData {
-        val scene = SceneBuilder.build(track.key, SyntheticCovers.render(SyntheticCover.SALT_WATER), track.artFoil, track.artView, screen, appearance, flow = true)
+        val scene = SceneBuilder.build(track.key, SyntheticCovers.render(SyntheticCover.SALT_WATER), track.artFoil, track.artView, screen, appearance, kind = StageGrid.Kind.FLOW)
         return FlowData(listOf(FlowEntry(0L, track, scene)), 0)
     }
 
@@ -45,9 +46,9 @@ class FlowChangeTest {
     @Test
     fun `a card beside the middle one cross-fades to its picture once it comes`() {
         val side = next.copy(title = "Flut", album = "Gezeiten", key = "Flut")
-        val middle = SceneBuilder.build(first.key, SyntheticCovers.render(SyntheticCover.SALT_WATER), first.artFoil, first.artView, screen, Appearance.DARK, flow = true)
-        val standIn = SceneBuilder.build(side.key, null, side.artFoil, side.artView, screen, Appearance.DARK, flow = true)
-        val picture = SceneBuilder.build(side.key, SyntheticCovers.render(SyntheticCover.MOSS), side.artFoil, side.artView, screen, Appearance.DARK, flow = true)
+        val middle = SceneBuilder.build(first.key, SyntheticCovers.render(SyntheticCover.SALT_WATER), first.artFoil, first.artView, screen, Appearance.DARK, kind = StageGrid.Kind.FLOW)
+        val standIn = SceneBuilder.build(side.key, null, side.artFoil, side.artView, screen, Appearance.DARK, kind = StageGrid.Kind.FLOW)
+        val picture = SceneBuilder.build(side.key, SyntheticCovers.render(SyntheticCover.MOSS), side.artFoil, side.artView, screen, Appearance.DARK, kind = StageGrid.Kind.FLOW)
         val old = FlowData(listOf(FlowEntry(0L, first, middle), FlowEntry(1L, side, standIn)), 0)
         val new = FlowData(listOf(FlowEntry(0L, first, middle), FlowEntry(1L, side, picture)), 0)
         assertThat(changeOf(old, new)).isEqualTo(FlowChange.SIDES)

@@ -20,9 +20,8 @@ import assertk.assertions.isLessThanOrEqualTo
 import io.github.hazymorning.klangbild.app.QuickState
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.config.ActionState
+import io.github.hazymorning.klangbild.config.ColumnChoice
 import io.github.hazymorning.klangbild.config.FavoriteState
-import io.github.hazymorning.klangbild.config.ArtistChoice
-import io.github.hazymorning.klangbild.config.LyricsChoice
 import io.github.hazymorning.klangbild.config.MenuContext
 import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuRow
@@ -50,9 +49,9 @@ import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.UpdateState
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.setup.Discovery
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupPage
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -184,9 +183,9 @@ class LanguageTest {
         val states = if (!buttons) listOf(emptyMap()) else ActionState.entries.map { st -> own.indices.associateWith { st } }
         for (s in settings) for (music in listOf(true, false)) for (actions in states) {
             for (favorite in FavoriteState.entries + null) for (shuffle in listOf(true, false, null)) for (pending in StageView.entries + null) {
-                for (lyrics in LyricsChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
+                for (lyrics in ColumnChoice.entries + null) for (code in if (party) listOf(true, false, null) else listOf(null)) {
                     // The artist info entry takes each of its values along with the lyrics'.
-                    val artist = lyrics?.let { ArtistChoice.entries[it.ordinal] }
+                    val artist = lyrics
                     val rows = QuickMenu.rows(s, QuickContext(pending, list = true, music, favorite, shuffle, actions, lyrics, code, artist), t)
                     add(QuickState(rows, 0))
                 }
@@ -295,7 +294,7 @@ class LanguageTest {
         assertEnglish("page", visible.replace(Regex("<[^>]*>"), " "))
         assertThat(html, name = "the page's language").contains("<html lang=\"en\">")
         // The lists the page shows: states in English words.
-        val found = SetupServer.parseSpeakers(
+        val found = Discovery.options(
             """[{"entity_id":"media_player.a","state":"playing","attributes":{}},{"entity_id":"media_player.b","state":"buffering","attributes":{}},
                {"entity_id":"light.a","state":"unavailable","attributes":{}}]""",
             en,

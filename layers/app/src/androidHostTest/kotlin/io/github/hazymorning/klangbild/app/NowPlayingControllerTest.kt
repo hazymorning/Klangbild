@@ -36,8 +36,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -122,6 +124,55 @@ class NowPlayingControllerTest {
     }
 
     @Test
+    fun `a connection Home Assistant refused leaves nothing of it running, its notifications included`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse.Builder().code(400).body("""{"error":"invalid_grant"}""").build())
+            server.start()
+            val url = server.url("/").toString().trimEnd('/')
+            // What runs for settings that were refused before the screen started.
+            val before = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val alone = try {
+                val controller = controller(MemoryValues(mapOf("ha_url" to url, "entity_id" to "media_player.wz", "ha_refused" to true)), scope = before)
+                controller.attach(screen)
+                withTimeout(5_000) { controller.ui.first { it.screen == Screen.Setup(SetupReason.AUTH_FAILED) } }
+                steadilyRunning(before)
+            } finally {
+                before.cancel()
+            }
+            val stored = MemoryValues(mapOf("ha_url" to url, "ha_refresh_token" to "revoked", "ha_client_id" to "http://192.168.1.23:8765/", "entity_id" to "media_player.wz"))
+            val controller = controller(stored)
+            controller.attach(screen)
+            withTimeout(5_000) { stored.data.first { "ha_refresh_token" !in it } }
+            // The connection is let go of once the refused credentials are; nothing waits for its notifications.
+            withTimeoutOrNull(5_000) { while (running(scope) > alone) delay(50) }
+            assertThat(running(scope)).isEqualTo(alone)
+            controller.detach()
+        }
+    }
+
+    /** How many coroutines run in [scope]. */
+    private fun running(scope: CoroutineScope): Int = scope.coroutineContext.job.children.count { it.isActive }
+
+    /** How many coroutines run in [scope], once that number has held for half a second. */
+    private suspend fun steadilyRunning(scope: CoroutineScope): Int {
+        var count = running(scope)
+        var held = 0
+        withTimeout(5_000) {
+            while (held < 10) {
+                delay(50)
+                val now = running(scope)
+                if (now == count) {
+                    held++
+                } else {
+                    count = now
+                    held = 0
+                }
+            }
+        }
+        return count
+    }
+
+    @Test
     fun `the screen goes dark while no one is in the room, a key brings it back, and a long while lets it sleep`() = runBlocking {
         MockWebServer().use { ha ->
             ha.dispatcher = QuietRoom()
@@ -155,6 +206,38 @@ class NowPlayingControllerTest {
             // No one for as long as "Turn off after": the screen may sleep.
             clock += 10 * 60_000L
             withTimeout(5_000) { controller.ui.first { it.asleep } }
+            controller.detach()
+        }
+    }
+
+    @Test
+    fun `the screen turned off stays dark while the music plays, until a key brings it back`() = runBlocking {
+        MockWebServer().use { ha ->
+            ha.dispatcher = QuietRoom()
+            ha.start()
+            val stored = MemoryValues(
+                mapOf(
+                    "ha_url" to ha.url("/").toString().trimEnd('/'),
+                    "ha_token" to "good",
+                    "entity_id" to "media_player.wz",
+                ),
+            )
+            var clock = 1_800_000_000_000L
+            val controller = controller(stored, now = { clock })
+            controller.attach(screen)
+            withTimeout(5_000) { controller.ui.first { it.screen is Screen.Stage } }
+            assertThat(controller.ui.value.dark).isFalse()
+            controller.turnScreenOff()
+            assertThat(controller.ui.value.dark).isTrue()
+            // Someone is there and listening: it stays dark, and the screen does not sleep for it.
+            clock += 30 * 60_000L
+            delay(1_100)
+            assertThat(controller.ui.value.dark).isTrue()
+            assertThat(controller.ui.value.asleep).isFalse()
+            // A key only brings the picture back; the next one does what it does.
+            assertThat(controller.keyPressed()).isTrue()
+            assertThat(controller.ui.value.dark).isFalse()
+            assertThat(controller.keyPressed()).isFalse()
             controller.detach()
         }
     }
@@ -282,9 +365,8 @@ class NowPlayingControllerTest {
         }
     }
 
-    private fun controller(values: ValueStore, now: () -> Long = { System.currentTimeMillis() }, device: HaDevice? = null) = NowPlayingController(
-        scope, http, http, SettingsStore(values, PlainBox), Localizer(English), { null }, { _, _ -> NoSetupPage }, QuietLog, now, device = device,
-    )
+    private fun controller(values: ValueStore, now: () -> Long = { System.currentTimeMillis() }, device: HaDevice? = null, scope: CoroutineScope = this.scope) =
+        NowPlayingController(scope, http, http, SettingsStore(values, PlainBox), Localizer(English), { null }, { _, _ -> NoSetupPage }, QuietLog, now, device = device)
 
     /** Keeps secrets as they are. */
     private object PlainBox : SecretBox {

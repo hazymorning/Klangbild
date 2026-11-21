@@ -26,6 +26,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.FlowCards
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.flow.CardMotion
 import io.github.hazymorning.klangbild.ui.flow.FlowLook
 import io.github.hazymorning.klangbild.ui.flow.FlowStrip
@@ -70,13 +71,13 @@ class FlowMirrorTest {
         // stood before and after.
         val sides = listOf(SyntheticCover.MOSS, SyntheticCover.TERRACOTTA, SyntheticCover.SALT_WATER)
             .map { Fixtures.track(it) }
-        val sideScenes = sides.map { Fixtures.scene(it, mdpi, Appearance.DARK, flow = true) }
+        val sideScenes = sides.map { Fixtures.scene(it, mdpi, Appearance.DARK, kind = StageGrid.Kind.FLOW) }
         val before = Fixtures.track(SyntheticCover.BAUHAUS)
         val after = Fixtures.track(SyntheticCover.NOCTURNE)
         fun strip(middle: TrackInfo) = FlowData(
             listOf(
                 FlowEntry(1, sides[0], sideScenes[0]),
-                FlowEntry(2, middle, Fixtures.scene(middle, mdpi, Appearance.DARK, flow = true)),
+                FlowEntry(2, middle, Fixtures.scene(middle, mdpi, Appearance.DARK, kind = StageGrid.Kind.FLOW)),
                 FlowEntry(3, sides[1], sideScenes[1]),
                 FlowEntry(4, sides[2], sideScenes[2]),
             ),
@@ -109,7 +110,7 @@ class FlowMirrorTest {
     fun aPictureWithClearPartsGivesWayToTheSongsOwnWithoutADarkFlash() {
         // On paper a station's logo, clear around its mark, gives way to the song's own cover as
         // Music Assistant finds it. The print goes over evenly and never darkens beyond both ends.
-        val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.LIGHT, flow = true)
+        val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.LIGHT, kind = StageGrid.Kind.FLOW)
         val geometry = FlowGeometry(scene.layout)
         val cover = scene.card!!
         val side = cover.sidePx
@@ -139,7 +140,7 @@ class FlowMirrorTest {
      * frames of 16 ms: its mirror image and its print change brightness evenly, frame by frame.
      */
     private fun turn(from: Float, to: Float, toAlpha: Float = 1f) {
-        val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.DARK, flow = true)
+        val scene = Fixtures.scene(Fixtures.track(SyntheticCover.BAUHAUS), mdpi, Appearance.DARK, kind = StageGrid.Kind.FLOW)
         val geometry = FlowGeometry(scene.layout)
         val cards = listOf(CardMotion(scene.card!!, from, to, toAlpha = toAlpha))
         var time by mutableFloatStateOf(0f)

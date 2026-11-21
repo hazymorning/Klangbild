@@ -27,7 +27,7 @@ class SpeakerSwitch(private val backMs: Long = BACK_MS, private val pauseMs: Lon
         val status = here?.status
         if (!(music && status == PlayerStatus.PAUSED && own)) pausedSince = null
         when {
-            music && (status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING) -> {
+            music && status.sounding -> {
                 own = true
                 stoppedSince = null
             }

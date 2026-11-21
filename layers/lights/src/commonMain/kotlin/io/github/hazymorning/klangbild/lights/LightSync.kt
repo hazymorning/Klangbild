@@ -18,10 +18,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlin.concurrent.Volatile
@@ -350,10 +347,10 @@ class LightSync(
             // light reads on a while longer). Switched on after that, it joins in again.
             val offAt = givenBack[id]
             if (offAt != null) {
-                if (s.state != "off" && t - offAt < GIVEN_BACK_MS) continue
+                if (s.state != EntityState.OFF && t - offAt < GIVEN_BACK_MS) continue
                 givenBack.remove(id)
             }
-            if (s.state == UNAVAILABLE || (onlyOn && s.state == "off")) continue
+            if (s.state == EntityState.UNAVAILABLE || (onlyOn && s.state == EntityState.OFF)) continue
             if (id !in saved) save(b, mapOf(id to s))
             lights[id] = Light(id, slot).also {
                 it.checkedUpdate = s.lastUpdated
@@ -367,7 +364,7 @@ class LightSync(
      * first, in the new color: never a flash of their old one.
      */
     private suspend fun activate(b: LightBridge, wanted: Map<String, LightSlot>, states: Map<String, EntityState>, t: Long, onlyOn: Boolean) {
-        val taken = wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != UNAVAILABLE && !(onlyOn && it.state == "off") }?.let { id to it } }.toMap()
+        val taken = wanted.keys.mapNotNull { id -> states[id]?.takeIf { it.state != EntityState.UNAVAILABLE && !(onlyOn && it.state == EntityState.OFF) }?.let { id to it } }.toMap()
         saved = emptyMap()
         snapshots = emptySet()
         save(b, taken)
@@ -406,7 +403,7 @@ class LightSync(
         for (light in lights.values) {
             if (light.theirs || (only != null && light.id !in only)) continue
             val state = b.lights.value[light.id]
-            if (state == null || state.state == UNAVAILABLE) continue
+            if (state == null || state.state == EntityState.UNAVAILABLE) continue
             val caps = capsOf(state)
             target.colors.color(light.slot, ft, rgb)
             val brightness = LightColor.brightness(share * LightColor.dimFor(rgb))
@@ -416,7 +413,7 @@ class LightSync(
                 caps.dimmable -> Shown.Level(brightness)
                 else -> Shown.On
             }
-            val wasOff = state.state == "off"
+            val wasOff = state.state == EntityState.OFF
             // "Leave off": a light that is off stays off.
             if (wasOff && target.onlyOn) continue
             if (shown == Shown.On && !wasOff) continue
@@ -486,7 +483,7 @@ class LightSync(
             if (light.theirs) continue
             val s = states[light.id] ?: continue
             // Only what changed since the light was taken over (or last judged) counts.
-            if (s.lastUpdated <= light.checkedUpdate || s.state == UNAVAILABLE) continue
+            if (s.lastUpdated <= light.checkedUpdate || s.state == EntityState.UNAVAILABLE) continue
             val ours = s.context in light.contexts || s.contextParent in light.contexts
             if (ours || s.context == null) {
                 light.checkedUpdate = s.lastUpdated
@@ -497,7 +494,7 @@ class LightSync(
             if (light.inFlight) continue
             // Klangbild never switches a light off, nor a color light to white: whoever did, it is theirs.
             val shown = light.shown
-            if (s.state == "off" || (shown is Shown.Color && s.string("color_mode") == "color_temp")) {
+            if (s.state == EntityState.OFF || (shown is Shown.Color && s.string("color_mode") == "color_temp")) {
                 light.theirs = true
                 continue
             }
@@ -507,12 +504,12 @@ class LightSync(
             val sent = light.sentAt
             if (!byPerson && sent != null && t - sent < light.transitionMs + SETTLE_REPORT_MS) continue
             light.checkedUpdate = s.lastUpdated
-            val bri = (s.attr("brightness") as? JsonPrimitive)?.intOrNull
+            val bri = s.int("brightness")
             val sentBri = shown?.brightness
             val changed = (bri != null && sentBri != null && abs(bri - sentBri) > OTHERS_BRI_STEP) ||
                 when (shown) {
                     is Shown.Color -> xyOf(s)?.let { it.distance(shown.xy) > (if (byPerson) OTHERS_XY_PERSON else OTHERS_XY) } == true
-                    is Shown.White -> (s.attr("color_temp_kelvin") as? JsonPrimitive)?.intOrNull?.let { abs(it - shown.kelvin) > OTHERS_KELVIN } == true
+                    is Shown.White -> s.int("color_temp_kelvin")?.let { abs(it - shown.kelvin) > OTHERS_KELVIN } == true
                     else -> false
                 }
             if (changed) light.theirs = true
@@ -567,7 +564,7 @@ class LightSync(
      * goes back to that.
      */
     private fun letGoSwitchedOff(states: Map<String, EntityState>) {
-        lights.values.removeAll { !it.inFlight && states[it.id]?.state == "off" }
+        lights.values.removeAll { !it.inFlight && states[it.id]?.state == EntityState.OFF }
     }
 
     /**
@@ -620,14 +617,14 @@ class LightSync(
         val modes = (s.attr("supported_color_modes") as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }.orEmpty().toSet()
         val color = modes.any { it in COLOR_MODES }
         val temperature = "color_temp" in modes
-        val features = (s.attr("supported_features") as? JsonPrimitive)?.longOrNull ?: 0L
+        val features = s.number("supported_features")?.toLong() ?: 0L
         return Caps(
             color = color,
             temperature = temperature,
             dimmable = color || temperature || "brightness" in modes || "white" in modes,
             transition = features and TRANSITION_FEATURE != 0L,
-            minKelvin = (s.attr("min_color_temp_kelvin") as? JsonPrimitive)?.intOrNull ?: DEFAULT_MIN_KELVIN,
-            maxKelvin = (s.attr("max_color_temp_kelvin") as? JsonPrimitive)?.intOrNull ?: DEFAULT_MAX_KELVIN,
+            minKelvin = s.int("min_color_temp_kelvin") ?: DEFAULT_MIN_KELVIN,
+            maxKelvin = s.int("max_color_temp_kelvin") ?: DEFAULT_MAX_KELVIN,
         )
     }
 
@@ -640,12 +637,12 @@ class LightSync(
     private fun savedOf(s: EntityState): Saved {
         fun floats(name: String) = (s.attr(name) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.floatOrNull }?.takeIf { it.size == 2 }
         return Saved(
-            on = s.state == "on",
-            brightness = (s.attr("brightness") as? JsonPrimitive)?.doubleOrNull?.toInt(),
+            on = s.state == EntityState.ON,
+            brightness = s.int("brightness"),
             mode = s.string("color_mode"),
             xy = floats("xy_color"),
             hs = floats("hs_color"),
-            kelvin = (s.attr("color_temp_kelvin") as? JsonPrimitive)?.doubleOrNull?.toInt(),
+            kelvin = s.int("color_temp_kelvin"),
         )
     }
 
@@ -708,8 +705,6 @@ class LightSync(
         /** Home Assistant's color temperature range for a light that does not give its own (K). */
         const val DEFAULT_MIN_KELVIN = 2_000
         const val DEFAULT_MAX_KELVIN = 6_535
-
-        const val UNAVAILABLE = "unavailable"
 
         /** The lowest brightness a light is switched on at before it fades up, or dimmed to before it goes off. */
         const val DARKEST = 2
