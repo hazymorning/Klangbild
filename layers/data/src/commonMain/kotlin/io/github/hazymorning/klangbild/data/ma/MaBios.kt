@@ -7,10 +7,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
@@ -42,10 +38,10 @@ data class ArtistRef(val itemId: String, val provider: String) {
  */
 class MaBios(
     private val client: MaClient,
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** Something new is known about an artist of a song that plays or comes next. */
-    private val changed: () -> Unit,
+    changed: () -> Unit,
 ) {
     /**
      * What is known about an artist: their [bio], or null for none. Asked [asks] times, the
@@ -55,13 +51,7 @@ class MaBios(
 
     private val known = RecentMap<String, Known>(KEEP)
     private val lock = SynchronizedObject()
-
-    /** The artists to ask about, the one of the song that plays first. */
-    private var wanted: List<ArtistRef> = emptyList()
-
-    /** The call that is out, and the artist it is for. */
-    private var job: Job? = null
-    private var asking: String? = null
+    private val calls = OneAtATime(scope, lock, ArtistRef::key, ::ask, ::keep, changed)
 
     /** What is known about the artist of [song]; null while nothing is. */
     fun known(song: QueueSong): Known? = ArtistRef.of(song)?.let { a -> synchronized(lock) { known[a.key] } }
@@ -69,7 +59,7 @@ class MaBios(
     /** The songs whose artists are wanted now: the one that plays, then the one up next. */
     fun want(songs: List<QueueSong>): Unit = synchronized(lock) {
         val t = now()
-        wanted = songs.mapNotNull { ArtistRef.of(it) }.distinctBy { it.key }.filter { a ->
+        val wanted = songs.mapNotNull { ArtistRef.of(it) }.distinctBy { it.key }.filter { a ->
             val k = known[a.key]
             when {
                 k == null -> true
@@ -79,58 +69,32 @@ class MaBios(
                 else -> false
             }
         }
-        if (asking != null && wanted.none { it.key == asking }) {
-            job?.cancel()
-            job = null
-            asking = null
-        }
-        askNext()
+        calls.want(wanted)
     }
 
     /** Stops asking (the connection ends). */
-    fun stop(): Unit = synchronized(lock) {
-        job?.cancel()
-        job = null
-        asking = null
-        wanted = emptyList()
+    fun stop(): Unit = calls.stop()
+
+    /** What Music Assistant keeps about [artist]; a failed call keeps what was known. */
+    private suspend fun ask(artist: ArtistRef): Known {
+        val before = synchronized(lock) { known[artist.key] }
+        val asks = (before?.asks ?: 0) + 1
+        return try {
+            val item = client.artist(artist.itemId, artist.provider)
+            val text = (item?.get("metadata") as? JsonObject)?.string("description")
+            Known(ArtistBio.of(text), now(), asks)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            Known(before?.bio, now(), asks, failed = true)
+        }
     }
 
-    /**
-     * Asks about the first artist still wanted, unless a call is out (called under the lock). The
-     * call is known as [job] before it starts, so even an answer that comes at once finds it.
-     */
-    private fun askNext() {
-        if (job != null) return
-        val artist = wanted.firstOrNull() ?: return
-        asking = artist.key
+    /** Keeps the answer about [artist]; news unless the artist was known and keeps its text. */
+    private fun keep(artist: ArtistRef, answer: Known): Boolean {
         val before = known[artist.key]
-        val call = scope.launch(start = CoroutineStart.LAZY) {
-            val asks = (before?.asks ?: 0) + 1
-            val answer = try {
-                val item = client.artist(artist.itemId, artist.provider)
-                val text = (item?.get("metadata") as? JsonObject)?.string("description")
-                Known(ArtistBio.of(text), now(), asks)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                Known(before?.bio, now(), asks, failed = true)
-            }
-            val me = coroutineContext.job
-            val news = synchronized(lock) {
-                // Canceled after the answer came (its artist is no longer wanted, or asking stopped): dropped.
-                if (job !== me) return@launch
-                job = null
-                asking = null
-                val still = wanted.any { it.key == artist.key }
-                if (still) known[artist.key] = answer
-                wanted = wanted.filter { it.key != artist.key }
-                askNext()
-                still && (before == null || before.bio !== answer.bio)
-            }
-            if (news) changed()
-        }
-        job = call
-        call.start()
+        known[artist.key] = answer
+        return before == null || before.bio !== answer.bio
     }
 
     companion object {
