@@ -564,7 +564,8 @@ internal fun QueueRowsLayer(
         val textNow = textLevel().coerceIn(0f, 1f)
         val coverNow = coverLevel()
         fun filterFor(appearance: Appearance): ColorFilter = filters.at(coverNow, appearance)
-        val g = motion.glide().coerceIn(0f, 1f)
+        // Only rows that glide read how far the glide has come.
+        val g = if (glidingRows.isEmpty()) 1f else motion.glide().coerceIn(0f, 1f)
         if (prev != null) {
             val a = motion.oldAlpha()
             val r = motion.oldRise() * density

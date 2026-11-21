@@ -197,7 +197,7 @@ internal fun StageTheater(
     val rowsGlide = prevQueue != null && curQueue != null && (kind == Change.FULL || kind == Change.TEXT || reordered) &&
         prevQueue.rows.any { a -> curQueue.rows.any { it.id == a.id } }
     val rows = when {
-        prev == null -> RowsMotion(matched = false, glide = { 1f }, oldAlpha = { 0f }, oldRise = { 0f }, newAlpha = rowsIn, newRise = rowsInRise)
+        prev == null -> RowsMotion.Still
         // Rows that go dissolve first, the others move, and rows put in come once their place is clear.
         reordered -> RowsMotion(
             matched = rowsGlide,
@@ -209,21 +209,14 @@ internal fun StageTheater(
             // A row cover made meanwhile comes in over the whole change, where its row stands.
             lateCoverAlpha = { p(0, total, Motion.Sine) },
         )
-        rowsGlide -> RowsMotion(
-            matched = true,
-            glide = { p(Motion.TEXT_OUT_MS, Motion.TEXT_OUT_MS + ROWS_GLIDE_MS) },
-            oldAlpha = rowsOut,
-            oldRise = rowsOutRise,
-            newAlpha = rowsIn,
-            newRise = rowsInRise,
-        )
-        // On another background the old row covers stay whole under the new ones, as the cover
-        // does, where the same rows stand.
+        // Rows in both lists glide to their places once the old text has left. On another
+        // background the old row covers stay whole under the new ones, as the cover does, where
+        // the same rows stand.
         else -> {
             val sameRows = kind == Change.WALL && prevQueue?.rows?.map { it.id } == curQueue?.rows?.map { it.id }
             RowsMotion(
-                matched = false,
-                glide = { 1f },
+                matched = rowsGlide,
+                glide = { p(Motion.TEXT_OUT_MS, Motion.TEXT_OUT_MS + ROWS_GLIDE_MS) },
                 oldAlpha = rowsOut,
                 oldRise = rowsOutRise,
                 newAlpha = rowsIn,
