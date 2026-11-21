@@ -34,71 +34,6 @@ import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Clock
 
-/** One speaker offered on the setup page. */
-data class SpeakerOption(val entityId: String, val name: String, val state: String, val musicAssistant: Boolean)
-
-/** One light offered to join in. */
-data class LightOption(val entityId: String, val name: String, val state: String)
-
-/** One sensor offered to tell whether someone is in the room. */
-data class SensorOption(val entityId: String, val name: String, val state: String)
-
-/**
- * One entity a button of one's own can work (a script, a scene, an automation, a button, a
- * switch); a script with the [fields] it declares.
- */
-data class ActionOption(val entityId: String, val name: String, val fields: List<ScriptField> = emptyList())
-
-/**
- * A field a script declares, as its selector asks for it ([type]: [TEXT], [NUMBER], [BOOLEAN],
- * [SELECT] with its [options] as value and label, [ENTITY] of its [domains]).
- */
-data class ScriptField(
-    val key: String,
-    val name: String,
-    val description: String? = null,
-    val required: Boolean = false,
-    val type: String = TEXT,
-    val options: List<Pair<String, String>> = emptyList(),
-    val default: JsonElement? = null,
-    val example: String? = null,
-    val domains: List<String> = emptyList(),
-) {
-    companion object {
-        const val TEXT = "text"
-        const val NUMBER = "number"
-        const val BOOLEAN = "boolean"
-        const val SELECT = "select"
-        const val ENTITY = "entity"
-    }
-}
-
-/**
- * Any entity, for the values in the status line and the buttons' conditions: its raw [state]
- * and [unit], its attributes in words ([attributes]) and its lists by their count ([lists]).
- */
-data class EntityOption(
-    val entityId: String,
-    val name: String,
-    val state: String,
-    val unit: String? = null,
-    val attributes: Map<String, String> = emptyMap(),
-    val lists: Map<String, Int> = emptyMap(),
-)
-
-sealed interface DiscoverResult {
-    data class Ok(
-        val speakers: List<SpeakerOption>,
-        val lights: List<LightOption> = emptyList(),
-        val actions: List<ActionOption> = emptyList(),
-        val entities: List<EntityOption> = emptyList(),
-        val sensors: List<SensorOption> = emptyList(),
-    ) : DiscoverResult
-
-    /** [refused]: Home Assistant refused the credentials. */
-    data class Failed(val message: String, val refused: Boolean = false) : DiscoverResult
-}
-
 /**
  * The setup page's logic, independent of sockets: routes, the one-time code, the sign-in,
  * validation.
@@ -214,7 +149,7 @@ class SetupHandler(
         val body = try {
             json.parseToJsonElement(req.bodyText.ifBlank { "{}" }).jsonObject
         } catch (_: Exception) {
-            return MiniHttp.Response.json(400, error(t[Strings.setupErrorRequest]))
+            return refused(t[Strings.setupErrorRequest])
         }
         if (!codeMatches(body.string("code"))) {
             delay(wrongCodeDelayMs)
@@ -261,8 +196,8 @@ class SetupHandler(
     /** Starts a sign-in: the address of Home Assistant's login page, for this request only. */
     private fun signInJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
-        val client = clientId() ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorNotAllowed]))
+            ?: return refused(t[Strings.setupErrorAddress])
+        val client = clientId() ?: return refused(t[Strings.setupErrorNotAllowed])
         val state = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(random.nextBytes(ByteArray(STATE_BYTES)))
         authorization = synchronized(lock) { Authorization(state, url, client, now(), setupsEnded) }
         val authorize = "$url/auth/authorize?response_type=code" +
@@ -315,8 +250,8 @@ class SetupHandler(
 
     private suspend fun discoverJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
-        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorCredentials]))
+            ?: return refused(t[Strings.setupErrorAddress])
+        val credentials = credentialsFor(url, body) ?: return refused(t[Strings.setupErrorCredentials])
         return when (val r = discover(url, credentials)) {
             is DiscoverResult.Failed -> MiniHttp.Response.json(200, buildJsonObject {
                 put("ok", false)
@@ -336,15 +271,7 @@ class SetupHandler(
                         })
                     }
                 })
-                put("lights", buildJsonArray {
-                    r.lights.forEach { l ->
-                        add(buildJsonObject {
-                            put("id", l.entityId)
-                            put("name", l.name)
-                            put("state", l.state)
-                        })
-                    }
-                })
+                put("lights", statesJson(r.lights))
                 put("actions", buildJsonArray {
                     r.actions.forEach { a ->
                         add(buildJsonObject {
@@ -354,15 +281,7 @@ class SetupHandler(
                         })
                     }
                 })
-                put("sensors", buildJsonArray {
-                    r.sensors.forEach { o ->
-                        add(buildJsonObject {
-                            put("id", o.entityId)
-                            put("name", o.name)
-                            put("state", o.state)
-                        })
-                    }
-                })
+                put("sensors", statesJson(r.sensors))
                 put("entities", buildJsonArray {
                     r.entities.forEach { e ->
                         add(buildJsonObject {
@@ -376,6 +295,17 @@ class SetupHandler(
                     }
                 })
             }.toString())
+        }
+    }
+
+    /** Lights or sensors as the page lists them, each with its state in words. */
+    private fun statesJson(options: List<StateOption>) = buildJsonArray {
+        options.forEach { o ->
+            add(buildJsonObject {
+                put("id", o.entityId)
+                put("name", o.name)
+                put("state", o.state)
+            })
         }
     }
 
@@ -403,26 +333,26 @@ class SetupHandler(
     private suspend fun saveJson(body: JsonObject, t: Texts): MiniHttp.Response {
         val current = settings()
         val url = body.string("url")?.let { HaUrls.normalizeBase(it) }
-            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorAddress]))
-        val credentials = credentialsFor(url, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorCredentials]))
+            ?: return refused(t[Strings.setupErrorAddress])
+        val credentials = credentialsFor(url, body) ?: return refused(t[Strings.setupErrorCredentials])
         val ha = current.withHa(url, credentials)
-        val withMa = maSettings(ha, body) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaAddress]))
-        if (withMa.maUrl != null && withMa.maToken == null) return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaToken]))
+        val withMa = maSettings(ha, body) ?: return refused(t[Strings.setupErrorMaAddress])
+        if (withMa.maUrl != null && withMa.maToken == null) return refused(t[Strings.setupErrorMaToken])
         if (withMa.hasMusicAssistant && (withMa.maUrl != current.maUrl || withMa.maToken != current.maToken)) {
             when (checkMa(withMa.maUrl!!, withMa.maToken!!)) {
                 MaLink.CONNECTED -> Unit
-                MaLink.AUTH_FAILED -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaRejected]))
-                MaLink.UNREACHABLE -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorMaUnreachable]))
+                MaLink.AUTH_FAILED -> return refused(t[Strings.setupErrorMaRejected])
+                MaLink.UNREACHABLE -> return refused(t[Strings.setupErrorMaUnreachable])
             }
         }
         val entity = body.string("entity")?.trim()?.takeIf { EntityId.isValid(it) || it == EntityId.THIS_TV }
-            ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorSpeaker]))
+            ?: return refused(t[Strings.setupErrorSpeaker])
         // "This TV" follows the TV's own speaker, which needs Music Assistant, and turns playing here on.
-        if (entity == EntityId.THIS_TV && !withMa.hasMusicAssistant) return MiniHttp.Response.json(400, error(t[Strings.setupErrorThisTv]))
+        if (entity == EntityId.THIS_TV && !withMa.hasMusicAssistant) return refused(t[Strings.setupErrorThisTv])
         val tvSpeaker = entity == EntityId.THIS_TV || (body.boolean("tvSpeaker") ?: current.tvSpeaker)
         val minutes = body.int("sleepMinutes") ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
-        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[Strings.setupErrorSleep]))
+        if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return refused(t[Strings.setupErrorSleep])
         val action = when (body.string("sleepAction")) {
             "close" -> SleepAction.CLOSE
             "release" -> SleepAction.RELEASE
@@ -434,43 +364,21 @@ class SetupHandler(
             current.roomLights
         } else {
             val ids = lightKeys.map { k -> body.string(k)?.trim().orEmpty() }
-            if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return MiniHttp.Response.json(400, error(t[Strings.setupErrorLights]))
+            if (ids.any { it.isNotEmpty() && !EntityId.isLight(it) }) return refused(t[Strings.setupErrorLights])
             RoomLights(ids[0].ifEmpty { null }, ids[1].ifEmpty { null }, ids[2].ifEmpty { null })
         }
         // The quick settings' own buttons only when the page showed them; an empty list removes them.
-        val actions = when (val list = body["actions"]) {
-            null -> current.quickActions
-            is JsonArray -> list.take(QuickActions.MAX).map { e ->
-                QuickActions.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorActions]))
-            }
-            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorActions]))
-        }
+        val actions = body.listOn("actions", current.quickActions, QuickActions.MAX) { QuickActions.from(it as? JsonObject) }
+            ?: return refused(t[Strings.setupErrorActions])
         // The values in the status line, likewise.
-        val values = when (val list = body["values"]) {
-            null -> current.ownValues
-            is JsonArray -> list.take(OwnValues.MAX).map { e ->
-                OwnValues.from(e as? JsonObject) ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
-            }
-            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorValues]))
-        }
+        val values = body.listOn("values", current.ownValues, OwnValues.MAX) { OwnValues.from(it as? JsonObject) }
+            ?: return refused(t[Strings.setupErrorValues])
         // The speakers in other rooms, likewise; the one chosen above is this room's.
-        val otherRooms = when (val list = body["otherRooms"]) {
-            null -> current.otherRooms
-            is JsonArray -> list.map { e ->
-                (e as? JsonPrimitive)?.content?.takeIf { it.startsWith("media_player.") && EntityId.isValid(it) }
-                    ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
-            }
-            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorOtherRooms]))
-        }.filter { it != entity }.distinct().take(Settings.MAX_OTHER_ROOMS)
+        val otherRooms = (body.listOn("otherRooms", current.otherRooms) { it.entityIn("media_player") } ?: return refused(t[Strings.setupErrorOtherRooms]))
+            .filter { it != entity }.distinct().take(Settings.MAX_OTHER_ROOMS)
         // The presence sensors, likewise: sensors that are on or off.
-        val presence = when (val list = body["presence"]) {
-            null -> current.presenceSensors
-            is JsonArray -> list.map { e ->
-                (e as? JsonPrimitive)?.content?.takeIf { it.startsWith("binary_sensor.") && EntityId.isValid(it) }
-                    ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorPresence]))
-            }
-            else -> return MiniHttp.Response.json(400, error(t[Strings.setupErrorPresence]))
-        }.distinct().take(Settings.MAX_PRESENCE_SENSORS)
+        val presence = (body.listOn("presence", current.presenceSensors) { it.entityIn("binary_sensor") } ?: return refused(t[Strings.setupErrorPresence]))
+            .distinct().take(Settings.MAX_PRESENCE_SENSORS)
         val updated = withMa.following(entity).withPlayHere(tvSpeaker).copy(
             sleepAfterMinutes = minutes,
             sleepAction = action,
@@ -509,7 +417,24 @@ class SetupHandler(
         return s.withMa(url, body.string("maToken")?.trim()?.takeIf { it.isNotEmpty() })
     }
 
+    /**
+     * The list the page sent under [key], each entry as [read] takes it, the first [limit] only;
+     * [kept] when the page sent none, and null when it is no list or [read] refuses an entry.
+     */
+    private inline fun <T> JsonObject.listOn(key: String, kept: List<T>, limit: Int = Int.MAX_VALUE, read: (JsonElement) -> T?): List<T>? =
+        when (val list = this[key]) {
+            null -> kept
+            is JsonArray -> list.take(limit).map { read(it) ?: return null }
+            else -> null
+        }
+
+    /** This entry as the id of an entity in [domain]; null when it is none. */
+    private fun JsonElement.entityIn(domain: String): String? = string()?.takeIf { EntityId.isIn(domain, it) }
+
     private fun redirect(location: String) = MiniHttp.Response(303, "text/plain; charset=utf-8", ByteArray(0), mapOf("Location" to location))
+
+    /** The page's request refused, saying why in [message]. */
+    private fun refused(message: String) = MiniHttp.Response.json(400, error(message))
 
     private fun error(message: String) = buildJsonObject {
         put("ok", false)

@@ -48,6 +48,7 @@ import io.github.hazymorning.klangbild.domain.ValueText
 import io.github.hazymorning.klangbild.lights.LightSync
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.DiscoverResult
+import io.github.hazymorning.klangbild.setup.Discovery
 import io.github.hazymorning.klangbild.setup.SetupHandler
 import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.sound.SoundFeed
@@ -220,7 +221,7 @@ class NowPlayingController(
         settings = { settings.value },
         texts = { localizer.texts.value },
         discover = { url, credentials ->
-            SetupServer.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
+            Discovery.discover(tokenHttp, url, credentials, localizer.texts.value).also { r ->
                 if (r is DiscoverResult.Failed && r.refused) refused(credentials)
             }
         },

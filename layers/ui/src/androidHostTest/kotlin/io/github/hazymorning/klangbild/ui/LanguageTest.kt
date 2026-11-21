@@ -49,9 +49,9 @@ import io.github.hazymorning.klangbild.domain.UpdateInfo
 import io.github.hazymorning.klangbild.domain.UpdateState
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.render.StageGrid
+import io.github.hazymorning.klangbild.setup.Discovery
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.setup.SetupPage
-import io.github.hazymorning.klangbild.setup.SetupServer
 import io.github.hazymorning.klangbild.text.AppLanguage
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -294,7 +294,7 @@ class LanguageTest {
         assertEnglish("page", visible.replace(Regex("<[^>]*>"), " "))
         assertThat(html, name = "the page's language").contains("<html lang=\"en\">")
         // The lists the page shows: states in English words.
-        val found = SetupServer.parseSpeakers(
+        val found = Discovery.options(
             """[{"entity_id":"media_player.a","state":"playing","attributes":{}},{"entity_id":"media_player.b","state":"buffering","attributes":{}},
                {"entity_id":"light.a","state":"unavailable","attributes":{}}]""",
             en,
