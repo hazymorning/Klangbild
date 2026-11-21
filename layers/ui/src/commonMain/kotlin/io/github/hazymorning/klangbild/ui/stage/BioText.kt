@@ -3,10 +3,6 @@ package io.github.hazymorning.klangbild.ui.stage
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,7 +14,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
@@ -26,8 +21,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.hazymorning.klangbild.domain.ArtistBio
@@ -102,19 +95,14 @@ internal fun planBio(bio: ArtistBio, style: TextStyle, width: Int, rows: Int, ba
  * and with a line's room to spare to the status line and to the progress bar, which comes above
  * the footer for a moment after a key ([room]).
  */
-internal fun bioRows(layout: StageGrid, style: TextStyle, room: LyricsRoom): Int {
+internal fun bioRows(layout: StageGrid, style: TextStyle, room: WordsRoom): Int {
     val line = style.lineHeight.value
     val cap = style.fontSize.value * Fonts.CAP_HEIGHT
     val most = minOf(layout.columnArt * BLOCK_SHARE, 2f * (room.around(slot = 1f) - line))
     return (((most - cap) / line).toInt() + 1).coerceAtLeast(1)
 }
 
-/**
- * The text column with a few sentences about the artist ([TextLayer] while [StageModel.bio] is
- * set): a page of them in the middle, the track's title and artist in the footer, and the slot
- * above them while it shows. [alpha] and [rise] animate a change as for the text block: the page
- * as the title, the slot and the footer as themselves.
- */
+/** The text column with a page about the artist in its middle ([TextLayer] while [StageModel.bio] is set). */
 @Composable
 internal fun BioText(
     model: StageModel,
@@ -131,7 +119,7 @@ internal fun BioText(
     val resolver = LocalFontFamilyResolver.current
     val colW = (layout.columnWidth * density).roundToInt()
     val style = styles.bio
-    val rows = remember(layout, styles) { bioRows(layout, style, LyricsRoom(layout, styles)) }
+    val rows = remember(layout, styles) { bioRows(layout, style, WordsRoom(layout, styles)) }
     val pages = rememberOffMain(bio, colW, rows, style, density, resolver) {
         val measurer = TextMeasurer(resolver, Density(density), LayoutDirection.Ltr, cacheSize = 0)
         planBio(bio, style, colW, rows, lineBalancer(measurer))
@@ -166,45 +154,17 @@ internal fun BioText(
         }
     }
 
-    fun line(which: TextLine): Modifier = Modifier.lineMotion(which, alpha, rise)
-
-    Layout(
-        modifier = modifier.textColumn(textLevel),
-        content = {
-            // 0: the page
-            Canvas(Modifier.fillMaxSize()) {
-                val p = pages ?: return@Canvas
-                val a = alpha(TextLine.TITLE).coerceIn(0f, 1f)
-                if (a <= 0.002f) return@Canvas
-                val x = ((layout.columnLeft + shift()) * density).roundToInt().toFloat()
-                val center = layout.textCenter * density + (rise(TextLine.TITLE) * density).roundToInt()
-                val t = turn.value
-                val gone = Motion.phase(t, 0f, OUT_SHARE)
-                val come = Motion.phase(t, IN_SHARE, 1f)
-                p.getOrNull(before)?.takeIf { t < 1f }?.let { drawPage(it, x, center, a * (1f - gone), 0f, style) }
-                p.getOrNull(shown)?.let { drawPage(it, x, center, a * come, Motion.RISE_DP * (1f - come), style) }
-            }
-            // 1: the slot above the footer, whose changes crossfade
-            SlotContent(model, styles, line(TextLine.SLOT), label = "bio-slot")
-            // 2: the footer, which names the track itself
-            val footer = rememberFooter(model.footer, styles, colW)
-            if (footer != null) BasicText(footer, line(TextLine.FOOTER), style = styles.footer, maxLines = 1, overflow = TextOverflow.Ellipsis) else Box(Modifier)
-        },
-    ) { measurables, constraints ->
-        val page = measurables[0].measure(constraints)
-        val slot = measurables[1].measure(Constraints(minWidth = colW, maxWidth = colW))
-        val footer = measurables[2].measure(Constraints(maxWidth = colW))
-        // The footer's descenders end where the column ends, and the slot stands on a line above it.
-        val footerBaseline = footerBaseline(layout, styles)
-        val slotLine = footerBaseline - (styles.footer.fontSize.toPx() * Fonts.CAP_HEIGHT).roundToInt() - (SLOT_GAP * density).roundToInt()
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            page.place(0, 0)
-            // Read while placing: a column that glides is only placed anew.
-            val x = ((layout.columnLeft + shift()) * density).roundToInt()
-            if (slot.height > 0) slot.place(x, slotLine - slotBaseline(slot, model.slotText != null))
-            if (footer.height > 0) footer.place(x, footerBaseline - footer.firstBaselineOrHeight())
+    val words = pages?.let { p ->
+        ColumnWords { x, center, a ->
+            val left = x.toFloat()
+            val t = turn.value
+            val gone = Motion.phase(t, 0f, OUT_SHARE)
+            val come = Motion.phase(t, IN_SHARE, 1f)
+            p.getOrNull(before)?.takeIf { t < 1f }?.let { drawPage(it, left, center, a * (1f - gone), 0f, style) }
+            p.getOrNull(shown)?.let { drawPage(it, left, center, a * come, Motion.RISE_DP * (1f - come), style) }
         }
     }
+    WordsColumn(model, styles, modifier, alpha, rise, textLevel, shift, words)
 }
 
 /**
