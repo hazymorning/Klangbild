@@ -224,7 +224,7 @@ internal class QuickControl(private val host: ControllerHost) {
             if (index in running) return
             if (kind == ActionKind.TOGGLE) {
                 val on = switchShown(entity) ?: return
-                switchWanted[entity] = !on to host.now() + SWITCH_TRUST_MS
+                switchWanted[entity] = !on to host.now() + TRUST_MS
             }
             running += index
             outcome.remove(index)
@@ -296,7 +296,7 @@ internal class QuickControl(private val host: ControllerHost) {
         val src = host.source ?: return
         val on = synchronized(host.lock) {
             val now = shuffleShown() ?: return
-            shuffleWanted = !now to host.now() + SHUFFLE_TRUST_MS
+            shuffleWanted = !now to host.now() + TRUST_MS
             !now
         }
         host.recompute()
@@ -309,12 +309,9 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Shuffle as the quick settings show it: what was just asked for, else what the player says. */
     private fun shuffleShown(): Boolean? {
         val reported = host.ui.source.player?.shuffle ?: return null
-        val wanted = shuffleWanted
-        if (wanted == null || host.now() > wanted.second || wanted.first == reported) {
-            shuffleWanted = null
-            return reported
-        }
-        return wanted.first
+        stillWanted(shuffleWanted, reported)?.let { return it }
+        shuffleWanted = null
+        return reported
     }
 
     /** Whether the switch [entity] shows as on: what was just asked for, else what Home Assistant says; null without a state. */
@@ -324,13 +321,17 @@ internal class QuickControl(private val host: ControllerHost) {
             "off" -> false
             else -> null
         }
-        val wanted = switchWanted[entity]
-        if (wanted == null || host.now() > wanted.second || wanted.first == reported) {
-            switchWanted.remove(entity)
-            return reported
-        }
-        return wanted.first
+        stillWanted(switchWanted[entity], reported)?.let { return it }
+        switchWanted.remove(entity)
+        return reported
     }
+
+    /**
+     * What [wanted] asked for (the value, and until when it shows), while [reported] is still
+     * something else and that time has not passed; null once it is over.
+     */
+    private fun stillWanted(wanted: Pair<Boolean, Long>?, reported: Boolean?): Boolean? =
+        wanted?.takeIf { (value, until) -> value != reported && host.now() <= until }?.first
 
     /**
      * How each button stands now, by its place among the buttons. A button whose entity Home
@@ -434,11 +435,8 @@ internal class QuickControl(private val host: ControllerHost) {
         /** The queue view chosen in the quick settings is applied this long after the last press. */
         const val SETTLE_MS = 900L
 
-        /** Shuffle just asked for is shown this long before the player has reported it. */
-        const val SHUFFLE_TRUST_MS = 6_000L
-
-        /** A switch just turned is shown as asked this long before Home Assistant has reported it. */
-        const val SWITCH_TRUST_MS = 6_000L
+        /** Shuffle or a switch just turned is shown as asked this long at most before it is reported. */
+        const val TRUST_MS = 6_000L
 
         /** How long a button says how its call went before it says again what it does. */
         const val RESULT_MS = 4_000L
