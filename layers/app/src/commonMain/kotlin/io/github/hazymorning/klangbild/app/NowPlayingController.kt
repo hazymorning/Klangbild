@@ -297,14 +297,7 @@ class NowPlayingController(
         ticker?.cancel()
         setupJob?.cancel()
         setupServer.stop()
-        sourceJob?.cancel()
-        pushJob?.cancel()
-        // A report held back belongs to the source that sent it.
-        heldJob?.cancel()
-        heldJob = null
-        flips = FlipGuard()
-        stopSource(source)
-        source = null
+        dropSource()
         sourceKey = null
         sleep.stop()
         seeking.clear()
@@ -316,8 +309,7 @@ class NowPlayingController(
         }
         // The next start begins afresh: a pause from last night must not send a new launch to
         // sleep (or close it) before the music has been heard of.
-        val setup = machine.isSetupRequested
-        machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
+        restartMachine()
         presence = Presence()
         screenOff = false
         lastReportKey = null
@@ -464,10 +456,7 @@ class NowPlayingController(
         if (loaded && s.updateCheck && !settings.value.updateCheck) updates?.checkIfDue()
         settings.value = s
         val timing = timingFor(s)
-        if (timing != machine.timing) {
-            val setup = machine.isSetupRequested
-            machine = ScreenStateMachine(timing).also { it.requestSetup(setup) }
-        }
+        if (timing != machine.timing) restartMachine(timing)
         reconcileSource()
         // The quick settings' own buttons show only while their entities are there (and their
         // conditions hold); the values in the status line follow their entities.
@@ -545,12 +534,7 @@ class NowPlayingController(
         if (key == sourceKey || viewers == 0) return
         sourceKey = key
         log.info(if (s.isConfigured) "Connecting to Home Assistant (${s.entityId})" else "No connection set: setup")
-        sourceJob?.cancel()
-        // A report held back belongs to the source that sent it.
-        heldJob?.cancel()
-        heldJob = null
-        flips = FlipGuard()
-        stopSource(source)
+        dropSource()
         stageBuilder.newSource()
         val ma = if (s.hasMusicAssistant) MaClient(tokenHttp, s.maUrl!!, s.maToken!!) else null
         soundSelection.useMilkdrop(if (s.hasMusicAssistant) MilkdropSound(tokenHttp, scope, s.maUrl!!, s.maToken!!) else null)
@@ -569,7 +553,6 @@ class NowPlayingController(
         sourceJob = scope.launch {
             newSource.state.collect { st -> onSource(st) }
         }
-        pushJob?.cancel()
         pushJob = scope.launch { newSource.notifications.collect { onPush(it) } }
     }
 
@@ -627,6 +610,21 @@ class NowPlayingController(
     private var heldJob: Job? = null
 
     /**
+     * Lets go of the connection: what follows its reports and notifications, a report from it
+     * held back, and the connection itself.
+     */
+    private fun dropSource() {
+        sourceJob?.cancel()
+        pushJob?.cancel()
+        // A report held back belongs to the source that sent it.
+        heldJob?.cancel()
+        heldJob = null
+        flips = FlipGuard()
+        stopSource(source)
+        source = null
+    }
+
+    /**
      * Stops [old] once the lights it was lighting have been given back through it (a few
      * seconds at most): the connection must still be there for that.
      */
@@ -641,6 +639,12 @@ class NowPlayingController(
     }
 
     private fun timingFor(s: Settings) = Timing(sleepAfterMs = s.sleepAfterMinutes * 60_000L)
+
+    /** A new screen state machine on [timing], which keeps the setup page if it was asked for. */
+    private fun restartMachine(timing: Timing = machine.timing) {
+        val setup = machine.isSetupRequested
+        machine = ScreenStateMachine(timing).also { it.requestSetup(setup) }
+    }
 
     private fun recompute(): Unit = synchronized(lock) {
         val s = settings.value
