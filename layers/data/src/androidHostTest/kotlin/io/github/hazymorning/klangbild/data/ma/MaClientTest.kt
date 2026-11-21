@@ -102,6 +102,19 @@ class MaClientTest {
     }
 
     @Test
+    fun `a command the server does not know is sent once, then refused without a request`(): Unit = runBlocking {
+        server.enqueue(MockResponse.Builder().code(400).body("Invalid Command: time").build())
+        repeat(2) {
+            assertThat(runCatching { client.serverTime() }.exceptionOrNull()).isNotNull().isInstanceOf<MaUnknownCommandException>()
+        }
+        assertThat(server.requestCount).isEqualTo(1)
+        // Other commands are still sent.
+        server.enqueue(MockResponse.Builder().body("null").build())
+        assertThat(client.partyPlayer()).isNull()
+        assertThat(server.requestCount).isEqualTo(2)
+    }
+
+    @Test
     fun `the address is read from a picture link`() {
         assertThat(MaClient.addressIn("http://192.168.1.5:8095/imageproxy/3f2a?size=512")).isEqualTo("http://192.168.1.5:8095")
         assertThat(MaClient.addressIn("http://mass.local:8095/imageproxy?path=x&size=0")).isEqualTo("http://mass.local:8095")

@@ -20,6 +20,9 @@ object TrackMatch {
     fun sameStation(a: TrackInfo, b: TrackInfo): Boolean =
         a.kind == MediaKind.RADIO && b.kind == MediaKind.RADIO && a.source != null && a.source == b.source
 
+    /** Two descriptions of one queue item: the same song by its title, or the same station. */
+    fun sameItem(a: TrackInfo, b: TrackInfo): Boolean = sameTitle(a.title, b.title) || sameStation(a, b)
+
     fun sameTitle(a: String, b: String): Boolean {
         val x = norm(a)
         val y = norm(b)

@@ -1,6 +1,6 @@
 package io.github.hazymorning.klangbild.data.ha
 
-import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameStation
+import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameItem
 import io.github.hazymorning.klangbild.data.ha.TrackMatch.sameTitle
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.data.ma.MaAuthException
@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.data.ma.MaLyrics
 import io.github.hazymorning.klangbild.data.ma.MaQueue
 import io.github.hazymorning.klangbild.data.ma.MaUnknownCommandException
 import io.github.hazymorning.klangbild.data.ma.QueuePosition
+import io.github.hazymorning.klangbild.data.ma.QueueState
 import io.github.hazymorning.klangbild.data.ma.QueueWindow
 import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MaLink
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -150,9 +152,6 @@ internal class QueueReader(
     /** The local wall clock minus Music Assistant's, in milliseconds, and when it was measured; null until known. */
     @Volatile private var maClock: Long? = null
     private var maClockAt = 0L
-
-    /** Music Assistant knows no `time` command: its clock is not asked again. */
-    @Volatile private var maClockUnknown = false
 
     /** When Music Assistant's queue was last read, and for which of Home Assistant's queues. */
     private var windowReadAt = 0L
@@ -461,27 +460,12 @@ internal class QueueReader(
      */
     private suspend fun checkMaQueue(client: MaClient) {
         val key = trackKey ?: return
-        val q = queue?.takeIf { queueReadFor == key } ?: return
-        val id = q.queueId ?: latest()?.activeQueue ?: return
-        val answer = try {
-            client.queue(id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: MaUnknownCommandException) {
-            // A version that cannot say: it is not asked again.
-            maPoller?.cancel()
-            null
-        } catch (_: Exception) {
-            null
-        } ?: return
-        val state = MaQueue.state(answer, client.baseUrl)
-        val current = state.current ?: return
-        val shown = latest()?.track ?: return
-        // Music Assistant has moved on to another item: that song's own read follows.
-        if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
+        val q = queueFor(key) ?: return
+        val id = maQueueId(q) ?: return
+        val (_, state) = queueAsItStands(client, id) ?: return
         val shape = QueueShape(state.index, state.nextId, state.items)
         val same = maNext?.let { it.key == key && it.shape == shape } == true
-        val read = state.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, current) }
+        val read = state.index?.let { windowAt(client, id, it) }?.takeIf { matches(it, state.current) }
         if (trackKey != key) return
         if (same && (read == null || read == window)) return
         maNext = MaNext(key, state.next, shape)
@@ -509,22 +493,8 @@ internal class QueueReader(
      */
     private suspend fun readPosition(client: MaClient) {
         val key = trackKey ?: return
-        val id = queue?.takeIf { queueReadFor == key }?.queueId ?: latest()?.activeQueue ?: return
-        val answer = try {
-            client.queue(id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: MaUnknownCommandException) {
-            // A version that cannot say: it is not asked again.
-            positionPoller?.cancel()
-            null
-        } catch (_: Exception) {
-            null
-        } ?: return
-        val current = MaQueue.state(answer, client.baseUrl).current ?: return
-        val shown = latest()?.track ?: return
-        // Music Assistant has moved on to another item: that song's own question follows.
-        if (!sameTitle(current.title, shown.title) && !sameStation(current, shown)) return
+        val id = maQueueId(queueFor(key)) ?: return
+        val (answer, _) = queueAsItStands(client, id) ?: return
         val position = MaQueue.position(answer)?.let { at -> clockOf(client)?.let { offset -> at.copy(atMs = at.atMs + offset) } } ?: return
         if (trackKey != key) return
         val moved = position != maPosition?.takeIf { it.key == key }?.position
@@ -533,11 +503,37 @@ internal class QueueReader(
     }
 
     /**
+     * Music Assistant's queue [id] as it stands (`player_queues/get`): its answer and what that
+     * says. Null when it cannot be read, and when Music Assistant has moved on to another item
+     * than Home Assistant reports, whose own read follows.
+     */
+    private suspend fun queueAsItStands(client: MaClient, id: String): Pair<JsonObject, QueueState>? {
+        val answer = try {
+            client.queue(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: MaUnknownCommandException) {
+            // A version that cannot say: it is not asked again.
+            maPoller?.cancel()
+            positionPoller?.cancel()
+            null
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        val state = MaQueue.state(answer, client.baseUrl)
+        val current = state.current ?: return null
+        val shown = latest()?.track ?: return null
+        return (answer to state).takeIf { sameItem(current, shown) }
+    }
+
+    /** The id Music Assistant knows the queue [q] by, else the player's active queue. */
+    private fun maQueueId(q: QueueInfo?): String? = q?.queueId ?: latest()?.activeQueue
+
+    /**
      * The local wall clock minus Music Assistant's, measured with its `time` command (the best of a
      * few round trips) and again after [MA_CLOCK_MS]; null while it cannot be told.
      */
     private suspend fun clockOf(client: MaClient): Long? {
-        if (maClockUnknown) return null
         val known = maClock
         if (known != null && now() - maClockAt < MA_CLOCK_MS) return known
         var best: Long? = null
@@ -549,7 +545,6 @@ internal class QueueReader(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: MaUnknownCommandException) {
-                maClockUnknown = true
                 return null
             } catch (_: Exception) {
                 return known
@@ -639,7 +634,7 @@ internal class QueueReader(
      */
     private suspend fun readWindow(q: QueueInfo): QueueWindow? {
         val client = ma ?: return null
-        val id = q.queueId ?: latest()?.activeQueue ?: return null
+        val id = maQueueId(q) ?: return null
         val index = q.currentIndex ?: return null
         val w = windowAt(client, id, index) ?: return null
         windowReadFor = basisOf(q)
@@ -649,7 +644,7 @@ internal class QueueReader(
     /** Whether [w] is the queue around [current] (the queue may have moved on in between). */
     private fun matches(w: QueueWindow, current: TrackInfo?): Boolean {
         val a = w.current
-        return a != null && current != null && (sameTitle(a.title, current.title) || sameStation(a, current))
+        return a != null && current != null && sameItem(a, current)
     }
 
     /** Queue [id] around [index] as Music Assistant has it; null when it cannot be read. */
