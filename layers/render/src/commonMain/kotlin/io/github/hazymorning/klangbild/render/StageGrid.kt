@@ -73,7 +73,7 @@ data class StageGrid(val screen: ScreenSpec, val flow: Boolean = false, val edge
     /** Side of the artwork's square. */
     val art = grid.art * sy
     val artTop = (screen.heightDp - art) / 2f
-    val artRect: RectDp get() = RectDp(margin, artTop, art, art)
+    val artRect = RectDp(margin, artTop, art, art)
 
     /** Space between artwork and text. */
     val gap = grid.gap * sx

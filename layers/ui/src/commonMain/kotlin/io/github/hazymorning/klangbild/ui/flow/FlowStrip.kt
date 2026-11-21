@@ -283,9 +283,9 @@ private class Lights(private val appearance: Appearance, private val background:
 }
 
 /**
- * Scratch space for one strip, so a frame allocates nothing: a quad's corners in dp and px, a
- * texture's corners, the platform's painter, and the up to four textures a card is mixed from
- * (its full and half-size texture, and those of its look before).
+ * Scratch space for one strip, so placing and drawing a card allocates nothing: a quad's corners
+ * in dp and px, a texture's corners, the platform's painter, and the up to four textures a card
+ * is mixed from (its full and half-size texture, and those of its look before).
  */
 private class DrawTools {
     val cornersDp = FloatArray(8)

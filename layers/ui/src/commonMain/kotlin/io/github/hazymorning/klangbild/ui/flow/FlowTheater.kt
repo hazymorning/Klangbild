@@ -195,12 +195,14 @@ internal fun FlowTheater(
     val geometry = remember(middle.scene.layout) { FlowGeometry(middle.scene.layout) }
     val targetBalance = remember(current, geometry) { balanceOf(current, geometry) }
     val fromBalance = remember(prev, geometry) { prev?.let { balanceOf(it, geometry) } ?: targetBalance }
-    val balance: () -> Balance = {
-        if (prev == null) targetBalance else fromBalance.towards(targetBalance, Motion.Turn.transform(timing.settle.of(at())))
-    }
+    // The composition moves from its old balance to the new one with the turn. Its shifts are read
+    // several times a frame, so each is worked out as a plain number (dp).
+    fun toward(from: Float, to: Float) = if (prev == null) to else from + (to - from) * Motion.Turn.transform(timing.settle.of(at()))
+    val cardsShift: () -> Float = { toward(fromBalance.cards, targetBalance.cards) }
+    val columnShift: () -> Float = { toward(fromBalance.column, targetBalance.column) }
     // Lines that leave and rise anew keep to their own places, and lines that stay move along.
-    val newColumn: () -> Float = { if (prev != null && kind.newText) targetBalance.column else balance().column }
-    val oldColumn: () -> Float = { if (kind.newText) fromBalance.column else balance().column }
+    val newColumn: () -> Float = { if (prev != null && kind.newText) targetBalance.column else columnShift() }
+    val oldColumn: () -> Float = { if (kind.newText) fromBalance.column else columnShift() }
     val wall = middle.scene.palette.wall.asColor()
     val lightLevel: () -> Float = { dim.lightLevel * intensity() }
     // The strip takes a new look (a better cover, the other background): each card goes over from
@@ -236,10 +238,10 @@ internal fun FlowTheater(
         val oldWall = prev?.middle?.scene?.takeIf { kind == FlowChange.MOVE || restrip }
         BaseWall(oldWall?.palette?.wall?.asColor() ?: wall)
         if (oldWall != null) {
-            WallLayer(oldWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = true)
+            WallLayer(oldWall, lightLevel = lightLevel, shift = cardsShift, column = columnShift, onOwnWall = true)
             WallMargin(wall, alpha = newWall)
         }
-        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = { balance().cards }, column = { balance().column }, onOwnWall = oldWall == null)
+        WallLayer(middle.scene, alpha = newWall, lightLevel = lightLevel, shift = cardsShift, column = columnShift, onOwnWall = oldWall == null)
         // One strip, also while it takes a new look: each card is the mix of its texture before
         // and its new one, so a card never shows through another and its reflection keeps its
         // strength.
@@ -254,7 +256,7 @@ internal fun FlowTheater(
             time = at,
             coverLevel = { dim.coverLevel },
             edges = !middle.scene.coverField,
-            shift = { balance().cards },
+            shift = cardsShift,
             sign = party.on(appearance),
             signAlpha = party.shown,
             before = before,
@@ -274,10 +276,10 @@ internal fun FlowTheater(
         }
         // On the other background the status line's inks crossfade with the stage.
         if (prevModel != null && kind == FlowChange.WALL) {
-            StatusLayer(prevModel, shift = { balance().column }, alpha = { 1f - p(0, total, Motion.Sine) })
-            StatusLayer(curModel, shift = { balance().column }, alpha = { p(0, total, Motion.Sine) })
+            StatusLayer(prevModel, shift = columnShift, alpha = { 1f - p(0, total, Motion.Sine) })
+            StatusLayer(curModel, shift = columnShift, alpha = { p(0, total, Motion.Sine) })
         } else {
-            StatusLayer(curModel, shift = { balance().column })
+            StatusLayer(curModel, shift = columnShift)
         }
     }
 }
