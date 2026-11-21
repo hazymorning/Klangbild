@@ -372,7 +372,7 @@ object SetupPage {
     const list = tv.concat(speakers || []);
     // A speaker Music Assistant plays on is mostly there twice: its own entity and Music Assistant's.
     ${'$'}('speakersTwice').hidden = !(speakers || []).some((sp) => sp.ma);
-    if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
+    if (!list.length) { box.append(hint(T.noSpeakers)); return; }
     list.forEach((sp) => {
       const r = document.createElement('input'); r.type = 'radio'; r.name = 'speaker'; r.value = sp.id;
       r.checked = sp.id === selected;
@@ -385,7 +385,7 @@ object SetupPage {
     if (!speakers) return;
     const box = ${'$'}('otherRooms'); box.textContent = '';
     const list = speakers.filter((sp) => sp.id !== ${'$'}('entity').value.trim());
-    if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noSpeakers; box.append(p); return; }
+    if (!list.length) { box.append(hint(T.noSpeakers)); return; }
     list.forEach((sp) => {
       const c = document.createElement('input'); c.type = 'checkbox'; c.value = sp.id;
       c.checked = otherRooms.includes(sp.id);
@@ -405,7 +405,7 @@ object SetupPage {
   }
   function renderLights(list) {
     const box = ${'$'}('lights'); box.textContent = '';
-    if (!list.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = T.noLights; box.append(p); return; }
+    if (!list.length) { box.append(hint(T.noLights)); return; }
     [['lightsLeft', T.left], ['lightsCenter', T.center], ['lightsRight', T.right]].forEach(([key, label]) => {
       const l = document.createElement('label'); l.htmlFor = key; l.textContent = label;
       const sel = document.createElement('select'); sel.id = key;
@@ -424,6 +424,10 @@ object SetupPage {
   function fold(s) { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
   function label(forId, text) { const l = document.createElement('label'); l.htmlFor = forId; l.textContent = text; return l; }
   function hint(text) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = text; return p; }
+  function removeButton(onclick) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'quiet'; b.textContent = T.actionRemove;
+    b.onclick = onclick; return b;
+  }
   function choice(id, pairs, value) {
     const sel = document.createElement('select'); sel.id = id;
     pairs.forEach(([v, text]) => { const o = document.createElement('option'); o.value = v; o.textContent = text; sel.append(o); });
@@ -574,8 +578,7 @@ object SetupPage {
       name.value = a.name || ''; name.placeholder = optionName(a.entity);
       name.oninput = () => { a.name = name.value; };
       const what = picker('actionWhat' + i, choices, a.entity, (id) => { a.entity = id; renderActions(); });
-      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet'; remove.textContent = T.actionRemove;
-      remove.onclick = () => { actions.splice(i, 1); renderActions(); };
+      const remove = removeButton(() => { actions.splice(i, 1); renderActions(); });
       row.append(label(name.id, T.actionName), name, label('actionWhat' + i, T.actionWhat), what, variablesBox(a, i), conditionBox(a, i), remove);
       box.append(row);
     });
@@ -605,8 +608,7 @@ object SetupPage {
       const what = choice('valueWhat' + i, attributeChoices(e, false), v.attribute || '');
       const now = hint(e ? T.now.replace('%s', nowOf(e, v.attribute)) : '');
       what.onchange = () => { v.attribute = what.value; now.textContent = e ? T.now.replace('%s', nowOf(e, v.attribute)) : ''; };
-      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet'; remove.textContent = T.actionRemove;
-      remove.onclick = () => { values.splice(i, 1); renderValues(); };
+      const remove = removeButton(() => { values.splice(i, 1); renderValues(); });
       row.append(label(name.id, T.valueName), name, label('valueEntity' + i, T.entity), pick, label(what.id, T.valueWhat), what, now, remove);
       box.append(row);
     });
@@ -630,8 +632,7 @@ object SetupPage {
     presence.forEach((id, i) => {
       const row = document.createElement('div'); row.className = 'action';
       const pick = picker('sensor' + i, choices, id, (picked) => { presence[i] = picked; });
-      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet'; remove.textContent = T.actionRemove;
-      remove.onclick = () => { presence.splice(i, 1); renderPresence(); };
+      const remove = removeButton(() => { presence.splice(i, 1); renderPresence(); });
       row.append(label('sensor' + i, T.sensor), pick, remove);
       box.append(row);
     });
