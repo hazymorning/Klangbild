@@ -107,9 +107,8 @@ class AndroidPlatform(context: Context) : Platform {
 
     override val version: String = BuildConfig.VERSION_NAME
 
-    /** Named as the TV is, in its settings; else its model. */
     override val device = HaDevice(
-        name = Global.getString(app.contentResolver, Global.DEVICE_NAME)?.takeIf { it.isNotBlank() } ?: Build.MODEL,
+        name = deviceName(app),
         model = Build.MODEL,
         manufacturer = Build.MANUFACTURER,
         osName = "Android",
@@ -210,6 +209,10 @@ class KlangbildApp : Application() {
 val Context.app: KlangbildApp get() = applicationContext as KlangbildApp
 
 val Context.graph: AppGraph get() = app.graph
+
+/** The TV's name as its settings give it, else its model. */
+fun deviceName(context: Context): String =
+    Global.getString(context.contentResolver, Global.DEVICE_NAME)?.takeIf { it.isNotBlank() } ?: Build.MODEL
 
 /** Room for covers on disk. */
 private const val HTTP_CACHE_BYTES = 32L * 1024 * 1024
