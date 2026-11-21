@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,8 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -124,28 +121,19 @@ object MenuGrid {
  */
 @Composable
 fun MenuOverlay(menu: MenuState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
-    // The last menu stays while it fades out.
-    val last = remember { arrayOfNulls<MenuState>(1) }
-    if (menu != null) last[0] = menu
-    val shown = remember { Animatable(0f) }
-    // Composition only asks whether it shows, so the fade redraws without composing anew.
-    val gone by remember { derivedStateOf { shown.value <= 0f } }
-    LaunchedEffect(menu != null) {
-        shown.animateTo(if (menu != null) 1f else 0f, tween(if (menu != null) MENU_IN_MS else MENU_OUT_MS, easing = Motion.Dimmer))
+    FadingOverlay(menu, MENU_IN_MS, MENU_OUT_MS) { state, shown ->
+        // Faded draw by draw, not through a layer of the screen's size: the menu's background
+        // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
+        MenuScreen(
+            state,
+            modifier.graphicsLayer {
+                alpha = shown()
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
+            appearance,
+            pending,
+        )
     }
-    if (menu == null && gone) return
-    val state = menu ?: last[0] ?: return
-    // Faded draw by draw, not through a layer of the screen's size: the menu's background
-    // reaches beyond the screen's edges, and a layer would cut it off there while it fades.
-    MenuScreen(
-        state,
-        modifier.graphicsLayer {
-            alpha = shown.value
-            compositingStrategy = CompositingStrategy.ModulateAlpha
-        },
-        appearance,
-        pending,
-    )
 }
 
 /** The menu's colors: near-neutral white on black, or near-black on the light background. */

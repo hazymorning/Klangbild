@@ -3,7 +3,6 @@ package io.github.hazymorning.klangbild.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,8 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -105,31 +102,22 @@ object QuickGrid {
  */
 @Composable
 fun QuickBarOverlay(quick: QuickState?, appearance: Appearance, modifier: Modifier = Modifier, pending: Boolean = false) {
-    // The last state stays while the bar sinks away.
-    val last = remember { arrayOfNulls<QuickState>(1) }
-    if (quick != null) last[0] = quick
     val density = LocalDensity.current.density
-    val shown = remember { Animatable(0f) }
-    // Composition only asks whether it shows, so the fade redraws without composing anew.
-    val gone by remember { derivedStateOf { shown.value <= 0f } }
-    LaunchedEffect(quick != null) {
-        shown.animateTo(if (quick != null) 1f else 0f, tween(if (quick != null) BAR_IN_MS else BAR_OUT_MS, easing = Motion.Dimmer))
+    FadingOverlay(quick, BAR_IN_MS, BAR_OUT_MS) { state, shown ->
+        // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's
+        // size, which would cut its veil off at the screen's edges while it moves.
+        QuickBar(
+            state,
+            appearance,
+            modifier.graphicsLayer {
+                val v = shown()
+                alpha = v
+                translationY = (1f - v) * QuickGrid.RISE * density
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
+            pending,
+        )
     }
-    if (quick == null && gone) return
-    val state = quick ?: last[0] ?: return
-    // It rises as it fades in. It is faded draw by draw, not through a layer of the screen's size,
-    // which would cut its veil off at the screen's edges while it moves.
-    QuickBar(
-        state,
-        appearance,
-        modifier.graphicsLayer {
-            val v = shown.value
-            alpha = v
-            translationY = (1f - v) * QuickGrid.RISE * density
-            compositingStrategy = CompositingStrategy.ModulateAlpha
-        },
-        pending,
-    )
 }
 
 /**
