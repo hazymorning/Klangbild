@@ -109,7 +109,7 @@ class QuickActionsTest {
         val s = Settings(quickActions = listOf(ungroup, movie, party))
         val ctx = QuickContext(music = true, actions = mapOf(0 to ActionState.READY, 2 to ActionState.ON))
         val rows = QuickMenu.rows(s, ctx, en)
-        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS)
+        assertThat(rows.map { it.item }).containsExactly(QuickItem.VIEW, QuickItem.ACTION, QuickItem.ACTION, QuickItem.SETTINGS, QuickItem.SCREEN)
         // The scene's entity is not there (unavailable): its button is left out, the others keep their places.
         assertThat(rows.filter { it.item == QuickItem.ACTION }.map { it.key.action }).containsExactly(0, 2)
         assertThat(rows[1].label).isEqualTo("Ungroup")

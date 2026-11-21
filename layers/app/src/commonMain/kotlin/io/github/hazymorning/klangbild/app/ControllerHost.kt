@@ -61,6 +61,9 @@ internal interface ControllerHost {
     /** Opens the settings menu on its groups. */
     fun openMenu()
 
+    /** Turns the screen off (the quick settings' Screen): black while the music and the lights go on, until a key is pressed. */
+    fun turnScreenOff()
+
     /** A change from one of the menus: applied at once and written behind it; ignored until the stored settings are in. */
     fun applySettings(updated: Settings)
 

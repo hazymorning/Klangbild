@@ -141,6 +141,11 @@ internal class QuickControl(private val host: ControllerHost) {
                 close()
                 host.openMenu()
             }
+            // The row goes, then the screen fades to black.
+            QuickItem.SCREEN -> {
+                close()
+                host.turnScreenOff()
+            }
         }
     }
 

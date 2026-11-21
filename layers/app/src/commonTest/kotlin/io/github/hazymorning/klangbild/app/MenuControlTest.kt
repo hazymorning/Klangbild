@@ -65,6 +65,7 @@ class MenuControlTest {
             shown++
         }
         override fun openMenu() = Unit
+        override fun turnScreenOff() = Unit
         override fun applySettings(updated: Settings) {
             applied++
             this@MenuControlTest.settings = updated

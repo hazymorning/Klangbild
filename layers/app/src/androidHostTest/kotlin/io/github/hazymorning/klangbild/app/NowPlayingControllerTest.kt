@@ -160,6 +160,38 @@ class NowPlayingControllerTest {
     }
 
     @Test
+    fun `the screen turned off stays dark while the music plays, until a key brings it back`() = runBlocking {
+        MockWebServer().use { ha ->
+            ha.dispatcher = QuietRoom()
+            ha.start()
+            val stored = MemoryValues(
+                mapOf(
+                    "ha_url" to ha.url("/").toString().trimEnd('/'),
+                    "ha_token" to "good",
+                    "entity_id" to "media_player.wz",
+                ),
+            )
+            var clock = 1_800_000_000_000L
+            val controller = controller(stored, now = { clock })
+            controller.attach(screen)
+            withTimeout(5_000) { controller.ui.first { it.screen is Screen.Stage } }
+            assertThat(controller.ui.value.dark).isFalse()
+            controller.turnScreenOff()
+            assertThat(controller.ui.value.dark).isTrue()
+            // Someone is there and listening: it stays dark, and the screen does not sleep for it.
+            clock += 30 * 60_000L
+            delay(1_100)
+            assertThat(controller.ui.value.dark).isTrue()
+            assertThat(controller.ui.value.asleep).isFalse()
+            // A key only brings the picture back; the next one does what it does.
+            assertThat(controller.keyPressed()).isTrue()
+            assertThat(controller.ui.value.dark).isFalse()
+            assertThat(controller.keyPressed()).isFalse()
+            controller.detach()
+        }
+    }
+
+    @Test
     fun `with notifications on, this TV registers once and shows what Home Assistant sends`() = runBlocking {
         MockWebServer().use { ha ->
             val room = QuietRoom()

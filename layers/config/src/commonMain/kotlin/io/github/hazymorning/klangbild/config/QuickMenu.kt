@@ -35,7 +35,8 @@ enum class FavoriteState {
 /**
  * One entry of the quick settings, in their order along the bottom edge: the built-in ones,
  * then the buttons set up on the phone ([ACTION], whose names are their own), then the way into
- * all settings ([SETTINGS]).
+ * all settings ([SETTINGS]), and last, while music plays, the screen ([SCREEN]): it goes black
+ * while the music and the lights go on, until a key is pressed.
  */
 enum class QuickItem(val label: StringId?) {
     VIEW(Strings.quickView),
@@ -48,6 +49,7 @@ enum class QuickItem(val label: StringId?) {
     SHUFFLE(Strings.quickShuffle),
     ACTION(null),
     SETTINGS(Strings.quickSettings),
+    SCREEN(Strings.quickScreen),
 }
 
 /** Which entry: a built-in one, or the button at [action] (its place among the buttons set up). */
@@ -116,8 +118,9 @@ data class QuickContext(
  * Music Assistant or without a song, no favorite without music, no lights before they are set
  * up, no shuffle on a player that cannot, no party code without a party playing here, no button
  * whose entity is unavailable or whose condition does not hold, no queue while Music Assistant
- * is not connected or Cover Flow shows the next tracks as covers). The buttons set up on the
- * phone come last. The sleep timer lives in the settings.
+ * is not connected or Cover Flow shows the next tracks as covers, no screen without music). The
+ * buttons set up on the phone come after the built-in entries, the way into the settings and
+ * the screen last. The sleep timer lives in the settings.
  */
 object QuickMenu {
     fun rows(s: Settings, ctx: QuickContext, t: Texts): List<QuickRow> = buildList {
@@ -139,6 +142,7 @@ object QuickMenu {
             add(QuickRow(QuickKey(QuickItem.ACTION, i), a.name, actionValue(kind, state, t), actionValues(kind, t)))
         }
         row(QuickItem.SETTINGS, t[Strings.quickOpen])
+        if (ctx.music) row(QuickItem.SCREEN, t[Strings.quickTurnOff])
     }
 
     fun lyricsValue(l: LyricsChoice, t: Texts): String = t[if (l == LyricsChoice.OFF) Strings.off else Strings.on]
@@ -184,6 +188,7 @@ object QuickMenu {
         QuickItem.LYRICS, QuickItem.ARTIST, QuickItem.LIGHTS, QuickItem.SHUFFLE, QuickItem.PARTY -> listOf(t[Strings.on], t[Strings.off])
         QuickItem.ACTION -> ActionKind.entries.flatMap { actionValues(it, t) }.distinct()
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
+        QuickItem.SCREEN -> listOf(t[Strings.quickTurnOff])
     }
 
     /** The view after one step from [v] (−1 or +1), from the normal view to Cover Flow; [wrap] goes round. */

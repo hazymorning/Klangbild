@@ -143,6 +143,9 @@ class NowPlayingController(
     /** Whether someone is in the room, by the presence sensors chosen on the phone and the keys pressed. */
     private var presence = Presence()
 
+    /** The screen was turned off from the quick settings: black while the music and the lights go on, until a key is pressed. */
+    private var screenOff = false
+
     /** The notification the status line shows, from Home Assistant. */
     private val messages = StatusMessage()
     private var pushJob: Job? = null
@@ -188,6 +191,7 @@ class NowPlayingController(
         override fun recompute() = this@NowPlayingController.recompute()
         override fun showMenu() = this@NowPlayingController.showMenu()
         override fun openMenu(): Unit = menu.open()
+        override fun turnScreenOff() = this@NowPlayingController.turnScreenOff()
         override fun applySettings(updated: Settings) {
             save(updated)
         }
@@ -315,6 +319,7 @@ class NowPlayingController(
         val setup = machine.isSetupRequested
         machine = ScreenStateMachine(machine.timing).also { it.requestSetup(setup) }
         presence = Presence()
+        screenOff = false
         lastReportKey = null
         volumeFlash.reset()
         _ui.value = _ui.value.copy(
@@ -356,14 +361,21 @@ class NowPlayingController(
     }
 
     /**
-     * A key was pressed: someone is in the room. True while the screen was dark for no one being
-     * there: then the key only brings the picture back.
+     * A key was pressed: someone is in the room, and wants to see. True while the screen was dark
+     * (no one was there, or it was turned off): then the key only brings the picture back.
      */
     fun keyPressed(): Boolean = synchronized(lock) {
         val dark = _ui.value.dark
         presence.keyPressed(now())
+        screenOff = false
         if (dark) recompute()
         dark
+    }
+
+    /** Turns the screen off: black, while the music and the lights go on, until a key is pressed. */
+    fun turnScreenOff(): Unit = synchronized(lock) {
+        screenOff = true
+        recompute()
     }
 
     fun networkAvailable() {
@@ -663,10 +675,13 @@ class NowPlayingController(
         val quickState = quick.state(decision.screen)
         // No one in the room, as the presence sensors tell: the screen goes dark and the music
         // plays on, never on the setup screen or under a menu. An empty room lets the screen
-        // sleep as no music does, after the same time.
+        // sleep as no music does, after the same time. The screen turned off from the quick
+        // settings goes dark the same way, and the lights go on with the music.
         val sensors = if (s.darkWhenNobody) s.presenceSensors.map { src.entities[it]?.state } else emptyList()
         val nobody = presence.nobodyThere(sensors, t)
-        val dark = nobody && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val darkable = decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val empty = nobody && darkable
+        val dark = (nobody || screenOff) && darkable
         val nobodyLong = presence.nobodySince?.let { t - it >= machine.timing.sleepAfterMs } == true
         // A notification shows where it can be seen: on the stage or the rest screen, with no menu over it.
         val seen = !dark && decision.screen !is Screen.Setup && menuState == null && quickState == null
@@ -716,9 +731,10 @@ class NowPlayingController(
         val pendingDisplay = quick.pending?.let { if (it == StageView.FLOW) QueueDisplay.FLOW else s.queue }
         _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.shownQueue, pendingDisplay, flow))
         // The lights follow what shows, a scene that is ready at once included; lights no longer
-        // chosen, or switched off, go back at once, and so do all of them while the screen is dark.
-        val chosen = if (dark || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
-        lightSync.update(lightTargets.target(s, _ui.value, stage, playing).takeUnless { dark }, chosen)
+        // chosen, or switched off, go back at once, and so do all of them while no one is in the
+        // room. With the screen turned off by hand they go on.
+        val chosen = if (empty || s.roomLightBrightness == RoomLightBrightness.OFF) emptySet() else LightSync.slots(s.roomLights).keys
+        lightSync.update(lightTargets.target(s, _ui.value, stage, playing).takeUnless { empty }, chosen)
         // The setup page is only reachable while the setup screen is visible.
         if (decision.screen is Screen.Setup && viewers > 0) setupServer.start() else setupServer.stop()
     }

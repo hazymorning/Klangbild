@@ -89,7 +89,10 @@ data class UiState(
      * open: the screen may turn off, or the app close.
      */
     val asleep: Boolean = false,
-    /** No one is in the room, as the presence sensors chosen on the phone tell: the screen is dark while the music plays on. */
+    /**
+     * No one is in the room, as the presence sensors chosen on the phone tell, or the screen was
+     * turned off from the quick settings: the screen is dark while the music plays on.
+     */
     val dark: Boolean = false,
     val sleepAction: SleepAction = SleepAction.RELEASE,
     /**

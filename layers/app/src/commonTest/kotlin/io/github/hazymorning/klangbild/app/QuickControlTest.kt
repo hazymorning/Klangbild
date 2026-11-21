@@ -121,6 +121,9 @@ class QuickControlTest {
     /** How often the settings menu opened. */
     private var menuOpened = 0
 
+    /** How often the screen was turned off. */
+    private var screenTurnedOff = 0
+
     private val host = object : ControllerHost {
         override val lock = SynchronizedObject()
         override val log: Log = QuietLog
@@ -138,6 +141,9 @@ class QuickControlTest {
         override fun showMenu() = Unit
         override fun openMenu() {
             menuOpened++
+        }
+        override fun turnScreenOff() {
+            screenTurnedOff++
         }
         override fun applySettings(updated: Settings) {
             lyrics = updated.lyrics
@@ -396,15 +402,27 @@ class QuickControlTest {
     }
 
     @Test
-    fun `the last entry opens all settings, and the quick settings make way`() {
+    fun `Settings opens all settings, and the quick settings make way`() {
         if (!quick.isOpen) quick.open()
-        assertThat(rows().last().item).isEqualTo(QuickItem.SETTINGS)
-        assertThat(rows().last().label).isEqualTo("Settings")
-        assertThat(rows().last().value).isEqualTo("Open")
+        val settings = rows().first { it.item == QuickItem.SETTINGS }
+        assertThat(settings.label).isEqualTo("Settings")
+        assertThat(settings.value).isEqualTo("Open")
         chooseEntry(QuickItem.SETTINGS)
         quick.change()
         assertThat(quick.isOpen).isFalse()
         assertThat(menuOpened).isEqualTo(1)
+    }
+
+    @Test
+    fun `the last entry turns the screen off, and the quick settings make way`() {
+        if (!quick.isOpen) quick.open()
+        assertThat(rows().last().item).isEqualTo(QuickItem.SCREEN)
+        assertThat(rows().last().label to rows().last().value).isEqualTo("Screen" to "Turn off")
+        chooseEntry(QuickItem.SCREEN)
+        quick.change()
+        assertThat(quick.isOpen).isFalse()
+        assertThat(screenTurnedOff).isEqualTo(1)
+        assertThat(menuOpened).isEqualTo(0)
     }
 
     @Test
