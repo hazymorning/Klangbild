@@ -45,9 +45,8 @@ import kotlin.time.Clock
 
 /**
  * Home Assistant as the source: the configured media_player plus `sun.sun` and the entities
- * of one's own, enriched with what its queue says ([QueueReader]: what comes next,
- * full-size artwork, with Music Assistant itself the whole queue and the words of the song).
- * Remote commands go out only where the player supports them.
+ * of one's own, enriched with what its queue says ([QueueReader]). Remote commands go out only
+ * where the player supports them.
  *
  * While this TV plays as a speaker ([speaker]), its own entity ([OwnSpeaker]) is followed too,
  * and music that starts on it shows instead of the chosen speaker until it has stopped

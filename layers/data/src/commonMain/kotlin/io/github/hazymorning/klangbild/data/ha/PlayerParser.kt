@@ -186,7 +186,6 @@ object PlayerParser {
         val album = media?.get("album") as? JsonObject
         val image = media?.string("image") ?: album?.string("image")
         val resolved = HaUrls.resolve(baseUrl, image)
-        val year = (album?.get("year") as? JsonPrimitive)?.intOrNull
         val kind = MediaKind.fromType(media?.string("media_type")) ?: MediaKind.MUSIC
         val isRadio = kind == MediaKind.RADIO
         // Radio: the station is the source, and the stream title (if any) is what plays now: its
@@ -201,7 +200,7 @@ object PlayerParser {
             title = title,
             artists = artists,
             album = album?.string("name")?.takeIf { it.isNotBlank() },
-            year = year,
+            year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
             durationMs = (item["duration"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
             artworkUrl = resolved,
             source = if (isRadio) name else null,

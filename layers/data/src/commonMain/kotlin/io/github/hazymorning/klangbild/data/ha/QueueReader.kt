@@ -59,12 +59,13 @@ data class QueueTiming(
 
 /**
  * The queue around the song that plays, for a Music Assistant player: Home Assistant's
- * `get_queue` (what comes next, full-size artwork, the artists one by one) and, with Music
- * Assistant itself set up ([ma]), the whole queue around the current item and the words of the
- * song that plays ([MaLyrics]). One read at a time: a new song cancels the read under way, so
- * quick skips leave nothing running. A Music Assistant song waits for its queue to describe it
- * ([awaitsDetails]), and the song is enriched with what the queue knows ([enrich]), its position
- * too: Home Assistant rounds it down to whole seconds, Music Assistant does not ([readPosition]).
+ * `get_queue` (what comes next, full-size artwork, the album's year, the artists one by one)
+ * and, with Music Assistant itself set up ([ma]), the whole queue around the current item, the
+ * words of the song that plays ([MaLyrics]) and a few sentences about its artist ([MaBios]). One
+ * read at a time: a new song cancels the read under way, so quick skips leave nothing running. A
+ * Music Assistant song waits for its queue to describe it ([awaitsDetails]), and the song is
+ * enriched with what the queue knows ([enrich]), its position too: Home Assistant rounds it down
+ * to whole seconds, Music Assistant does not ([readPosition]).
  *
  * It shares [HaSource]'s [lock]; what it learns it hands on by [publish].
  */
@@ -398,11 +399,11 @@ internal class QueueReader(
         // Music Assistant's own picture of the song: its current item, or the next one of the
         // queue read before while the song is only announced.
         val own = if (known) mine else window?.coming?.firstOrNull()?.takeIf { it.kind == track.kind && sameTitle(it.title, track.title) }
-        // Only Music Assistant's own queue knows the album's year.
         return p.copy(
             track = track.copy(
                 artists = current.artists.ifEmpty { mine?.artists.orEmpty() }.ifEmpty { track.artists },
                 album = track.album ?: current.album,
+                // Only a queue knows the album's year: Home Assistant's, else Music Assistant's own.
                 year = current.year ?: mine?.year ?: track.year,
                 artworkUrl = own?.artworkUrl ?: current.artworkUrl ?: track.artworkUrl,
                 // Behind it Music Assistant's proxy for a service's picture, else Home Assistant's
