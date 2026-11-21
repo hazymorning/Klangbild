@@ -10,6 +10,7 @@ import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
+import io.github.hazymorning.klangbild.domain.sounding
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
@@ -66,7 +67,7 @@ internal class StageModel(
     val lyricsDelayMs: () -> Long = { 0L },
 ) {
     /** Whether the track plays or is about to: the progress bar and the lyrics move on. */
-    val playing: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING
+    val playing: Boolean get() = status.sounding
 }
 
 /**

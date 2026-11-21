@@ -42,6 +42,7 @@ import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.domain.SpeakerLabel
 import io.github.hazymorning.klangbild.domain.TimeText
 import io.github.hazymorning.klangbild.domain.TrackText
+import io.github.hazymorning.klangbild.domain.sounding
 import io.github.hazymorning.klangbild.render.ScreenSpec
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
@@ -357,7 +358,7 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     // The stage's tick: fast while music plays. With nothing to redraw, with the settings
     // covering the stage, or with the screen going dark for no one in the room, it stops.
     val tick = rememberTickLoop(
-        fast = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING,
+        fast = status.sounding,
         running = (moving || barMoves || stage.lyrics != null || stage.bio != null) && ui.menu == null && !ui.dark,
     )
     CompositionLocalProvider(LocalFieldTime provides fieldTime, LocalStageTick provides tick) {
