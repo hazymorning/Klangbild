@@ -131,9 +131,6 @@ class HaSource(
     /** The latest reports of where the song stands, the best of which is published (only touched while publishing). */
     private val positions = PositionReports()
 
-    /** What the connection was asked to follow besides the chosen speaker and the sun. */
-    private var alsoFollowed: Set<String> = emptySet()
-
     /** The lights that join in, followed for `LightSync` alongside the group's speakers. */
     @Volatile private var lightIds: Set<String> = emptySet()
     private val _lights = MutableStateFlow<Map<String, EntityState>>(emptyMap())
@@ -348,12 +345,8 @@ class HaSource(
         val others = player?.groupMembers.orEmpty()
         val followed = others.toSet() + lightIds + ownIds + otherIds + setOfNotNull(own?.entity) +
             (if (others.size + 1 >= EVERYWHERE_MIN) maSpeakers() else emptySet())
-        if (followed != alsoFollowed) {
-            alsoFollowed = followed
-            connection.followAlso(followed)
-        }
-        val lightStates = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
-        if (lightStates != _lights.value) _lights.value = lightStates
+        connection.followAlso(followed)
+        _lights.value = lightIds.mapNotNull { id -> entities[id]?.let { id to it } }.toMap()
         val queueKnown = queue.knows(key)
         val currentQueue = queue.queueFor(key)
         val currentWindow = queue.windowFor(key)
@@ -472,9 +465,7 @@ class HaSource(
     }
 
     /** Music Assistant's media players, as the entity registry lists them. */
-    private fun maSpeakers(): Set<String> =
-        connection.registry.value?.filter { it.platform == MA_PLATFORM && it.entityId.startsWith("media_player.") }
-            ?.map { it.entityId }?.toSet().orEmpty()
+    private fun maSpeakers(): Set<String> = connection.registry.value?.maSpeakerIds()?.toSet().orEmpty()
 
     /**
      * All of the house's speakers play together (and there are at least [EVERYWHERE_MIN]): the
@@ -496,9 +487,6 @@ class HaSource(
 
         /** After this many failed questions in a row, a party counts as over. */
         const val PARTY_FAILURES = 2
-
-        /** Music Assistant's integration in Home Assistant's entity registry. */
-        const val MA_PLATFORM = "music_assistant"
 
         /** The translation key of Music Assistant's "Favorite current song" button. */
         const val FAVORITE_KEY = "favorite_now_playing"

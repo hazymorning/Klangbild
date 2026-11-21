@@ -81,6 +81,13 @@ data class RegistryEntry(
     val displayPrecision: Int? = null,
 )
 
+/** Music Assistant's integration in Home Assistant's entity registry. */
+internal const val MA_PLATFORM = "music_assistant"
+
+/** The entities of Music Assistant's media players among these entries. */
+internal fun List<RegistryEntry>.maSpeakerIds(): List<String> =
+    filter { it.platform == MA_PLATFORM && it.entityId.startsWith("media_player.") }.map { it.entityId }
+
 /**
  * The WebSocket connection to Home Assistant, using only its documented commands
  * (https://developers.home-assistant.io/docs/api/websocket). It authenticates, follows the
@@ -191,8 +198,7 @@ class HaConnection(
 
     /** Reads the entity registry as listed for display again ([registry]): an entity Home Assistant has added since. */
     suspend fun refreshRegistry() {
-        val s = session ?: return
-        registryOf(optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } })?.let { _registry.value = it }
+        readRegistry(session ?: return)
     }
 
     /**
@@ -432,10 +438,7 @@ class HaConnection(
                 val unit = ((config?.get("unit_system") as? JsonObject)?.get("temperature") as? JsonPrimitive)?.content
                 unit?.takeIf { it.isNotBlank() }?.let { _temperatureUnit.value = it }
             }
-            sessionScope.launch {
-                val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
-                registryOf(list)?.let { _registry.value = it }
-            }
+            sessionScope.launch { readRegistry(s) }
             val pinger = sessionScope.launch { ping() }
             val extraWatcher = sessionScope.launch { extraIds.collect { extraChanges.send(it) } }
             val pushWatcher = sessionScope.launch { pushWebhook.collect { pushChanges.send(it) } }
@@ -656,6 +659,12 @@ class HaConnection(
 
     /** A command whose answer is welcome but not needed: null when it fails. */
     private suspend fun optional(s: Session, build: (Int) -> JsonObject): JsonElement? = orNull { s.command(answerTimeoutMs, build) }
+
+    /** Reads the entity registry as listed for display into [registry]; a read that fails keeps what was known. */
+    private suspend fun readRegistry(s: Session) {
+        val list = optional(s) { id -> buildJsonObject { put("id", id); put("type", "config/entity_registry/list_for_display") } }
+        registryOf(list)?.let { _registry.value = it }
+    }
 
     /** The entity and its new state (null: removed) from a trigger or a `state_changed` event. */
     private fun changeOf(event: JsonObject, feed: Feed): Pair<String, EntityState?>? {
