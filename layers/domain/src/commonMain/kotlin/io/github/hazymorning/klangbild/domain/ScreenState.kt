@@ -96,8 +96,7 @@ class ScreenStateMachine(val timing: Timing = Timing()) {
             raw is Screen.Rest && raw.reason == RestReason.IDLE && now - lastPlayingAt < timing.betweenTracksMs -> lastPlaying ?: raw
             else -> raw.also { lastPlaying = null }
         }
-        val playing = screen is Screen.Stage &&
-            (screen.status == PlayerStatus.PLAYING || screen.status == PlayerStatus.BUFFERING)
+        val playing = screen is Screen.Stage && screen.status.sounding
         notPlayingSince = if (playing) null else (notPlayingSince ?: now)
         val idleFor = notPlayingSince?.let { now - it } ?: 0L
         // Setup gets more time (someone is typing on a phone), but never forever (OLED).

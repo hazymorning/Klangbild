@@ -61,7 +61,7 @@ class OtherRooms(private val backMs: Long = SpeakerSwitch.BACK_MS, private val p
     }
 
     private fun PlayerSnapshot?.plays(): Boolean =
-        this != null && track != null && (status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING)
+        this != null && track != null && status.sounding
 
     /** Since when a speaker has been paused, or has stopped. */
     private inner class Quiet {
