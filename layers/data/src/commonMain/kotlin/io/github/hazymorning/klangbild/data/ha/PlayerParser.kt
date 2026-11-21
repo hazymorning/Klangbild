@@ -8,13 +8,12 @@ import io.github.hazymorning.klangbild.domain.PlayerSnapshot
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueueInfo
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.double
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlin.math.roundToLong
 
 /** Maps Home Assistant entity states and Music Assistant queue responses to domain types. */
@@ -80,7 +79,7 @@ object PlayerParser {
             isMusicAssistant = isMa,
             groupMembers = groupMembers(entity),
             volume = entity.number("volume_level")?.toFloat()?.coerceIn(0f, 1f),
-            muted = (entity.attr("is_volume_muted") as? JsonPrimitive)?.booleanOrNull == true,
+            muted = entity.attr("is_volume_muted").boolean() == true,
             isGroupPlayer = entity.string("mass_player_type") == "group",
             shuffle = shuffleOf(entity),
             abilities = abilitiesOf(entity),
@@ -90,7 +89,7 @@ object PlayerParser {
 
     /** Shuffle as the player reports it, or null when it cannot shuffle (`supported_features` lacks SHUFFLE_SET). */
     fun shuffleOf(entity: EntityState): Boolean? {
-        val on = (entity.attr("shuffle") as? JsonPrimitive)?.booleanOrNull
+        val on = entity.attr("shuffle").boolean()
         val features = entity.number("supported_features")?.toLong() ?: return on
         return if (features and Feature.SHUFFLE_SET != 0L) on ?: false else null
     }
@@ -170,8 +169,8 @@ object PlayerParser {
             next = next?.let { queueItem(it, baseUrl) },
             name = q.string("name")?.trim()?.takeIf { it.isNotEmpty() },
             queueId = q.string("queue_id")?.takeIf { it.isNotBlank() },
-            currentIndex = (q["current_index"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
-            items = (q["items"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
+            currentIndex = q.int("current_index")?.takeIf { it >= 0 },
+            items = q.int("items")?.takeIf { it >= 0 },
         )
     }
 
@@ -200,8 +199,8 @@ object PlayerParser {
             title = title,
             artists = artists,
             album = album?.string("name")?.takeIf { it.isNotBlank() },
-            year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
-            durationMs = (item["duration"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
+            year = album?.int("year")?.takeIf { it > 0 && !isRadio },
+            durationMs = item.double("duration")?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() },
             artworkUrl = resolved,
             source = if (isRadio) name else null,
             kind = kind,

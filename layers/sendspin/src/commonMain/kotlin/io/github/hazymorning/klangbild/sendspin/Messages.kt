@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.sendspin
 
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -62,9 +63,9 @@ object PcmFormat {
 
     fun matches(o: JsonObject?): Boolean = o != null &&
         o.string("codec") == CODEC &&
-        (o["sample_rate"] as? JsonPrimitive)?.intOrNull == RATE &&
-        (o["channels"] as? JsonPrimitive)?.intOrNull == CHANNELS &&
-        (o["bit_depth"] as? JsonPrimitive)?.intOrNull == BITS
+        o.int("sample_rate") == RATE &&
+        o.int("channels") == CHANNELS &&
+        o.int("bit_depth") == BITS
 
     fun json(): JsonObject = buildJsonObject {
         put("codec", CODEC)

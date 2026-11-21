@@ -5,6 +5,8 @@ import io.github.hazymorning.klangbild.data.Push
 import io.github.hazymorning.klangbild.data.WebSocketLink
 import io.github.hazymorning.klangbild.data.orNull
 import io.github.hazymorning.klangbild.domain.EntityState
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.atomic
@@ -36,10 +38,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
@@ -500,7 +500,7 @@ class HaConnection(
                 return null
             }
             for (msg in parseMessages(text)) {
-                val id = (msg["id"] as? JsonPrimitive)?.intOrNull
+                val id = msg.int("id")
                 when (msg.type()) {
                     "event" -> if (id != null && id == pushSub) onPush(msg) else if (id != null && (id == mainSub || id == extraSub)) onEvent(msg)
                     "result" -> onResult(id, msg)?.let { return it }
@@ -525,7 +525,7 @@ class HaConnection(
 
         /** A command's result, for a call that waits for it or for a subscription; ends the session when the main subscription failed. */
         private fun onResult(id: Int?, msg: JsonObject): SessionEnd? {
-            val ok = (msg["success"] as? JsonPrimitive)?.booleanOrNull == true
+            val ok = msg.boolean("success") == true
             val error = msg["error"] as? JsonObject
             val waiter = id?.let { s.waiter(it) }
             when {
@@ -685,7 +685,7 @@ class HaConnection(
                 deviceId = o.string("di"),
                 translationKey = o.string("tk"),
                 // Home Assistant offers up to six decimals.
-                displayPrecision = (o["dp"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..6 },
+                displayPrecision = o.int("dp")?.takeIf { it in 0..6 },
             )
         }
     }

@@ -1,12 +1,11 @@
 package io.github.hazymorning.klangbild.domain
 
+import io.github.hazymorning.klangbild.json.double
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
 import kotlin.time.Instant
 
 /**
@@ -25,7 +24,7 @@ data class EntityState(
 ) {
     fun attr(name: String): JsonElement? = attributes[name]?.takeUnless { it is JsonNull }
     fun string(name: String): String? = attr(name).string()
-    fun number(name: String): Double? = (attr(name) as? JsonPrimitive)?.doubleOrNull
+    fun number(name: String): Double? = attr(name).double()
 
     /** A whole number such as a brightness, with any fraction dropped. */
     fun int(name: String): Int? = number(name)?.toInt()

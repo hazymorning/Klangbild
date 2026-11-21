@@ -12,6 +12,8 @@ import io.github.hazymorning.klangbild.data.ha.HaTokens
 import io.github.hazymorning.klangbild.data.ha.HaUrls
 import io.github.hazymorning.klangbild.domain.EntityId
 import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
@@ -23,10 +25,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlin.concurrent.Volatile
@@ -419,8 +419,8 @@ class SetupHandler(
             ?: return MiniHttp.Response.json(400, error(t[Strings.setupErrorSpeaker]))
         // "This TV" follows the TV's own speaker, which needs Music Assistant, and turns playing here on.
         if (entity == EntityId.THIS_TV && !withMa.hasMusicAssistant) return MiniHttp.Response.json(400, error(t[Strings.setupErrorThisTv]))
-        val tvSpeaker = entity == EntityId.THIS_TV || (body.bool("tvSpeaker") ?: current.tvSpeaker)
-        val minutes = (body["sleepMinutes"] as? JsonPrimitive)?.intOrNull ?: body.string("sleepMinutes")?.toIntOrNull()
+        val tvSpeaker = entity == EntityId.THIS_TV || (body.boolean("tvSpeaker") ?: current.tvSpeaker)
+        val minutes = body.int("sleepMinutes") ?: body.string("sleepMinutes")?.toIntOrNull()
             ?: current.sleepAfterMinutes
         if (minutes !in 1..Settings.MAX_SLEEP_MINUTES) return MiniHttp.Response.json(400, error(t[Strings.setupErrorSleep]))
         val action = when (body.string("sleepAction")) {
@@ -474,8 +474,8 @@ class SetupHandler(
         val updated = withMa.following(entity).withPlayHere(tvSpeaker).copy(
             sleepAfterMinutes = minutes,
             sleepAction = action,
-            showClock = body.bool("clock") ?: current.showClock,
-            remoteControl = body.bool("remote") ?: current.remoteControl,
+            showClock = body.boolean("clock") ?: current.showClock,
+            remoteControl = body.boolean("remote") ?: current.remoteControl,
             roomLights = roomLights,
             quickActions = actions,
             ownValues = values,
@@ -525,8 +525,6 @@ class SetupHandler(
         for (i in a.indices) differ = differ or (a[i].toInt() xor b[if (i < b.size) i else 0].toInt())
         return differ == 0
     }
-
-    private fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
 
     companion object {
         const val MAX_FAILURES = 8

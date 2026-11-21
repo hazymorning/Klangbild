@@ -3,6 +3,7 @@ package io.github.hazymorning.klangbild.data.ma
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.WebSocketLink
 import io.github.hazymorning.klangbild.data.WebUrl.Companion.toWebUrl
+import io.github.hazymorning.klangbild.json.long
 import io.github.hazymorning.klangbild.json.string
 import io.github.hazymorning.klangbild.sendspin.ClockMap
 import io.github.hazymorning.klangbild.sendspin.Outgoing
@@ -27,9 +28,7 @@ import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -188,10 +187,9 @@ class MilkdropSound(
         /** A `server/time` answer that arrived at [received], taken into the clock filter; whether it was taken. */
         private fun time(msg: JsonObject, received: Long): Boolean {
             val p = msg["payload"] as? JsonObject ?: return false
-            fun long(key: String) = (p[key] as? JsonPrimitive)?.longOrNull
-            val sent = long("client_transmitted") ?: return false
-            val serverReceived = long("server_received") ?: return false
-            val serverSent = long("server_transmitted") ?: return false
+            val sent = p.long("client_transmitted") ?: return false
+            val serverReceived = p.long("server_received") ?: return false
+            val serverSent = p.long("server_transmitted") ?: return false
             if (!filter.update(sent, serverReceived, serverSent, received)) return false
             if (filter.count >= SYNCED_AFTER) clock = filter.snapshot()
             return true

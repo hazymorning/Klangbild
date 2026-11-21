@@ -5,14 +5,14 @@ import io.github.hazymorning.klangbild.domain.Chapter
 import io.github.hazymorning.klangbild.domain.Chapters
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.json.boolean
+import io.github.hazymorning.klangbild.json.double
+import io.github.hazymorning.klangbild.json.int
 import io.github.hazymorning.klangbild.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlin.math.roundToLong
 
 /**
@@ -81,11 +81,11 @@ object MaQueue {
         val current = queue["current_item"] as? JsonObject
         val next = queue["next_item"] as? JsonObject
         return QueueState(
-            index = (queue["current_index"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 },
+            index = queue.int("current_index")?.takeIf { it >= 0 },
             current = current?.let { track(it, baseUrl) },
             next = next?.let { track(it, baseUrl) },
             nextId = next?.string("queue_item_id"),
-            items = (queue["items"] as? JsonPrimitive)?.intOrNull,
+            items = queue.int("items"),
         )
     }
 
@@ -95,8 +95,8 @@ object MaQueue {
      * null when it does not say.
      */
     fun position(queue: JsonObject): QueuePosition? {
-        val elapsed = (queue["elapsed_time"] as? JsonPrimitive)?.doubleOrNull ?: return null
-        val updated = (queue["elapsed_time_last_updated"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        val elapsed = queue.double("elapsed_time") ?: return null
+        val updated = queue.double("elapsed_time_last_updated") ?: return null
         return QueuePosition(
             elapsedMs = (elapsed * 1_000).roundToLong(),
             atMs = (updated * 1_000).roundToLong(),
@@ -115,7 +115,7 @@ object MaQueue {
 
     /** How fast an item plays: Music Assistant keeps a book's or an episode's speed with its queue item. */
     fun speed(item: JsonObject): Float =
-        ((item["extra_attributes"] as? JsonObject)?.get("playback_speed") as? JsonPrimitive)?.doubleOrNull
+        (item["extra_attributes"] as? JsonObject)?.double("playback_speed")
             ?.takeIf { it in MIN_SPEED..MAX_SPEED }?.toFloat() ?: 1f
 
     /**
@@ -148,7 +148,7 @@ object MaQueue {
                 else -> null
             }
         }
-        val durationMs = ((playing?.get("duration") ?: item["duration"]) as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() }
+        val durationMs = (playing?.get("duration") ?: item["duration"]).double()?.takeIf { it > 0 }?.let { (it * 1000).roundToLong() }
         val artists = when (kind) {
             MediaKind.AUDIOBOOK -> names(media?.get("authors"))
             MediaKind.PODCAST -> listOfNotNull((media?.get("podcast") as? JsonObject)?.string("name")?.trim()?.takeIf { it.isNotEmpty() })
@@ -163,14 +163,14 @@ object MaQueue {
             },
             artists = artists,
             album = if (isRadio) playing?.string("album")?.takeIf { it.isNotBlank() && !it.equals(name, ignoreCase = true) } else album?.string("name")?.takeIf { it.isNotBlank() },
-            year = (album?.get("year") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 && !isRadio },
+            year = album?.int("year")?.takeIf { it > 0 && !isRadio },
             durationMs = durationMs,
             artworkUrl = songPicture ?: picture?.url,
             artworkFallbackUrl = if (songPicture != null) picture?.url else picture?.fallback,
             source = if (isRadio) name else null,
             kind = kind,
             chapters = if (kind.spoken) chapters(media, durationMs) else emptyList(),
-            favorite = !isRadio && (media?.get("favorite") as? JsonPrimitive)?.booleanOrNull == true,
+            favorite = !isRadio && media?.boolean("favorite") == true,
             songPicture = songPicture != null,
             queueItemId = item.string("queue_item_id")?.takeIf { it.isNotBlank() },
         )
@@ -191,12 +191,12 @@ object MaQueue {
         val list = ((media?.get("metadata") as? JsonObject)?.get("chapters") as? JsonArray) ?: return emptyList()
         val raw = list.take(MAX_CHAPTERS).mapNotNull { e ->
             val c = e as? JsonObject ?: return@mapNotNull null
-            val start = (c["start"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+            val start = c.double("start") ?: return@mapNotNull null
             Chapters.Raw(
-                position = (c["position"] as? JsonPrimitive)?.intOrNull ?: 0,
+                position = c.int("position") ?: 0,
                 name = c.string("name"),
                 start = start,
-                end = (c["end"] as? JsonPrimitive)?.doubleOrNull,
+                end = c.double("end"),
             )
         }
         return Chapters.of(raw, durationMs)
@@ -212,7 +212,7 @@ object MaQueue {
     private fun image(image: JsonObject?, baseUrl: String): Artwork? {
         val path = image?.string("path")?.takeIf { it.isNotBlank() } ?: return null
         val proxy = image.string("proxy_id")?.takeIf { it.isNotBlank() }?.let { "$baseUrl/imageproxy/$it?size=$PROXY_SIZE" }
-        val remote = (image["remotely_accessible"] as? JsonPrimitive)?.booleanOrNull == true &&
+        val remote = image.boolean("remotely_accessible") == true &&
             (path.startsWith("https://") || path.startsWith("http://"))
         return when {
             remote -> Artwork(path, proxy)

@@ -19,7 +19,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlin.concurrent.Volatile
@@ -618,7 +617,7 @@ class LightSync(
         val modes = (s.attr("supported_color_modes") as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }.orEmpty().toSet()
         val color = modes.any { it in COLOR_MODES }
         val temperature = "color_temp" in modes
-        val features = (s.attr("supported_features") as? JsonPrimitive)?.longOrNull ?: 0L
+        val features = s.number("supported_features")?.toLong() ?: 0L
         return Caps(
             color = color,
             temperature = temperature,

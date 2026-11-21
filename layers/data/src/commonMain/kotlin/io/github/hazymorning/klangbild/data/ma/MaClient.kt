@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.data.bodyBytes
 import io.github.hazymorning.klangbild.data.fetch
 import io.github.hazymorning.klangbild.data.textBelow
 import io.github.hazymorning.klangbild.domain.MaLink
+import io.github.hazymorning.klangbild.json.double
 import io.github.hazymorning.klangbild.json.string
 import io.ktor.client.HttpClient
 import io.ktor.client.request.setBody
@@ -25,9 +26,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 
 /** Music Assistant rejected the token. */
@@ -108,7 +107,7 @@ class MaClient(
 
     /** Music Assistant's own clock (`time`, its wall clock in seconds), for its queue's times. */
     suspend fun serverTime(): Double =
-        (command("time", JsonObject(emptyMap())) as? JsonPrimitive)?.doubleOrNull ?: throw IOException("Unexpected answer to time")
+        command("time", JsonObject(emptyMap())).double() ?: throw IOException("Unexpected answer to time")
 
     /** Whether address and token work, as the menu and the setup page say it. */
     suspend fun check(): MaLink = try {
