@@ -205,7 +205,11 @@ internal fun CoverLayer(
     Canvas(
         modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) },
+            // Faded in its one draw call, without a layer of the screen's size.
+            .graphicsLayer {
+                this.alpha = alpha().coerceIn(0f, 1f)
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
     ) {
         val filter = filters.at(coverLevel(), scene.appearance)
         val w = scene.cover.width.toFloat()
