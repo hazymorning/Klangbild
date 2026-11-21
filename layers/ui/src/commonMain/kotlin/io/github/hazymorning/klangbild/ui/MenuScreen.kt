@@ -71,6 +71,7 @@ import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.ui.stage.BaseWall
 import io.github.hazymorning.klangbild.ui.text.BalancedText
 import io.github.hazymorning.klangbild.ui.text.sentenceLineBreak
+import io.github.hazymorning.klangbild.ui.theme.Faces
 import io.github.hazymorning.klangbild.ui.theme.Fonts
 import io.github.hazymorning.klangbild.ui.theme.faces
 import io.github.hazymorning.klangbild.ui.theme.firstBaseline
@@ -249,14 +250,9 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
     // The list moves so that the chosen row comes to rest in the light; a held key runs it on evenly.
     val offset = animateGlide(focusY - (cursor * MenuGrid.ROW + MenuGrid.ROW / 2f), GLIDE_MS)
 
-    // Left: the heading's cap height on the artwork's top edge, the description level with the
-    // chosen row.
+    // Left: the heading, the chosen row's description and the hint.
     val faces = faces()
-    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
-    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
-    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
-        BasicText(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], style = headingStyle)
-    }
+    MenuHeading(menu.section?.let { t[it.title] } ?: t[Strings.menuHeading], layout, faces, colors)
     // While a key is held the list runs on under the light: the description goes, and comes
     // back with the row the key is let go on.
     Crossfade(
@@ -264,13 +260,9 @@ private fun MenuLevel(menu: MenuState, layout: StageGrid, focusY: Float, colors:
         animationSpec = tween(320, easing = Motion.Dimmer),
         label = "menu-description",
     ) { text ->
-        if (text != null) BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-            BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
-        }
+        if (text != null) MenuDescription(text, layout, focusY, faces, colors)
     }
-    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
-        BasicText(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
-    }
+    MenuHint(t[if (menu.section == null) Strings.menuHintGroups else Strings.menuHint], layout, faces, colors)
 
     // Right: the rows in the text column.
     val labelStyle = faces.textType(MenuGrid.LABEL_SP, MenuGrid.LABEL_WEIGHT)
@@ -322,17 +314,9 @@ private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, foc
     val offset = animateGlide(if (heights.isEmpty()) focusY else focusY - (tops[cursor] + heights[cursor] / 2f), GLIDE_MS)
     val chosen = set.indices.map { i -> animateFloatAsState(if (i == cursor) 1f else 0f, tween(260, easing = Motion.Dimmer), label = "note") }
 
-    val headingStyle = faces.titleType(HEADING_SP, 420, colors.heading)
-    val headingCap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
-    BaselineAt(x = layout.margin, baseline = layout.artTop + headingCap, width = layout.art) {
-        BasicText(t.format(Strings.notesHeading, notes.version), style = headingStyle)
-    }
-    BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
-        BalancedText(AnnotatedString(t[Strings.aboutUpdateInstall]), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
-    }
-    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
-        BasicText(t[Strings.menuHintNotes], style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
-    }
+    MenuHeading(t.format(Strings.notesHeading, notes.version), layout, faces, colors)
+    MenuDescription(t[Strings.aboutUpdateInstall], layout, focusY, faces, colors)
+    MenuHint(t[Strings.menuHintNotes], layout, faces, colors)
 
     // Right: the points, each line faded as a row would be where it stands, so a long point is
     // gone before the screen's edge as rows are.
@@ -431,6 +415,32 @@ private fun MenuItem(row: MenuRow, focused: Boolean, labelStyle: TextStyle, valu
         ) { value ->
             ValueText(value, valueStyle, color = { valueColor }, dots)
         }
+    }
+}
+
+/** A level's heading on the left, its cap height on the artwork's top edge. */
+@Composable
+private fun MenuHeading(text: String, layout: StageGrid, faces: Faces, colors: MenuColors) {
+    val style = faces.titleType(HEADING_SP, 420, colors.heading)
+    val cap = with(LocalDensity.current) { HEADING_SP.sp.toDp().value } * Fonts.CAP_HEIGHT
+    BaselineAt(x = layout.margin, baseline = layout.artTop + cap, width = layout.art) {
+        BasicText(text, style = style)
+    }
+}
+
+/** A description on the left, its first line level with the chosen row. */
+@Composable
+private fun MenuDescription(text: String, layout: StageGrid, focusY: Float, faces: Faces, colors: MenuColors) {
+    BaselineAt(x = layout.margin, baseline = focusY + LABEL_BASELINE_FROM_CENTER, width = layout.art - 24f) {
+        BalancedText(AnnotatedString(text), faces.textType(18f, 420, colors.description, lineHeight = 26f).merge(TextStyle(lineBreak = sentenceLineBreak)))
+    }
+}
+
+/** The hint on the left, its baseline on the artwork's bottom edge: what the keys do here. */
+@Composable
+private fun MenuHint(text: String, layout: StageGrid, faces: Faces, colors: MenuColors) {
+    BaselineAt(x = layout.margin, baseline = layout.artTop + layout.art, width = layout.art) {
+        BasicText(text, style = faces.textType(15f, 500, colors.hint, tracking = 0.01f))
     }
 }
 
