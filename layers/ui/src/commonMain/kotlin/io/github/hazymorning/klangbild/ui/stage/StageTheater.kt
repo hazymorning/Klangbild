@@ -41,7 +41,7 @@ internal enum class Change {
     /** The same track on the other background (light ↔ dark): a slower crossfade, like the light outside. */
     WALL,
 
-    /** The same track and cover with the column arranged anew (its lyrics or the queue's list come or go): only the text changes. */
+    /** The same track and cover with the column arranged anew (its lyrics, the artist's page or the queue's list come or go): only the text changes. */
     COLUMN,
 
     /** The same track with another queue (an item put in, the order changed): only the list's rows move. */
@@ -153,7 +153,7 @@ internal fun StageTheater(
         }
     }
     // The background's light turns from the old colors to the new over the whole change.
-    val newGlow: () -> Float = {
+    val newWall: () -> Float = {
         when {
             !coverChanges -> 1f
             kind == Change.FULL -> p(0, Motion.GLOW_MS, Motion.Sine)
@@ -240,16 +240,16 @@ internal fun StageTheater(
         BaseWall((oldWall ?: cur.scene).palette.wall.asColor())
         if (oldWall != null) {
             WallLayer(oldWall, lightLevel = lightLevel, onOwnWall = true)
-            WallMargin(cur.scene.palette.wall.asColor(), alpha = newGlow)
+            WallMargin(cur.scene.palette.wall.asColor(), alpha = newWall)
         }
-        WallLayer(cur.scene, alpha = newGlow, lightLevel = lightLevel, onOwnWall = oldWall == null)
+        WallLayer(cur.scene, alpha = newWall, lightLevel = lightLevel, onOwnWall = oldWall == null)
         if (prev != null && coverChanges) CoverLayer(prev.scene, alpha = oldCover, coverLevel = { dim.coverLevel })
         CoverLayer(cur.scene, alpha = newCover, coverLevel = { dim.coverLevel })
         // A party's code stands in the cover's place and stays while the tracks change beneath it.
         // When the background changes, its card changes with it.
-        val newWall = prev != null && prev.scene.appearance != cur.scene.appearance
-        if (newWall) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, coverLevel = { dim.coverLevel })
-        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (newWall) newCover() else 1f }, coverLevel = { dim.coverLevel })
+        val appearanceChanges = prev != null && prev.scene.appearance != cur.scene.appearance
+        if (appearanceChanges) PartyCodeLayer(party.on(prev.scene.appearance), prev.scene, alpha = party.shown, coverLevel = { dim.coverLevel })
+        PartyCodeLayer(party.on(cur.scene.appearance), cur.scene, alpha = { party.shown() * if (appearanceChanges) newCover() else 1f }, coverLevel = { dim.coverLevel })
         CompositionLocalProvider(LocalWordsStates provides wordsStates) {
             // While only the queue's rows move, the text stays as it stands: nothing leaves.
             if (prevModel != null && kind != Change.ROWS) {

@@ -269,10 +269,11 @@ internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Flo
  * height to the last baseline: (work), title, (version), artist, album · year, then the slot
  * (the progress bar, the station or a notice). The footer ends at the column's foot. With
  * [StageModel.lyrics] the column shows the lyrics ([LyricsText]), with [StageModel.bio] a few
- * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText], whose
- * plan a theater keeps through a change: [queuePlan]). [alpha] and
- * [rise] animate a change line by line, [textLevel] dims the text in a pause, and [shift] moves
- * the column from its place in the grid (dp: Cover Flow moves it left while cards are missing).
+ * sentences about the artist ([BioText]), and with [StageModel.queue] the queue ([QueueText]) as
+ * [queuePlan] has it. A theater plans it for the rows too ([QueueRowsLayer]) and keeps each
+ * stage's slot room through a change ([QueueRooms]). [alpha] and [rise] animate a change line by
+ * line, [textLevel] dims the text in a pause, and [shift] moves the column from its place in the
+ * grid (dp: Cover Flow moves it left while cards are missing).
  */
 @Composable
 internal fun TextLayer(

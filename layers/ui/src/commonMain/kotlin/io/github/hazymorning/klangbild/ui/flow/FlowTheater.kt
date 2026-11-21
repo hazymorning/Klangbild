@@ -67,15 +67,15 @@ internal enum class FlowChange {
     /** The same track on the other background (light ↔ dark): a slower crossfade. */
     WALL,
 
-    /** The same track and cover with the lyrics coming or going in the column: only the text changes. */
-    LYRICS,
+    /** The same track and cover with the column arranged anew (its lyrics or the artist's page come or go): only the text changes. */
+    COLUMN,
     ;
 
     /** A crossfade of the same track. */
     val isSoft get() = this == SOFT || this == WALL
 
     /** New text comes: the old lines leave and the new ones rise at their own places. */
-    val newText get() = this == MOVE || this == TEXT || this == LYRICS
+    val newText get() = this == MOVE || this == TEXT || this == COLUMN
 }
 
 /**
@@ -321,7 +321,7 @@ internal fun changeOf(old: FlowData, new: FlowData): FlowChange {
         a.track.key != b.track.key -> FlowChange.TEXT
         a.scene !== b.scene && a.scene.appearance != b.scene.appearance -> FlowChange.WALL
         a.scene !== b.scene -> FlowChange.SOFT
-        old.lyrics !== new.lyrics || old.bio !== new.bio -> FlowChange.LYRICS
+        old.lyrics !== new.lyrics || old.bio !== new.bio -> FlowChange.COLUMN
         // The same track described anew (a year that came late): its text crossfades, as on the single stage.
         !drawnAlike(a.track, b.track) -> FlowChange.SOFT
         else -> FlowChange.SIDES
@@ -397,7 +397,7 @@ private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry
 
     val turnMs = when (kind) {
         FlowChange.MOVE -> Motion.FLOW_TURN_MS
-        FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_CHANGE_MS
+        FlowChange.TEXT, FlowChange.COLUMN -> Motion.TEXT_CHANGE_MS
         FlowChange.SIDES -> Motion.QUEUE_CHANGE_MS
         FlowChange.SOFT -> Motion.SOFT_SWAP_MS
         FlowChange.WALL -> Motion.WALL_CHANGE_MS
@@ -408,7 +408,7 @@ private fun choreograph(old: FlowData, new: FlowData, kind: FlowChange, geometry
     // New text rises as the new cover turns to face the room, or sooner when only the text changes.
     val riseMs = when (kind) {
         FlowChange.MOVE -> clearMs + Motion.FLOW_TEXT_IN_MS
-        FlowChange.TEXT, FlowChange.LYRICS -> Motion.TEXT_IN_SAME_COVER_MS
+        FlowChange.TEXT, FlowChange.COLUMN -> Motion.TEXT_IN_SAME_COVER_MS
         else -> null
     }
     val totalMs = max(clearMs + turnMs, riseMs?.let { TextRise.endMs(it) } ?: 0)

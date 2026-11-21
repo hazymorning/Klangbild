@@ -55,7 +55,10 @@ internal class StageModel(
      * the track itself, and the progress bar shows only for a moment after a key ([barShown]).
      */
     val bio: ArtistBio? = null,
-    /** The queue as a list in the text column, while it shows and no lyrics fill the column. The track then stands at its top. */
+    /**
+     * The queue as a list in the text column, while it shows and neither the lyrics nor the
+     * artist's page fill the column. The track then stands at its top.
+     */
     val queue: QueueModel? = null,
     /** Whether the player still reports this track. Once it reports the next one, its lyrics are over. */
     val current: Boolean = true,
