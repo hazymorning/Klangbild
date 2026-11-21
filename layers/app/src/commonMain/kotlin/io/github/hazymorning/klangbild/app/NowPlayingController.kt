@@ -144,7 +144,7 @@ class NowPlayingController(
     private var presence = Presence()
 
     /** The screen was turned off from the quick settings: black while the music and the lights go on, until a key is pressed. */
-    private var screenOff = false
+    private var turnedOff = false
 
     /** The notification the status line shows, from Home Assistant. */
     private val messages = StatusMessage()
@@ -179,7 +179,7 @@ class NowPlayingController(
         override val speaker: SpeakerLink get() = this@NowPlayingController.speaker.value.link
         override val update: UpdateInfo get() = updates?.info?.value ?: UpdateInfo()
         override val notifyFailed: Boolean get() = this@NowPlayingController.notifyFailed
-        override fun update() {
+        override fun updateOk() {
             updates?.ok()
         }
         override var language: AppLanguage
@@ -311,7 +311,7 @@ class NowPlayingController(
         // sleep (or close it) before the music has been heard of.
         restartMachine()
         presence = Presence()
-        screenOff = false
+        turnedOff = false
         lastReportKey = null
         volumeFlash.reset()
         _ui.value = _ui.value.copy(
@@ -359,14 +359,14 @@ class NowPlayingController(
     fun keyPressed(): Boolean = synchronized(lock) {
         val dark = _ui.value.dark
         presence.keyPressed(now())
-        screenOff = false
+        turnedOff = false
         if (dark) recompute()
         dark
     }
 
     /** Turns the screen off: black, while the music and the lights go on, until a key is pressed. */
     fun turnScreenOff(): Unit = synchronized(lock) {
-        screenOff = true
+        turnedOff = true
         recompute()
     }
 
@@ -685,10 +685,10 @@ class NowPlayingController(
         val nobody = presence.nobodyThere(sensors, t)
         val darkable = decision.screen !is Screen.Setup && menuState == null && quickState == null
         val empty = nobody && darkable
-        val dark = (nobody || screenOff) && darkable
+        val dark = (nobody || turnedOff) && darkable
         val nobodyLong = presence.nobodySince?.let { t - it >= machine.timing.sleepAfterMs } == true
         // A notification shows where it can be seen: on the stage or the rest screen, with no menu over it.
-        val seen = !dark && decision.screen !is Screen.Setup && menuState == null && quickState == null
+        val seen = !dark && darkable
         val message = messages.line(seen && s.notifications, t)
         // Cover Flow or the single cover, as the song's queue allows.
         val flow = stage?.let { stageBuilder.follow(s, src, it, onStage = previous.stage?.track ?: previous.flow?.middle?.track) } ?: stageBuilder.flowing
@@ -725,13 +725,13 @@ class NowPlayingController(
         fieldClock.run(if (playing) s.motion.speed else 0f)
         val ready = if (stage == null) decided else stageBuilder.build(decided, s, stage, look, previous.stage)
         // Meanwhile the clock stays, never the dark, and the keys and the lights act on what shows;
-        // the quick settings' Queue still names the choice made. One state is published, never one
+        // the quick settings' View still names the choice made. One state is published, never one
         // with nothing to show in between.
         val shown = HeldStage.shown(previous, ready)
         val published = if (shown !== ready) shown.copy(quick = quick.state(shown.screen)) else ready
-        // The queue display just chosen stays pending, with dots after its value in the quick
-        // settings and the menu, until this state shows it.
-        // A view chosen in the quick settings and not applied yet: Cover Flow, or the queue as it stands beside the cover.
+        // The view just chosen stays pending, with dots after its value in the quick settings and
+        // the menu, until this state shows it. One the quick settings haven't applied yet shows the
+        // queue as Cover Flow, or as it stands beside the cover.
         val pendingDisplay = quick.pending?.let { if (it == StageView.FLOW) QueueDisplay.FLOW else s.queue }
         _ui.value = published.copy(queuePending = queueSwitch.onItsWay(ready, stage != null, s.shownQueue, pendingDisplay, flow))
         // The lights follow what shows, a scene that is ready at once included; lights no longer

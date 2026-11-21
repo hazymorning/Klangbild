@@ -55,7 +55,7 @@ class MenuControlTest {
         override var language: AppLanguage = AppLanguage.ENGLISH
         override val speaker = io.github.hazymorning.klangbild.domain.SpeakerLink.OFF
         override val update = UpdateInfo(name = "2026.10.5", latest = "v2026.11.0", notes = NOTES)
-        override fun update() {
+        override fun updateOk() {
             updates++
         }
         override fun recompute() {

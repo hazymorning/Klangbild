@@ -128,7 +128,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
                 reading = false
                 cursor = UPDATE_LINE
                 host.recompute()
-                host.update()
+                host.updateOk()
                 return
             }
             if (group == null) {
@@ -163,7 +163,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             // for them by itself. A held OK does it once.
             entry == MenuEntry.UPDATE -> if (wrap && !repeat) {
                 if (host.update.available == null) {
-                    host.update()
+                    host.updateOk()
                 } else {
                     synchronized(host.lock) {
                         reading = true

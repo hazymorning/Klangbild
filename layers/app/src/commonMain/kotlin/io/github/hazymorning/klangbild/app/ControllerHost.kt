@@ -50,7 +50,7 @@ internal interface ControllerHost {
     val notifyFailed: Boolean get() = false
 
     /** OK on the menu's Update line: installs a new version, or asks for one now. */
-    fun update()
+    fun updateOk()
 
     /** Works out the screen again (takes [lock]). */
     fun recompute()

@@ -36,7 +36,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     /** The view chosen with OK and applied once the presses stop (so stepping through never shows the ones in between). */
     @Volatile private var pendingView: StageView? = null
-    private var pictureJob: Job? = null
+    private var viewJob: Job? = null
 
     /** The lights' level before they were switched off from the quick settings. */
     private var lightsBefore = RoomLightBrightness.DEFAULT
@@ -65,7 +65,7 @@ internal class QuickControl(private val host: ControllerHost) {
 
     val isOpen: Boolean get() = cursor != null
 
-    /** Opens the quick settings on the queue's entry. Once opened, the stage no longer tells how. */
+    /** Opens the quick settings on their first entry, View. Once opened, the stage no longer tells how. */
     fun open() {
         synchronized(host.lock) {
             if (cursor != null) return
@@ -111,8 +111,8 @@ internal class QuickControl(private val host: ControllerHost) {
             QuickItem.VIEW -> synchronized(host.lock) {
                 val shown = pendingView ?: host.settings.view
                 pendingView = SettingsMenu.VIEW_ORDER.step(shown, +1, wrap = true)
-                pictureJob?.cancel()
-                pictureJob = host.scope.launch {
+                viewJob?.cancel()
+                viewJob = host.scope.launch {
                     delay(SETTLE_MS)
                     applyView()
                 }
@@ -178,8 +178,8 @@ internal class QuickControl(private val host: ControllerHost) {
      */
     private fun applyView() {
         val next = synchronized(host.lock) {
-            pictureJob?.cancel()
-            pictureJob = null
+            viewJob?.cancel()
+            viewJob = null
             pendingView
         } ?: return
         val s = host.settings
@@ -432,7 +432,7 @@ internal class QuickControl(private val host: ControllerHost) {
         /** Untouched quick settings close after this long: they are for a moment's choice. */
         const val IDLE_MS = 20_000L
 
-        /** The queue view chosen in the quick settings is applied this long after the last press. */
+        /** The view chosen in the quick settings is applied this long after the last press. */
         const val SETTLE_MS = 900L
 
         /** Shuffle or a switch just turned is shown as asked this long at most before it is reported. */

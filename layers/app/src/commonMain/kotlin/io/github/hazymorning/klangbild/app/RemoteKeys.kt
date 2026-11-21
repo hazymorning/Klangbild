@@ -236,7 +236,7 @@ class RemoteKeys(private val controller: NowPlayingController, private val now: 
 
     /**
      * Back closes just what lies on top of the music: the settings (a group goes back to the
-     * groups first), the quick menu, the setup code. On the dark screen it only brings the
+     * groups first), the quick settings, the setup code. On the dark screen it only brings the
      * picture back. False when nothing does, and the app closes.
      */
     fun back(): Boolean {

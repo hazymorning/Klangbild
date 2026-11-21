@@ -22,7 +22,7 @@ import kotlin.test.Test
 
 /**
  * After the clock or the setup page, a song other than the one the stage kept waits for its own
- * scene, and so does the same song when the wall has changed meanwhile or the queue has gone to
+ * scene, and so does the same song when the wall has changed meanwhile or the view has gone to
  * or from Cover Flow: the stage left from before never comes up for it. Meanwhile the clock
  * stays, never the dark. A screen that says something is wrong and the setup page go through
  * the dark.

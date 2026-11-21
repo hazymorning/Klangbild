@@ -170,8 +170,8 @@ private fun Root(ui: UiState, screen: ScreenSpec, hooks: RootHooks, wall: State<
             }
         }
         // The quick settings rise from the bottom edge over whatever shows; the settings menu lies
-        // over everything. Both come and go on their own. While the queue display just chosen is
-        // being prepared, dots pulse after their Queue value.
+        // over everything. Both come and go on their own. While the view just chosen is being
+        // prepared, dots pulse after their View value.
         val pending = ui.queuePending != null
         QuickBarOverlay(ui.quick, ui.appearance, pending = pending)
         MenuOverlay(ui.menu, ui.appearance, pending = pending)
@@ -238,7 +238,7 @@ private const val CLOCK_TICK_MS = 5_000L
 
 private fun contentOf(ui: UiState, quietStart: Boolean): Content = when (val s = ui.screen) {
     is Screen.Stage -> {
-        // Cover Flow or the single cover, as the queue shows, once its first scene is made;
+        // Cover Flow while it's the view, else the single cover, once its first scene is made;
         // until then what showed before stays.
         val flow = ui.flow?.let { Content.FlowContent(it) }
         val single = ui.stage?.let { Content.StageContent(it) }

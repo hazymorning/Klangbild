@@ -243,7 +243,7 @@ fun QuickBar(quick: QuickState, appearance: Appearance, modifier: Modifier = Mod
                 val width = widths[i]
                 // Faded through its colors, not through a layer of the screen's size.
                 val seen = { inView(left - shift, width) }
-                // While the queue display just chosen is pending, dots pulse after its value.
+                // While the view just chosen is pending, dots pulse after its value.
                 val dots = if (row.item == QuickItem.VIEW) rememberPendingDots(pending) else null
                 Entry(x = { left - shift }, width = width) {
                     BasicText(row.label, style = labelStyle, color = { labelColor.copy(alpha = labelColor.alpha * seen()) }, maxLines = 1)

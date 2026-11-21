@@ -12,7 +12,7 @@ internal object HeldStage {
     /**
      * Whether the stage kept from [before] must not come back for [stage]: after the clock or the
      * setup page, a song other than the one kept waits for its own scene, and so does the same
-     * song when the wall has changed meanwhile (its scene no longer [fits]) or the queue has gone
+     * song when the wall has changed meanwhile (its scene no longer [fits]) or the view has gone
      * to or from Cover Flow ([flow]: only the stage of the other is kept). While the stage shows,
      * it stays until the next song's scene is ready, and the change runs on it.
      */

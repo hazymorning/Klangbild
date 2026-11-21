@@ -72,7 +72,7 @@ class CoverStrip {
         return Strip(shown + now + upcoming, shown.size)
     }
 
-    /** Forgets everything (another speaker, or the queue to or from Cover Flow). */
+    /** Forgets everything (another speaker, or no screen shows the music any more). */
     fun clear() {
         history.clear()
         current = null
