@@ -104,6 +104,16 @@ data class MenuRow(
 )
 
 /**
+ * The choice one step from [current] along these: [direction] -1 (left) or +1 (right, OK). Left
+ * and right stop at the ends, [wrap] goes round. A [current] that is none of them counts as the
+ * first.
+ */
+fun <T> List<T>.step(current: T, direction: Int, wrap: Boolean): T {
+    val i = indexOf(current).coerceAtLeast(0) + direction
+    return if (wrap) this[i.mod(size)] else this[i.coerceIn(0, size - 1)]
+}
+
+/**
  * The settings menu, operated with the remote, in two levels: first the groups, then the
  * settings of the one opened. Up and down choose a line, OK (or right) opens a group, left and
  * right (or OK) change a setting at once; there is nothing to confirm. Back goes up a level.
@@ -161,7 +171,7 @@ object SettingsMenu {
         if (needsSetup(e, s)) return true
         val leavesThisTv = when (e) {
             MenuEntry.SPEAKER -> true
-            MenuEntry.PLAY_HERE -> move(PLAY_HERE_ORDER, s.playHere, direction, wrap) == PlayHere.OFF
+            MenuEntry.PLAY_HERE -> PLAY_HERE_ORDER.step(s.playHere, direction, wrap) == PlayHere.OFF
             else -> false
         }
         return leavesThisTv && followsThisTv(s) && s.otherSpeaker == null
@@ -531,21 +541,21 @@ object SettingsMenu {
      * lines that need something set up first ([opensSetup]: OK sets it up).
      */
     fun step(e: MenuEntry, s: Settings, direction: Int, wrap: Boolean = false): Settings? = when (e) {
-        MenuEntry.VIEW -> s.copy(view = move(VIEW_ORDER, s.view, direction, wrap))
-        MenuEntry.QUEUE -> s.copy(queue = move(QUEUE_ORDER, s.queue, direction, wrap))
+        MenuEntry.VIEW -> s.copy(view = VIEW_ORDER.step(s.view, direction, wrap))
+        MenuEntry.QUEUE -> s.copy(queue = QUEUE_ORDER.step(s.queue, direction, wrap))
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
-        MenuEntry.TRACK_NUMBER -> s.copy(trackNumber = move(TRACK_NUMBER_ORDER, s.trackNumber, direction, wrap))
+        MenuEntry.TRACK_NUMBER -> s.copy(trackNumber = TRACK_NUMBER_ORDER.step(s.trackNumber, direction, wrap))
         MenuEntry.ALBUM -> s.copy(showAlbum = !s.showAlbum)
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
-        MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
+        MenuEntry.VOLUME -> s.copy(volumeDisplay = VOLUME_ORDER.step(s.volumeDisplay, direction, wrap))
         MenuEntry.VALUES -> if (s.ownValues.isEmpty()) null else s.copy(showValues = !s.showValues)
         MenuEntry.NOTIFICATIONS -> s.copy(notifications = !s.notifications)
         MenuEntry.LYRICS -> if (!s.hasMusicAssistant) null else s.copy(lyrics = !s.lyrics)
         MenuEntry.ARTIST_INFO -> if (!s.hasMusicAssistant) null else s.copy(artistInfo = !s.artistInfo)
         MenuEntry.LYRICS_DELAY ->
-            if (!s.hasMusicAssistant) null else s.copy(lyricsGroupDelayMs = move(Settings.LYRICS_GROUP_DELAYS_MS, s.lyricsGroupDelayMs, direction, wrap))
+            if (!s.hasMusicAssistant) null else s.copy(lyricsGroupDelayMs = Settings.LYRICS_GROUP_DELAYS_MS.step(s.lyricsGroupDelayMs, direction, wrap))
         // "This TV" turns playing here on; leaving it goes back to the speaker followed before.
         MenuEntry.SPEAKER -> when {
             !s.hasMusicAssistant -> null
@@ -554,7 +564,7 @@ object SettingsMenu {
         }
         MenuEntry.OTHER_ROOMS -> if (s.otherRooms.isEmpty()) null else s.copy(showOtherRooms = !s.showOtherRooms)
         MenuEntry.PLAY_HERE -> {
-            val next = move(PLAY_HERE_ORDER, s.playHere, direction, wrap)
+            val next = PLAY_HERE_ORDER.step(s.playHere, direction, wrap)
             when {
                 !s.hasMusicAssistant -> null
                 // Turned off while this TV is followed, it goes back to the speaker followed before.
@@ -563,11 +573,11 @@ object SettingsMenu {
             }
         }
         MenuEntry.BACKGROUND -> s.copy(background = if (s.background == BackgroundMode.COVER) BackgroundMode.WALL else BackgroundMode.COVER)
-        MenuEntry.MOTION -> s.copy(motion = move(MOTION_ORDER, s.motion, direction, wrap))
-        MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = move(BRIGHTNESS_ORDER, s.roomLightBrightness, direction, wrap)) else null
+        MenuEntry.MOTION -> s.copy(motion = MOTION_ORDER.step(s.motion, direction, wrap))
+        MenuEntry.BRIGHTNESS -> if (s.roomLights.isSet) s.copy(roomLightBrightness = BRIGHTNESS_ORDER.step(s.roomLightBrightness, direction, wrap)) else null
         MenuEntry.OFF_LIGHTS -> if (s.roomLights.isSet) s.copy(lightsOnlyOn = !s.lightsOnlyOn) else null
-        MenuEntry.APPEARANCE -> s.copy(appearance = move(APPEARANCE_ORDER, s.appearance, direction, wrap))
-        MenuEntry.INTENSITY -> s.copy(intensity = move(INTENSITY_ORDER, s.intensity, direction, wrap))
+        MenuEntry.APPEARANCE -> s.copy(appearance = APPEARANCE_ORDER.step(s.appearance, direction, wrap))
+        MenuEntry.INTENSITY -> s.copy(intensity = INTENSITY_ORDER.step(s.intensity, direction, wrap))
         MenuEntry.REMOTE -> s.copy(remoteControl = !s.remoteControl)
         MenuEntry.UP_DOWN -> s.copy(volumeKeys = !s.volumeKeys)
         MenuEntry.SPOKEN -> s.copy(spokenSkip = !s.spokenSkip)
@@ -580,9 +590,6 @@ object SettingsMenu {
         // OK on Update installs a new version or asks for one (MenuControl).
         MenuEntry.PHONE_SETUP, MenuEntry.CONNECTION, MenuEntry.MUSIC_ASSISTANT, MenuEntry.SLEEP_TIMER, MenuEntry.LANGUAGE, MenuEntry.UPDATE -> null
     }
-
-    /** The language after one step from [language] ([direction] -1 or +1; [wrap] goes round). */
-    fun stepLanguage(language: AppLanguage, direction: Int, wrap: Boolean): AppLanguage = move(LANGUAGE_ORDER, language, direction, wrap)
 
     /** "Ten minutes", "One hour", "90 minutes", "Two hours": numbers up to twelve in words. */
     fun duration(minutes: Int, t: Texts): String =
@@ -647,12 +654,7 @@ object SettingsMenu {
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)
     private val MOTION_ORDER = listOf(MotionLevel.OFF, MotionLevel.GENTLE, MotionLevel.MEDIUM, MotionLevel.LIVELY)
     private val BRIGHTNESS_ORDER = RoomLightBrightness.entries
-    private val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
-
-    private fun <T> move(order: List<T>, current: T, direction: Int, wrap: Boolean): T {
-        val i = order.indexOf(current).coerceAtLeast(0) + direction
-        return if (wrap) order[i.mod(order.size)] else order[i.coerceIn(0, order.size - 1)]
-    }
+    val LANGUAGE_ORDER = listOf(AppLanguage.SYSTEM, AppLanguage.ENGLISH, AppLanguage.GERMAN)
 
     /** The next offered value from [minutes] (which may be any value set from outside). */
     fun nextSleep(minutes: Int, direction: Int, wrap: Boolean = false): Int {

@@ -118,7 +118,7 @@ class QuickMenuTest {
 
     @Test
     fun `the view steps from the normal one to Cover Flow`() {
-        fun step(v: StageView, direction: Int = 1, wrap: Boolean = true) = QuickMenu.step(v, direction, wrap)
+        fun step(v: StageView, direction: Int = 1, wrap: Boolean = true) = SettingsMenu.VIEW_ORDER.step(v, direction, wrap)
         assertThat(step(StageView.NORMAL)).isEqualTo(StageView.EDGE)
         assertThat(step(StageView.EDGE)).isEqualTo(StageView.FLOW)
         assertThat(step(StageView.FLOW)).isEqualTo(StageView.NORMAL)

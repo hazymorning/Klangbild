@@ -6,6 +6,7 @@ import io.github.hazymorning.klangbild.config.MenuEntry
 import io.github.hazymorning.klangbild.config.MenuSection
 import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.config.SettingsMenu
+import io.github.hazymorning.klangbild.config.step
 import io.github.hazymorning.klangbild.domain.ReleaseNotes
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import kotlinx.atomicfu.locks.synchronized
@@ -158,7 +159,7 @@ internal class MenuControl(private val host: ControllerHost, private val sleep: 
             // The sleep timer isn't stored with the settings. It lasts until it has paused the music once.
             entry == MenuEntry.SLEEP_TIMER -> sleep.step(direction, wrap)
             // The language is kept by the system (or, before API 33, by the app on its own).
-            entry == MenuEntry.LANGUAGE -> host.language = SettingsMenu.stepLanguage(host.language, direction, wrap)
+            entry == MenuEntry.LANGUAGE -> host.language = SettingsMenu.LANGUAGE_ORDER.step(host.language, direction, wrap)
             // OK shows a new version's notes, or asks for one, also while Klangbild doesn't look
             // for them by itself. A held OK does it once.
             entry == MenuEntry.UPDATE -> if (wrap && !repeat) {

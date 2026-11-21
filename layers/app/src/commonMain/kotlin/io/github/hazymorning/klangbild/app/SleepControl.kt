@@ -1,5 +1,6 @@
 package io.github.hazymorning.klangbild.app
 
+import io.github.hazymorning.klangbild.config.step
 import io.github.hazymorning.klangbild.data.RemoteCommand
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.domain.SleepChoice
@@ -31,9 +32,7 @@ internal class SleepControl(private val host: ControllerHost) {
     fun step(direction: Int, wrap: Boolean) {
         synchronized(host.lock) {
             val track = (host.ui.screen as? Screen.Stage)?.track
-            val choices = timer.choices(track)
-            val i = choices.indexOf(timer.choice).coerceAtLeast(0) + direction
-            val next = if (wrap) choices[i.mod(choices.size)] else choices[i.coerceIn(0, choices.size - 1)]
+            val next = timer.choices(track).step(timer.choice, direction, wrap)
             if (next != timer.choice) timer.set(next, host.now())
             host.recompute()
         }

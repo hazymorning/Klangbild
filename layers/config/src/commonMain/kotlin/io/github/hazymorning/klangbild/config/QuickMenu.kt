@@ -190,11 +190,4 @@ object QuickMenu {
         QuickItem.SETTINGS -> listOf(t[Strings.quickOpen])
         QuickItem.SCREEN -> listOf(t[Strings.quickTurnOff])
     }
-
-    /** The view after one step from [v] (−1 or +1), from the normal view to Cover Flow; [wrap] goes round. */
-    fun step(v: StageView, direction: Int, wrap: Boolean): StageView {
-        val order = SettingsMenu.VIEW_ORDER
-        val i = order.indexOf(v) + direction
-        return order[if (wrap) i.mod(order.size) else i.coerceIn(0, order.size - 1)]
-    }
 }

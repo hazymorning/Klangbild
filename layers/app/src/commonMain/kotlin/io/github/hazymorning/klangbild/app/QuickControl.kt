@@ -11,7 +11,9 @@ import io.github.hazymorning.klangbild.config.QuickKey
 import io.github.hazymorning.klangbild.config.QuickMenu
 import io.github.hazymorning.klangbild.config.QuickRow
 import io.github.hazymorning.klangbild.config.RoomLightBrightness
+import io.github.hazymorning.klangbild.config.SettingsMenu
 import io.github.hazymorning.klangbild.config.StageView
+import io.github.hazymorning.klangbild.config.step
 import io.github.hazymorning.klangbild.domain.ActionKind
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
@@ -109,7 +111,7 @@ internal class QuickControl(private val host: ControllerHost) {
         when (row.item) {
             QuickItem.VIEW -> synchronized(host.lock) {
                 val shown = pendingView ?: host.settings.view
-                pendingView = QuickMenu.step(shown, +1, wrap = true)
+                pendingView = SettingsMenu.VIEW_ORDER.step(shown, +1, wrap = true)
                 pictureJob?.cancel()
                 pictureJob = host.scope.launch {
                     delay(SETTLE_MS)
