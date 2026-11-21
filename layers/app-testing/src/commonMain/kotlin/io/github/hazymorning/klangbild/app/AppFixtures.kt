@@ -39,7 +39,7 @@ abstract class AppFixtures {
     fun at(hour: Int, minute: Int, day: Int = 8): Long =
         LocalDateTime(2026, 10, day, hour, minute).toInstant(zone).toEpochMilliseconds()
 
-    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalog.SCHEME + cover.name }
+    fun track(cover: SyntheticCover): TrackInfo = tracks.first { it.artworkUrl == Catalog.cover(cover) }
 
     val radio: TrackInfo get() = tracks.first { it.artworkUrl == null }
 
@@ -47,7 +47,7 @@ abstract class AppFixtures {
     val spiegel = TrackInfo("Spiegel im Spiegel", listOf("Arvo Pärt"))
 
     /** An English song to the night drive's cover, for the English shots of the words. */
-    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalog.SCHEME + SyntheticCover.NIGHT_DRIVE.name)
+    val night = TrackInfo("Night drive", listOf("Lumen Drive"), "Neon roads", 2024, 251_000, artworkUrl = Catalog.cover(SyntheticCover.NIGHT_DRIVE))
 
     /** Synced words from LRC. */
     fun lyrics(lrc: String): io.github.hazymorning.klangbild.domain.Lyrics = io.github.hazymorning.klangbild.domain.Lrc.parse(lrc)!!
@@ -64,7 +64,7 @@ abstract class AppFixtures {
         kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         coverField: Boolean = false,
     ): ArtworkScene {
-        val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
+        val cover = Catalog.coverOf(track.artworkUrl)
         return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, kind = kind, coverField = coverField)
     }
 
@@ -85,7 +85,7 @@ abstract class AppFixtures {
         val upNext = UpNext.of(coming)!!
         val px = kotlin.math.round(StageGrid(screen).rowCover * screen.density).toInt()
         val made = if (!covers) emptyMap() else upNext.rows.associate { row ->
-            val cover = row.track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { name -> SyntheticCover.entries.firstOrNull { it.name == name } }
+            val cover = Catalog.coverOf(row.track.artworkUrl)
             row.id to SceneBuilder.rowCover(cover?.let(::painted), row.track.artFoil, row.track.artView, px)
         }
         return QueueList(upNext, made)
