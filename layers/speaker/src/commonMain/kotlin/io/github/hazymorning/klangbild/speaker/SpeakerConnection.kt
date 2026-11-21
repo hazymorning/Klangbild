@@ -14,6 +14,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -41,12 +42,6 @@ class SpeakerConnection(
     private val url: String,
     /** A new session for a connection; it reports its end through the given callback. */
     private val newSession: (Transport, (SessionEnd, String) -> Unit) -> Session,
-    private val backoffFactory: () -> Backoff = { Backoff(maxMs = 60_000) },
-    /** How long a server too old for the protocol, or one that refused, waits for the next try. */
-    private val laterMs: Long = LATER_MS,
-    private val handshakeTimeoutMs: Long = HANDSHAKE_TIMEOUT_MS,
-    private val fastBurstMs: Long = FAST_BURST_MS,
-    private val burstMs: Long = BURST_MS,
 ) {
     private val _link = MutableStateFlow(SpeakerLink.CONNECTING)
     val link: StateFlow<SpeakerLink> = _link.asStateFlow()
@@ -79,7 +74,7 @@ class SpeakerConnection(
     }
 
     private suspend fun runLoop() {
-        val backoff = backoffFactory()
+        val backoff = Backoff()
         while (scope.isActive) {
             _link.value = SpeakerLink.CONNECTING
             val (end, detail) = try {
@@ -95,15 +90,15 @@ class SpeakerConnection(
                 SessionEnd.GOODBYE -> return
                 SessionEnd.OLD_SERVER -> {
                     _link.value = SpeakerLink.TOO_OLD
-                    laterMs
+                    LATER_MS
                 }
                 SessionEnd.NEW_SERVER -> {
                     _link.value = SpeakerLink.TOO_NEW
-                    laterMs
+                    LATER_MS
                 }
                 SessionEnd.REFUSED, SessionEnd.UNAUTHORIZED, SessionEnd.UNPAIRED -> {
                     _link.value = SpeakerLink.REFUSED
-                    laterMs
+                    LATER_MS
                 }
                 SessionEnd.BROKEN, SessionEnd.LOST -> {
                     _link.value = SpeakerLink.UNREACHABLE
@@ -161,7 +156,7 @@ class SpeakerConnection(
         link.compareAndSet(null, opened)
         try {
             // The handshake, the hellos and the activation within a while, or the attempt ends.
-            val active = withTimeoutOrNull(handshakeTimeoutMs) {
+            val active = withTimeoutOrNull(HANDSHAKE_TIMEOUT_MS) {
                 while (!done.isCompleted && !s.activated) delay(POLL_MS)
                 true
             }
@@ -175,7 +170,7 @@ class SpeakerConnection(
                 // (messaging.md: never more than ten seconds apart).
                 launch {
                     while (!done.isCompleted) {
-                        delay(if (s.synced) burstMs else fastBurstMs)
+                        delay(if (s.synced) BURST_MS else FAST_BURST_MS)
                         s.burst()
                     }
                 }
@@ -183,11 +178,9 @@ class SpeakerConnection(
             done.await()
         } finally {
             transport.close()
-            coroutineContext[Job]?.cancelChildren()
+            coroutineContext.cancelChildren()
         }
     }
-
-    private fun Job.cancelChildren() = children.forEach { it.cancel() }
 
     companion object {
         /** A server too old, or one that refused: tried again after this long. */

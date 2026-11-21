@@ -1,6 +1,5 @@
 package io.github.hazymorning.klangbild.speaker
 
-import dev.whyoleg.cryptography.random.CryptographyRandom
 import io.github.hazymorning.klangbild.data.Backoff
 import io.github.hazymorning.klangbild.data.Log
 import io.github.hazymorning.klangbild.domain.SpeakerLink
@@ -9,6 +8,7 @@ import io.github.hazymorning.klangbild.sendspin.B64
 import io.github.hazymorning.klangbild.sendspin.ClockMap
 import io.github.hazymorning.klangbild.sendspin.Hello
 import io.github.hazymorning.klangbild.sendspin.KeyPair
+import io.github.hazymorning.klangbild.sendspin.MessageId
 import io.github.hazymorning.klangbild.sendspin.PairingRecord
 import io.github.hazymorning.klangbild.sendspin.PairingToken
 import io.github.hazymorning.klangbild.sendspin.PcmFormat
@@ -17,6 +17,7 @@ import io.github.hazymorning.klangbild.sendspin.Session
 import io.github.hazymorning.klangbild.sendspin.SessionEnd
 import io.github.hazymorning.klangbild.sendspin.Transport
 import io.github.hazymorning.klangbild.sound.PcmSound
+import io.github.hazymorning.klangbild.sound.monotonicMicros
 import io.ktor.client.HttpClient
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -31,7 +32,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
-import kotlin.random.Random
 
 /** How this speaker introduces itself: the TV's name, and what it is. */
 class SpeakerIdentity(val name: String, val productName: String?, val manufacturer: String?, val softwareVersion: String?)
@@ -61,8 +61,6 @@ class Speaker(
     /** How long the device has slept in all, in microseconds (the monotonic clock stands still meanwhile). */
     private val sleptUs: () -> Long,
     private val log: Log,
-    private val monotonic: MonoClock = MonoClock.SYSTEM,
-    private val random: Random = CryptographyRandom,
     /** How long to wait before asking the keystore again for a key it could not open. */
     private val keyRetry: () -> Backoff = { Backoff(KEY_FIRST_RETRY_MS, KEY_LAST_RETRY_MS) },
 ) {
@@ -70,7 +68,7 @@ class Speaker(
     val status: StateFlow<SpeakerStatus> = _status.asStateFlow()
 
     private val queue = ChunkQueue(QUEUE_SECONDS * PcmFormat.RATE)
-    private val playback: Playback = Playback(sinkFactory { playbackResync() }, queue, monotonic)
+    private val playback: Playback = Playback(sinkFactory { playbackResync() }, queue, MonoClock.SYSTEM)
     private val delays = ArrivalDelays()
 
     /** What this TV plays, as a sound feed: measured on its way to the output, while someone reads it. */
@@ -175,7 +173,7 @@ class Speaker(
             productName = identity.productName,
             manufacturer = identity.manufacturer,
             softwareVersion = identity.softwareVersion,
-            bufferCapacity = BUFFER_SECONDS * (PcmFormat.RATE / CHUNKS_PER_SECOND * PcmFormat.FRAME_BYTES + 13) * CHUNKS_PER_SECOND,
+            bufferCapacity = BUFFER_SECONDS * (PcmFormat.RATE / CHUNKS_PER_SECOND * PcmFormat.FRAME_BYTES + MessageId.AUDIO_HEADER) * CHUNKS_PER_SECOND,
             beats = true,
             beatBufferCapacity = BEAT_BUFFER_BYTES,
         )
@@ -215,7 +213,7 @@ class Speaker(
     }
 
     private fun newSession(transport: Transport, key: KeyPair, pairingPsk: ByteArray, hello: Hello, ended: (SessionEnd, String) -> Unit): Session {
-        val s = Session(transport, key, pairingPsk, { records }, hello, Listener(ended), monotonic::nowUs, random)
+        val s = Session(transport, key, pairingPsk, { records }, hello, Listener(ended), ::monotonicMicros)
         session = s
         return s
     }
@@ -232,7 +230,7 @@ class Speaker(
                 playback.resync()
             }
             slept = now
-            val buffer = delays.minBufferMs(monotonic.nowUs())
+            val buffer = delays.minBufferMs(monotonicMicros())
             if (buffer != minBufferMs) {
                 minBufferMs = buffer
                 session?.stateChanged()
@@ -265,7 +263,7 @@ class Speaker(
     private suspend fun audioLoop() {
         try {
             while (running) {
-                val wanted = streaming || monotonic.nowUs() < keepOpenUntilUs
+                val wanted = streaming || monotonicMicros() < keepOpenUntilUs
                 if (!wanted) {
                     playback.close()
                     while (running && !streaming) streamCame.receive()
@@ -311,7 +309,7 @@ class Speaker(
 
         override fun streamEnd() {
             streamClear()
-            keepOpenUntilUs = monotonic.nowUs() + KEEP_OPEN_US
+            keepOpenUntilUs = monotonicMicros() + KEEP_OPEN_US
             streaming = false
             playingNow()
         }
