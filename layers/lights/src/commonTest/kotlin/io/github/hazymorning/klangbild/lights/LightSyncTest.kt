@@ -626,6 +626,22 @@ class LightSyncTest {
     }
 
     @Test
+    fun `a light someone makes much brighter is theirs, also when its brightness has a fraction`() = runTest {
+        val ha = FakeHa(this, mapOf(left to light(left, on = true), right to light(right, on = true)))
+        val s = sync()
+        s.attach(ha)
+        s.update(target("a"))
+        testScheduler.advanceTimeBy(5_000)
+        val before = ha.to(left).size
+        ha.byHand(left, "on", buildJsonObject { put("brightness", 254.5) })
+        testScheduler.advanceTimeBy(2_000)
+        s.update(target("b"))
+        testScheduler.advanceTimeBy(5_000)
+        assertThat(ha.to(left)).hasSize(before)
+        assertThat(ha.to(right)).hasSize(2)
+    }
+
+    @Test
     fun `switched off in the menu the lights are given back at once, one that was off goes dark and then off`() = runTest {
         val ha = FakeHa(this, mapOf(left to light(left, on = true, brightness = 120), right to light(right, on = false)))
         val s = sync()

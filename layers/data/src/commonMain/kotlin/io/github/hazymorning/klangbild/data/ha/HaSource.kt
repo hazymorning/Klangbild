@@ -476,7 +476,7 @@ class HaSource(
         if (g.name != null) return false
         val all = maSpeakers().count { id ->
             val e = entities[id] ?: return@count false
-            e.state != "unavailable" && e.string("mass_player_type") == "player"
+            e.state != EntityState.UNAVAILABLE && e.string("mass_player_type") == "player"
         }
         return all >= EVERYWHERE_MIN && g.others.size + 1 >= all
     }

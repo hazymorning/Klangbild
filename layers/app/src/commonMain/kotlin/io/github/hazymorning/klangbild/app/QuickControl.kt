@@ -14,6 +14,7 @@ import io.github.hazymorning.klangbild.config.SettingsMenu
 import io.github.hazymorning.klangbild.config.StageView
 import io.github.hazymorning.klangbild.config.step
 import io.github.hazymorning.klangbild.domain.ActionKind
+import io.github.hazymorning.klangbild.domain.EntityState
 import io.github.hazymorning.klangbild.domain.MaLink
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.QuickAction
@@ -317,8 +318,8 @@ internal class QuickControl(private val host: ControllerHost) {
     /** Whether the switch [entity] shows as on: what was just asked for, else what Home Assistant says; null without a state. */
     private fun switchShown(entity: String): Boolean? {
         val reported = when (host.ui.source.entities[entity]?.state) {
-            "on" -> true
-            "off" -> false
+            EntityState.ON -> true
+            EntityState.OFF -> false
             else -> null
         }
         stillWanted(switchWanted[entity], reported)?.let { return it }
@@ -346,7 +347,7 @@ internal class QuickControl(private val host: ControllerHost) {
         for ((i, a) in host.settings.quickActions.withIndex()) {
             val kind = a.kind ?: continue
             val state = entities[a.entity]?.state ?: continue
-            if (state == UNAVAILABLE) continue
+            if (state == EntityState.UNAVAILABLE) continue
             val said = outcome[i]?.takeIf { t < it.second }?.first
             val c = a.condition
             if (c != null && i !in running && said == null && !entities[c.entity].let { e -> c.holds(e?.state, e?.attributes) }) continue
@@ -446,8 +447,5 @@ internal class QuickControl(private val host: ControllerHost) {
 
         /** When the party's link could not be fetched, it is asked for again after this long. */
         const val PARTY_RETRY_MS = 5_000L
-
-        /** Home Assistant's state for an entity that is there but cannot be used. */
-        private const val UNAVAILABLE = "unavailable"
     }
 }
