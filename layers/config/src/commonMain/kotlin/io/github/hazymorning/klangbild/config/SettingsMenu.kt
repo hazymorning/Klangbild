@@ -314,7 +314,7 @@ object SettingsMenu {
         ]
         MenuEntry.SPEAKER -> when {
             s.entityId == EntityId.THIS_TV -> t[Strings.pageThisTv]
-            else -> ctx.speakerName ?: s.entityId?.substringAfter('.')?.replace('_', ' ')?.replaceFirstChar { it.uppercaseChar() } ?: t[Strings.setUp]
+            else -> ctx.speakerName ?: s.entityId?.let(QuickActions::nameOf) ?: t[Strings.setUp]
         }
         MenuEntry.OTHER_ROOMS -> onOff(s.showOtherRooms, t)
         MenuEntry.PLAY_HERE -> t[
