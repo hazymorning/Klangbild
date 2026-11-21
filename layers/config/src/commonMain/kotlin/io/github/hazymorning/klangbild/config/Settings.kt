@@ -150,7 +150,6 @@ data class DisplayOptions(
     /** The values of one's own from Home Assistant, after the clock. */
     val values: Boolean = true,
     val intensity: Intensity = Intensity.NORMAL,
-    val background: BackgroundMode = BackgroundMode.WALL,
     val motion: MotionLevel = MotionLevel.OFF,
 )
 
@@ -338,7 +337,6 @@ data class Settings(
             volume = volumeDisplay,
             values = showValues,
             intensity = intensity,
-            background = background,
             motion = motion,
         )
 }

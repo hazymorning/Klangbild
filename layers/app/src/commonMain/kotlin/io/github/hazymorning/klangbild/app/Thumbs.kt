@@ -92,18 +92,16 @@ internal class Thumbs(
         }
     }
 
-    private class Loaded(val cover: ImageBitmap?)
-
     private suspend fun make(track: TrackInfo, key: String, side: Int, done: () -> Unit) {
         val me = currentCoroutineContext()[Job]
         var missing = false
         val bitmap = try {
             // A few seconds for the cover once its turn has come; then the generated one steps in.
-            val loaded = lane.withLock {
-                withTimeoutOrNull(Scenes.COVER_TIMEOUT_MS) { Loaded(runCatching { artwork.load(track) }.getOrNull()) }
+            val cover = lane.withLock {
+                withTimeoutOrNull(Scenes.COVER_TIMEOUT_MS) { runCatching { artwork.load(track) }.getOrNull() }
             }
-            missing = loaded?.cover == null && track.artworkId != null
-            withContext(dispatcher) { SceneBuilder.rowCover(loaded?.cover, track.artFoil, track.artView, side) }
+            missing = cover == null && track.artworkId != null
+            withContext(dispatcher) { SceneBuilder.rowCover(cover, track.artFoil, track.artView, side) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
