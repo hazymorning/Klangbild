@@ -445,6 +445,8 @@ class HaSource(
     /** This state with the player, its queue and its time as [shown] has them, and the speaker they belong to. */
     private fun SourceState.showing(shown: SourceState) = copy(
         speaker = shown.speaker,
+        elsewhere = shown.elsewhere,
+        party = shown.party,
         player = shown.player,
         receivedAtMs = shown.receivedAtMs,
         next = shown.next,

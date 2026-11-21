@@ -25,6 +25,7 @@ import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Progress
 import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.QuickAction
+import io.github.hazymorning.klangbild.domain.SourceState
 import io.github.hazymorning.klangbild.domain.SpeakerLink
 import io.github.hazymorning.klangbild.domain.SpeakerStatus
 import io.ktor.client.engine.okhttp.OkHttp
@@ -613,6 +614,8 @@ class HaSourceTest {
     fun `music in another room shows while nothing plays here, and the chosen speaker takes the screen back`() = runBlocking {
         playerStatus = "idle"
         val s = source()
+        val seen = CopyOnWriteArrayList<SourceState>()
+        val watch = scope.launch { s.state.collect { seen += it } }
         s.start()
         withTimeout(5_000) { s.state.first { it.player != null } }
         assertThat(s.state.value.speaker).isEqualTo("media_player.wz")
@@ -632,6 +635,9 @@ class HaSourceTest {
         assertThat(back.elsewhere).isFalse()
         assertThat(back.player?.track?.title).isEqualTo("Zweites Lied")
         assertThat(sockets).hasSize(1)
+        // Every state marks another room's speaker as such, and only it, also while the song here waits for its queue.
+        assertThat(seen.filter { it.elsewhere != (it.speaker == "media_player.kitchen") }).isEmpty()
+        watch.cancel()
         s.stop()
     }
 
