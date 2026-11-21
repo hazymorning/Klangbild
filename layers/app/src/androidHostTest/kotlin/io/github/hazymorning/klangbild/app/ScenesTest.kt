@@ -15,6 +15,7 @@ import io.github.hazymorning.klangbild.data.httpClient
 import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -62,13 +63,13 @@ class ScenesTest {
             val screen = ScreenSpec(960, 540, 1f)
             val track = TrackInfo("Song", listOf("A"), artworkUrl = "http://192.168.1.5:8095/cover.jpg")
             val look = Look(Appearance.DARK, 1f)
-            scenes.show(Frame(screen, flow = true))
+            scenes.show(Frame(screen, StageGrid.Kind.FLOW))
             scenes.prepare(track, look)
             assertThat(scenes.pending(track)).isTrue()
             // Cover Flow's scene is really waiting for its cover.
             withTimeout(5_000) { while (asked.get() == 0) delay(5) }
             // Back to the single cover while Cover Flow's scene still waits for its cover.
-            scenes.show(Frame(screen, flow = false))
+            scenes.show(Frame(screen))
             assertThat(scenes.pending(track)).isFalse()
             val made = CompletableDeferred<ArtworkScene>()
             val start = System.nanoTime()
@@ -99,7 +100,7 @@ class ScenesTest {
             val made = CompletableDeferred<ArtworkScene>()
             scenes.prepare(track, look) { made.complete(it) }
             val scene = withTimeout(30_000) { made.await() }
-            scenes.show(single.copy(flow = true), keep = track.sceneKey)
+            scenes.show(single.copy(kind = StageGrid.Kind.FLOW), keep = track.sceneKey)
             assertThat(scenes.ready(track, look)).isNull()
             // Straight back: the single cover's scene is there at once, the same as before.
             scenes.show(single, keep = track.sceneKey)

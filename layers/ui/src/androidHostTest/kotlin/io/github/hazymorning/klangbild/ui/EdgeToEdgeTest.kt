@@ -14,6 +14,7 @@ import assertk.assertThat
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
 import io.github.hazymorning.klangbild.art.SyntheticCover
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.stage.Stage
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -36,7 +37,7 @@ class EdgeToEdgeTest {
     @Test
     fun `the cover fills the screen's height at its left edge wherever the screen drifts`() {
         val track = Fixtures.track(SyntheticCover.WHITE_SPACE)
-        val scene = Fixtures.scene(track, edge = true)
+        val scene = Fixtures.scene(track, kind = StageGrid.Kind.EDGE)
         var dx by mutableStateOf(0f)
         var dy by mutableStateOf(0f)
         compose.setContent {

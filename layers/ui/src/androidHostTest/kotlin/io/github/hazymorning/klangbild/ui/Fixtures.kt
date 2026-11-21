@@ -13,6 +13,7 @@ import io.github.hazymorning.klangbild.domain.TrackInfo
 import io.github.hazymorning.klangbild.domain.TrackText
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.Strings
 import io.github.hazymorning.klangbild.text.Texts
@@ -81,7 +82,7 @@ object Fixtures : AppFixtures() {
         position: Long,
         pace: String?,
         appearance: Appearance = Appearance.DARK,
-        flow: Boolean = false,
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         next: TrackInfo? = null,
         coverField: Boolean = false,
         group: String? = "Wohnzimmer",
@@ -92,7 +93,7 @@ object Fixtures : AppFixtures() {
         }
         val lead = StageTexts.lead(PlayerStatus.PLAYING, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, pace = pace)
         return StageModel(
-            scene = scene(track, appearance = appearance, flow = flow, coverField = coverField),
+            scene = scene(track, appearance = appearance, kind = kind, coverField = coverField),
             text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers]),
             status = PlayerStatus.PLAYING,
             durationMs = chapter?.let { it.endMs - it.startMs } ?: track.durationMs,
@@ -119,10 +120,10 @@ object Fixtures : AppFixtures() {
         position: () -> Long? = { 84_000L },
         status: PlayerStatus = PlayerStatus.PLAYING,
         appearance: Appearance = Appearance.DARK,
-        flow: Boolean = false,
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         coverField: Boolean = false,
         screen: ScreenSpec = ScreenSpec.TV_1080,
-        scene: ArtworkScene = scene(track, screen, appearance, flow, coverField),
+        scene: ArtworkScene = scene(track, screen, appearance, kind, coverField),
         clock: String? = "21:47",
         group: String? = "Wohnzimmer",
         t: Texts = texts,

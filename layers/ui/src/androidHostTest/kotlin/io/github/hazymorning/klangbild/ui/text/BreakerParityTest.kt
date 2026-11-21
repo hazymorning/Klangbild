@@ -165,7 +165,7 @@ class BreakerParityTest {
         }
     }
 
-    private fun grid(density: Float, flow: Boolean) = StageGrid(ScreenSpec((960 * density).roundToInt(), (540 * density).roundToInt(), density), flow)
+    private fun grid(density: Float, flow: Boolean) = StageGrid(ScreenSpec((960 * density).roundToInt(), (540 * density).roundToInt(), density), if (flow) StageGrid.Kind.FLOW else StageGrid.Kind.SINGLE)
 
     private fun px(dp: Float, density: Float) = (dp * density).roundToInt()
 

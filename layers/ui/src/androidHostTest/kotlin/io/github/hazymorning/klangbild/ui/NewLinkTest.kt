@@ -15,6 +15,7 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -48,7 +49,7 @@ class NewLinkTest {
     @Test
     fun coverFlowStaysAsItIs() {
         val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.NOCTURNE, SyntheticCover.MOSS)
-        val scenes = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, flow = true) }.toMap()
+        val scenes = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, kind = StageGrid.Kind.FLOW) }.toMap()
         val ids = scenes.keys.toList()
         var strip by mutableStateOf(Fixtures.flow(scenes, ids, ids[1]))
         compose.mainClock.autoAdvance = false

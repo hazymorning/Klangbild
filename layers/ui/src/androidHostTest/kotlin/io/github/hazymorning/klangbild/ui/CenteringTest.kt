@@ -21,6 +21,7 @@ import io.github.hazymorning.klangbild.domain.RestReason
 import io.github.hazymorning.klangbild.domain.SetupReason
 import io.github.hazymorning.klangbild.render.QrCode
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.setup.SetupInfo
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.text.TestTexts
@@ -133,7 +134,7 @@ class CenteringTest {
     fun theArtistsSentencesStandOnTheArtworksMiddle() {
         val track = Fixtures.track(SyntheticCover.NIGHT_DRIVE)
         for ((t, bio) in listOf(Fixtures.texts to Fixtures.neonBio, TestTexts.english() to Fixtures.nightBio)) for (edge in listOf(false, true)) {
-            val scene = Fixtures.scene(track, edge = edge)
+            val scene = Fixtures.scene(track, kind = if (edge) StageGrid.Kind.EDGE else StageGrid.Kind.SINGLE)
             val ink = render { Fixtures.Still(t) { Stage(Fixtures.bioModel(track, bio, scene = scene, t = t)) } }
             val layout = scene.layout
             val left = (layout.columnLeft * 2).toInt() - 4

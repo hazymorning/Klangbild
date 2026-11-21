@@ -9,6 +9,7 @@ import io.github.hazymorning.klangbild.domain.pictureId
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.SceneBuilder
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
@@ -36,10 +37,13 @@ data class Look(val appearance: Appearance, val wallTint: Float, val coverField:
 }
 
 /**
- * What scenes are built for: the screen, and Cover Flow's grid or the cover's own, edge to edge
- * ([edge]) or not. Another frame means new scenes.
+ * What scenes are built for: the screen, and Cover Flow's grid or the cover's own, edge to edge or
+ * not ([kind]). Another frame means new scenes.
  */
-data class Frame(val screen: ScreenSpec, val flow: Boolean, val edge: Boolean = false)
+data class Frame(val screen: ScreenSpec, val kind: StageGrid.Kind = StageGrid.Kind.SINGLE) {
+    /** Whether the scenes are Cover Flow's. */
+    val flow: Boolean get() = kind == StageGrid.Kind.FLOW
+}
 
 /**
  * Prepares the stage's scenes (cover, palette, light; see [SceneBuilder]) off the main thread,
@@ -72,7 +76,7 @@ class Scenes(
     private val standIns = HashMap<String, StandIn>()
 
     /** What scenes are built for now ([show]). */
-    @Volatile var frame = Frame(ScreenSpec.TV_1080, flow = false)
+    @Volatile var frame = Frame(ScreenSpec.TV_1080)
         private set
 
     /** The scene of the song on stage in the frame left last, with its key, waiting for a way back. */
@@ -207,9 +211,8 @@ class Scenes(
             screen = frame.screen,
             appearance = look.appearance,
             wallTint = look.wallTint,
-            flow = frame.flow,
+            kind = frame.kind,
             coverField = look.coverField,
-            edge = frame.edge,
         )
     }
 

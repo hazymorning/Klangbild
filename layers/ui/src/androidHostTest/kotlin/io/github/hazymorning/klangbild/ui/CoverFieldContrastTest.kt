@@ -13,6 +13,7 @@ import io.github.hazymorning.klangbild.color.relativeLuminance
 import io.github.hazymorning.klangbild.render.ArtworkScene
 import io.github.hazymorning.klangbild.render.FlowGeometry
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.stage.FieldLayer
 import io.github.hazymorning.klangbild.ui.stage.FieldTime
 import io.github.hazymorning.klangbild.ui.stage.LocalFieldTime
@@ -43,12 +44,12 @@ class CoverFieldContrastTest {
     fun theQuietestTextKeepsItsContrastOnTheLightField() = check(Appearance.LIGHT)
 
     @Test
-    fun inCoverFlowTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.DARK, flow = true)
+    fun inCoverFlowTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.DARK, StageGrid.Kind.FLOW)
 
     @Test
-    fun inCoverFlowOnTheLightFieldTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.LIGHT, flow = true)
+    fun inCoverFlowOnTheLightFieldTheQuietestTextKeepsItsContrastWhereverTheColumnStands() = check(Appearance.LIGHT, StageGrid.Kind.FLOW)
 
-    private fun check(appearance: Appearance, flow: Boolean = false) {
+    private fun check(appearance: Appearance, kind: StageGrid.Kind = StageGrid.Kind.SINGLE) {
         var shown by mutableStateOf<ArtworkScene?>(null)
         var at by mutableStateOf(0.0)
         compose.setContent {
@@ -57,7 +58,7 @@ class CoverFieldContrastTest {
             }
         }
         for (track in Fixtures.tracks) {
-            val scene = Fixtures.scene(track, mdpi, appearance, flow = flow, coverField = true)
+            val scene = Fixtures.scene(track, mdpi, appearance, kind, coverField = true)
             shown = scene
             for (t in listOf(0.0, 47.0, 133.0, 260.0)) {
                 at = t

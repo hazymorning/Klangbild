@@ -61,12 +61,11 @@ abstract class AppFixtures {
         track: TrackInfo,
         screen: ScreenSpec = ScreenSpec.TV_1080,
         appearance: Appearance = Appearance.DARK,
-        flow: Boolean = false,
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
         coverField: Boolean = false,
-        edge: Boolean = false,
     ): ArtworkScene {
         val cover = track.artworkUrl?.removePrefix(Catalog.SCHEME)?.let { SyntheticCover.valueOf(it) }
-        return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, flow = flow, coverField = coverField, edge = edge)
+        return SceneBuilder.build(track.key, cover?.let(::painted), track.artFoil, track.artView, screen, appearance, kind = kind, coverField = coverField)
     }
 
     /** Cover flow scenes for [tracks] (the middle one is the current track). */
@@ -75,7 +74,7 @@ abstract class AppFixtures {
         appearance: Appearance = Appearance.DARK,
         screen: ScreenSpec = ScreenSpec.TV_1080,
         coverField: Boolean = false,
-    ) = tracks.map { scene(it, screen, appearance, flow = true, coverField = coverField) }
+    ) = tracks.map { scene(it, screen, appearance, StageGrid.Kind.FLOW, coverField) }
 
     /** The queue's list: what [coming] holds, the small covers made at once ([covers]: none yet). */
     fun queueList(
@@ -97,8 +96,8 @@ abstract class AppFixtures {
         screen: ScreenSpec = ScreenSpec.TV_1080,
         appearance: Appearance = Appearance.DARK,
         coverField: Boolean = false,
-        edge: Boolean = false,
-    ) = StageData(track, scene(track, screen, appearance, coverField = coverField, edge = edge))
+        kind: StageGrid.Kind = StageGrid.Kind.SINGLE,
+    ) = StageData(track, scene(track, screen, appearance, kind, coverField))
 
     /** A cover flow of [scenes] (ids as given), the card with id [middle] in the middle. */
     fun flow(scenes: Map<Long, ArtworkScene>, ids: List<Long>, middle: Long): FlowData {

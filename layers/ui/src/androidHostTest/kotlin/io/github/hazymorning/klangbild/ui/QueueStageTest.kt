@@ -8,6 +8,7 @@ import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueuePlace
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.Stage
@@ -39,7 +40,7 @@ class QueueStageTest {
     fun trackNumber() = shot("track_number", Fixtures.queueModel(playing, playlistQueue, place = QueuePlace(3, 45)))
 
     @Test
-    fun playlistEdgeToEdge() = shot("playlist_edge", Fixtures.queueModel(playing, playlistQueue, scene = Fixtures.scene(playing, edge = true)))
+    fun playlistEdgeToEdge() = shot("playlist_edge", Fixtures.queueModel(playing, playlistQueue, scene = Fixtures.scene(playing, kind = StageGrid.Kind.EDGE)))
 
     @Test
     fun playlistLight() = shot("playlist_light", Fixtures.queueModel(playing, playlistQueue, appearance = Appearance.LIGHT))

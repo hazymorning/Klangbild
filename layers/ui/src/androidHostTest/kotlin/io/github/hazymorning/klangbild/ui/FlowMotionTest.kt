@@ -12,6 +12,7 @@ import io.github.hazymorning.klangbild.app.FlowEntry
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import org.junit.Rule
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
@@ -181,6 +182,6 @@ class FlowMotionTest {
         fun scenes(appearance: Appearance) = listOf(
             SyntheticCover.TERRACOTTA, SyntheticCover.MOSS, SyntheticCover.NIGHT_DRIVE,
             SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS, SyntheticCover.SALT_WATER, SyntheticCover.NOCTURNE,
-        ).mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, flow = true) }.toMap()
+        ).mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = appearance, kind = StageGrid.Kind.FLOW) }.toMap()
     }
 }

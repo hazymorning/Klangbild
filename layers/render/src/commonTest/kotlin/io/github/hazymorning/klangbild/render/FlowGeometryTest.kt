@@ -11,7 +11,7 @@ import kotlin.test.Test
 
 /** The cover flow's geometry against the design's measurements (dp at 960 × 540). */
 class FlowGeometryTest {
-    private val layout = StageGrid(ScreenSpec.TV_1080, flow = true)
+    private val layout = StageGrid(ScreenSpec.TV_1080, StageGrid.Kind.FLOW)
     private val g = FlowGeometry(layout)
     private val c = FloatArray(8)
 

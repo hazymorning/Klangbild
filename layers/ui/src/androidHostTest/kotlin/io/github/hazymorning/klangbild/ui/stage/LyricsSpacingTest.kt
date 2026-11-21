@@ -34,7 +34,7 @@ class LyricsSpacingTest {
         compose.waitForIdle()
         val styles = StageStyles(ScenePalette(Appearance.DARK, 0xFF101010.toInt(), 0xFFEEEEEE.toInt(), 0xFFBBBBBB.toInt(), 0xFF999999.toInt()), faces)
         for (flow in listOf(false, true)) {
-            val room = WordsRoom(StageGrid(ScreenSpec(960, 540, 1f), flow), styles)
+            val room = WordsRoom(StageGrid(ScreenSpec(960, 540, 1f), if (flow) StageGrid.Kind.FLOW else StageGrid.Kind.SINGLE), styles)
             for (step in lyricsLadder) {
                 val style = faces.headingStyle(step, cjk = false)
                 val cap = style.fontSize.value * Fonts.CAP_HEIGHT

@@ -5,6 +5,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.hazymorning.klangbild.Pictures
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -35,7 +36,7 @@ class BioStageTest {
     @Test fun dark() = shot("single_dark", Fixtures.bioModel(neon, Fixtures.neonBio))
     @Test fun light() = shot("single_light_en", Fixtures.bioModel(neon, Fixtures.nightBio, appearance = Appearance.LIGHT, group = "Living room", t = en), en)
     @Test fun coverColors() = shot("single_cover_colors", Fixtures.bioModel(neon, Fixtures.neonBio, scene = Fixtures.scene(neon, coverField = true)))
-    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.bioModel(neon, Fixtures.neonBio, scene = Fixtures.scene(neon, edge = true)))
+    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.bioModel(neon, Fixtures.neonBio, scene = Fixtures.scene(neon, kind = StageGrid.Kind.EDGE)))
 
     /** Well into the song, the next page. */
     @Test fun laterPage() = shot("later_page", Fixtures.bioModel(neon, Fixtures.neonBio, position = { 20_000L }))

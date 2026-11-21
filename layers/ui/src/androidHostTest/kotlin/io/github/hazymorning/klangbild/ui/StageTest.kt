@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.QueuePlace
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.ui.Fixtures.spiegel
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -49,7 +50,7 @@ class StageTest {
 
     private fun edge(name: String, cover: SyntheticCover, appearance: Appearance = Appearance.DARK, coverField: Boolean = false) {
         val track = Fixtures.track(cover)
-        shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, edge = true)))
+        shot(name, Fixtures.model(track, next = spiegel, group = "Wohnzimmer", scene = Fixtures.scene(track, appearance = appearance, coverField = coverField, kind = StageGrid.Kind.EDGE)))
     }
 
     /** The last line starts with the song's place in the queue, in German and English, and stands alone on the last song. */

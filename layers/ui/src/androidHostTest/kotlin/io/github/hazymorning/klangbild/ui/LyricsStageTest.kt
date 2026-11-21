@@ -18,6 +18,7 @@ import io.github.hazymorning.klangbild.config.Settings
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.domain.TrackInfo
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.flow.FlowStage
@@ -53,7 +54,7 @@ class LyricsStageTest {
         val tracks = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.MOSS).map(Fixtures::track) + track +
             listOf(SyntheticCover.WHITE_SPACE, SyntheticCover.BAUHAUS).map(Fixtures::track)
         val scenes = Fixtures.flowScenes(tracks, appearance, coverField = coverField)
-        val model = Fixtures.lyricsModel(track, words, appearance = appearance, flow = true, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
+        val model = Fixtures.lyricsModel(track, words, appearance = appearance, kind = StageGrid.Kind.FLOW, scene = scenes[2], t = t, group = if (t === en) "Living room" else "Wohnzimmer")
         captureRoboImage("build/screenshots/lyrics/$name.png") { Fixtures.Still(t) { FlowStage(model, Fixtures.restingCards(scenes, 2)) } }
     }
 
@@ -62,7 +63,7 @@ class LyricsStageTest {
     /** The last line names the song itself, after its place in the queue. */
     @Test fun trackNumber() = shot("single_track_number", Fixtures.lyricsModel(neon, neonLyrics, place = QueuePlace(3, 45)))
 
-    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, edge = true)))
+    @Test fun edgeToEdge() = shot("edge_dark", Fixtures.lyricsModel(neon, neonLyrics, scene = Fixtures.scene(neon, kind = StageGrid.Kind.EDGE)))
 
     @Test fun light() = shot("single_light", Fixtures.lyricsModel(neon, neonLyrics, appearance = Appearance.LIGHT))
 

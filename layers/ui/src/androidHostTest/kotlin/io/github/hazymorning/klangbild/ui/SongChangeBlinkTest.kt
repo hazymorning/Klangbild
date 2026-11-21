@@ -18,6 +18,7 @@ import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.text.LocalTexts
 import io.github.hazymorning.klangbild.ui.stage.StageTheater
 import org.junit.Rule
@@ -51,7 +52,7 @@ class SongChangeBlinkTest {
 
     @Test
     fun coverFlowNeverBlinks() {
-        val scenes = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, flow = true) }.toMap()
+        val scenes = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, kind = StageGrid.Kind.FLOW) }.toMap()
         val ids = scenes.keys.toList()
         var strip by mutableStateOf(Fixtures.flow(scenes, ids, ids[1]))
         compose.mainClock.autoAdvance = false

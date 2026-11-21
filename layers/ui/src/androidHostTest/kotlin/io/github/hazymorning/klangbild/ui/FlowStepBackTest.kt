@@ -10,6 +10,7 @@ import assertk.assertions.isGreaterThan
 import io.github.hazymorning.klangbild.art.SyntheticCover
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -33,7 +34,7 @@ class FlowStepBackTest {
     @Test
     fun aLightCardBesideTheMiddleBrightensWithTheTurn() {
         val covers = listOf(SyntheticCover.TERRACOTTA, SyntheticCover.NOCTURNE, SyntheticCover.WHITE_SPACE, SyntheticCover.MOSS)
-        val s = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, flow = true) }.toMap()
+        val s = covers.mapIndexed { i, c -> i.toLong() to Fixtures.scene(Fixtures.track(c), mdpi, appearance = Appearance.DARK, kind = StageGrid.Kind.FLOW) }.toMap()
         var flow by mutableStateOf(Fixtures.flow(s, listOf(0, 1, 2, 3), 1))
         compose.mainClock.autoAdvance = false
         compose.setContent { Fixtures.FlowTheaterOf(flow) }

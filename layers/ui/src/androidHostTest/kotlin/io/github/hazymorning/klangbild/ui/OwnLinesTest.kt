@@ -14,6 +14,7 @@ import io.github.hazymorning.klangbild.config.QueueDisplay
 import io.github.hazymorning.klangbild.domain.PlayerStatus
 import io.github.hazymorning.klangbild.domain.Screen
 import io.github.hazymorning.klangbild.render.ScreenSpec
+import io.github.hazymorning.klangbild.render.StageGrid
 import io.github.hazymorning.klangbild.ui.theme.AndroidGlyphs
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -47,7 +48,7 @@ class OwnLinesTest {
 
     @Test
     fun coverFlowKeepsItsTimeAndNext() {
-        val scene = Fixtures.scene(a, mdpi, flow = true)
+        val scene = Fixtures.scene(a, mdpi, kind = StageGrid.Kind.FLOW)
         val flow = FlowData(listOf(FlowEntry(0L, a, scene)), 0)
         keepsItsLines(UiState(screen = Screen.Stage(a, PlayerStatus.PLAYING, b), queue = QueueDisplay.FLOW, flow = flow))
     }
