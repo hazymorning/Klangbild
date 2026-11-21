@@ -226,9 +226,9 @@ internal class TextPlan(
 internal fun rememberTextPlan(model: StageModel): TextPlan {
     val measurer = rememberTextMeasurer(cacheSize = 24)
     val localDensity = LocalDensity.current
-    val faces = faces()
-    return remember(model.text, model.year, model.scene.layout, model.scene.palette, slotOf(model) != null, model.chapter != null, localDensity, faces) {
-        planText(model, measurer, localDensity, faces)
+    val styles = rememberStageStyles(model.scene.palette, model.scene.layout.textScale)
+    return remember(model.text, model.year, model.scene.layout, styles, slotOf(model) != null, model.chapter != null, localDensity) {
+        planText(model, measurer, localDensity, styles)
     }
 }
 
@@ -236,13 +236,12 @@ private fun planText(
     model: StageModel,
     measurer: TextMeasurer,
     density: Density,
-    faces: Faces,
+    styles: StageStyles,
 ): TextPlan {
     val t = model.text
     val layout = model.scene.layout
     val d = density.density
     val colW = (layout.columnWidth * d).roundToInt()
-    val styles = StageStyles(model.scene.palette, faces, layout.textScale)
     val cjk = isMostlyCjk(t.title)
     val version = t.version
     val slotted = slotOf(model) != null
@@ -544,12 +543,25 @@ internal fun fitWords(measurer: TextMeasurer, text: String, style: TextStyle, wi
 /** [text] whole if it [fits], else cut after its last whole word that leaves room for an ellipsis (as above). */
 internal fun fitWords(text: String, fits: (String) -> Boolean): String {
     if (fits(text)) return text
+    return cutAfterWord(text, cut = { "${text.substring(0, it)}$NBSP…" }, fits = fits) ?: text
+}
+
+/**
+ * [text] cut after its last whole word that [fits]: [cut] makes the cut of its first that many
+ * characters, with the ellipsis. A cut never ends on what [trimBeforeEllipsis] trims, and with
+ * [closeParentheses] it ends before a parenthesis it would leave open. Null when none fits.
+ */
+internal fun <T : Any> cutAfterWord(text: String, closeParentheses: Boolean = false, cut: (Int) -> T, fits: (T) -> Boolean): T? {
     var end = text.length
     while (true) {
         end = text.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
-        if (end <= 0) return text
-        val head = trimBeforeEllipsis(text.substring(0, end))
-        if (head.isNotEmpty() && fits("$head$NBSP…")) return "$head$NBSP…"
+        if (end <= 0) return null
+        var head = text.substring(0, end)
+        if (closeParentheses && head.count { it == '(' } > head.count { it == ')' }) head = head.substring(0, head.lastIndexOf('('))
+        head = trimBeforeEllipsis(head)
+        if (head.isEmpty()) continue
+        val c = cut(head.length)
+        if (fits(c)) return c
     }
 }
 

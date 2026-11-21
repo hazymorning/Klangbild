@@ -83,24 +83,19 @@ object SceneBuilder {
         val slotPx = (layout.art * screen.density).roundToInt()
         val slotRect = layout.artRect
         val coverPixels: IntArray
-        val coverSize: Int
         val thumb: IntArray
         if (source != null) {
-            val side = min(source.width, source.height)
-            val square = IntArray(side * side)
-            source.readPixels(square, (source.width - side) / 2, (source.height - side) / 2, side, side)
+            val (square, side) = squarePixels(source)
             // Every cover fills the square. A small one (a station's picture) is enlarged once
             // with Lanczos, never shown as a smaller print inside a frame.
             coverPixels = ImageOps.resize(square, side, side, slotPx, slotPx)
-            coverSize = slotPx
             thumb = ImageOps.thumbnail(square, side, side, THUMB)
         } else {
             coverPixels = SleeveArt.render(SleeveArt.Seed(artFoil, artView), slotPx)
-            coverSize = slotPx
             thumb = ImageOps.thumbnail(coverPixels, slotPx, slotPx, THUMB)
         }
         val shape = PrintShape(slotRect, corner = layout.radius)
-        val cover = imageBitmapOf(coverPixels, coverSize, coverSize)
+        val cover = imageBitmapOf(coverPixels, slotPx, slotPx)
         // On its way to the GPU now, not in the first frames of the change that shows it.
         cover.prepareToDraw()
         val analysis = CoverPalette.analyze(thumb)
@@ -115,12 +110,18 @@ object SceneBuilder {
         val pixels = if (cover == null) {
             SleeveArt.render(SleeveArt.Seed(artFoil, artView), side)
         } else {
-            val s = min(cover.width, cover.height)
-            val square = IntArray(s * s)
-            cover.readPixels(square, (cover.width - s) / 2, (cover.height - s) / 2, s, s)
+            val (square, s) = squarePixels(cover)
             ImageOps.resize(square, s, s, side, side)
         }
         return imageBitmapOf(pixels, side, side)
+    }
+
+    /** The square in the middle of [image], as its pixels and its side. */
+    private fun squarePixels(image: ImageBitmap): Pair<IntArray, Int> {
+        val side = min(image.width, image.height)
+        val square = IntArray(side * side)
+        image.readPixels(square, (image.width - side) / 2, (image.height - side) / 2, side, side)
+        return square to side
     }
 
     /** Re-light an existing scene (appearance, wall tint or background changed) without the source image. */

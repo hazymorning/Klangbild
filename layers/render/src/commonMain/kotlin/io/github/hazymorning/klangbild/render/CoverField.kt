@@ -467,10 +467,8 @@ object CoverField {
     private const val GRID_V = 12
     private const val TARGET = 4.8f
 
-    /** sRGB (0..1) to linear via a table: the screen has only 256 levels, and the sampling reads many thousands. */
-    private val linearTable = FloatArray(256) { Oklab.srgbToLinear(it / 255f) }
-
-    private fun toLinear(v: Float): Float = linearTable[(v * 255f + 0.5f).toInt().coerceIn(0, 255)]
+    /** sRGB (0..1) to linear through Oklab's table: the screen has only 256 levels, and the sampling reads many thousands. */
+    private fun toLinear(v: Float): Float = Oklab.srgbToLinear((v * 255f + 0.5f).toInt().coerceIn(0, 255))
 }
 
 /**

@@ -117,7 +117,7 @@ internal fun WallLayer(
     // With the cover colors background, the cover's own colors are the wall.
     if (scene.coverField) return FieldLayer(scene, modifier, alpha, lightLevel)
     val image = scene.wall
-    val filters = remember { HashMap<Int, ColorFilter>() }
+    val filters = remember { LightFilters() }
     val dark = scene.appearance == Appearance.DARK
     val shadeColumn = dark && scene.layout.flow
     val density = LocalDensity.current.density
@@ -129,9 +129,7 @@ internal fun WallLayer(
         if (a <= 0.002f || l <= 0.002f) return@Canvas
         // Paper over paper of its own color at full strength adds nothing.
         if (!dark && onOwnWall && a >= 1f) return@Canvas
-        // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
-        val step = (l.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
-        val filter = if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
+        val filter = filters.at(l)
         val dx = (shift() * density).roundToInt()
         // Black laid over the light from where it starts to fade before the column to beyond the
         // edge. At full strength it is black from the end of its ramp on, on black of its own.
@@ -180,13 +178,6 @@ private fun columnShade(density: Float): Brush {
 /** Steps of the shade's ramp: a smooth curve, closely enough. */
 private const val SHADE_STOPS = 24
 
-/** The background's light in steps of this many to full brightness, each step's filter made once. */
-private const val LIGHT_STEPS = 40
-
-private fun scaleFilter(k: Float) = ColorFilter.colorMatrix(
-    ColorMatrix(floatArrayOf(k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, k, 0f, 0f, 0f, 0f, 0f, 1f, 0f)),
-)
-
 /**
  * The cover, drawn 1:1 at a whole-pixel position (the bitmap already has its exact display size)
  * with softly rounded corners. [coverLevel] (a pause) darkens it through the color matrix, not
@@ -231,16 +222,7 @@ internal fun CoverLayer(
  */
 internal fun coverFilter(level: Float, appearance: Appearance): ColorFilter {
     val (r, g, b) = coverScale(level, appearance)
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                r, 0f, 0f, 0f, 0f,
-                0f, g, 0f, 0f, 0f,
-                0f, 0f, b, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        ),
-    )
+    return scaleFilter(r, g, b)
 }
 
 /** [coverFilter] by level, in fiftieths, each made once: a pause dims the cover through a few dozen. */
@@ -256,6 +238,36 @@ internal class CoverFilters {
         const val LEVEL_STEPS = 50
     }
 }
+
+/**
+ * The background's light at a level in linear light as a filter on its sRGB bitmap, in steps of a
+ * fortieth to full brightness, each step's filter made once. At full brightness it needs none.
+ */
+internal class LightFilters {
+    private val filters = HashMap<Int, ColorFilter>()
+
+    fun at(level: Float): ColorFilter? {
+        // The bitmap is sRGB: a factor k in linear light is k^(1/2.2) on its values.
+        val step = (level.pow(1f / 2.2f) * LIGHT_STEPS).roundToInt()
+        return if (step == LIGHT_STEPS) null else filters.getOrPut(step) { scaleFilter(step / LIGHT_STEPS.toFloat()) }
+    }
+
+    private companion object {
+        const val LIGHT_STEPS = 40
+    }
+}
+
+/** A filter that scales the color channels: red by [r], green by [g] and blue by [b]. */
+private fun scaleFilter(r: Float, g: Float = r, b: Float = r) = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            r, 0f, 0f, 0f, 0f,
+            0f, g, 0f, 0f, 0f,
+            0f, 0f, b, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
 
 /** The per-channel scale of [coverFilter] (red, green, blue). */
 internal fun coverScale(level: Float, appearance: Appearance): Triple<Float, Float, Float> {

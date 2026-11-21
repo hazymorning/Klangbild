@@ -436,22 +436,14 @@ private fun metaLine(t: TrackText, album: String?, year: Int?, styles: StageStyl
 private fun fitLines(balancer: LineBalancer, text: AnnotatedString, style: TextStyle, width: Int, lines: Int): AnnotatedString {
     fun fits(s: AnnotatedString) = balancer.lineEnds(s, style, width).size <= lines
     if (fits(text)) return text
-    val plain = text.text
-    var end = plain.length
-    while (true) {
-        end = plain.lastIndexOfAny(charArrayOf(' ', NBSP), end - 1)
-        if (end <= 0) return text
-        var head = plain.substring(0, end)
-        if (head.count { it == '(' } > head.count { it == ')' }) head = head.substring(0, head.lastIndexOf('('))
-        head = trimBeforeEllipsis(head)
-        if (head.isEmpty()) continue
-        // The ellipsis stays with the last word, as in [fitWords].
-        val cut = buildAnnotatedString {
-            append(text.subSequence(0, head.length))
+    // The ellipsis stays with the last word, as in [fitWords].
+    val cut = { n: Int ->
+        buildAnnotatedString {
+            append(text.subSequence(0, n))
             append("$NBSP…")
         }
-        if (fits(cut)) return cut
     }
+    return cutAfterWord(text.text, closeParentheses = true, cut = cut, fits = ::fits) ?: text
 }
 
 /**
