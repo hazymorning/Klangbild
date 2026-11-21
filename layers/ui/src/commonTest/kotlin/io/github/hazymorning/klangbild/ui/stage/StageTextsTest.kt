@@ -38,6 +38,16 @@ class StageTextsTest {
     }
 
     @Test
+    fun `the track's place in its queue stands after the room, before the state`() {
+        assertThat(StageTexts.lead(PlayerStatus.PLAYING, false, false, "35 %", "Wohnzimmer", false, de, place = "3 von 45")).isEqualTo("Wohnzimmer · 3 von 45")
+        assertThat(StageTexts.lead(PlayerStatus.PAUSED, false, false, "35 %", "Wohnzimmer", false, de, place = "3 von 45")).isEqualTo("Wohnzimmer · 3 von 45 · Pausiert")
+        assertThat(StageTexts.lead(PlayerStatus.PLAYING, true, false, "35 %", null, false, de, place = "3 von 45")).isEqualTo("3 von 45 · Stumm")
+        assertThat(StageTexts.lead(PlayerStatus.PLAYING, false, false, "35 %", null, false, de, place = "3 von 45")).isEqualTo("3 von 45")
+        // A volume change still shows alone for its moment.
+        assertThat(StageTexts.lead(PlayerStatus.PLAYING, false, true, "35 %", "Wohnzimmer", false, de, place = "3 von 45")).isEqualTo("Lautstärke 35 %")
+    }
+
+    @Test
     fun `a passing volume wins, and stays out while muted`() {
         assertThat(lead(flash = true)).isEqualTo("Lautstärke 35 %")
         assertThat(lead(flash = true, muted = true)).isEqualTo("Wohnzimmer · Stumm")

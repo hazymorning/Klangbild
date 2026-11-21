@@ -261,25 +261,28 @@ class SettingsMenuTest {
     }
 
     @Test
-    fun `the track number is off at first, and with the list in its place it says so`() {
+    fun `the track number is off at first, then in the top line or the last`() {
         val en = TestTexts.english()
         val row = SettingsMenu.rows(configured, MenuContext(), en, MenuSection.INFO).first { it.entry == MenuEntry.TRACK_NUMBER }
         assertThat(row.label).isEqualTo("Track number")
         assertThat(row.value).isEqualTo("Off")
         // Home Assistant asks Music Assistant for the queue: nothing to set up in Klangbild.
         assertThat(row.dimmed).isFalse()
-        assertThat(row.description).isEqualTo(en[Strings.aboutTrackNumber])
-        val on = SettingsMenu.step(MenuEntry.TRACK_NUMBER, configured, +1)!!
-        assertThat(on.showTrackNumber).isTrue()
-        assertThat(on.display.trackNumber).isTrue()
-        assertThat(SettingsMenu.value(MenuEntry.TRACK_NUMBER, on, MenuContext(), de)).isEqualTo("An")
-        // The list beside the cover takes the last line's place; without Music Assistant it can't show.
-        val list = on.copy(queue = QueueDisplay.LIST)
-        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, list, MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumber])
-        val withMa = list.copy(maUrl = "http://192.168.1.5:8095", maToken = "ma")
-        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, withMa, MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumberList])
-        // Cover Flow keeps the last line.
-        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, withMa.copy(view = StageView.FLOW), MenuContext(), en)).isEqualTo(en[Strings.aboutTrackNumber])
+        assertThat(row.description).isEqualTo(en[Strings.aboutTrackNumberOff])
+        val top = SettingsMenu.step(MenuEntry.TRACK_NUMBER, configured, +1)!!
+        assertThat(top.trackNumber).isEqualTo(TrackNumber.TOP)
+        assertThat(top.display.trackNumber).isEqualTo(TrackNumber.TOP)
+        assertThat(SettingsMenu.value(MenuEntry.TRACK_NUMBER, top, MenuContext(), de)).isEqualTo("Oben")
+        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, top, MenuContext(), en))
+            .isEqualTo("${en[Strings.aboutTrackNumberTop]} ${en[Strings.aboutTrackNumberNeeds]}")
+        val bottom = SettingsMenu.step(MenuEntry.TRACK_NUMBER, top, +1)!!
+        assertThat(bottom.trackNumber).isEqualTo(TrackNumber.BOTTOM)
+        assertThat(SettingsMenu.value(MenuEntry.TRACK_NUMBER, bottom, MenuContext(), en)).isEqualTo("Bottom")
+        assertThat(SettingsMenu.description(MenuEntry.TRACK_NUMBER, bottom, MenuContext(), en))
+            .isEqualTo("${en[Strings.aboutTrackNumberBottom]} ${en[Strings.aboutTrackNumberNeeds]}")
+        // Right stops at the end, OK goes round.
+        assertThat(SettingsMenu.step(MenuEntry.TRACK_NUMBER, bottom, +1)!!.trackNumber).isEqualTo(TrackNumber.BOTTOM)
+        assertThat(SettingsMenu.step(MenuEntry.TRACK_NUMBER, bottom, +1, wrap = true)!!.trackNumber).isEqualTo(TrackNumber.OFF)
     }
 
     @Test

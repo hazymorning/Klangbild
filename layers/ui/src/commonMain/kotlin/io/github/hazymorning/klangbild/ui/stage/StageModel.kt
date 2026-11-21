@@ -86,9 +86,9 @@ internal data class StatusLine(val lead: String?, val clock: String?, val values
 internal object StageTexts {
     /**
      * The status line's lead. A volume change shows briefly ("Volume 35%") unless the speaker is
-     * muted. Muted or paused, the lead is the [group] and the state ("Living room · Paused"),
-     * otherwise the [group], the [pace] ("Pauses at 11:10 PM", "Speed 1.5×") and, with
-     * [volumeAlways], the volume.
+     * muted. Muted or paused, the lead is the [group], the track's [place] in its queue and the
+     * state ("Living room · 3 of 45 · Paused"), otherwise the [group], the [place], the [pace]
+     * ("Pauses at 11:10 PM", "Speed 1.5×") and, with [volumeAlways], the volume.
      */
     fun lead(
         status: PlayerStatus,
@@ -99,11 +99,12 @@ internal object StageTexts {
         volumeAlways: Boolean,
         t: Texts,
         pace: String? = null,
+        place: String? = null,
     ): String? = when {
         volumeFlash && !muted && volume != null -> t.format(Strings.statusVolume, volume)
-        muted -> listOfNotNull(group, t[Strings.statusMuted]).joinToString(TimeText.SEPARATOR)
-        status == PlayerStatus.PAUSED -> listOfNotNull(group, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR)
-        else -> listOfNotNull(group, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
+        muted -> listOfNotNull(group, place, t[Strings.statusMuted]).joinToString(TimeText.SEPARATOR)
+        status == PlayerStatus.PAUSED -> listOfNotNull(group, place, t[Strings.statusPaused]).joinToString(TimeText.SEPARATOR)
+        else -> listOfNotNull(group, place, pace, volume.takeIf { volumeAlways }).joinToString(TimeText.SEPARATOR).ifEmpty { null }
     }
 
     /**

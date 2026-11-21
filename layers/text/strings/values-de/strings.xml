@@ -75,6 +75,8 @@
     <string name="appearance_dark">Dunkel</string>
     <string name="volume_on_change">Bei Änderung</string>
     <string name="volume_always">Immer</string>
+    <string name="track_number_top">Oben</string>
+    <string name="track_number_bottom">Unten</string>
     <string name="play_here_open">Solange geöffnet</string>
     <string name="play_here_always">Immer</string>
     <string name="background_plain">Einfarbig</string>
@@ -128,8 +130,10 @@
     <string name="about_clock">Die Uhrzeit oben in der ersten Zeile.</string>
     <string name="about_progress">Der Balken mit gespielter Zeit und Länge. Ausgeschaltet zeigt ihn ein Tastendruck trotzdem kurz.</string>
     <string name="about_next">Der nächste Titel aus der Warteschlange, in der letzten Zeile.</string>
-    <string name="about_track_number">Die letzte Zeile beginnt mit der Position des Titels in der Warteschlange, etwa 3 von 45. Das gibt es bei Lautsprechern von Music Assistant, aber nicht bei Radio, Hörbüchern und Podcasts.</string>
-    <string name="about_track_number_list">Die Liste der nächsten Titel steht an der Stelle der letzten Zeile. Ohne die Liste beginnt die letzte Zeile mit der Position des Titels in der Warteschlange, etwa 3 von 45.</string>
+    <string name="about_track_number_off">Die Position des Titels in der Warteschlange bleibt verborgen. Rechts zeigt sie, etwa 3 von 45, in der ersten oder der letzten Zeile.</string>
+    <string name="about_track_number_top">Die erste Zeile zeigt die Position des Titels in der Warteschlange, etwa 3 von 45.</string>
+    <string name="about_track_number_bottom">Die letzte Zeile beginnt mit der Position des Titels in der Warteschlange, etwa 3 von 45. Solange die nächsten Titel als Liste dastehen, steht sie in der ersten Zeile.</string>
+    <string name="about_track_number_needs">Dafür braucht es einen Lautsprecher von Music Assistant, und bei Radio, Hörbüchern und Podcasts fehlt sie.</string>
     <string name="about_album">Name und Jahr des Albums unter den Künstlern.</string>
     <string name="about_group">Spielen weitere Lautsprecher mit, steht neben der Uhrzeit etwa „Wohnzimmer + 5“ oder „Überall“.</string>
     <string name="about_volume_on_change">Ändert sich die Lautstärke, steht sie ein paar Sekunden lang neben der Uhrzeit.</string>

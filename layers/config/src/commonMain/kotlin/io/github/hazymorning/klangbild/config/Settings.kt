@@ -108,6 +108,13 @@ enum class QueueDisplay {
     FLOW,
 }
 
+/**
+ * Where the track's position in its queue ("3 of 45") stands: nowhere, in the top line, or first
+ * in the last line. While the queue shows as a list, which takes the last line's place, it stands
+ * in the top line.
+ */
+enum class TrackNumber { OFF, TOP, BOTTOM }
+
 /** When this TV plays as one of Music Assistant's speakers (needs Music Assistant). */
 enum class PlayHere {
     OFF,
@@ -134,8 +141,8 @@ data class DisplayOptions(
     val progressBar: Boolean = true,
     /** What comes next, on the artwork's bottom edge. */
     val next: Boolean = true,
-    /** The track's position in its queue ("3 of 45"), first in the last line. */
-    val trackNumber: Boolean = false,
+    /** Where the track's position in its queue ("3 of 45") stands. */
+    val trackNumber: TrackNumber = TrackNumber.OFF,
     val album: Boolean = true,
     /** "Living room + 5" while other speakers play along. */
     val group: Boolean = true,
@@ -184,8 +191,8 @@ data class Settings(
     val remoteControl: Boolean = true,
     val showProgressBar: Boolean = true,
     val showNext: Boolean = true,
-    /** The last line starts with the track's position in the queue (the menu's Track number). */
-    val showTrackNumber: Boolean = false,
+    /** Where the track's position in the queue stands (the menu's Track number). */
+    val trackNumber: TrackNumber = TrackNumber.OFF,
     val showAlbum: Boolean = true,
     val showGroup: Boolean = true,
     val volumeDisplay: VolumeDisplay = VolumeDisplay.ON_CHANGE,
@@ -325,7 +332,7 @@ data class Settings(
             clock = showClock,
             progressBar = showProgressBar,
             next = showNext,
-            trackNumber = showTrackNumber,
+            trackNumber = trackNumber,
             album = showAlbum,
             group = showGroup,
             volume = volumeDisplay,

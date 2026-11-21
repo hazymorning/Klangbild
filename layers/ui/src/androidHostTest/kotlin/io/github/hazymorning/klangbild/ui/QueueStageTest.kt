@@ -7,6 +7,7 @@ import io.github.hazymorning.klangbild.app.StageData
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.domain.Catalog
 import io.github.hazymorning.klangbild.domain.PlayerStatus
+import io.github.hazymorning.klangbild.domain.QueuePlace
 import io.github.hazymorning.klangbild.text.TestTexts
 import io.github.hazymorning.klangbild.text.Texts
 import io.github.hazymorning.klangbild.ui.stage.Stage
@@ -32,6 +33,10 @@ class QueueStageTest {
 
     @Test
     fun playlistDark() = shot("playlist_dark", Fixtures.queueModel(playing, playlistQueue))
+
+    /** Track number with the list: it stands in the top line, and the list keeps its rows. */
+    @Test
+    fun trackNumber() = shot("track_number", Fixtures.queueModel(playing, playlistQueue, place = QueuePlace(3, 45)))
 
     @Test
     fun playlistEdgeToEdge() = shot("playlist_edge", Fixtures.queueModel(playing, playlistQueue, scene = Fixtures.scene(playing, edge = true)))

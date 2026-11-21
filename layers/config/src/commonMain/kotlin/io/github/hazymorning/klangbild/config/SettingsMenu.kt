@@ -186,7 +186,13 @@ object SettingsMenu {
         MenuEntry.CLOCK -> onOff(s.showClock, t)
         MenuEntry.PROGRESS_BAR -> onOff(s.showProgressBar, t)
         MenuEntry.NEXT -> onOff(s.showNext, t)
-        MenuEntry.TRACK_NUMBER -> onOff(s.showTrackNumber, t)
+        MenuEntry.TRACK_NUMBER -> t[
+            when (s.trackNumber) {
+                TrackNumber.OFF -> Strings.off
+                TrackNumber.TOP -> Strings.trackNumberTop
+                TrackNumber.BOTTOM -> Strings.trackNumberBottom
+            },
+        ]
         MenuEntry.ALBUM -> onOff(s.showAlbum, t)
         MenuEntry.GROUP -> onOff(s.showGroup, t)
         MenuEntry.VOLUME -> t[
@@ -320,7 +326,11 @@ object SettingsMenu {
         MenuEntry.PROGRESS_BAR -> t[Strings.aboutProgress]
         MenuEntry.NEXT -> t[Strings.aboutNext]
         // The list takes the last line's place (it shows only with Music Assistant set up).
-        MenuEntry.TRACK_NUMBER -> t[if (s.shownQueue == QueueDisplay.LIST && s.hasMusicAssistant) Strings.aboutTrackNumberList else Strings.aboutTrackNumber]
+        MenuEntry.TRACK_NUMBER -> when (s.trackNumber) {
+            TrackNumber.OFF -> t[Strings.aboutTrackNumberOff]
+            TrackNumber.TOP -> sentences(t[Strings.aboutTrackNumberTop], t[Strings.aboutTrackNumberNeeds])
+            TrackNumber.BOTTOM -> sentences(t[Strings.aboutTrackNumberBottom], t[Strings.aboutTrackNumberNeeds])
+        }
         MenuEntry.ALBUM -> t[Strings.aboutAlbum]
         MenuEntry.GROUP -> t[Strings.aboutGroup]
         MenuEntry.VOLUME -> t[
@@ -526,7 +536,7 @@ object SettingsMenu {
         MenuEntry.CLOCK -> s.copy(showClock = !s.showClock)
         MenuEntry.PROGRESS_BAR -> s.copy(showProgressBar = !s.showProgressBar)
         MenuEntry.NEXT -> s.copy(showNext = !s.showNext)
-        MenuEntry.TRACK_NUMBER -> s.copy(showTrackNumber = !s.showTrackNumber)
+        MenuEntry.TRACK_NUMBER -> s.copy(trackNumber = move(TRACK_NUMBER_ORDER, s.trackNumber, direction, wrap))
         MenuEntry.ALBUM -> s.copy(showAlbum = !s.showAlbum)
         MenuEntry.GROUP -> s.copy(showGroup = !s.showGroup)
         MenuEntry.VOLUME -> s.copy(volumeDisplay = move(VOLUME_ORDER, s.volumeDisplay, direction, wrap))
@@ -631,6 +641,7 @@ object SettingsMenu {
     val VIEW_ORDER = listOf(StageView.NORMAL, StageView.EDGE, StageView.FLOW)
     val QUEUE_ORDER = listOf(QueueDisplay.OFF, QueueDisplay.LIST)
     private val VOLUME_ORDER = listOf(VolumeDisplay.OFF, VolumeDisplay.ON_CHANGE, VolumeDisplay.ALWAYS)
+    private val TRACK_NUMBER_ORDER = listOf(TrackNumber.OFF, TrackNumber.TOP, TrackNumber.BOTTOM)
     private val PLAY_HERE_ORDER = listOf(PlayHere.OFF, PlayHere.OPEN, PlayHere.ALWAYS)
     private val INTENSITY_ORDER = listOf(Intensity.OFF, Intensity.SUBTLE, Intensity.NORMAL, Intensity.STRONG)
     private val APPEARANCE_ORDER = listOf(AppearanceMode.DARK, AppearanceMode.AUTO, AppearanceMode.LIGHT)

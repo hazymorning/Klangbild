@@ -32,6 +32,7 @@ import io.github.hazymorning.klangbild.app.UiState
 import io.github.hazymorning.klangbild.color.Appearance
 import io.github.hazymorning.klangbild.config.MotionLevel
 import io.github.hazymorning.klangbild.config.QueueDisplay
+import io.github.hazymorning.klangbild.config.TrackNumber
 import io.github.hazymorning.klangbild.config.VolumeDisplay
 import io.github.hazymorning.klangbild.domain.MediaKind
 import io.github.hazymorning.klangbild.domain.PlayerStatus
@@ -272,10 +273,15 @@ private fun StageOnScreen(ui: UiState, stage: StageData, hooks: RootHooks, wall:
     val peek = rememberPeek(hooks)
     val hint = rememberHint(ui.downHint)
     val t = texts()
-    val statusLine = statusLineOf(ui, status, peek, wall.value, t)
+    // The track's position in the queue stands in the line the setting says, and in the top line
+    // while the list beside the cover takes the last line's place.
+    val list = stage.queue != null && stage.lyrics == null && stage.bio == null
+    val top = display.trackNumber == TrackNumber.TOP || (display.trackNumber == TrackNumber.BOTTOM && list)
+    val topPlace = stageScreen?.takeIf { top }?.let { StageTexts.place(it.place, it.track, t) }
+    val statusLine = statusLineOf(ui, status, peek, wall.value, t, topPlace)
     // A station has no next song to tell (what its queue holds next is another station).
     val nextTrack = stageScreen?.next?.takeIf { display.next && stageScreen.track.kind != MediaKind.RADIO }
-    val place = stageScreen?.place?.takeIf { display.trackNumber }
+    val place = stageScreen?.place?.takeIf { display.trackNumber == TrackNumber.BOTTOM }
     val chapter = ui.chapter
     // The bar shows by setting, or for a moment after a key; beside lyrics or the artist's sentences only then.
     fun barWanted(s: StageData) = peek || (s.lyrics == null && s.bio == null && display.progressBar)
@@ -400,8 +406,11 @@ private fun rememberHint(downHint: Boolean): Boolean {
     return if (still) downHint else hinting
 }
 
-/** The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a notification), the hidden parts back while [peek]. */
-private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts): StatusLine {
+/**
+ * The status line for [ui]: the clock at [nowMs], the custom values and the lead (or a
+ * notification) with the track's [place] in its queue, the hidden parts back while [peek].
+ */
+private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs: Long, t: Texts, place: String?): StatusLine {
     val display = ui.display
     val player = ui.source.player
     val clock = if (display.clock || peek) t.clock(nowMs) else null
@@ -416,7 +425,7 @@ private fun statusLineOf(ui: UiState, status: PlayerStatus, peek: Boolean, nowMs
     val volumeAlways = StageTexts.volumeAlways(display.volume == VolumeDisplay.ALWAYS, own, player?.volume)
     // A notification takes the lead's place while it shows; a volume change still shows for its moment.
     val lead = ui.message?.takeUnless { ui.volumeFlash }
-        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace)
+        ?: StageTexts.lead(status, player?.muted == true, ui.volumeFlash, volume, group, volumeAlways = volumeAlways, t = t, pace = pace, place = place)
     // The values of one's own, after the time (hidden by setting, back for a moment on a key).
     return StatusLine(lead, clock, ui.values.takeIf { display.values || peek }.orEmpty())
 }

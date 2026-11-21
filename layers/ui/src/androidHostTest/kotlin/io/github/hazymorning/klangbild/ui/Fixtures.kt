@@ -45,7 +45,9 @@ object Fixtures : AppFixtures() {
         clock: String? = "21:47",
         group: String? = null,
         t: Texts = texts,
-        lead: String? = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t),
+        /** The track's place in its queue in the top line (Track number: Top). */
+        topPlace: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
+        lead: String? = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, place = StageTexts.place(topPlace, track, t)),
         appearance: Appearance = Appearance.DARK,
         scene: ArtworkScene = scene(track, screen, appearance),
         album: Boolean = true,
@@ -205,8 +207,10 @@ object Fixtures : AppFixtures() {
         barStays: Boolean = progress,
         positionMs: Long? = track.durationMs?.let { it / 3 },
         album: Boolean = true,
+        /** The track's place in its queue, which stands in the top line beside the list. */
+        place: io.github.hazymorning.klangbild.domain.QueuePlace? = null,
     ): StageModel {
-        val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t)
+        val lead = StageTexts.lead(status, muted = false, volumeFlash = false, volume = null, group = group, volumeAlways = false, t = t, place = StageTexts.place(place, track, t))
         val text = TrackText.from(track, t[io.github.hazymorning.klangbild.text.Strings.artistsOthers])
         return StageModel(
             scene = scene,
