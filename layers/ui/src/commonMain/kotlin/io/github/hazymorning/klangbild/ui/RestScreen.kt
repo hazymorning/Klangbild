@@ -165,16 +165,17 @@ fun RestScreen(
     // A lamp only lights the dark background.
     val peak = (RestLight.PEAK * intensity).takeIf { it > 0f && appearance == Appearance.DARK }
     val tint = remember(peak) { peak?.let { LampLight.lightTint(LampLight.LAMP, it) } }
+    val lightTint = remember(tint) { tint?.let { ColorFilter.tint(Color(it), BlendMode.Modulate) } }
 
     Box(modifier.fillMaxSize()) {
         BaseWall(colors.wall)
         val map = rememberOffMain(tint) { tint?.let { RestLight.map(it) } }
-        if (map != null && tint != null) {
+        if (map != null && lightTint != null) {
             Canvas(Modifier.fillMaxSize()) {
                 drawImage(
                     map,
                     dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                    colorFilter = ColorFilter.tint(Color(tint), BlendMode.Modulate),
+                    colorFilter = lightTint,
                     filterQuality = FilterQuality.Low,
                 )
             }

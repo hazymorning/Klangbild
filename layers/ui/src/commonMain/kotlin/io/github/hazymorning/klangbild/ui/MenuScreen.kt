@@ -208,6 +208,7 @@ private class MenuColors(
 @Composable
 fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appearance = Appearance.DARK, pending: Boolean = false) {
     val colors = remember(appearance) { MenuColors.of(appearance) }
+    val bandTint = remember(colors.band) { ColorFilter.tint(colors.band, BlendMode.Modulate) }
     // The level left keeps showing as it was while it fades.
     val levels = remember { HashMap<Any?, MenuState>() }
     val level: Any? = if (menu.notes != null) NotesLevelKey else menu.section
@@ -229,7 +230,7 @@ fun MenuScreen(menu: MenuState, modifier: Modifier = Modifier, appearance: Appea
             drawImage(
                 map,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                colorFilter = ColorFilter.tint(colors.band, BlendMode.Modulate),
+                colorFilter = bandTint,
                 alpha = band,
                 filterQuality = FilterQuality.Low,
                 blendMode = BlendMode.Plus,
@@ -347,17 +348,18 @@ private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, foc
 
     // Right: the points, each line faded as a row would be where it stands, so a long point is
     // gone before the screen's edge as rows are.
+    val paint = remember { Paint() }
     Canvas(Modifier.fillMaxSize()) {
         val x = (layout.columnLeft * this.density).roundToInt().toFloat()
         set.forEachIndexed { i, p ->
             var top = tops[i] + offset.value
             p.part?.let {
-                drawFaded(it, x, top, focusY)
+                drawFaded(it, x, top, focusY, paint)
                 top += it.size.height / this.density + NOTES_PART_GAP
             }
             val f = chosen[i].value
-            if (f < 1f) drawFaded(p.rest, x, top, focusY, 1f - f)
-            if (f > 0f) drawFaded(p.chosen, x, top, focusY, f)
+            if (f < 1f) drawFaded(p.rest, x, top, focusY, paint, 1f - f)
+            if (f > 0f) drawFaded(p.chosen, x, top, focusY, paint, f)
         }
     }
 }
@@ -365,10 +367,12 @@ private fun NotesLevel(menu: MenuState, notes: MenuNotes, layout: StageGrid, foc
 /** A point of the notes as set: its part's name, if it opens one, and the point at rest and chosen. */
 private class SetPoint(val part: TextLayoutResult?, val rest: TextLayoutResult, val chosen: TextLayoutResult)
 
-/** [text] from [x] px and [top] dp, each line as faded as a row standing there ([MenuGrid.fade] from [focusY]), times [alpha]. */
-private fun DrawScope.drawFaded(text: TextLayoutResult, x: Float, top: Float, focusY: Float, alpha: Float = 1f) {
+/**
+ * [text] from [x] px and [top] dp, each line as faded as a row standing there ([MenuGrid.fade]
+ * from [focusY]), times [alpha]. Each line's layer is laid with [paint].
+ */
+private fun DrawScope.drawFaded(text: TextLayoutResult, x: Float, top: Float, focusY: Float, paint: Paint, alpha: Float = 1f) {
     val y = (top * density).roundToInt().toFloat()
-    val paint = Paint()
     for (line in 0 until text.lineCount) {
         val lineTop = y + text.getLineTop(line)
         val lineBottom = y + text.getLineBottom(line)
