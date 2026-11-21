@@ -63,7 +63,7 @@ class Scenes(
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
     private val cache = LinkedHashMap<String, ArtworkScene>()
     private val lock = SynchronizedObject()
-    private val building = HashMap<String, Job>()
+    private val building = JobsByKey()
 
     /** A generated cover standing in for a picture: the picture's addresses when it was made ([addressesOf]), and when. */
     private class StandIn(val addresses: List<String>, val at: Long)
@@ -88,8 +88,7 @@ class Scenes(
     fun show(value: Frame, keep: String? = null) {
         synchronized(lock) {
             if (value == frame) return
-            building.values.forEach { it.cancel() }
-            building.clear()
+            building.cancelAll()
             val back = aside?.takeIf { it.first == value }
             aside = keep?.let { key -> cache[key]?.let { Triple(frame, key, it) } }
             cache.clear()
@@ -143,8 +142,7 @@ class Scenes(
     /** Lets go of every scene (nothing is shown any more, or memory is short). */
     fun clear() {
         synchronized(lock) {
-            building.values.forEach { it.cancel() }
-            building.clear()
+            building.cancelAll()
             cache.clear()
             standIns.clear()
             aside = null
@@ -153,11 +151,7 @@ class Scenes(
 
     /** Stops building scenes that are no longer wanted (skipped past quickly), by [TrackInfo.sceneKey]. */
     fun retain(keys: Set<String>) {
-        synchronized(lock) {
-            val stale = building.filterKeys { it !in keys }
-            stale.values.forEach { it.cancel() }
-            building.keys.removeAll(stale.keys)
-        }
+        synchronized(lock) { building.retain(keys) }
     }
 
     private suspend fun make(track: TrackInfo, key: String, old: ArtworkScene?, look: Look, forFrame: Frame, done: (ArtworkScene) -> Unit) {
@@ -180,7 +174,7 @@ class Scenes(
         }
         synchronized(lock) {
             // Only its own place: the same song's scene for another frame may be on its way by now.
-            if (building[key] === me) building.remove(key)
+            building.ended(key, me)
             if (scene == null || frame != forFrame) return
             // Re-lit, a scene stays what it was; built anew, it is the picture or stands in for it.
             if (old == null) {
@@ -199,7 +193,7 @@ class Scenes(
      */
     private fun keepStandIn(key: String, track: TrackInfo, look: Look, me: Job?): Boolean = synchronized(lock) {
         if (key !in standIns || cache[key]?.let(look::fits) != true) return false
-        if (building[key] === me) building.remove(key)
+        building.ended(key, me)
         standIns[key] = StandIn(addressesOf(track), now())
         true
     }

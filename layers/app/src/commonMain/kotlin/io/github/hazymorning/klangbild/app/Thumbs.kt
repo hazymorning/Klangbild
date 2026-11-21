@@ -46,7 +46,7 @@ internal class Thumbs(
 
     private val cache = RecentMap<String, ImageBitmap>(KEEP) { key, _ -> standIns.remove(key) }
     private val lock = SynchronizedObject()
-    private val building = HashMap<String, Job>()
+    private val building = JobsByKey()
 
     /** The side length of a small cover (px). A new length (another screen) drops every one made so far. */
     @Volatile var px = 0
@@ -76,17 +76,13 @@ internal class Thumbs(
     /** Lets go of the small covers still on their way for any song but [tracks]. */
     fun retain(tracks: Collection<TrackInfo>) {
         val keep = tracks.mapTo(HashSet()) { keyOf(it) }
-        synchronized(lock) {
-            val gone = building.keys.filter { it !in keep }
-            for (key in gone) building.remove(key)?.cancel()
-        }
+        synchronized(lock) { building.retain(keep) }
     }
 
     /** Lets go of every small cover (nothing shows them any more, or memory is short). */
     fun clear() {
         synchronized(lock) {
-            building.values.forEach { it.cancel() }
-            building.clear()
+            building.cancelAll()
             cache.clear()
             standIns.clear()
         }
@@ -109,7 +105,7 @@ internal class Thumbs(
             null
         }
         synchronized(lock) {
-            if (building[key] === me) building.remove(key)
+            building.ended(key, me)
             if (bitmap == null || side != px) return
             // A generated one never replaces a cover that came before, nor the same one standing in.
             if (missing && key in cache) {
